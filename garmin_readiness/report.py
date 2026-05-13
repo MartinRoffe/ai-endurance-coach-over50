@@ -9,8 +9,8 @@ from typing import Optional
 
 import anthropic
 
-from .display import FIELD_LABELS, fmt_value, readiness_label
-from .history import LOWER_IS_BETTER, baseline_stats, composite_score, history_for_chart, z_score
+from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
+from .history import LOWER_IS_BETTER, baseline_stats, composite_score, history_for_chart, z_score, load_recent_activities
 from .metrics import DailyMetrics
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
@@ -72,17 +72,22 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
     client = anthropic.Anthropic(api_key=api_key)
     prompt = _build_prompt(m, stats, comp_z)
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}],
-        system=(
-            "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
-            "based on objective physiological data from a Garmin device. "
-            "Be direct, warm, and evidence-based. Never be vague."
-        ),
-    )
-    return message.content[0].text
+    try:
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+            system=(
+                "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
+                "based on objective physiological data from a Garmin device. "
+                "Be direct, warm, and evidence-based. Never be vague."
+            ),
+        )
+        return message.content[0].text
+    except anthropic.APIStatusError as e:
+        import logging
+        logging.getLogger(__name__).warning("Anthropic API error (%s), using rule-based advice", e.status_code)
+        return _rule_based_advice(m, stats, comp_z)
 
 
 def _rule_based_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
@@ -124,7 +129,52 @@ def _rule_based_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) ->
     return f"Recommendation: {rec}\n\n{detail}"
 
 
-def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: str) -> str:
+def _workouts_html(activities: list[dict]) -> str:
+    if not activities:
+        return ""
+
+    rows = ""
+    for a in activities:
+        stats_parts = []
+        if a.get("duration_fmt"):
+            stats_parts.append(a["duration_fmt"])
+        if a.get("distance_fmt"):
+            stats_parts.append(a["distance_fmt"])
+        if a.get("pace_fmt"):
+            stats_parts.append(a["pace_fmt"])
+        if a.get("avg_hr"):
+            stats_parts.append(f"{int(a['avg_hr'])} bpm avg")
+        if a.get("calories"):
+            stats_parts.append(f"{int(a['calories'])} kcal")
+
+        date_str = a.get("date", "")
+        date_display = date_str[5:].replace("-", " ") if date_str else ""
+
+        rows += f"""
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:10px 12px;font-size:20px;width:32px;">{a['icon']}</td>
+          <td style="padding:10px 12px;">
+            <p style="margin:0;font-size:13px;font-weight:600;color:#111827;">{a.get('name') or a['type_label']}</p>
+            <p style="margin:2px 0 0;font-size:11px;color:#9ca3af;">{a['type_label']} · {date_display}</p>
+          </td>
+          <td style="padding:10px 12px;text-align:right;font-size:12px;color:#6b7280;white-space:nowrap;">
+            {'  ·  '.join(stats_parts)}
+          </td>
+        </tr>"""
+
+    return f"""
+        <!-- Workouts -->
+        <tr>
+          <td style="padding:0 32px 8px;">
+            <p style="margin:0 0 12px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;border-top:1px solid #e5e7eb;padding-top:24px;">Last 7 Days · Workouts</p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              {rows}
+            </table>
+          </td>
+        </tr>"""
+
+
+def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: str, activities: list[dict] | None = None) -> str:
     label, _ = readiness_label(comp_z)
 
     score_colour = (
@@ -232,6 +282,8 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
           </td>
         </tr>
 
+        {_workouts_html([enrich_activity(a) for a in (activities or [])])}
+
         <!-- Footer -->
         <tr>
           <td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;">
@@ -266,10 +318,11 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
     comp_z = composite_score(m, stats)
     label, _ = readiness_label(comp_z)
 
+    activities = load_recent_activities(days=7)
     advice = generate_advice(m, stats, comp_z)
     score_str = f"{comp_z:+.2f}σ" if comp_z is not None else "—"
     subject = f"Readiness {m.date.strftime('%-d %b')} · {score_str} {label}"
-    html = build_html(m, stats, comp_z, advice)
+    html = build_html(m, stats, comp_z, advice, activities)
 
     if dry_run:
         print(f"Subject: {subject}\n")

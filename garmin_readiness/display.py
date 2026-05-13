@@ -37,6 +37,49 @@ def fmt_value(field: str, value: Optional[float]) -> str:
     return f"{value:.1f}"
 
 
+def fmt_duration(seconds: Optional[float]) -> str:
+    if seconds is None:
+        return ""
+    h, rem = divmod(int(seconds), 3600)
+    m = rem // 60
+    if h:
+        return f"{h}h {m:02d}m"
+    return f"{m}m"
+
+
+def fmt_distance(meters: Optional[float]) -> str:
+    if meters is None or meters == 0:
+        return ""
+    return f"{meters / 1000:.1f} km"
+
+
+def fmt_pace(seconds: Optional[float], meters: Optional[float], type_key: str) -> str:
+    if not seconds or not meters or meters == 0:
+        return ""
+    if "biking" in type_key or "cycling" in type_key:
+        kmh = (meters / 1000) / (seconds / 3600)
+        return f"{kmh:.1f} km/h"
+    if "running" in type_key or "hiking" in type_key or "walking" in type_key:
+        min_per_km = (seconds / 60) / (meters / 1000)
+        mins = int(min_per_km)
+        secs = int((min_per_km - mins) * 60)
+        return f"{mins}:{secs:02d}/km"
+    return ""
+
+
+def enrich_activity(a: dict) -> dict:
+    from .metrics import _TYPE_ICONS, _TYPE_LABELS
+    type_key = a.get("type_key", "")
+    return {
+        **a,
+        "icon":         _TYPE_ICONS.get(type_key, "🏅"),
+        "type_label":   _TYPE_LABELS.get(type_key, type_key.replace("_", " ").title()),
+        "duration_fmt": fmt_duration(a.get("duration_seconds")),
+        "distance_fmt": fmt_distance(a.get("distance_meters")),
+        "pace_fmt":     fmt_pace(a.get("duration_seconds"), a.get("distance_meters"), type_key),
+    }
+
+
 def readiness_label(z: Optional[float]) -> tuple[str, str]:
     """Returns (label, css_colour_class) for the composite z-score."""
     if z is None:
