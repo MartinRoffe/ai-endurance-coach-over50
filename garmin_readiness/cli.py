@@ -14,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from .client import get_api
+from .display import FIELD_LABELS, fmt_value, readiness_label
 from .history import (
     baseline_stats,
     composite_score,
@@ -28,38 +29,7 @@ from .metrics import DailyMetrics, available_count, fetch_metrics
 
 console = Console()
 
-FIELD_LABELS: dict[str, tuple[str, str]] = {
-    # field: (display name, unit)
-    "sleep_score":           ("Sleep Score",          "/100"),
-    "sleep_seconds":         ("Sleep Duration",       ""),
-    "hrv_last_night":        ("HRV Last Night",       " ms"),
-    "hrv_weekly_avg":        ("HRV Weekly Avg",       " ms"),
-    "body_battery_morning":  ("Body Battery",         "/100"),
-    "avg_stress":            ("Avg Stress",           "/100"),
-    "rest_stress":           ("Rest Stress",          "/100"),
-    "acwr":                  ("Acute:Chronic Ratio",  ""),
-    "training_load_acute":   ("Acute Load (7d)",      ""),
-    "training_load_chronic": ("Chronic Load (28d)",   ""),
-    "vo2_max":               ("VO2 Max",              " ml/kg/min"),
-}
 
-
-def _fmt_value(field: str, value: Optional[float]) -> str:
-    if value is None:
-        return "—"
-    if field == "sleep_seconds":
-        h, rem = divmod(int(value), 3600)
-        m = rem // 60
-        return f"{h}h {m:02d}m"
-    if field in ("sleep_score", "body_battery_morning", "avg_stress", "rest_stress"):
-        return f"{value:.0f}"
-    if field in ("hrv_last_night", "hrv_weekly_avg", "vo2_max"):
-        return f"{value:.1f}"
-    if field == "acwr":
-        return f"{value:.2f}"
-    if field in ("training_load_acute", "training_load_chronic"):
-        return f"{value:.0f}"
-    return f"{value:.1f}"
 
 
 def _z_bar(z: Optional[float], width: int = 12) -> Text:
@@ -85,8 +55,8 @@ def _z_bar(z: Optional[float], width: int = 12) -> Text:
     return t
 
 
-def _readiness_label(z: Optional[float]) -> tuple[str, str]:
-    """Returns (label, colour) for the composite z-score."""
+def _readiness_label_rich(z: Optional[float]) -> tuple[str, str]:
+    """Returns (label, Rich colour) for the composite z-score."""
     if z is None:
         return "Building baseline…", "dim"
     if z >= 1.0:
@@ -123,7 +93,7 @@ def _render_dashboard(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> 
     target = m.date
 
     # ── Header ──────────────────────────────────────────────────────────────
-    label, colour = _readiness_label(comp_z)
+    label, colour = _readiness_label_rich(comp_z)
     tags = []
     if m.hrv_status:
         tags.append(f"HRV {m.hrv_status.title()}")
@@ -135,7 +105,7 @@ def _render_dashboard(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> 
             acwr_tag += f" ({m.acwr_status.replace('_', ' ').lower()})"
         tags.append(acwr_tag)
     header = Text()
-    header.append(f"Trading Readiness  {target.strftime('%a %d %b %Y')}", style="bold")
+    header.append(f"Daily Readiness  {target.strftime('%a %d %b %Y')}", style="bold")
     if comp_z is not None:
         header.append(f"\nComposite: ", style="dim")
         header.append(f"{comp_z:+.2f}σ  {label}", style=colour)
@@ -156,7 +126,7 @@ def _render_dashboard(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> 
 
     for field, (label_str, unit) in FIELD_LABELS.items():
         value = getattr(m, field)
-        val_str = _fmt_value(field, value) + (unit if value is not None else "")
+        val_str = fmt_value(field, value) + (unit if value is not None else "")
 
         # ACWR: append Garmin's own status badge next to the value
         if field == "acwr" and m.acwr_status and value is not None:
@@ -165,7 +135,7 @@ def _render_dashboard(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> 
 
         if field in stats:
             mean, std = stats[field]
-            avg_str = _fmt_value(field, mean) + unit
+            avg_str = fmt_value(field, mean) + unit
             z = z_score(value, mean, std, field) if value is not None else None
             bar = _z_bar(z)
         elif field in ("training_load_chronic", "vo2_max") and value is not None:
@@ -213,7 +183,7 @@ def main() -> None:
 
     import argparse
 
-    parser = argparse.ArgumentParser(description="Garmin → Trading Readiness")
+    parser = argparse.ArgumentParser(description="Garmin → Daily Readiness")
     parser.add_argument(
         "--date",
         default=date.today().isoformat(),
@@ -235,10 +205,27 @@ def main() -> None:
         action="store_true",
         help="Show debug logs",
     )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Start the web dashboard at http://127.0.0.1:8080",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port for --serve (default: 8080)",
+    )
     args = parser.parse_args()
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, force=True)
+
+    if args.serve:
+        from .server import run as serve_run
+        console.print(f"[bold]Dashboard at[/bold] http://127.0.0.1:{args.port}")
+        serve_run(port=args.port)
+        return
 
     email = os.getenv("GARMIN_EMAIL")
     password = os.getenv("GARMIN_PASSWORD")

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Readiness · {{ date }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0f1117; }
+    .z-bar-track { background: #1e2030; }
+    .z-bar-fill-pos { background: linear-gradient(90deg, #34d399, #10b981); }
+    .z-bar-fill-neg { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .z-bar-fill-neutral { background: #a3a3a3; }
+    .metric-card { border: 1px solid #1e2030; }
+    .metric-card:hover { border-color: #374151; }
+  </style>
+</head>
+<body class="text-slate-200 font-mono min-h-screen p-6">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-start justify-between mb-1">
+      <div>
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Daily Readiness</p>
+        <h1 class="text-2xl font-bold text-white">{{ date_long }}</h1>
+      </div>
+      <div class="text-right">
+        <p class="text-xs text-slate-500 mb-1">refreshes every 5 min</p>
+        <p class="text-xs text-slate-600" id="last-updated">updated just now</p>
+      </div>
+    </div>
+
+    <!-- ── Composite score hero ──────────────────────────────────────── -->
+    <div class="mt-5 mb-6 rounded-xl bg-[#161b27] border border-[#1e2030] p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="flex-1">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Composite Score</p>
+        {% if comp_z is not none %}
+          <p class="text-5xl font-bold {{ comp_colour }}">
+            {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="text-2xl text-slate-500">σ</span>
+          </p>
+        {% else %}
+          <p class="text-3xl text-slate-500">—</p>
+        {% endif %}
+        <p class="mt-1 text-lg {{ comp_colour }}">{{ comp_label }}</p>
+      </div>
+
+      <!-- Status badges -->
+      <div class="flex flex-wrap gap-2">
+        {% for badge_text, badge_cls in badges %}
+          <span class="px-3 py-1 rounded-full text-xs font-semibold border {{ badge_cls }}">{{ badge_text }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ── Metrics grid ──────────────────────────────────────────────── -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+      {% for m in metrics %}
+      <div class="metric-card rounded-lg bg-[#161b27] p-4 transition-colors">
+        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-1">{{ m.label }}</p>
+        <div class="flex items-baseline gap-2 mb-2">
+          <span class="text-2xl font-bold {% if m.z_val is not none %}{{ m.value_colour }}{% else %}text-white{% endif %}">
+            {{ m.value }}{% if m.unit %}<span class="text-sm text-slate-400">{{ m.unit }}</span>{% endif %}
+          </span>
+          {% if m.avg != "—" %}
+            <span class="text-xs text-slate-500">avg {{ m.avg }}</span>
+          {% endif %}
+        </div>
+
+        {% if m.z_val is not none %}
+          <!-- z-score bar -->
+          <div class="flex items-center gap-2">
+            <div class="flex-1 h-1.5 rounded-full z-bar-track relative overflow-hidden">
+              {% if m.z_val >= 0 %}
+                <div class="absolute left-1/2 top-0 h-full rounded-full z-bar-fill-pos"
+                     style="width: {{ [m.z_val / 2.0 * 50, 50]|min }}%;"></div>
+              {% else %}
+                <div class="absolute top-0 h-full rounded-full z-bar-fill-neg"
+                     style="width: {{ [(-m.z_val) / 2.0 * 50, 50]|min }}%; right: 50%;"></div>
+              {% endif %}
+              <div class="absolute left-1/2 top-0 w-px h-full bg-slate-600"></div>
+            </div>
+            <span class="text-[11px] w-14 text-right {% if m.z_val >= 0.5 %}text-emerald-400{% elif m.z_val <= -0.5 %}text-red-400{% else %}text-slate-400{% endif %}">
+              {% if m.z_val >= 0 %}+{% endif %}{{ "%.2f"|format(m.z_val) }}σ
+            </span>
+          </div>
+        {% elif m.context_only %}
+          <p class="text-[11px] text-slate-600">context only</p>
+        {% else %}
+          <p class="text-[11px] text-slate-600">no baseline</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ── 14-day trend chart ────────────────────────────────────────── -->
+    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">14-Day Composite Trend</p>
+      <div class="h-40">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── Footer ───────────────────────────────────────────────────── -->
+    <p class="text-xs text-slate-600 text-center">
+      Baseline: 30-day rolling window ·
+      {% if baseline_count > 0 %}{{ baseline_count }} metrics tracked{% else %}building…{% endif %}
+      · <a href="/refresh" class="hover:text-slate-400 transition-colors">force refresh ↺</a>
+    </p>
+  </div>
+
+  <script>
+    // ── Trend chart ──────────────────────────────────────────────────
+    const labels  = {{ chart_labels | tojson }};
+    const values  = {{ chart_values | tojson }};
+
+    const colours = values.map(v =>
+      v === null ? 'transparent'
+      : v >= 0.25  ? '#34d399'
+      : v <= -0.25 ? '#f87171'
+      : '#facc15'
+    );
+
+    new Chart(document.getElementById('trendChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colours,
+          borderRadius: 3,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: {
+            label: ctx => ctx.raw === null ? 'no data' : (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + 'σ'
+          }
+        }},
+        scales: {
+          x: { grid: { color: '#1e2030' }, ticks: { color: '#64748b', font: { family: 'monospace', size: 11 } } },
+          y: {
+            grid: { color: '#1e2030' },
+            ticks: { color: '#64748b', font: { family: 'monospace', size: 11 },
+                     callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + 'σ' },
+            suggestedMin: -2, suggestedMax: 2,
+          }
+        }
+      }
+    });
+
+    // ── Auto-refresh every 5 min ─────────────────────────────────────
+    const startTime = Date.now();
+    const updEl = document.getElementById('last-updated');
+    setInterval(() => {
+      const secs = Math.round((Date.now() - startTime) / 1000);
+      if (secs < 60) updEl.textContent = `updated ${secs}s ago`;
+      else updEl.textContent = `updated ${Math.round(secs/60)}m ago`;
+    }, 10000);
+    setTimeout(() => location.reload(), 300000);
+  </script>
+</body>
+</html>
