@@ -216,3 +216,9 @@ def history_for_chart(days: int = 14) -> list[tuple[date, Optional[float]]]:
         stats = baseline_stats(d)
         results.append((d, composite_score(m, stats)))
     return results
+
+
+def seven_day_composite_trend_csv() -> str:
+    """Comma-separated composite σ for the last 7 days (oldest→today), same as email prompt."""
+    history = history_for_chart(days=7)
+    return ", ".join(f"{v:+.2f}" if v is not None else "—" for _, v in history)

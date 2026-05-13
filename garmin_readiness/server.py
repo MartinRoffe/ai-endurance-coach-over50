@@ -14,8 +14,15 @@ from fastapi.requests import Request
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .history import (
-    baseline_stats, composite_score, history_for_chart,
-    load, save, z_score, load_recent_activities, save_activities,
+    baseline_stats,
+    composite_score,
+    history_for_chart,
+    load,
+    load_recent_activities,
+    save,
+    save_activities,
+    seven_day_composite_trend_csv,
+    z_score,
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS
 
@@ -55,7 +62,17 @@ def _badge_cls(text: str) -> str:
     return _BADGE_STYLES.get(text.upper(), _DEFAULT_BADGE)
 
 
-def _value_colour(z: float) -> str:
+def _activity_context_blurb(activities: list[dict]) -> str:
+    if not activities:
+        return "No workouts cached — use force refresh to load from Garmin."
+    n = len(activities)
+    latest = activities[0]
+    title = (latest.get("name") or latest.get("type_label") or "Activity").strip()
+    d = latest.get("date") or ""
+    tail = f" ({d[5:].replace('-', ' ')})" if len(d) >= 10 else ""
+    if n == 1:
+        return f"1 workout in last 7 days · latest: {title}{tail}"
+    return f"{n} workouts in last 7 days · latest: {title}{tail}"
     if z >= 0.5:
         return "text-emerald-400"
     if z <= -0.5:
@@ -157,6 +174,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "chart_values": chart_values,
         "baseline_count": len(stats),
         "activities": activities,
+        "trend_note": seven_day_composite_trend_csv(),
+        "activity_blurb": _activity_context_blurb(activities),
     }
 
 

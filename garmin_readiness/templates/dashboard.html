@@ -63,6 +63,15 @@
       </div>
     </div>
 
+    <!-- ── Narrative context (same signals as daily email prompt) ────── -->
+    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Same context as your email</p>
+      <p class="text-[11px] text-slate-500 mb-1">7-day composite trend (oldest→today)</p>
+      <p class="text-sm text-slate-300 font-mono break-words leading-relaxed">{{ trend_note }}</p>
+      <p class="text-[11px] text-slate-500 uppercase tracking-widest mt-4 mb-1">Recent workouts</p>
+      <p class="text-sm text-slate-400">{{ activity_blurb }}</p>
+    </div>
+
     <!-- ── Metrics grid ──────────────────────────────────────────────── -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
       {% for m in metrics %}

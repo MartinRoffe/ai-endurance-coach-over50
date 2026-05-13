@@ -10,7 +10,14 @@ from typing import Optional
 import anthropic
 
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
-from .history import LOWER_IS_BETTER, baseline_stats, composite_score, history_for_chart, z_score, load_recent_activities
+from .history import (
+    LOWER_IS_BETTER,
+    baseline_stats,
+    composite_score,
+    load_recent_activities,
+    seven_day_composite_trend_csv,
+    z_score,
+)
 from .metrics import DailyMetrics
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
@@ -45,9 +52,7 @@ def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
     if m.acwr is not None and m.acwr_status:
         lines.append(f"ACWR: {m.acwr:.2f} ({m.acwr_status.replace('_', ' ').lower()})")
 
-    history = history_for_chart(days=7)
-    trend = [f"{v:+.2f}" if v is not None else "—" for _, v in history]
-    lines += ["", f"7-day composite trend (oldest→today): {', '.join(trend)}"]
+    lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
 
     lines += [
         "",
