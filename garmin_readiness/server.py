@@ -13,12 +13,59 @@ from fastapi.requests import Request
 
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label
-from .history import baseline_stats, composite_score, history_for_chart, load, save, z_score
-from .metrics import DailyMetrics, available_count, fetch_metrics, TEXT_FIELDS
+from .history import (
+    baseline_stats, composite_score, history_for_chart,
+    load, save, z_score, load_recent_activities, save_activities,
+)
+from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS, _TYPE_ICONS, _TYPE_LABELS
 
 load_dotenv()
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+def _fmt_duration(seconds: Optional[float]) -> str:
+    if seconds is None:
+        return ""
+    h, rem = divmod(int(seconds), 3600)
+    m = rem // 60
+    if h:
+        return f"{h}h {m:02d}m"
+    return f"{m}m"
+
+
+def _fmt_distance(meters: Optional[float], type_key: str) -> str:
+    if meters is None or meters == 0:
+        return ""
+    km = meters / 1000
+    return f"{km:.1f} km"
+
+
+def _fmt_pace(seconds: Optional[float], meters: Optional[float], type_key: str) -> str:
+    """Returns pace (min/km) for run, speed (km/h) for cycle, empty for others."""
+    if not seconds or not meters or meters == 0:
+        return ""
+    if "biking" in type_key or "cycling" in type_key:
+        kmh = (meters / 1000) / (seconds / 3600)
+        return f"{kmh:.1f} km/h"
+    if "running" in type_key or "hiking" in type_key or "walking" in type_key:
+        min_per_km = (seconds / 60) / (meters / 1000)
+        mins = int(min_per_km)
+        secs = int((min_per_km - mins) * 60)
+        return f"{mins}:{secs:02d}/km"
+    return ""
+
+
+def _enrich_activity(a: dict) -> dict:
+    type_key = a.get("type_key", "")
+    return {
+        **a,
+        "icon":       _TYPE_ICONS.get(type_key, "🏅"),
+        "type_label": _TYPE_LABELS.get(type_key, type_key.replace("_", " ").title()),
+        "duration_fmt":  _fmt_duration(a.get("duration_seconds")),
+        "distance_fmt":  _fmt_distance(a.get("distance_meters"), type_key),
+        "pace_fmt":      _fmt_pace(a.get("duration_seconds"), a.get("distance_meters"), type_key),
+    }
 
 app = FastAPI(title="Daily Readiness", docs_url=None, redoc_url=None)
 
@@ -60,6 +107,7 @@ def _value_colour(z: float) -> str:
 
 
 def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
+    api = None
     # Load or fetch
     if force_fetch:
         email = os.getenv("GARMIN_EMAIL", "")
@@ -126,6 +174,20 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     chart_labels = [d.strftime("%d %b") for d, _ in history]
     chart_values = [round(v, 3) if v is not None else None for _, v in history]
 
+    # Activities — last 7 days, fetch fresh if force_fetch
+    if force_fetch:
+        email_addr = os.getenv("GARMIN_EMAIL", "")
+        password = os.getenv("GARMIN_PASSWORD", "")
+        if email_addr and password:
+            try:
+                if api is None:
+                    api = get_api(email_addr, password)
+                acts_raw = fetch_activities(api, days=7)
+                save_activities(acts_raw)
+            except Exception:
+                pass
+    activities = [_enrich_activity(a) for a in load_recent_activities(days=7)]
+
     return {
         "date": target.isoformat(),
         "date_long": target.strftime("%A, %-d %B %Y"),
@@ -137,6 +199,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "chart_labels": chart_labels,
         "chart_values": chart_values,
         "baseline_count": len(stats),
+        "activities": activities,
     }
 
 

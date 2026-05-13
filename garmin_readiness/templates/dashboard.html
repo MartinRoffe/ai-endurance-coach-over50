@@ -111,6 +111,61 @@
       </div>
     </div>
 
+    <!-- ── Last 7 days workouts ─────────────────────────────────────── -->
+    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">Last 7 Days · Workouts</p>
+      {% if activities %}
+        <div class="space-y-2">
+          {% for a in activities %}
+          <div class="flex items-center gap-3 py-2 border-b border-[#1e2030] last:border-0">
+            <span class="text-xl w-7 flex-shrink-0">{{ a.icon }}</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-slate-200 truncate">{{ a.name or a.type_label }}</p>
+              <p class="text-[11px] text-slate-500">
+                {{ a.type_label }}
+                {% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}
+              </p>
+            </div>
+            <div class="flex gap-4 text-right flex-shrink-0">
+              {% if a.duration_fmt %}
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">{{ a.duration_fmt }}</p>
+                  <p class="text-[10px] text-slate-500">duration</p>
+                </div>
+              {% endif %}
+              {% if a.distance_fmt %}
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">{{ a.distance_fmt }}</p>
+                  <p class="text-[10px] text-slate-500">distance</p>
+                </div>
+              {% endif %}
+              {% if a.pace_fmt %}
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">{{ a.pace_fmt }}</p>
+                  <p class="text-[10px] text-slate-500">{% if 'km/h' in a.pace_fmt %}speed{% else %}pace{% endif %}</p>
+                </div>
+              {% endif %}
+              {% if a.avg_hr %}
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">{{ a.avg_hr | int }}</p>
+                  <p class="text-[10px] text-slate-500">avg HR</p>
+                </div>
+              {% endif %}
+              {% if a.calories %}
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">{{ a.calories | int }}</p>
+                  <p class="text-[10px] text-slate-500">kcal</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-slate-600">No workouts cached yet — <a href="/refresh" class="hover:text-slate-400 transition-colors">force refresh ↺</a> to load from Garmin.</p>
+      {% endif %}
+    </div>
+
     <!-- ── Footer ───────────────────────────────────────────────────── -->
     <p class="text-xs text-slate-600 text-center">
       Baseline: 30-day rolling window ·

@@ -21,11 +21,12 @@ from .history import (
     history_for_chart,
     load,
     save,
+    save_activities,
     z_score,
     LOWER_IS_BETTER,
     SCORED_FIELDS,
 )
-from .metrics import DailyMetrics, available_count, fetch_metrics
+from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities
 
 console = Console()
 
@@ -174,6 +175,11 @@ def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
 
     m = fetch_metrics(api, target)
     save(m)
+    try:
+        acts = fetch_activities(api, days=7)
+        save_activities(acts)
+    except Exception:
+        pass
     return m
 
 

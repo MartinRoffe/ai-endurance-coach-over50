@@ -68,6 +68,63 @@ def _ensure_schema(con: sqlite3.Connection) -> None:
             con.execute(f"ALTER TABLE daily_metrics ADD COLUMN {name} TEXT")
 
 
+def _ensure_activities_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS activities (
+            activity_id INTEGER PRIMARY KEY,
+            date TEXT NOT NULL,
+            start_time TEXT,
+            name TEXT,
+            type_key TEXT,
+            duration_seconds REAL,
+            distance_meters REAL,
+            elevation_gain REAL,
+            avg_hr REAL,
+            max_hr REAL,
+            calories REAL,
+            avg_speed_ms REAL
+        )
+    """)
+
+
+def save_activities(activities: list[dict]) -> None:
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        for a in activities:
+            con.execute(
+                """INSERT OR REPLACE INTO activities
+                   (activity_id, date, start_time, name, type_key,
+                    duration_seconds, distance_meters, elevation_gain,
+                    avg_hr, max_hr, calories, avg_speed_ms)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    a["activity_id"],
+                    a["date"],
+                    a["start_time"],
+                    a["name"],
+                    a["type_key"],
+                    a["duration_seconds"],
+                    a["distance_meters"],
+                    a["elevation_gain"],
+                    a["avg_hr"],
+                    a["max_hr"],
+                    a["calories"],
+                    a["avg_speed_ms"],
+                ),
+            )
+
+
+def load_recent_activities(days: int = 7) -> list[dict]:
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            "SELECT * FROM activities WHERE date >= ? ORDER BY start_time DESC",
+            (start,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def save(m: DailyMetrics) -> None:
     with _conn() as con:
         _ensure_schema(con)

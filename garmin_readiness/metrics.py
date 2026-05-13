@@ -155,6 +155,85 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
 TEXT_FIELDS = {"date", "hrv_status", "training_status_label", "acwr_status"}
 
 
+_TYPE_LABELS: dict[str, str] = {
+    "running":              "Running",
+    "trail_running":        "Trail Run",
+    "treadmill_running":    "Treadmill Run",
+    "road_biking":          "Road Cycling",
+    "cycling":              "Cycling",
+    "indoor_cycling":       "Indoor Cycling",
+    "mountain_biking":      "MTB",
+    "swimming":             "Swimming",
+    "open_water_swimming":  "Open Water",
+    "strength_training":    "Strength",
+    "cardio_training":      "Cardio",
+    "hiking":               "Hiking",
+    "walking":              "Walking",
+    "yoga":                 "Yoga",
+    "multi_sport":          "Multi-Sport",
+    "rowing":               "Rowing",
+    "indoor_rowing":        "Indoor Rowing",
+    "elliptical":           "Elliptical",
+    "stair_climbing":       "Stair Climb",
+}
+
+_TYPE_ICONS: dict[str, str] = {
+    "running":              "🏃",
+    "trail_running":        "🏃",
+    "treadmill_running":    "🏃",
+    "road_biking":          "🚴",
+    "cycling":              "🚴",
+    "indoor_cycling":       "🚴",
+    "mountain_biking":      "🚵",
+    "swimming":             "🏊",
+    "open_water_swimming":  "🏊",
+    "strength_training":    "🏋️",
+    "cardio_training":      "❤️",
+    "hiking":               "⛰️",
+    "walking":              "🚶",
+    "yoga":                 "🧘",
+    "multi_sport":          "⚡",
+    "rowing":               "🚣",
+    "indoor_rowing":        "🚣",
+    "elliptical":           "🔄",
+    "stair_climbing":       "🪜",
+}
+
+
+def fetch_activities(api, days: int = 7) -> list[dict]:
+    from datetime import date, timedelta
+    end = date.today().strftime("%Y-%m-%d")
+    start = (date.today() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    try:
+        raw = api.get_activities_by_date(start, end) or []
+    except Exception as e:
+        logger.debug("Activities fetch failed: %s", e)
+        return []
+
+    results = []
+    for a in raw:
+        start_local = a.get("startTimeLocal", "")
+        act_date = start_local[:10] if start_local else ""
+        type_key = (a.get("activityType") or {}).get("typeKey", "")
+        results.append({
+            "activity_id":      a.get("activityId"),
+            "date":             act_date,
+            "start_time":       start_local,
+            "name":             a.get("activityName", ""),
+            "type_key":         type_key,
+            "type_label":       _TYPE_LABELS.get(type_key, type_key.replace("_", " ").title()),
+            "icon":             _TYPE_ICONS.get(type_key, "🏅"),
+            "duration_seconds": a.get("duration"),
+            "distance_meters":  a.get("distance"),
+            "elevation_gain":   a.get("elevationGain"),
+            "avg_hr":           a.get("averageHR"),
+            "max_hr":           a.get("maxHR"),
+            "calories":         a.get("calories"),
+            "avg_speed_ms":     a.get("averageSpeed"),
+        })
+    return results
+
+
 def available_count(m: DailyMetrics) -> int:
     return sum(
         1 for f in fields(m)
