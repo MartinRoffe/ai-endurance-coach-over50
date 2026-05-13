@@ -178,7 +178,9 @@ def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
 
 
 def main() -> None:
-    load_dotenv()
+    # DOTENV_PATH lets launchd (which has no shell env) point to the right .env file
+    _env_path = os.getenv("DOTENV_PATH")
+    load_dotenv(_env_path if _env_path else None)
     logging.basicConfig(level=logging.WARNING)
 
     import argparse
@@ -216,10 +218,29 @@ def main() -> None:
         default=8080,
         help="Port for --serve (default: 8080)",
     )
+    parser.add_argument(
+        "--email",
+        action="store_true",
+        help="Fetch today's data and send the daily readiness email",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With --email: print advice to stdout instead of sending",
+    )
+    parser.add_argument(
+        "--setup-schedule",
+        action="store_true",
+        help="Install a launchd job to email daily at 7am",
+    )
     args = parser.parse_args()
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, force=True)
+
+    if args.setup_schedule:
+        _setup_schedule()
+        return
 
     if args.serve:
         from .server import run as serve_run
@@ -275,10 +296,78 @@ def main() -> None:
         )
         sys.exit(0)
 
+    if args.email:
+        from .report import run_report
+        with console.status("Generating advice…"):
+            run_report(m, dry_run=args.dry_run)
+        return
+
     stats = baseline_stats(target)
     comp_z = composite_score(m, stats)
 
     _render_dashboard(m, stats, comp_z)
+
+
+def _setup_schedule() -> None:
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    exe = shutil.which("garmin-readiness")
+    if not exe:
+        console.print("[red]garmin-readiness not found in PATH. Run 'pip install -e .' first.[/red]")
+        sys.exit(1)
+
+    label = "com.garmin-readiness.daily"
+    plist_path = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+    env_file = Path.cwd() / ".env"
+
+    plist_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{label}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exe}</string>
+        <string>--email</string>
+        <string>--fetch</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DOTENV_PATH</key>
+        <string>{env_file}</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>{Path.home()}/.garmin_readiness/daily.log</string>
+    <key>StandardErrorPath</key>
+    <string>{Path.home()}/.garmin_readiness/daily.log</string>
+</dict>
+</plist>"""
+
+    plist_path.write_text(plist)
+
+    # Unload any old version first, then load
+    subprocess.run(["launchctl", "unload", str(plist_path)], capture_output=True)
+    result = subprocess.run(["launchctl", "load", str(plist_path)], capture_output=True, text=True)
+
+    if result.returncode == 0:
+        console.print(f"[green]Scheduled daily email at 07:00.[/green]")
+        console.print(f"  Plist: {plist_path}")
+        console.print(f"  Log:   {Path.home()}/.garmin_readiness/daily.log")
+        console.print(f"\n  Test it now: [bold]garmin-readiness --email --dry-run[/bold]")
+    else:
+        console.print(f"[red]launchctl load failed:[/red] {result.stderr}")
 
 
 class _null_ctx:
