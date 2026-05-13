@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import math
+import sqlite3
+from contextlib import contextmanager
+from dataclasses import asdict, fields
+from datetime import date, timedelta
+from pathlib import Path
+from typing import Optional
+
+from .metrics import DailyMetrics, TEXT_FIELDS
+
+DB_PATH = Path.home() / ".garmin_readiness" / "history.db"
+
+NUMERIC_FIELDS = [
+    f.name
+    for f in fields(DailyMetrics)
+    if f.name not in TEXT_FIELDS
+]
+
+# Don't score these — they're context/baselines, not daily readiness signals
+_UNSCORED = {"training_load_chronic", "vo2_max"}
+
+SCORED_FIELDS = [f for f in NUMERIC_FIELDS if f not in _UNSCORED]
+
+HIGHER_IS_BETTER = {
+    "sleep_score", "sleep_seconds", "hrv_last_night", "hrv_weekly_avg",
+    "body_battery_morning",
+}
+LOWER_IS_BETTER = {
+    "avg_stress", "rest_stress", "acwr", "training_load_acute",
+}
+
+
+@contextmanager
+def _conn():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    try:
+        yield con
+        con.commit()
+    finally:
+        con.close()
+
+
+def _ensure_schema(con: sqlite3.Connection) -> None:
+    # Base create
+    numeric_cols = ", ".join(f"{name} REAL" for name in NUMERIC_FIELDS)
+    text_extras = ", ".join(
+        f"{name} TEXT" for name in TEXT_FIELDS if name != "date"
+    )
+    con.execute(f"""
+        CREATE TABLE IF NOT EXISTS daily_metrics (
+            date TEXT PRIMARY KEY,
+            {numeric_cols},
+            {text_extras},
+            recorded_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    # Migrate: add any columns missing from older schema versions
+    existing = {row[1] for row in con.execute("PRAGMA table_info(daily_metrics)")}
+    for name in NUMERIC_FIELDS:
+        if name not in existing:
+            con.execute(f"ALTER TABLE daily_metrics ADD COLUMN {name} REAL")
+    for name in TEXT_FIELDS:
+        if name != "date" and name not in existing:
+            con.execute(f"ALTER TABLE daily_metrics ADD COLUMN {name} TEXT")
+
+
+def save(m: DailyMetrics) -> None:
+    with _conn() as con:
+        _ensure_schema(con)
+        data = asdict(m)
+        data["date"] = m.date.isoformat()
+        cols = ", ".join(data.keys())
+        placeholders = ", ".join("?" for _ in data)
+        con.execute(
+            f"INSERT OR REPLACE INTO daily_metrics ({cols}) VALUES ({placeholders})",
+            list(data.values()),
+        )
+
+
+def load(target_date: date) -> Optional[DailyMetrics]:
+    with _conn() as con:
+        _ensure_schema(con)
+        row = con.execute(
+            "SELECT * FROM daily_metrics WHERE date = ?",
+            (target_date.isoformat(),),
+        ).fetchone()
+    if row is None:
+        return None
+    known = {f.name for f in fields(DailyMetrics)}
+    kwargs = {k: row[k] for k in row.keys() if k in known}
+    kwargs["date"] = date.fromisoformat(kwargs["date"])
+    return DailyMetrics(**kwargs)
+
+
+def baseline_stats(
+    reference_date: date,
+    window_days: int = 30,
+) -> dict[str, tuple[float, float]]:
+    """Returns {field_name: (mean, std)} for scored fields in the window before reference_date."""
+    start = (reference_date - timedelta(days=window_days)).isoformat()
+    end = (reference_date - timedelta(days=1)).isoformat()
+
+    with _conn() as con:
+        _ensure_schema(con)
+        rows = con.execute(
+            "SELECT * FROM daily_metrics WHERE date >= ? AND date <= ? ORDER BY date",
+            (start, end),
+        ).fetchall()
+
+    stats: dict[str, tuple[float, float]] = {}
+    for field in SCORED_FIELDS:
+        values = [row[field] for row in rows if row[field] is not None]
+        if len(values) < 3:
+            continue
+        mean = sum(values) / len(values)
+        variance = sum((v - mean) ** 2 for v in values) / len(values)
+        std = math.sqrt(variance)
+        if std > 0:
+            stats[field] = (mean, std)
+    return stats
+
+
+def z_score(value: float, mean: float, std: float, field: str) -> float:
+    """Signed z-score oriented so positive = better readiness."""
+    z = (value - mean) / std
+    if field in LOWER_IS_BETTER:
+        z = -z
+    return z
+
+
+def composite_score(m: DailyMetrics, stats: dict[str, tuple[float, float]]) -> Optional[float]:
+    """Mean z-score across available scored metrics that have a baseline."""
+    z_scores = []
+    for field in SCORED_FIELDS:
+        value = getattr(m, field)
+        if value is None or field not in stats:
+            continue
+        mean, std = stats[field]
+        z_scores.append(z_score(value, mean, std, field))
+    if not z_scores:
+        return None
+    return sum(z_scores) / len(z_scores)
+
+
+def history_for_chart(days: int = 14) -> list[tuple[date, Optional[float]]]:
+    end = date.today()
+    start = end - timedelta(days=days)
+    results = []
+    for i in range(days + 1):
+        d = start + timedelta(days=i)
+        m = load(d)
+        if m is None:
+            results.append((d, None))
+            continue
+        stats = baseline_stats(d)
+        results.append((d, composite_score(m, stats)))
+    return results
