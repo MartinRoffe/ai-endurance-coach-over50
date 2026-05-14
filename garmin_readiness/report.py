@@ -10,6 +10,7 @@ from typing import Optional
 import anthropic
 
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
+from .plan import session_for_date
 from .history import (
     LOWER_IS_BETTER,
     baseline_stats,
@@ -54,12 +55,20 @@ def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
 
+    session = session_for_date(target)
+    if session:
+        stype, label, dur = session
+        dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"
+        lines += ["", f"Today's planned workout: {label} ({stype}, {dur_str})"]
+    else:
+        lines += ["", "Today's planned workout: not in plan period"]
+
     lines += [
         "",
         "Based on these metrics, please provide:",
         "1. A clear one-line recommendation: Train / Rest / Active Recovery",
         "2. Two or three sentences explaining the key signals driving that recommendation",
-        "3. If training: a specific suggestion for intensity or type (e.g. 'easy run', 'strength at 70%', 'skip intervals')",
+        "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification",
         "4. One watchout if any metric is concerning",
         "",
         "Keep the response concise — it will appear in a morning email. "
@@ -179,6 +188,39 @@ def _workouts_html(activities: list[dict]) -> str:
         </tr>"""
 
 
+def _planned_session_html(d: date) -> str:
+    session = session_for_date(d)
+    if not session:
+        return ""
+    stype, label, dur = session
+    dur_str = ""
+    if dur:
+        dur_str = f"{dur}m" if dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur % 60 else f"{dur // 60}h")
+
+    type_colours = {
+        "rest":     ("#f3f4f6", "#374151"),
+        "strength": ("#f5f3ff", "#6d28d9"),
+        "bike":     ("#ecfdf5", "#059669"),
+        "tempo":    ("#fffbeb", "#d97706"),
+        "ftp":      ("#fff7ed", "#ea580c"),
+        "ruck":     ("#fdf2f8", "#be185d"),
+        "long":     ("#fefce8", "#b45309"),
+    }
+    bg, fg = type_colours.get(stype, ("#f3f4f6", "#374151"))
+
+    dur_part = f'<span style="font-size:12px;color:#6b7280;margin-left:8px;">{dur_str}</span>' if dur_str else ""
+    return f"""
+        <!-- Today's Workout -->
+        <tr>
+          <td style="padding:0 32px 24px;">
+            <p style="margin:0 0 10px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;border-top:1px solid #e5e7eb;padding-top:24px;">Today's Planned Workout</p>
+            <div style="background:{bg};border-radius:8px;padding:12px 16px;display:inline-block;">
+              <span style="font-size:14px;font-weight:700;color:{fg};">{label}</span>{dur_part}
+            </div>
+          </td>
+        </tr>"""
+
+
 def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: str, activities: list[dict] | None = None) -> str:
     label, _ = readiness_label(comp_z)
 
@@ -265,11 +307,13 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
 
         <!-- Advice -->
         <tr>
-          <td style="padding:24px 32px;border-bottom:1px solid #e5e7eb;">
+          <td style="padding:24px 32px 16px;">
             <p style="margin:0 0 12px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;">Today's Advice</p>
             {advice_html}
           </td>
         </tr>
+
+        {_planned_session_html(m.date)}
 
         <!-- Metrics table -->
         <tr>
