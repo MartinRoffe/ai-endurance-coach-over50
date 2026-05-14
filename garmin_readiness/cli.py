@@ -239,7 +239,12 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="With --email: print advice to stdout instead of sending",
+        help="With --email or --workouts: print what would be done without sending/uploading",
+    )
+    parser.add_argument(
+        "--workouts",
+        action="store_true",
+        help="Upload training plan bike workouts to Garmin Connect and schedule them",
     )
     parser.add_argument(
         "--setup-schedule",
@@ -259,6 +264,21 @@ def main() -> None:
         from .server import run as serve_run
         console.print(f"[bold]Dashboard at[/bold] http://127.0.0.1:{args.port}")
         serve_run(port=args.port)
+        return
+
+    if args.workouts:
+        from .workouts import upload_and_schedule
+        email_addr = os.getenv("GARMIN_EMAIL")
+        password_val = os.getenv("GARMIN_PASSWORD")
+        if not email_addr or not password_val:
+            console.print("[red]GARMIN_EMAIL and GARMIN_PASSWORD must be set[/red]")
+            sys.exit(1)
+        if args.dry_run:
+            from .workouts import upload_and_schedule
+            upload_and_schedule(None, dry_run=True)
+        else:
+            api = get_api(email_addr, password_val)
+            upload_and_schedule(api, dry_run=False)
         return
 
     email = os.getenv("GARMIN_EMAIL")
