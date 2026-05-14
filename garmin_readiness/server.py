@@ -62,6 +62,20 @@ def _badge_cls(text: str) -> str:
     return _BADGE_STYLES.get(text.upper(), _DEFAULT_BADGE)
 
 
+def _value_colour(z: Optional[float]) -> str:
+    if z is None:
+        return "text-white"
+    if z >= 1.0:
+        return "text-emerald-400"
+    if z >= 0.25:
+        return "text-green-400"
+    if z >= -0.25:
+        return "text-yellow-400"
+    if z >= -1.0:
+        return "text-orange-400"
+    return "text-red-400"
+
+
 def _activity_context_blurb(activities: list[dict]) -> str:
     if not activities:
         return "No workouts cached — use force refresh to load from Garmin."
