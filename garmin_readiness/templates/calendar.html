@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Calendar · 12 Weeks</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0f1117; }
+
+    /* session type colours */
+    .sess-rest     { background: #1a1d25; border-color: #2a2d3a; color: #4a5068; }
+    .sess-strength { background: #1e1228; border-color: #6d28d9; color: #c4b5fd; }
+    .sess-bike     { background: #0d2118; border-color: #059669; color: #6ee7b7; }
+    .sess-tempo    { background: #1f1a05; border-color: #d97706; color: #fcd34d; }
+    .sess-ftp      { background: #1f0e05; border-color: #ea580c; color: #fdba74; }
+    .sess-ruck     { background: #1f0a1a; border-color: #be185d; color: #f9a8d4; }
+    .sess-long     { background: #1a1205; border-color: #b45309; color: #fde68a; }
+
+    /* today ring */
+    .today-ring { outline: 2px solid #38bdf8; outline-offset: 2px; }
+    /* past fade */
+    .is-past { opacity: 0.45; }
+
+    .day-header { color: #475569; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  </style>
+</head>
+<body class="text-slate-200 font-mono min-h-screen">
+
+  {% set active_tab = 'calendar' %}
+  {% include 'nav.html' %}
+
+  <div class="p-6">
+  <div class="max-w-5xl mx-auto">
+
+    <div class="mb-6">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">12-Week Training Plan</p>
+      <h1 class="text-2xl font-bold text-white">Calendar</h1>
+      <p class="text-xs text-slate-500 mt-1">{{ plan_start.strftime("%-d %b %Y") }} → {{ (plan_start + range(84)|list|last|int|timedelta_days).strftime("%-d %b %Y") if false else "9 Aug 2026" }}</p>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-2 mb-6">
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-strength">Strength</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-bike">Bike / Z2</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-tempo">Tempo</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-ftp">FTP Test</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-ruck">Ruck</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-long">Long Ride</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-rest">Rest</span>
+    </div>
+
+    <!-- Day-of-week header -->
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div class="text-[10px] text-slate-600 uppercase tracking-wider text-right pr-2 pt-1">Wk</div>
+      {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <div class="day-header text-center">{{ d }}</div>
+      {% endfor %}
+    </div>
+
+    <!-- Weeks -->
+    {% for week in weeks %}
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <!-- Week label -->
+      <div class="flex flex-col items-end justify-center pr-2">
+        <span class="text-[11px] text-slate-600">W{{ "%02d"|format(week.week_num) }}</span>
+        <span class="text-[10px] text-slate-700">{{ week.start.strftime("%-d %b") }}</span>
+      </div>
+
+      <!-- Days Mon–Sun -->
+      {% for day in week.days %}
+      <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type }}
+                  {% if day.is_today %}today-ring{% endif %}
+                  {% if day.is_past %}is-past{% endif %}">
+        <div class="flex items-start justify-between mb-0.5">
+          <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
+          {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
+        </div>
+        {% if day.type != 'rest' %}
+          <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+          {% if day.dur_fmt %}
+            <p class="text-[10px] opacity-60 mt-auto">{{ day.dur_fmt }}</p>
+          {% endif %}
+        {% else %}
+          <p class="text-[11px] opacity-40 mt-auto">Rest</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+  </div>
+  </div>
+
+</body>
+</html>

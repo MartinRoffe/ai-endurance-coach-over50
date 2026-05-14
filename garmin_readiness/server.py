@@ -31,6 +31,160 @@ load_dotenv()
 
 _advice_cache: dict[str, str] = {}
 
+# Training calendar — 12 weeks starting Mon 18 May 2026
+_PLAN_START = date(2026, 5, 18)
+assert _PLAN_START.weekday() == 0, "Plan must start on Monday"
+
+# Each week: list of 7 sessions Mon–Sun, each (type, label, duration_min)
+# Types: rest | strength | bike | tempo | ftp | ruck | long
+_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
+    # WK 01
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Easy Spin",            60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Easy Spin",            60),
+        ("ruck",     "Ruck  8 kg",           60),
+        ("long",     "Long Ride",            90),
+    ],
+    # WK 02
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Zone 2 Steady",        60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Zone 2 Steady",        60),
+        ("ruck",     "Ruck  8–10 kg",        70),
+        ("long",     "Long Ride",           105),
+    ],
+    # WK 03
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "Light KB",             35),
+        ("ftp",      "FTP Test",             60),
+        ("strength", "Easy MaxiClimber",     20),
+        ("bike",     "Recovery Spin",        60),
+        ("ruck",     "Ruck  10 kg",          80),
+        ("long",     "Long Ride",           120),
+    ],
+    # WK 04 (deload)
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "Light KB",             30),
+        ("bike",     "Easy Spin",            45),
+        ("strength", "MaxiClimber",          20),
+        ("bike",     "Easy Spin",            45),
+        ("ruck",     "Ruck  8 kg",           45),
+        ("long",     "Long Ride",            75),
+    ],
+    # WK 05
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Structured Z2",        60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Z2 + Hills",           60),
+        ("ruck",     "Ruck  10 kg",          75),
+        ("long",     "Long Ride",           135),
+    ],
+    # WK 06
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Cadence Drills",       60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Hilly Z2",             60),
+        ("ruck",     "Ruck  10–12 kg",       85),
+        ("long",     "Long Ride",           140),
+    ],
+    # WK 07
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "Light KB",             35),
+        ("ftp",      "FTP Re-test",          60),
+        ("strength", "Easy MaxiClimber",     25),
+        ("tempo",    "Tempo Intervals",      60),
+        ("ruck",     "Ruck  12 kg",          95),
+        ("long",     "Long Ride",           150),
+    ],
+    # WK 08 (deload)
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "Light KB",             30),
+        ("bike",     "Easy Spin",            45),
+        ("strength", "MaxiClimber",          20),
+        ("bike",     "Easy Spin",            45),
+        ("ruck",     "Ruck  10 kg",          50),
+        ("long",     "Long Ride",            80),
+    ],
+    # WK 09
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Z2 Endurance",         60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("tempo",    "Tempo Intervals",      60),
+        ("ruck",     "Ruck  12–15 kg",      105),
+        ("long",     "Long Ride",           165),
+    ],
+    # WK 10
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Low Cadence",          60),
+        ("strength", "KB + MaxiClimber",     45),
+        ("tempo",    "Tempo Intervals",      60),
+        ("ruck",     "Ruck  12–15 kg",      110),
+        ("long",     "Long Ride",           180),
+    ],
+    # WK 11
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "KB + MaxiClimber",     45),
+        ("bike",     "Z2 Endurance",         60),
+        ("strength", "Light KB",             35),
+        ("bike",     "Easy Prep Ride",       60),
+        ("ruck",     "Easy Ruck  8 kg",      60),
+        ("long",     "Long Ride",           210),
+    ],
+    # WK 12
+    [
+        ("rest",     "Rest",                  0),
+        ("strength", "Light KB",             30),
+        ("ftp",      "Final FTP Test",       60),
+        ("strength", "Easy MaxiClimber",     20),
+        ("bike",     "Easy Spin",            45),
+        ("ruck",     "Celebration Ruck",     60),
+        ("long",     "Long Ride (Easy)",    120),
+    ],
+]
+
+
+def _build_calendar_ctx() -> dict[str, Any]:
+    today = date.today()
+    weeks = []
+    for wk_idx, sessions in enumerate(_TRAINING_WEEKS):
+        wk_start = _PLAN_START + timedelta(weeks=wk_idx)
+        days = []
+        for day_offset, (stype, label, dur) in enumerate(sessions):
+            d = wk_start + timedelta(days=day_offset)
+            is_today = d == today
+            is_past = d < today
+            dur_fmt = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur % 60 else f"{dur // 60}h") if dur else ""
+            days.append({
+                "date": d,
+                "day_num": d.day,
+                "month_abbr": d.strftime("%b"),
+                "type": stype,
+                "label": label,
+                "dur_fmt": dur_fmt,
+                "is_today": is_today,
+                "is_past": is_past,
+            })
+        weeks.append({"week_num": wk_idx + 1, "start": wk_start, "days": days})
+    return {"weeks": weeks, "today": today, "plan_start": _PLAN_START}
+
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
@@ -208,6 +362,12 @@ async def dashboard(request: Request, date: Optional[str] = None):
     return TEMPLATES.TemplateResponse(request=request, name="dashboard.html", context=ctx)
 
 
+@app.get("/calendar", response_class=HTMLResponse)
+async def calendar_view(request: Request):
+    ctx = _build_calendar_ctx()
+    return TEMPLATES.TemplateResponse(request=request, name="calendar.html", context=ctx)
+
+
 @app.get("/training", response_class=HTMLResponse)
 async def training_plan(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="training.html", context={})
@@ -238,6 +398,6 @@ def date_fromisoformat_safe(s: str) -> date:
         return _today()
 
 
-def run(host: str = "127.0.0.1", port: int = 8080) -> None:
+def run(host: str = "0.0.0.0", port: int = 8080) -> None:
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="warning")
