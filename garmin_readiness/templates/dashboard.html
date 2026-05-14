@@ -63,6 +63,18 @@
       </div>
     </div>
 
+    <!-- ── AI advice ────────────────────────────────────────────────── -->
+    {% if advice %}
+    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Today's Advice</p>
+      {% for para in advice.strip().split('\n\n') %}
+        {% if para.strip() %}
+          <p class="text-sm text-slate-300 leading-relaxed {% if not loop.last %}mb-3{% endif %}">{{ para.strip() }}</p>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- ── Narrative context (same signals as daily email prompt) ────── -->
     <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
       <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Same context as your email</p>

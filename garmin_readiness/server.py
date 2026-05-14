@@ -13,6 +13,7 @@ from fastapi.requests import Request
 
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
+from .report import generate_advice
 from .history import (
     baseline_stats,
     composite_score,
@@ -27,6 +28,8 @@ from .history import (
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS
 
 load_dotenv()
+
+_advice_cache: dict[str, str] = {}
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -176,8 +179,12 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 pass
     activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
 
+    date_key = target.isoformat()
+    if date_key not in _advice_cache:
+        _advice_cache[date_key] = generate_advice(m, stats, comp_z)
+
     return {
-        "date": target.isoformat(),
+        "date": date_key,
         "date_long": target.strftime("%A, %-d %B %Y"),
         "comp_z": comp_z,
         "comp_label": comp_label,
@@ -190,6 +197,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "activities": activities,
         "trend_note": seven_day_composite_trend_csv(),
         "activity_blurb": _activity_context_blurb(activities),
+        "advice": _advice_cache[date_key],
     }
 
 
