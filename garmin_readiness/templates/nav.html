@@ -1,0 +1,14 @@
+<style>
+  .gr-nav { background: #0a0c10; border-bottom: 1px solid #1e2030; padding: 10px 24px; font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; }
+  .gr-nav-inner { max-width: 980px; margin: 0 auto; display: flex; gap: 4px; align-items: center; }
+  .gr-nav a { text-decoration: none; padding: 5px 14px; border-radius: 4px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; transition: color 0.15s, background 0.15s; }
+  .gr-nav a:hover { color: #e2e8f0; }
+  .gr-nav a.active { background: #1e2030; color: #e2e8f0; }
+</style>
+<nav class="gr-nav">
+  <div class="gr-nav-inner">
+    <a href="/" {% if active_tab == 'readiness' %}class="active"{% endif %}>Readiness</a>
+    <a href="/training" {% if active_tab == 'training' %}class="active"{% endif %}>Training Plan</a>
+    <a href="/nutrition" {% if active_tab == 'nutrition' %}class="active"{% endif %}>Nutrition</a>
+  </div>
+</nav>

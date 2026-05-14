@@ -208,6 +208,16 @@ async def dashboard(request: Request, date: Optional[str] = None):
     return TEMPLATES.TemplateResponse(request=request, name="dashboard.html", context=ctx)
 
 
+@app.get("/training", response_class=HTMLResponse)
+async def training_plan(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="training.html", context={})
+
+
+@app.get("/nutrition", response_class=HTMLResponse)
+async def nutrition_plan(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="nutrition.html", context={})
+
+
 @app.get("/refresh", response_class=RedirectResponse)
 async def refresh(date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()

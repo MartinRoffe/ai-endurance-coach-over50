@@ -26,8 +26,12 @@
     .metric-card:hover { border-color: #374151; }
   </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen p-6">
+<body class="text-slate-200 font-mono min-h-screen">
 
+  {% set active_tab = 'readiness' %}
+  {% include 'nav.html' %}
+
+  <div class="p-6">
   <!-- ── Header ─────────────────────────────────────────────────────── -->
   <div class="max-w-5xl mx-auto">
     <div class="flex items-start justify-between mb-1">
@@ -194,6 +198,7 @@
       · <a href="/refresh" class="hover:text-slate-400 transition-colors">force refresh ↺</a>
     </p>
   </div>
+  </div><!-- end p-6 -->
 
   <script>
     // ── Trend chart ──────────────────────────────────────────────────

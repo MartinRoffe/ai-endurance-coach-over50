@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nutrition Plan — Back in the Saddle</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #f5f0e8;
+  --warm: #ede6d6;
+  --paper: #faf7f2;
+  --ink: #1a1714;
+  --ink2: #2e2a25;
+  --muted: #8a8278;
+  --border: #d4cdc0;
+  --border2: #e8e2d6;
+  --green: #2d5a27;
+  --green-light: #4a7c43;
+  --green-pale: #eaf2e8;
+  --orange: #c4541a;
+  --orange-pale: #fdf0e8;
+  --blue: #1a3a5c;
+  --blue-pale: #e8f0f8;
+  --red: #8b1a1a;
+  --gold: #b8860b;
+  --gold-pale: #fdf8e8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+/* ── MASTHEAD ── */
+.masthead {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+.masthead-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 52px 40px 44px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 40px;
+  align-items: end;
+}
+.masthead::after {
+  content: '🚴';
+  position: absolute;
+  right: 60px;
+  top: 20px;
+  font-size: 120px;
+  opacity: 0.04;
+  pointer-events: none;
+}
+.masthead-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8a8880;
+  margin-bottom: 14px;
+}
+.masthead h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--cream);
+  margin-bottom: 16px;
+}
+.masthead h1 em {
+  font-style: italic;
+  color: #c8d89a;
+}
+.masthead-sub {
+  font-size: 13px;
+  color: #9a9890;
+  line-height: 1.7;
+  max-width: 460px;
+}
+.masthead-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-end;
+}
+.mstat {
+  text-align: right;
+  border-right: 2px solid #3a3830;
+  padding-right: 14px;
+}
+.mstat-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #c8d89a;
+  line-height: 1;
+}
+.mstat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #6a6860;
+  margin-top: 2px;
+}
+
+/* ── RIBBON ── */
+.ribbon {
+  background: var(--green);
+  color: white;
+  padding: 10px 40px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+.ribbon span { opacity: 0.7; }
+.ribbon strong { opacity: 1; font-weight: 500; }
+
+/* ── CONTAINER ── */
+.container { max-width: 1000px; margin: 0 auto; padding: 0 40px; }
+
+/* ── SECTION HEADER ── */
+.section-header {
+  padding: 40px 0 24px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 32px;
+}
+.section-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── PRINCIPLES ── */
+.principles {
+  padding: 40px 0 48px;
+  border-bottom: 1px solid var(--border);
+}
+
+.principles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-top: 4px;
+}
+.principle {
+  background: var(--paper);
+  padding: 22px 20px;
+}
+.principle-icon { font-size: 20px; margin-bottom: 10px; }
+.principle-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.principle p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ── DAY TYPE LEGEND ── */
+.day-types {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.day-type-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.chip-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+
+/* ── WEEK TABS ── */
+.week-tabs-wrap {
+  padding: 40px 0 0;
+}
+.week-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 32px;
+}
+.wtab {
+  background: none;
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 22px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+.wtab:hover { color: var(--ink); }
+.wtab.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 500;
+}
+
+/* ── WEEK CONTENT ── */
+.week-content { display: none; }
+.week-content.active { display: block; }
+
+/* ── DAY CARDS ── */
+.days-stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+
+.day-card {
+  border: 1px solid var(--border);
+  background: white;
+  overflow: hidden;
+}
+.day-card-header {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  align-items: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  user-select: none;
+  gap: 16px;
+  border-bottom: 1px solid transparent;
+  transition: background 0.12s;
+}
+.day-card-header:hover { background: var(--warm); }
+.day-card.open .day-card-header { border-bottom-color: var(--border2); background: var(--warm); }
+
+.day-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.day-type-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  margin-left: 10px;
+}
+.tag-rest { background: var(--blue-pale); color: var(--blue); }
+.tag-ride { background: var(--green-pale); color: var(--green); }
+.tag-long { background: var(--gold-pale); color: var(--gold); border: 1px solid #e8d070; }
+.tag-easy { background: var(--border2); color: var(--muted); }
+
+.day-summary {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+.day-kcal {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.day-chevron { color: var(--muted); font-size: 14px; margin-left: 12px; transition: transform 0.2s; }
+.day-card.open .day-chevron { transform: rotate(180deg); }
+
+.day-card-body { display: none; }
+.day-card.open .day-card-body { display: block; }
+
+/* ── MEALS ── */
+.meals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: none;
+}
+.meal-col {
+  padding: 20px 20px 20px;
+  border-right: 1px solid var(--border2);
+}
+.meal-col:last-child { border-right: none; }
+
+.meal-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border2);
+}
+.meal-source {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  margin-bottom: 8px;
+  border-radius: 2px;
+}
+.src-tesco { background: #e8f5e8; color: #2d5a27; border: 1px solid #c4e0c0; }
+.src-gousto { background: #fde8e0; color: #8b2a0a; border: 1px solid #f0c4b0; }
+
+.meal-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.meal-detail {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.meal-macros {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.macro {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+.m-cal { background: var(--ink); color: var(--cream); }
+.m-p { background: var(--orange-pale); color: var(--orange); border: 1px solid #f0c8a8; }
+.m-c { background: var(--blue-pale); color: var(--blue); border: 1px solid #b8d0e8; }
+.m-f { background: var(--green-pale); color: var(--green); border: 1px solid #b8d4b0; }
+
+/* snack row */
+.snacks-row {
+  background: var(--warm);
+  border-top: 1px solid var(--border2);
+  padding: 12px 20px;
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.snack-group { }
+.snack-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.snack-item { font-size: 12px; color: var(--ink2); }
+
+/* totals row */
+.day-totals {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 10px 20px;
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.total-item {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.total-item strong { font-weight: 500; }
+.total-item span { color: #8a8880; margin-right: 4px; }
+
+/* ── RIDE FUELLING ── */
+.fuelling-section {
+  padding: 40px 0 48px;
+  border-top: 1px solid var(--border);
+}
+.fuelling-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+.fuel-card {
+  border: 1px solid var(--border);
+  padding: 18px;
+  background: white;
+}
+.fuel-ride-type {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.fuel-card h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+.fuel-list { list-style: none; }
+.fuel-list li {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border2);
+  line-height: 1.4;
+}
+.fuel-list li:last-child { border-bottom: none; }
+.fuel-list li strong { color: var(--ink2); font-weight: 600; }
+
+/* ── SHOPPING ── */
+.shopping-section {
+  padding: 40px 0 48px;
+  border-top: 1px solid var(--border);
+}
+.shopping-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 4px;
+}
+.shop-col h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 14px;
+}
+.shop-category { margin-bottom: 16px; }
+.shop-cat-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.shop-items { display: flex; flex-direction: column; gap: 4px; }
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink2);
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--border2);
+}
+.shop-item:last-child { border-bottom: none; }
+.shop-price { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; }
+
+.budget-bar {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+.budget-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; }
+.budget-val { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #c8d89a; }
+
+/* ── FOOTER ── */
+.plan-footer {
+  background: var(--warm);
+  border-top: 2px solid var(--ink);
+  padding: 32px 40px;
+  margin-top: 40px;
+}
+.footer-inner { max-width: 1000px; margin: 0 auto; }
+.footer-inner p { font-size: 12px; color: var(--muted); line-height: 1.7; max-width: 700px; }
+
+@media (max-width: 700px) {
+  .masthead-inner { grid-template-columns: 1fr; }
+  .masthead-stats { flex-direction: row; align-items: flex-start; flex-wrap: wrap; }
+  .mstat { text-align: left; border-right: none; border-left: 2px solid #3a3830; padding-right: 0; padding-left: 10px; }
+  .container { padding: 0 16px; }
+  .meals-grid { grid-template-columns: 1fr; }
+  .meal-col { border-right: none; border-bottom: 1px solid var(--border2); }
+  .shopping-cols { grid-template-columns: 1fr; }
+  .day-card-header { grid-template-columns: 70px 1fr; }
+  .day-kcal { display: none; }
+  .ribbon { padding: 10px 16px; gap: 20px; }
+}
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% include 'nav.html' %}
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="masthead-eyebrow">Back in the Saddle · Nutrition Programme</div>
+      <h1>FUEL THE<br><em>Comeback</em></h1>
+      <p class="masthead-sub">A 4-week repeatable plan built around Tesco breakfasts & lunches, Gousto dinners, and the calorie targets needed to lose weight while supporting 6 hours of cycling per week. High protein throughout. Budget-conscious by design.</p>
+    </div>
+    <div class="masthead-stats">
+      <div class="mstat"><div class="mstat-val">~2,050</div><div class="mstat-label">Rest day kcal</div></div>
+      <div class="mstat"><div class="mstat-val">~2,300</div><div class="mstat-label">Long ride kcal</div></div>
+      <div class="mstat"><div class="mstat-val">160g+</div><div class="mstat-label">Daily protein</div></div>
+      <div class="mstat"><div class="mstat-val">4 wks</div><div class="mstat-label">Repeatable</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ribbon">
+  <strong>Breakfast</strong><span>Tesco</span>
+  <strong>Lunch</strong><span>Tesco</span>
+  <strong>Dinner</strong><span>Gousto</span>
+  <strong>Snacks</strong><span>Tesco</span>
+  <strong>Goal</strong><span>~0.5kg/week loss</span>
+</div>
+
+<div class="container">
+
+  <!-- PRINCIPLES -->
+  <div class="principles">
+    <div class="section-header" style="padding-top:40px">
+      <div class="section-eyebrow">How this plan works</div>
+      <h2>The Principles</h2>
+    </div>
+    <div class="principles-grid">
+      <div class="principle">
+        <div class="principle-icon">🥩</div>
+        <div class="principle-title">Protein First</div>
+        <p>160–180g daily protects muscle mass during calorie restriction — critical over 50. Every meal is built around a protein anchor: Greek yogurt, chicken, eggs, fish, or lean beef.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">🔋</div>
+        <div class="principle-title">Carbs Around Rides</div>
+        <p>Carbohydrates are timed to support training. Ride days get more carbs — especially before Sunday's long ride. Rest days are lower carb naturally, without rigid restriction.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">💷</div>
+        <div class="principle-title">Budget Tesco Picks</div>
+        <p>Breakfast and lunch are built around Tesco Everyday Value / own-brand items. Targeting £3–4/day for both meals combined. Consistent repeatable choices reduce decision fatigue.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">🍳</div>
+        <div class="principle-title">No Cooking at Work</div>
+        <p>All breakfasts and lunches require zero cooking or heating. Overnight oats, Greek yogurt pots, pre-made wraps, deli items, and ready-to-eat protein sources only.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">🥗</div>
+        <div class="principle-title">Gousto for Dinners</div>
+        <p>Gousto provides structure, portion control, and variety for evenings. The plan specifies recipe types and calorie bands to hit nightly targets. Specific recipes rotate each week.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">☀️</div>
+        <div class="principle-title">Sunday = Fuel Up</div>
+        <p>Long ride Sundays need +250–300 kcal vs rest days. Bigger breakfast, on-bike fuelling, and a more substantial Gousto dinner in the evening to kick off the Monday recovery.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEK TABS -->
+  <div class="week-tabs-wrap">
+    <div class="section-header" style="padding-top:0; border-bottom: none; margin-bottom: 0;">
+      <div class="section-eyebrow">4-Week Repeatable Cycle</div>
+      <h2>Weekly Meal Plans</h2>
+    </div>
+
+    <div class="day-types" style="margin-top:16px">
+      <div class="day-type-chip"><div class="chip-dot" style="background:#2d5a27"></div>Training day (~2,150 kcal)</div>
+      <div class="day-type-chip"><div class="chip-dot" style="background:#b8860b"></div>Long ride Sunday (~2,300 kcal)</div>
+      <div class="day-type-chip"><div class="chip-dot" style="background:#1a3a5c"></div>Rest / easy day (~2,000 kcal)</div>
+    </div>
+
+    <div class="week-tabs">
+      <button class="wtab active" onclick="showWeek('w1',this)">Week 1</button>
+      <button class="wtab" onclick="showWeek('w2',this)">Week 2</button>
+      <button class="wtab" onclick="showWeek('w3',this)">Week 3</button>
+      <button class="wtab" onclick="showWeek('w4',this)">Week 4</button>
+    </div>
+
+    <!-- ══════════ WEEK 1 ══════════ -->
+    <div class="week-content active" id="w1">
+    <div class="days-stack">
+
+      <!-- MON -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Monday</div></div>
+          <div class="day-summary">Rest day — office. Light, protein-focused. <span class="day-type-tag tag-rest">Rest</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~1,980 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Greek Yogurt Pot + Banana</div>
+              <div class="meal-detail">Tesco Finest 0% Fat Greek Yogurt (500g pot, use half). 1 banana. Small handful of Tesco granola (30g). No prep needed — eat at desk.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~380 kcal</span>
+                <span class="macro m-p">P: 28g</span>
+                <span class="macro m-c">C: 48g</span>
+                <span class="macro m-f">F: 5g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tesco Chicken Salad + Egg</div>
+              <div class="meal-detail">Tesco Finest chicken Caesar salad (ready-made pot) or similar chicken salad. Add 2 hard-boiled eggs from Tesco deli. 1 small wholemeal roll.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~520 kcal</span>
+                <span class="macro m-p">P: 48g</span>
+                <span class="macro m-c">C: 32g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Lean Protein + Veg</div>
+              <div class="meal-detail">Choose any Gousto recipe tagged "under 600 kcal" in the chicken or beef category. Good picks: Chicken & Leek Pie filling with veg, Teriyaki Salmon Bowl, or similar lean protein + veg combo. ~550–650 kcal target.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~600 kcal</span>
+                <span class="macro m-p">P: 45g</span>
+                <span class="macro m-c">C: 55g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Mid-Morning</div><div class="snack-item">Tesco Protein Bar (20g protein, ~200 kcal) or 2 boiled eggs</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Apple + 30g Tesco peanut butter sachet (~180 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Evening (if needed)</div><div class="snack-item">Tesco low-fat cottage cheese (150g) + rice cakes (~150 kcal)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~1,980 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~158g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~185g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~62g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Rest — lower carb</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TUE -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Tuesday</div></div>
+          <div class="day-summary">Training day — 45–60 min ride. Carbs higher. <span class="day-type-tag tag-ride">Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,150 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Overnight Oats Pot</div>
+              <div class="meal-detail">Prep the night before: Tesco rolled oats (80g) in a jar with Tesco semi-skimmed milk (200ml) and a scoop of protein powder (or Tesco protein yogurt). Top with a handful of berries in the morning. Eat cold at desk.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~450 kcal</span>
+                <span class="macro m-p">P: 32g</span>
+                <span class="macro m-c">C: 58g</span>
+                <span class="macro m-f">F: 8g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tuna & Sweetcorn Wrap</div>
+              <div class="meal-detail">Tesco tuna mayo & sweetcorn wrap (ready-made, ~350–400 kcal). Side: Tesco low-fat hummus pot (60g) with carrot sticks (pre-cut Tesco pack). Tesco sparkling water.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~520 kcal</span>
+                <span class="macro m-p">P: 35g</span>
+                <span class="macro m-c">C: 52g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Protein + Complex Carb</div>
+              <div class="meal-detail">Gousto recipe with rice, pasta, or potatoes as a base. Good picks: Chicken & Chorizo Jambalaya, Thai Green Curry with Rice, Beef Stir-Fry with Noodles. ~650–750 kcal. Slightly more carbs on training evenings to replenish glycogen.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~680 kcal</span>
+                <span class="macro m-p">P: 42g</span>
+                <span class="macro m-c">C: 75g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Pre-ride (if morning)</div><div class="snack-item">Banana + Tesco peanut butter sachet (~200 kcal) — 45 min before</div></div>
+            <div class="snack-group"><div class="snack-label">Mid-morning</div><div class="snack-item">Tesco protein yogurt 150g (~120 kcal, 15g protein)</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Handful of mixed nuts 30g + apple (~200 kcal)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,150 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~162g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~220g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~68g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Training — higher carbs</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WED -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Wednesday</div></div>
+          <div class="day-summary">Rest/walk day — office. Lower carbs. <span class="day-type-tag tag-easy">Easy</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~1,980 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Boiled Egg & Rye Bread</div>
+              <div class="meal-detail">2 Tesco hard-boiled eggs (pre-cooked from chiller, no prep needed). 2 slices Tesco rye bread or seeded loaf. 1 Tesco babybel or cheese triangle. Black coffee or tea.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~360 kcal</span>
+                <span class="macro m-p">P: 26g</span>
+                <span class="macro m-c">C: 28g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Protein Pot + Soup</div>
+              <div class="meal-detail">Tesco Protein Pot (egg & avocado or chicken & quinoa ~250 kcal / 25g protein). Tesco Covent Garden fresh soup (if microwave available) or cold option. 1 small wholemeal roll.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480 kcal</span>
+                <span class="macro m-p">P: 38g</span>
+                <span class="macro m-c">C: 40g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Fish or Veg-Forward</div>
+              <div class="meal-detail">Lighter Gousto evening — fish dish or vegetable-forward recipe. Good picks: Baked Salmon with Greens, Mediterranean Prawn Linguine (half portion pasta), Roasted Veg & Halloumi. ~550–600 kcal.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~570 kcal</span>
+                <span class="macro m-p">P: 38g</span>
+                <span class="macro m-c">C: 50g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Morning</div><div class="snack-item">Tesco low-fat Greek yogurt small pot 150g (~90 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Orange + 20g Tesco pumpkin seeds (~150 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Evening</div><div class="snack-item">Tesco protein yogurt if still hungry (~120 kcal, 15g protein)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~1,980 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~155g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~178g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~65g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Easy — moderate carbs</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- THU -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Thursday</div></div>
+          <div class="day-summary">Training day — 45–60 min ride. <span class="day-type-tag tag-ride">Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,150 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tesco Protein Yogurt + Fruit</div>
+              <div class="meal-detail">Tesco High-Protein yogurt (20g protein per pot). 2 Tesco oat cakes with peanut butter. Banana. Fast, no prep, high-satiety breakfast. Take to work in a bag.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~420 kcal</span>
+                <span class="macro m-p">P: 30g</span>
+                <span class="macro m-c">C: 50g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Chicken & Avocado Sandwich</div>
+              <div class="meal-detail">Tesco Finest chicken & avocado sandwich on malted bread (ready-made, ~420 kcal). Side: Tesco cherry tomatoes & cucumber snack pack. 1 satsuma.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~510 kcal</span>
+                <span class="macro m-p">P: 36g</span>
+                <span class="macro m-c">C: 48g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Hearty Protein Dinner</div>
+              <div class="meal-detail">Gousto recipe with good protein content. Good picks: Beef & Black Bean Tacos, Pork Tenderloin with Sweet Potato, Chicken Shawarma with Flatbread. ~650–700 kcal. Use full Gousto portion — this is a training day.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~660 kcal</span>
+                <span class="macro m-p">P: 48g</span>
+                <span class="macro m-c">C: 68g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Pre-ride</div><div class="snack-item">Banana + coffee 45 min before ride (~90 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Mid-morning</div><div class="snack-item">Tesco mixed nuts & raisins trail mix 30g (~160 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Post-ride recovery</div><div class="snack-item">Tesco chocolate milk 300ml (~200 kcal, 10g protein) — brilliant cheap recovery drink</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,150 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~165g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~218g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~66g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Training — higher carbs</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRI -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Friday</div></div>
+          <div class="day-summary">Rest day — office. Pre-load for weekend. <span class="day-type-tag tag-rest">Rest</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,050 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Yogurt & Granola + Boiled Eggs</div>
+              <div class="meal-detail">Tesco 0% Greek yogurt (200g) with granola (40g). 2 Tesco pre-cooked boiled eggs on the side for extra protein. Coffee. Slightly bigger breakfast to start the pre-weekend carb-load subtly.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~460 kcal</span>
+                <span class="macro m-p">P: 36g</span>
+                <span class="macro m-c">C: 52g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Pasta Salad + Chicken</div>
+              <div class="meal-detail">Tesco Finest pasta salad (pesto chicken or similar, ~400 kcal). Tesco cooked chicken breast slices (add extra ~80g for protein). Apple. Good pre-weekend carb boost without overdoing it.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~550 kcal</span>
+                <span class="macro m-p">P: 42g</span>
+                <span class="macro m-c">C: 58g</span>
+                <span class="macro m-f">F: 12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Pasta or Rice Base</div>
+              <div class="meal-detail">Deliberately carb-focused Gousto on Friday evening to top up glycogen for Saturday ride. Good picks: Spaghetti Bolognese, Chicken & Mushroom Risotto, Pesto Pasta with Chicken. ~650–700 kcal. Friday treat feel while still on-plan.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~670 kcal</span>
+                <span class="macro m-p">P: 40g</span>
+                <span class="macro m-c">C: 80g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Morning</div><div class="snack-item">Tesco protein bar (~200 kcal, 20g protein)</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Banana + Tesco rice cakes with peanut butter (~180 kcal)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,050 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~160g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~210g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~60g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Rest — carb pre-load</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAT -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Saturday</div></div>
+          <div class="day-summary">Training day — 60–90 min ride. Weekend, home food. <span class="day-type-tag tag-ride">Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,200 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Home</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Porridge with Protein</div>
+              <div class="meal-detail">80g Tesco oats cooked with semi-skimmed milk. Stir in a scoop of protein powder OR top with Tesco Greek yogurt (100g). Drizzle of honey. Banana on the side. Classic pre-ride Saturday breakfast.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480 kcal</span>
+                <span class="macro m-p">P: 35g</span>
+                <span class="macro m-c">C: 65g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Home / Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Eggs on Toast + Salad</div>
+              <div class="meal-detail">3 scrambled or poached eggs on 2 slices wholegrain toast. Side salad. Post-ride lunch — the eggs deliver fast recovery protein. Add half a tin of baked beans if hungrier than usual post-ride.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~490 kcal</span>
+                <span class="macro m-p">P: 36g</span>
+                <span class="macro m-c">C: 44g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Weekend Treat Gousto</div>
+              <div class="meal-detail">Pick a recipe you'll look forward to — this is the "treat" meal of the week. Good picks: Butter Chicken with Naan, BBQ Pulled Pork Wraps, Slow-cooked Lamb. Stay under 750 kcal. The extra calories are earned by Saturday's ride.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~720 kcal</span>
+                <span class="macro m-p">P: 48g</span>
+                <span class="macro m-c">C: 72g</span>
+                <span class="macro m-f">F: 22g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">On-bike (60–90 min ride)</div><div class="snack-item">1 banana at 40–45 min mark (~90 kcal, 23g carbs)</div></div>
+            <div class="snack-group"><div class="snack-label">Post-ride</div><div class="snack-item">Tesco chocolate milk 300ml immediately after ride (~200 kcal)</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Apple + 25g Tesco nut mix (~180 kcal)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,200 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~168g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~228g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~72g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Training — weekend carbs</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUN -->
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Sunday</div></div>
+          <div class="day-summary">Long ride day — 90 min to 3 hrs. Maximum fuel. <span class="day-type-tag tag-long">Long Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,350 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Home (2–3 hrs before)</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">The Big Sunday Breakfast</div>
+              <div class="meal-detail">80g porridge oats with milk. 2 Tesco boiled/scrambled eggs. 1 banana. 1 slice wholemeal toast with peanut butter. Eat 2–2.5 hrs before riding. This is deliberately larger — Sunday's ride burns 600–900 kcal.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~620 kcal</span>
+                <span class="macro m-p">P: 38g</span>
+                <span class="macro m-c">C: 78g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Post-ride Lunch · Home</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Recovery Plate</div>
+              <div class="meal-detail">Large plate: Tesco cooked chicken breast (150g) + microwaveable rice pouch (250g cooked) + large portion of salad or veg. Glass of Tesco chocolate milk. Eat within 45 min of finishing the ride. Prioritise protein + carbs for recovery.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~650 kcal</span>
+                <span class="macro m-p">P: 58g</span>
+                <span class="macro m-c">C: 72g</span>
+                <span class="macro m-f">F: 12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Recovery Gousto — Protein Rich</div>
+              <div class="meal-detail">Sunday evening Gousto should be protein-rich to support overnight recovery. Good picks: Slow-Cooked Beef Ragu, Thai Chicken & Rice, Lemon Herb Salmon with Potatoes. ~650–750 kcal. This meal feeds Monday's rest day recovery.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~700 kcal</span>
+                <span class="macro m-p">P: 52g</span>
+                <span class="macro m-c">C: 70g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">On-bike fuelling (every 40–45 min)</div><div class="snack-item">Banana, Tesco cereal bar (30–40g carbs), or Tesco dried mango strips. 40g carbs/hour minimum on rides over 75 min.</div></div>
+            <div class="snack-group"><div class="snack-label">Hydration</div><div class="snack-item">500–750ml per hour on the bike. Add electrolyte tablet (Tesco or Boots) for rides over 90 min.</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,350 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~175g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~248g</strong></div>
+            <div class="total-item"><span>Fat</span><strong>~70g</strong></div>
+            <div class="total-item"><span>Day type</span><strong>Long ride — max fuel day</strong></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /days-stack -->
+    </div><!-- /w1 -->
+
+    <!-- ══════════ WEEK 2 ══════════ -->
+    <div class="week-content" id="w2">
+    <div style="background:var(--warm);border:1px solid var(--border);padding:20px 24px;margin-bottom:24px">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:8px">Week 2 — Same structure, rotated meals</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">The daily calorie targets, macros, and day types are identical to Week 1. What changes are the specific Tesco products and Gousto recipes to keep variety. Follow the same Mon–Sun pattern but swap in the alternatives below.</p>
+    </div>
+    <div class="days-stack">
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Mon & Wed</div></div>
+          <div class="day-summary">Rest days — rotate breakfast & lunch choices <span class="day-type-tag tag-rest">Rest</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~1,980 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast Swap · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tesco Bircher Muesli Pot</div>
+              <div class="meal-detail">Tesco ready-made Bircher muesli pot from the chiller (~350 kcal). Pair with a Tesco hard-boiled egg ×2 for protein boost. No prep. Different texture to Week 1's yogurt start.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~490 kcal</span>
+                <span class="macro m-p">P: 28g</span>
+                <span class="macro m-c">C: 55g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch Swap · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Prawn & Avocado Wrap</div>
+              <div class="meal-detail">Tesco prawn & avocado wrap (ready-made). Tesco edamame bean snack pot. Small Tesco mixed salad bag as a side. Squeeze of lemon from the canteen if available.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~510 kcal</span>
+                <span class="macro m-p">P: 34g</span>
+                <span class="macro m-c">C: 48g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner Swap · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Asian-Inspired Week</div>
+              <div class="meal-detail">Week 2 Gousto picks: Korean Beef Bibimbap, Miso Salmon with Rice, Vietnamese Chicken Noodle Salad, Japanese Katsu Curry. Rotate these through the week for completely different flavour profiles to Week 1.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~600 kcal</span>
+                <span class="macro m-p">P: 44g</span>
+                <span class="macro m-c">C: 58g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Swap snacks W2</div><div class="snack-item">Tesco reduced-fat hummus pot + pitta chips · Tesco Babybels + apple · Tesco cottage cheese + oatcakes</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Same targets as W1</span><strong>~1,980 kcal rest / ~2,150 kcal training / ~2,350 kcal Sunday</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Tue & Thu</div></div>
+          <div class="day-summary">Training days — rotate choices <span class="day-type-tag tag-ride">Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,150 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast Swap · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tesco Protein Shake + Fruit & Nut Bar</div>
+              <div class="meal-detail">Tesco High-Protein ready-to-drink shake (chiller, ~250 kcal, 30g protein). 2 Tesco oat & raisin biscuits or Nakd bar. Banana. Quick office breakfast when rushed.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480 kcal</span>
+                <span class="macro m-p">P: 34g</span>
+                <span class="macro m-c">C: 60g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch Swap · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Smoked Salmon & Cream Cheese Bagel</div>
+              <div class="meal-detail">Tesco smoked salmon & cream cheese bagel (ready-made, ~400 kcal). Tesco cooked chicken breast slice pack add-on for extra protein. Apple and water.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~530 kcal</span>
+                <span class="macro m-p">P: 40g</span>
+                <span class="macro m-c">C: 50g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner Swap · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Mediterranean Week</div>
+              <div class="meal-detail">Week 2 Gousto training nights: Greek Chicken Souvlaki, Lamb Kofta with Couscous, Spanish Chorizo & Chickpea Stew, Italian Chicken Piccata. Flavour variety with same macro targets.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~680 kcal</span>
+                <span class="macro m-p">P: 45g</span>
+                <span class="macro m-c">C: 70g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">W2 ride snacks</div><div class="snack-item">Tesco cereal bar pre-ride · Tesco Medjool dates (4–5) post-ride · Tesco yogurt + honey afternoon</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Targets unchanged</span><strong>~2,150 kcal · P ~162g · C ~218g · F ~68g</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Fri–Sun</div></div>
+          <div class="day-summary">Weekend — rotated but same calorie structure <span class="day-type-tag tag-long">Long Ride</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,050–2,350</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Fri Breakfast Swap</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Tesco Acai or Fruit Smoothie Bowl</div>
+              <div class="meal-detail">Tesco smoothie bowl (chiller) + 2 boiled eggs on the side. Or make a simple bowl: Tesco frozen berries (defrosted overnight) blended with protein yogurt, topped with granola.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~450 kcal</span>
+                <span class="macro m-p">P: 30g</span>
+                <span class="macro m-c">C: 54g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Sat Breakfast Swap</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Wholegrain Toast + Eggs + Smoked Salmon</div>
+              <div class="meal-detail">3 scrambled eggs on 2 slices wholegrain toast. Tesco smoked salmon slices (50g). Weekend feel, excellent macros. Eat 90 min before the ride.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~510 kcal</span>
+                <span class="macro m-p">P: 42g</span>
+                <span class="macro m-c">C: 40g</span>
+                <span class="macro m-f">F: 20g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">W2 Weekend Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Comfort + Recovery Theme</div>
+              <div class="meal-detail">Week 2 weekend Gousto: Sat — Chicken Tikka Masala with Rice. Sun evening — Slow-Cooked Beef Stroganoff or Sticky Teriyaki Salmon. Both high-protein, satisfying, and within calorie targets.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~700–720 kcal</span>
+                <span class="macro m-p">P: 50g</span>
+                <span class="macro m-c">C: 72g</span>
+                <span class="macro m-f">F: 20g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">W2 on-bike alternatives</div><div class="snack-item">Tesco Jaffa cakes (3 = 35g carbs, ~120 kcal) · Tesco mini malt loaf slices · Tesco cereal bars (Nature Valley, ~40g carbs)</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Sunday total</span><strong>~2,350 kcal · P ~175g · C ~248g</strong></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- /w2 -->
+
+    <!-- ══════════ WEEK 3 ══════════ -->
+    <div class="week-content" id="w3">
+    <div style="background:var(--warm);border:1px solid var(--border);padding:20px 24px;margin-bottom:24px">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:8px">Week 3 — FTP Test Week. Slightly higher carbs Tuesday.</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">Week 3 contains the FTP test on Tuesday. Boost carbs at Monday dinner and Tuesday breakfast to ensure well-fuelled legs for the test effort. All other days follow the same pattern with new meal rotations.</p>
+    </div>
+    <div class="days-stack">
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Monday</div></div>
+          <div class="day-summary">Pre-test rest day — carb-load dinner <span class="day-type-tag tag-rest">Rest</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,100 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Overnight Oats — Large Portion</div>
+              <div class="meal-detail">Prep Sunday night: 90g rolled oats, 220ml milk, Tesco protein yogurt stirred in. Top with banana slices. Slightly bigger portion than usual — start the carb pre-load for Tuesday's test.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~500 kcal</span>
+                <span class="macro m-p">P: 34g</span>
+                <span class="macro m-c">C: 68g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Chicken & Rice Pot</div>
+              <div class="meal-detail">Tesco chicken & rice salad pot or similar grain bowl (chiller section). Tesco cooked chicken slices add-on. Side of Tesco fruit salad pot. Pre-loading carbs for tomorrow.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~540 kcal</span>
+                <span class="macro m-p">P: 42g</span>
+                <span class="macro m-c">C: 60g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Pasta-Based Pre-Test Dinner</div>
+              <div class="meal-detail">Classic carb-load dinner the night before the FTP test. Gousto picks: Spaghetti Carbonara (lighter version), Chicken & Tomato Penne, Pesto Pasta with Grilled Chicken. ~700 kcal, carb-heavy.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~700 kcal</span>
+                <span class="macro m-p">P: 42g</span>
+                <span class="macro m-c">C: 88g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Pre-test snacks</div><div class="snack-item">Normal snacks Mon — protein bar mid-morning · banana + oatcakes afternoon · avoid anything unusual before the test</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,100 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~158g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~225g</strong></div>
+            <div class="total-item"><span>Note</span><strong>Higher carbs — pre-FTP test</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Tuesday</div></div>
+          <div class="day-summary">FTP Test day — fuel carefully around effort <span class="day-type-tag tag-ride">FTP Test</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,200 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast · Tesco (2 hrs before test)</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Porridge + Banana + Eggs</div>
+              <div class="meal-detail">80g oats with milk. 1 banana. 2 boiled eggs. This is the same pre-ride breakfast as Sunday — well-tested, well-tolerated. Eat exactly 2 hours before your FTP test. No new foods today.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~550 kcal</span>
+                <span class="macro m-p">P: 34g</span>
+                <span class="macro m-c">C: 72g</span>
+                <span class="macro m-f">F: 12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Post-Test Lunch · Tesco</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Recovery Lunch — Protein Focus</div>
+              <div class="meal-detail">After the FTP test effort (which is hard), prioritise recovery immediately. Tesco chocolate milk on the way back (fast carbs + protein). Then: Tesco chicken salad pot + extra chicken breast slices + wholemeal roll.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~560 kcal</span>
+                <span class="macro m-p">P: 52g</span>
+                <span class="macro m-c">C: 50g</span>
+                <span class="macro m-f">F: 12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Post-Test Recovery Dinner</div>
+              <div class="meal-detail">High-protein Gousto tonight. Picks: Teriyaki Salmon & Rice, Chicken & Sweet Potato Curry, Steak with Roasted Veg. ~650 kcal. Focus on protein to start muscle repair from the hard effort.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~660 kcal</span>
+                <span class="macro m-p">P: 52g</span>
+                <span class="macro m-c">C: 62g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">Pre-test (30 min before)</div><div class="snack-item">Banana only — easily digestible. Nothing heavy.</div></div>
+            <div class="snack-group"><div class="snack-label">Immediately post-test</div><div class="snack-item">Tesco chocolate milk 300ml — within 15 min of finishing</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,200 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~170g</strong></div>
+            <div class="total-item"><span>Carbs</span><strong>~220g</strong></div>
+            <div class="total-item"><span>Note</span><strong>FTP test day — higher protein for recovery</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Wed–Sun</div></div>
+          <div class="day-summary">W3 meal rotations — same structure <span class="day-type-tag tag-easy">Varied</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">Standard targets</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">W3 Breakfast Rotation</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">New Choices for Week 3</div>
+              <div class="meal-detail">Wed: Tesco skyr pot + oat biscuits + 2 eggs. Thu: Tesco high-protein overnight oat pot (chiller) + banana. Fri: Tesco granola pot + Greek yogurt + boiled eggs. Sat: Smashed avo on toast + eggs (home). Sun: Full pre-ride porridge as normal.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~380–500 kcal</span>
+                <span class="macro m-p">P: 28–36g</span>
+                <span class="macro m-c">C: 42–68g</span>
+                <span class="macro m-f">F: 8–16g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">W3 Lunch Rotation</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">New Lunch Picks Week 3</div>
+              <div class="meal-detail">Wed: Tesco egg mayo sandwich + side salad. Thu: Tesco sushi selection (salmon/prawn, ~380 kcal). Fri: Tesco hoisin duck wrap. Sat: Post-ride eggs on toast + beans (home). Keep protein above 35g at lunch each day.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480–550 kcal</span>
+                <span class="macro m-p">P: 32–42g</span>
+                <span class="macro m-c">C: 42–58g</span>
+                <span class="macro m-f">F: 12–18g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">W3 Gousto Rotation</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Mexican & American Week</div>
+              <div class="meal-detail">W3 Gousto theme: Chicken Fajitas, Black Bean & Beef Chilli, Chipotle Chicken Burrito Bowl, BBQ Pulled Pork with Slaw. More robust flavours, similar calorie targets. Sun recovery: Chilli Con Carne or Chicken Enchiladas.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~600–720 kcal</span>
+                <span class="macro m-p">P: 42–52g</span>
+                <span class="macro m-c">C: 58–80g</span>
+                <span class="macro m-f">F: 14–22g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">W3 snack rotation</div><div class="snack-item">Tesco Skyr pouches · Tesco edamame pods · Tesco mixed seeds · Low-fat cheese strings · Tesco satsumas</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>All targets</span><strong>Rest ~1,980 · Training ~2,150 · Sunday ~2,350 kcal</strong></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- /w3 -->
+
+    <!-- ══════════ WEEK 4 ══════════ -->
+    <div class="week-content" id="w4">
+    <div style="background:var(--warm);border:1px solid var(--border);padding:20px 24px;margin-bottom:24px">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:8px">Week 4 — Recovery Week. Reduce calories slightly.</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">Week 4 is the recovery week in the training plan — lower volume, lower intensity. Calories drop slightly to match the reduced training load. Rest days drop to ~1,850 kcal. Sunday ride is shorter so Sunday drops to ~2,100 kcal. This also gives the metabolism a slight reset before the next 4-week cycle.</p>
+    </div>
+    <div class="days-stack">
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Mon–Fri</div></div>
+          <div class="day-summary">Recovery week — same foods, smaller portions <span class="day-type-tag tag-rest">Recovery</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~1,850–2,000</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast — Slightly Lighter</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">W4 Breakfast Approach</div>
+              <div class="meal-detail">Use the same Tesco breakfast choices as Weeks 1–3 but reduce portion slightly. 60g oats instead of 80g. 150g yogurt instead of 200g. Keep protein portions the same (eggs, protein yogurt). Remove the granola topping. Save ~80–100 kcal per day.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~300–360 kcal</span>
+                <span class="macro m-p">P: 26–30g</span>
+                <span class="macro m-c">C: 36–48g</span>
+                <span class="macro m-f">F: 8–12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch — Same Choices</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">W4 Lunch — No Change Needed</div>
+              <div class="meal-detail">Keep lunches identical to previous weeks. The slight calorie reduction comes from breakfast and removing afternoon snacks. Lunch is important for maintaining satiety through the afternoon and keeping protein high. Don't cut it back.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480–530 kcal</span>
+                <span class="macro m-p">P: 36–48g</span>
+                <span class="macro m-c">C: 38–52g</span>
+                <span class="macro m-f">F: 12–18g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">W4 — Light Gousto Week</div>
+              <div class="meal-detail">Choose Gousto's lighter / under-500 kcal options this week. Good picks: Thai Prawn Noodle Salad, Baked Cod with Veg, Chicken & Courgette Salad Warm Bowl, Prawn Stir-Fry. Lean protein, lots of veg, lighter on carbs since training volume is down.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~480–550 kcal</span>
+                <span class="macro m-p">P: 38–46g</span>
+                <span class="macro m-c">C: 42–55g</span>
+                <span class="macro m-f">F: 12–16g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">W4 snack reduction</div><div class="snack-item">Reduce to 1–2 snacks per day instead of 3. Keep protein snacks (eggs, yogurt). Drop the nut/calorific afternoon snack on rest days.</div></div>
+            <div class="snack-group"><div class="snack-label">Keep hydration up</div><div class="snack-item">Don't confuse reduced hunger (less training) with dehydration. Keep water intake the same — 2.5–3L daily.</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Rest days</span><strong>~1,850 kcal</strong></div>
+            <div class="total-item"><span>Easy ride days</span><strong>~2,000 kcal</strong></div>
+            <div class="total-item"><span>Note</span><strong>Recovery week — trust the lower volume</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Saturday</div></div>
+          <div class="day-summary">Easy 60 min ride — normal weekend fuelling <span class="day-type-tag tag-easy">Easy</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,050 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Porridge + Eggs (Slightly Smaller)</div>
+              <div class="meal-detail">60g oats, milk, 2 eggs. No banana or extra toast today — it's an easy ride so don't over-fuel. Enjoy the lighter breakfast and notice how the reduced training load feels.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~420 kcal</span>
+                <span class="macro m-p">P: 28g</span>
+                <span class="macro m-c">C: 48g</span>
+                <span class="macro m-f">F: 14g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Lunch</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Light Post-Ride Lunch</div>
+              <div class="meal-detail">Eggs on toast (2 eggs, 1 slice). Large salad. No extra bread or beans today — the ride was short. Focus on protein and veg. Add Tesco smoked salmon for omega-3 recovery support.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~400 kcal</span>
+                <span class="macro m-p">P: 36g</span>
+                <span class="macro m-c">C: 26g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">Treat Meal (Lighter Version)</div>
+              <div class="meal-detail">Still enjoy Saturday's treat Gousto — just pick one under 650 kcal. Chicken Tikka, Prawn Tacos, Salmon with New Potatoes. Sit down, enjoy it slowly. Recovery weeks are mental recovery too.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~620 kcal</span>
+                <span class="macro m-p">P: 44g</span>
+                <span class="macro m-c">C: 60g</span>
+                <span class="macro m-f">F: 18g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">On-bike</div><div class="snack-item">Just 1 banana for the 60 min ride — no need for more fuel</div></div>
+            <div class="snack-group"><div class="snack-label">Afternoon</div><div class="snack-item">Tesco yogurt pot (~120 kcal) if hungry</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,050 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~158g</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="day-card" onclick="toggleDay(this)">
+        <div class="day-card-header">
+          <div><div class="day-name">Sunday</div></div>
+          <div class="day-summary">Recovery long ride — 75–90 min only <span class="day-type-tag tag-long">Easy Long</span></div>
+          <div style="display:flex;align-items:center"><div class="day-kcal">~2,100 kcal</div><div class="day-chevron">▾</div></div>
+        </div>
+        <div class="day-card-body">
+          <div class="meals-grid">
+            <div class="meal-col">
+              <div class="meal-label">Breakfast</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Pre-ride Porridge (Standard)</div>
+              <div class="meal-detail">80g oats, milk, banana. Back to full Sunday breakfast portion — even at 75–90 min you need to be fuelled. 2 boiled eggs on the side. Eat 2 hrs before.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~540 kcal</span>
+                <span class="macro m-p">P: 34g</span>
+                <span class="macro m-c">C: 70g</span>
+                <span class="macro m-f">F: 12g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Post-Ride Lunch</div>
+              <span class="meal-source src-tesco">Tesco</span>
+              <div class="meal-name">Recovery Plate (Lighter)</div>
+              <div class="meal-detail">Shorter ride = lighter recovery lunch. 120g chicken breast, 150g cooked rice (half pouch), large salad, Tesco chocolate milk. Same approach, just smaller portions reflecting the shorter ride.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~530 kcal</span>
+                <span class="macro m-p">P: 48g</span>
+                <span class="macro m-c">C: 56g</span>
+                <span class="macro m-f">F: 10g</span>
+              </div>
+            </div>
+            <div class="meal-col">
+              <div class="meal-label">Dinner · Gousto</div>
+              <span class="meal-source src-gousto">Gousto</span>
+              <div class="meal-name">W4 Sunday Recovery Dinner</div>
+              <div class="meal-detail">End-of-cycle recovery dinner — pick a Gousto favourite. Salmon, chicken, or beef. ~600–650 kcal. This is the final meal before the cycle repeats. Feel proud of 4 consistent weeks and repeat from Week 1.</div>
+              <div class="meal-macros">
+                <span class="macro m-cal">~630 kcal</span>
+                <span class="macro m-p">P: 48g</span>
+                <span class="macro m-c">C: 62g</span>
+                <span class="macro m-f">F: 16g</span>
+              </div>
+            </div>
+          </div>
+          <div class="snacks-row">
+            <div class="snack-group"><div class="snack-label">On-bike (75–90 min)</div><div class="snack-item">1 banana at 40–45 min — sufficient for recovery ride length</div></div>
+            <div class="snack-group"><div class="snack-label">End of cycle</div><div class="snack-item">Review the 4 weeks. Weight check Sunday morning. Adjust kcal target by ±100 if needed before restarting.</div></div>
+          </div>
+          <div class="day-totals">
+            <div class="total-item"><span>Total</span><strong>~2,100 kcal</strong></div>
+            <div class="total-item"><span>Protein</span><strong>~165g</strong></div>
+            <div class="total-item"><span>Note</span><strong>Recovery Sunday — then repeat cycle from W1</strong></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- /w4 -->
+
+  </div><!-- /week-tabs-wrap -->
+
+  <!-- ON-BIKE FUELLING -->
+  <div class="fuelling-section">
+    <div class="section-header" style="padding-top:0; border-bottom:none; margin-bottom:20px">
+      <div class="section-eyebrow">On-bike nutrition</div>
+      <h2>Tesco On-Bike Fuel Guide</h2>
+    </div>
+    <div class="fuelling-grid">
+      <div class="fuel-card">
+        <div class="fuel-ride-type">45–60 min rides (Tue/Thu)</div>
+        <h4>Minimal fuelling needed</h4>
+        <ul class="fuel-list">
+          <li><strong>Before:</strong> Banana or 2 oatcakes 30–45 min prior</li>
+          <li><strong>During:</strong> Water only — no food needed under 60 min</li>
+          <li><strong>After:</strong> Tesco chocolate milk (300ml) within 20 min</li>
+          <li>~600 kcal burned — breakfast covers it</li>
+        </ul>
+      </div>
+      <div class="fuel-card">
+        <div class="fuel-ride-type">Saturday 60–90 min rides</div>
+        <h4>Light fuelling</h4>
+        <ul class="fuel-list">
+          <li><strong>Before:</strong> Full Saturday breakfast, 90 min prior</li>
+          <li><strong>During:</strong> 1 banana at 45 min (~23g carbs)</li>
+          <li><strong>After:</strong> Chocolate milk immediately post-ride</li>
+          <li>~700–900 kcal burned total</li>
+        </ul>
+      </div>
+      <div class="fuel-card">
+        <div class="fuel-ride-type">Sunday long rides (90 min–3 hrs)</div>
+        <h4>Full fuelling protocol</h4>
+        <ul class="fuel-list">
+          <li><strong>Before:</strong> Big porridge breakfast 2–2.5 hrs prior</li>
+          <li><strong>During:</strong> 40g carbs every 45 min — see options below</li>
+          <li><strong>After:</strong> Chocolate milk + recovery plate within 45 min</li>
+          <li>~900–1,400 kcal burned on 2–3 hr rides</li>
+        </ul>
+      </div>
+      <div class="fuel-card">
+        <div class="fuel-ride-type">Tesco on-bike options (~40g carbs each)</div>
+        <h4>Cheap on-bike food picks</h4>
+        <ul class="fuel-list">
+          <li><strong>Banana</strong> — 23g carbs, ~90p for a bunch</li>
+          <li><strong>Jaffa Cakes ×3</strong> — 35g carbs, easy to eat riding</li>
+          <li><strong>Nature Valley bar</strong> — 38g carbs, ~60p</li>
+          <li><strong>Tesco malt loaf slice</strong> — 38g carbs, very cheap</li>
+          <li><strong>Mini malt loaf</strong> — individual pouches, ~30g carbs</li>
+          <li><strong>Tesco dried mango strips</strong> — 35g carbs, 30g pack</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOPPING -->
+  <div class="shopping-section">
+    <div class="section-header" style="padding-top:0; border-bottom:none; margin-bottom:20px">
+      <div class="section-eyebrow">Weekly shop guide</div>
+      <h2>Tesco Weekly Staples</h2>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.7">Stock up on these weekly. Most items are available in Tesco Express or Metro. Pick up fresh items (wraps, sandwiches) day-by-day. The <strong style="color:var(--ink2)">chiller staples</strong> are the core — buy these at the start of each week.</p>
+    <div class="shopping-cols">
+      <div class="shop-col">
+        <h4>Weekly Tesco Buy (Mon morning)</h4>
+        <div class="shop-category">
+          <div class="shop-cat-title">Protein Staples</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>Tesco 0% Fat Greek Yogurt 500g pot ×2</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Tesco High-Protein Yogurt pots ×4</span><span class="shop-price">~£3.00</span></div>
+            <div class="shop-item"><span>Tesco pre-cooked boiled eggs ×6 pack</span><span class="shop-price">~£2.20</span></div>
+            <div class="shop-item"><span>Tesco cooked chicken breast slices 2× packs</span><span class="shop-price">~£3.50</span></div>
+            <div class="shop-item"><span>Tesco chocolate milk 1L carton</span><span class="shop-price">~£1.10</span></div>
+          </div>
+        </div>
+        <div class="shop-category">
+          <div class="shop-cat-title">Carb & Breakfast Base</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>Tesco rolled oats 1kg (lasts 2–3 wks)</span><span class="shop-price">~£1.09</span></div>
+            <div class="shop-item"><span>Tesco semi-skimmed milk 2L</span><span class="shop-price">~£1.25</span></div>
+            <div class="shop-item"><span>Tesco granola 500g (lasts 2 wks)</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Bananas bunch ×6</span><span class="shop-price">~£0.75</span></div>
+            <div class="shop-item"><span>Wholegrain bread loaf</span><span class="shop-price">~£1.20</span></div>
+          </div>
+        </div>
+        <div class="shop-category">
+          <div class="shop-cat-title">Snacks & Extras</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>Tesco peanut butter sachets ×6 pack</span><span class="shop-price">~£2.50</span></div>
+            <div class="shop-item"><span>Tesco mixed nuts 200g bag</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Tesco protein bars ×4 pack</span><span class="shop-price">~£3.50</span></div>
+            <div class="shop-item"><span>Apples, satsumas, mixed fruit</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Tesco malt loaf (on-bike fuel)</span><span class="shop-price">~£0.75</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="shop-col">
+        <h4>Buy Fresh Daily (at Tesco)</h4>
+        <div class="shop-category">
+          <div class="shop-cat-title">Lunchtime (pick up day-of)</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>Tesco ready-made sandwich or wrap (~£3–4)</span><span class="shop-price">~£3.50</span></div>
+            <div class="shop-item"><span>Tesco protein pot or salad pot</span><span class="shop-price">~£2.50</span></div>
+            <div class="shop-item"><span>Tesco snack veg (carrots, cucumber, cherry tom)</span><span class="shop-price">~£0.80</span></div>
+            <div class="shop-item"><span>Tesco hummus 60g pot (daily)</span><span class="shop-price">~£0.60</span></div>
+          </div>
+        </div>
+        <div class="shop-category">
+          <div class="shop-cat-title">Weekend (at home)</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>Tesco microwaveable rice pouches ×4</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Tesco smoked salmon 100g pack</span><span class="shop-price">~£2.50</span></div>
+            <div class="shop-item"><span>Fresh eggs ×12 (home cooking)</span><span class="shop-price">~£2.00</span></div>
+            <div class="shop-item"><span>Salad bags ×2</span><span class="shop-price">~£1.50</span></div>
+          </div>
+        </div>
+        <div class="shop-category">
+          <div class="shop-cat-title">Gousto (separate budget)</div>
+          <div class="shop-items">
+            <div class="shop-item"><span>4-recipe box (serves 2) per week</span><span class="shop-price">~£30–36</span></div>
+            <div class="shop-item"><span>Or 2-recipe box if cooking for 1</span><span class="shop-price">~£22–26</span></div>
+          </div>
+        </div>
+        <div class="budget-bar">
+          <div>
+            <div class="budget-label">Est. weekly Tesco spend (B'fast + Lunch + Snacks)</div>
+          </div>
+          <div class="budget-val">~£35–42/wk</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="plan-footer">
+  <div class="footer-inner">
+    <p><strong style="color:var(--ink2)">Disclaimer:</strong> This plan is a general nutrition guide based on estimated calorie requirements for a 50+ male returning to cycling at 6 hrs/week with a weight loss goal. Individual needs vary based on actual body weight, height, metabolic rate, and health status. Always consult your GP or a registered dietitian before making significant dietary changes, particularly if you have any existing health conditions. Specific Tesco product availability and pricing may vary by store and season. Gousto recipe selection changes weekly — use the calorie and macro targets given as a guide when choosing recipes each week.</p>
+  </div>
+</div>
+
+<script>
+function toggleDay(card) { card.classList.toggle('open'); }
+
+function showWeek(id, btn) {
+  document.querySelectorAll('.week-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.wtab').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
