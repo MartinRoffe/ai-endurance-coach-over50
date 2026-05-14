@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import os
+import secrets
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
@@ -38,8 +40,30 @@ def _build_calendar_ctx() -> dict[str, Any]:
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
+_security = HTTPBasic(auto_error=False)
 
-app = FastAPI(title="Daily Readiness", docs_url=None, redoc_url=None)
+def _require_auth(credentials: Optional[HTTPBasicCredentials] = Depends(_security)) -> None:
+    expected_user = os.getenv("DASHBOARD_USER", "")
+    expected_pass = os.getenv("DASHBOARD_PASSWORD", "")
+    if not expected_user or not expected_pass:
+        return  # auth not configured — open access (local-only use)
+    if credentials is None or not (
+        secrets.compare_digest(credentials.username.encode(), expected_user.encode())
+        and secrets.compare_digest(credentials.password.encode(), expected_pass.encode())
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+app = FastAPI(
+    title="Daily Readiness",
+    docs_url=None,
+    redoc_url=None,
+    dependencies=[Depends(_require_auth)],
+)
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
 
