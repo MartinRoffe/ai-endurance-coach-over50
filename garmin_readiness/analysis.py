@@ -1,0 +1,255 @@
+"""Post-training analysis: fetch activity detail from Garmin and generate Claude commentary."""
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+from contextlib import contextmanager
+from datetime import date, timedelta
+from pathlib import Path
+from typing import Any, Optional
+
+from .history import DB_PATH, _conn
+from .plan import session_for_date
+
+# ── DB schema ────────────────────────────────────────────────────────────────
+
+def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS activity_analyses (
+            activity_id INTEGER PRIMARY KEY,
+            hr_zones_json  TEXT,
+            training_effect REAL,
+            training_effect_label TEXT,
+            aerobic_te_message TEXT,
+            anaerobic_te REAL,
+            training_load REAL,
+            avg_respiration REAL,
+            analysis_text TEXT,
+            analysed_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
+# ── Fetch detail from Garmin API ─────────────────────────────────────────────
+
+def fetch_activity_detail(api: Any, activity_id: int) -> dict:
+    """Return a merged dict of activity summary + HR zones."""
+    summary_raw = api.get_activity(activity_id)
+    s = summary_raw.get("summaryDTO", {})
+
+    hr_zones_raw = api.get_activity_hr_in_timezones(activity_id)
+    total_secs = sum(z.get("secsInZone", 0) for z in hr_zones_raw) or 1
+    hr_zones = [
+        {
+            "zone": z["zoneNumber"],
+            "secs": round(z["secsInZone"]),
+            "pct": round(z["secsInZone"] / total_secs * 100),
+            "low_bpm": z.get("zoneLowBoundary"),
+        }
+        for z in sorted(hr_zones_raw, key=lambda x: x["zoneNumber"])
+    ]
+
+    return {
+        "training_effect": s.get("trainingEffect"),
+        "training_effect_label": s.get("trainingEffectLabel"),
+        "aerobic_te_message": s.get("aerobicTrainingEffectMessage"),
+        "anaerobic_te": s.get("anaerobicTrainingEffect"),
+        "training_load": s.get("activityTrainingLoad"),
+        "avg_respiration": s.get("avgRespirationRate"),
+        "hr_zones": hr_zones,
+    }
+
+
+def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
+    with _conn() as con:
+        _ensure_analysis_schema(con)
+        con.execute(
+            """INSERT OR REPLACE INTO activity_analyses
+               (activity_id, hr_zones_json, training_effect, training_effect_label,
+                aerobic_te_message, anaerobic_te, training_load, avg_respiration,
+                analysis_text)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                activity_id,
+                json.dumps(detail["hr_zones"]),
+                detail.get("training_effect"),
+                detail.get("training_effect_label"),
+                detail.get("aerobic_te_message"),
+                detail.get("anaerobic_te"),
+                detail.get("training_load"),
+                detail.get("avg_respiration"),
+                analysis_text,
+            ),
+        )
+
+
+def load_analysis(activity_id: int) -> Optional[dict]:
+    with _conn() as con:
+        _ensure_analysis_schema(con)
+        row = con.execute(
+            "SELECT * FROM activity_analyses WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    d = dict(row)
+    if d.get("hr_zones_json"):
+        d["hr_zones"] = json.loads(d["hr_zones_json"])
+    else:
+        d["hr_zones"] = []
+    return d
+
+
+# ── Claude analysis ──────────────────────────────────────────────────────────
+
+def _fmt_secs(s: int) -> str:
+    m, sec = divmod(s, 60)
+    h, m = divmod(m, 60)
+    return f"{h}h{m:02d}m" if h else f"{m}m{sec:02d}s"
+
+
+def _te_label(label: Optional[str]) -> str:
+    if not label:
+        return "unknown"
+    return label.replace("_", " ").title()
+
+
+def generate_analysis(activity: dict, detail: dict) -> str:
+    """Call Claude Haiku to analyse the workout and return a short commentary."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return _rule_based_analysis(activity, detail)
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+
+    prompt = _build_analysis_prompt(activity, detail)
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            system=(
+                "You are an experienced cycling coach reviewing a completed training session. "
+                "Be direct, specific, and evidence-based. Reference the numbers. "
+                "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return msg.content[0].text
+    except Exception:
+        return _rule_based_analysis(activity, detail)
+
+
+def _build_analysis_prompt(activity: dict, detail: dict) -> str:
+    act_date = activity.get("date", "")
+    d_obj = date.fromisoformat(act_date) if act_date else None
+
+    dur_fmt = _fmt_secs(int(activity.get("duration_seconds") or 0))
+    dist_km = round((activity.get("distance_meters") or 0) / 1000, 1)
+    avg_hr = activity.get("avg_hr")
+    max_hr = activity.get("max_hr")
+    calories = activity.get("calories")
+    elev = activity.get("elevation_gain")
+    name = activity.get("name") or activity.get("type_key", "ride")
+
+    hr_zones = detail.get("hr_zones", [])
+    zone_lines = []
+    for z in hr_zones:
+        bar = "█" * max(1, z["pct"] // 5)
+        zone_lines.append(
+            f"  Z{z['zone']} (≥{z['low_bpm']}bpm): {bar} {z['pct']}%  {_fmt_secs(z['secs'])}"
+        )
+
+    te = detail.get("training_effect")
+    te_label = _te_label(detail.get("training_effect_label"))
+    tl = detail.get("training_load")
+    resp = detail.get("avg_respiration")
+    aerobic_msg = (detail.get("aerobic_te_message") or "").replace("_", " ")
+
+    # Planned session for comparison
+    plan_line = ""
+    if d_obj:
+        session = session_for_date(d_obj)
+        if session:
+            stype, slabel, sdur = session
+            plan_line = f"\nPlanned workout for this day: {slabel} ({stype}, {sdur}m)"
+
+    lines = [
+        f"Activity: {name}",
+        f"Date: {act_date}",
+        f"Duration: {dur_fmt}  Distance: {dist_km} km",
+        f"Avg HR: {avg_hr} bpm  Max HR: {max_hr} bpm",
+        f"Calories: {calories}  Elevation gain: {elev} m",
+        f"Aerobic training effect: {te} ({te_label}) — {aerobic_msg}",
+        f"Training load: {tl}",
+        f"Avg respiration: {resp} breaths/min" if resp else "",
+        "",
+        "Heart rate zone distribution:",
+        *zone_lines,
+        plan_line,
+        "",
+        "Please provide:",
+        "1. A one-sentence headline: how well was this session executed?",
+        "2. Two or three sentences on the HR zone distribution — was it appropriate for this session type?",
+        "3. One sentence on the training effect and what it means for fitness adaptation.",
+        "4. One sentence on recovery — how demanding was this relatively?",
+        "Keep it under 150 words. Plain paragraphs, no headers or bullets.",
+    ]
+    return "\n".join(l for l in lines if l is not None)
+
+
+def _rule_based_analysis(activity: dict, detail: dict) -> str:
+    te = detail.get("training_effect") or 0
+    te_label = _te_label(detail.get("training_effect_label"))
+    hr_zones = detail.get("hr_zones", [])
+
+    z2_pct = next((z["pct"] for z in hr_zones if z["zone"] == 2), 0)
+    z3_pct = next((z["pct"] for z in hr_zones if z["zone"] == 3), 0)
+    high_zone_pct = sum(z["pct"] for z in hr_zones if z["zone"] >= 4)
+
+    if high_zone_pct > 20:
+        intensity = "high-intensity session with significant time in zones 4-5"
+    elif z3_pct > 40:
+        intensity = "moderate-intensity session predominantly in zone 3"
+    elif z2_pct > 40:
+        intensity = "good aerobic session with solid zone 2 work"
+    else:
+        intensity = "mixed-intensity session"
+
+    return (
+        f"This was a {intensity}. "
+        f"Aerobic training effect: {te:.1f} ({te_label}). "
+        f"{'Consider more zone 2 work to build aerobic base.' if z2_pct < 20 else 'Zone distribution looks reasonable for this type of session.'}"
+    )
+
+
+# ── Main entry point used by server ─────────────────────────────────────────
+
+def refresh_analyses(api: Any, days: int = 14) -> None:
+    """Fetch detail + generate analysis for any unanalysed activities in the window."""
+    from .history import load_recent_activities
+    activities = load_recent_activities(days=days)
+    for act in activities:
+        act_id = act["activity_id"]
+        if load_analysis(act_id) is not None:
+            continue  # already done
+        try:
+            detail = fetch_activity_detail(api, act_id)
+            text = generate_analysis(act, detail)
+            save_detail(act_id, detail, text)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("analysis failed for %s: %s", act_id, exc)
+
+
+def load_analyses_for_activities(activities: list[dict]) -> list[dict]:
+    """Return activities enriched with analysis data (hr_zones, analysis_text, etc.)."""
+    result = []
+    for act in activities:
+        a = dict(act)
+        analysis = load_analysis(act["activity_id"])
+        if analysis:
+            a.update(analysis)
+        result.append(a)
+    return result

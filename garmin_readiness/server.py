@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
+from .analysis import load_analyses_for_activities, refresh_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import PLAN_START as _PLAN_START, build_calendar_weeks
@@ -210,6 +211,40 @@ async def dashboard(request: Request, date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     ctx = _build_context(target)
     return TEMPLATES.TemplateResponse(request=request, name="dashboard.html", context=ctx)
+
+
+@app.get("/analysis", response_class=HTMLResponse)
+async def analysis_view(request: Request):
+    activities_raw = load_recent_activities(days=14)
+    activities = load_analyses_for_activities(
+        [enrich_activity(a) for a in activities_raw]
+    )
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="analysis.html",
+        context={"activities": activities},
+    )
+
+
+@app.get("/analysis-refresh", response_class=RedirectResponse)
+async def analysis_refresh():
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        api = get_api(email_addr, password)
+        activities_raw = load_recent_activities(days=14)
+        if activities_raw:
+            try:
+                from .metrics import fetch_activities
+                acts_raw = fetch_activities(api, days=14)
+                save_activities(acts_raw)
+            except Exception:
+                pass
+        try:
+            refresh_analyses(api, days=14)
+        except Exception:
+            pass
+    return RedirectResponse(url="/analysis", status_code=303)
 
 
 @app.get("/calendar", response_class=HTMLResponse)

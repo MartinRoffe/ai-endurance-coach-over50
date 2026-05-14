@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post-Training Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
+    }
+  </script>
+  <style>
+    body { background: #0f1117; }
+    .zone-bar { height: 8px; border-radius: 4px; }
+    .z1 { background: #64748b; }
+    .z2 { background: #34d399; }
+    .z3 { background: #facc15; }
+    .z4 { background: #f97316; }
+    .z5 { background: #ef4444; }
+  </style>
+</head>
+<body class="text-slate-200 font-mono min-h-screen">
+
+  {% set active_tab = 'analysis' %}
+  {% include 'nav.html' %}
+
+  <div class="p-6">
+  <div class="max-w-5xl mx-auto">
+
+    <div class="flex items-end justify-between mb-6">
+      <div>
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Post-Training</p>
+        <h1 class="text-2xl font-bold text-white">Activity Analysis</h1>
+      </div>
+      <a href="/analysis-refresh"
+         class="px-4 py-2 rounded-lg bg-[#1e2030] hover:bg-[#2a2d42] border border-[#2a2d42] text-xs text-slate-400 hover:text-slate-200 transition-colors">
+        Fetch &amp; Analyse ↺
+      </a>
+    </div>
+
+    {% if not activities %}
+      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-8 text-center">
+        <p class="text-slate-500 text-sm mb-3">No activities in the last 14 days.</p>
+        <a href="/analysis-refresh" class="text-sky-400 hover:text-sky-300 text-sm transition-colors">
+          Fetch from Garmin Connect ↺
+        </a>
+      </div>
+    {% else %}
+
+      <div class="space-y-5">
+      {% for a in activities %}
+      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
+
+        <!-- Activity header -->
+        <div class="flex items-start gap-3 mb-4">
+          <span class="text-2xl mt-0.5">{{ a.icon }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-base font-semibold text-white leading-tight">{{ a.name or a.type_label }}</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              {{ a.type_label }}{% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}
+            </p>
+          </div>
+          {% if a.training_effect_label %}
+            {% set te_label = a.training_effect_label | replace('_', ' ') | title %}
+            {% set te_colours = {
+              'Recovery':     'border-slate-600 text-slate-300 bg-slate-800/50',
+              'Base':         'border-emerald-700 text-emerald-300 bg-emerald-900/20',
+              'Tempo':        'border-yellow-600 text-yellow-300 bg-yellow-900/20',
+              'Threshold':    'border-orange-600 text-orange-300 bg-orange-900/20',
+              'Overreaching': 'border-red-600 text-red-300 bg-red-900/20',
+            } %}
+            <span class="px-3 py-1 rounded-full text-[11px] font-semibold border flex-shrink-0
+                         {{ te_colours.get(te_label, 'border-slate-600 text-slate-300 bg-slate-800/50') }}">
+              {{ te_label }}
+            </span>
+          {% endif %}
+        </div>
+
+        <!-- Stats row -->
+        <div class="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+          {% if a.duration_fmt %}
+          <div>
+            <p class="text-xs text-slate-500">Duration</p>
+            <p class="text-sm font-semibold">{{ a.duration_fmt }}</p>
+          </div>
+          {% endif %}
+          {% if a.distance_fmt %}
+          <div>
+            <p class="text-xs text-slate-500">Distance</p>
+            <p class="text-sm font-semibold">{{ a.distance_fmt }}</p>
+          </div>
+          {% endif %}
+          {% if a.avg_hr %}
+          <div>
+            <p class="text-xs text-slate-500">Avg HR</p>
+            <p class="text-sm font-semibold">{{ a.avg_hr | int }} bpm</p>
+          </div>
+          {% endif %}
+          {% if a.max_hr %}
+          <div>
+            <p class="text-xs text-slate-500">Max HR</p>
+            <p class="text-sm font-semibold">{{ a.max_hr | int }} bpm</p>
+          </div>
+          {% endif %}
+          {% if a.training_effect %}
+          <div>
+            <p class="text-xs text-slate-500">Aerobic TE</p>
+            <p class="text-sm font-semibold">{{ "%.1f"|format(a.training_effect) }}</p>
+          </div>
+          {% endif %}
+          {% if a.training_load %}
+          <div>
+            <p class="text-xs text-slate-500">Training Load</p>
+            <p class="text-sm font-semibold">{{ a.training_load | int }}</p>
+          </div>
+          {% endif %}
+          {% if a.calories %}
+          <div>
+            <p class="text-xs text-slate-500">Calories</p>
+            <p class="text-sm font-semibold">{{ a.calories | int }}</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- HR zones -->
+        {% if a.hr_zones %}
+        <div class="mb-4">
+          <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Heart Rate Zones</p>
+          <div class="space-y-1.5">
+            {% for z in a.hr_zones %}
+            {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-500 w-5 text-right">Z{{ z.zone }}</span>
+              <div class="flex-1 bg-[#1e2030] rounded-full h-2 overflow-hidden">
+                <div class="zone-bar {{ zc }}" style="width: {{ [z.pct, 100]|min }}%;"></div>
+              </div>
+              <span class="text-[10px] text-slate-400 w-8 text-right">{{ z.pct }}%</span>
+              <span class="text-[10px] text-slate-600 w-12 text-right">
+                {% set m = (z.secs // 60) %}
+                {% set s = (z.secs % 60) %}
+                {{ m }}m{% if s %}{{ "%02d"|format(s) }}s{% endif %}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Claude analysis -->
+        {% if a.analysis_text %}
+        <div class="border-t border-[#1e2030] pt-4">
+          <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Coach's Analysis</p>
+          {% for para in a.analysis_text.strip().split('\n\n') %}
+            {% if para.strip() %}
+              <p class="text-sm text-slate-300 leading-relaxed {% if not loop.last %}mb-2{% endif %}">{{ para.strip() }}</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="border-t border-[#1e2030] pt-4">
+          <p class="text-[11px] text-slate-500">
+            No analysis yet —
+            <a href="/analysis-refresh" class="text-sky-500 hover:text-sky-400 transition-colors">fetch &amp; analyse ↺</a>
+          </p>
+        </div>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+      </div>
+
+    {% endif %}
+
+  </div>
+  </div>
+</body>
+</html>
