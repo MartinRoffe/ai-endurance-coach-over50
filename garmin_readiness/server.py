@@ -13,7 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
-from .analysis import load_analyses_for_activities, refresh_analyses
+from .analysis import load_analyses_for_activities, prefetch_workout_descriptions, refresh_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import PLAN_START as _PLAN_START, build_calendar_weeks
@@ -287,9 +287,18 @@ async def performance_view(request: Request):
     )
 
 
+_BIKE_TYPES = {"bike", "tempo", "ftp", "long"}
+
 @app.get("/calendar", response_class=HTMLResponse)
 async def calendar_view(request: Request):
     ctx = _build_calendar_ctx()
+    cycling_labels = list({
+        day["label"]
+        for week in ctx["weeks"]
+        for day in week["days"]
+        if day["type"] in _BIKE_TYPES
+    })
+    ctx["workout_descs"] = prefetch_workout_descriptions(cycling_labels)
     return TEMPLATES.TemplateResponse(request=request, name="calendar.html", context=ctx)
 
 

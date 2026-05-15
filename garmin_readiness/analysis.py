@@ -253,3 +253,98 @@ def load_analyses_for_activities(activities: list[dict]) -> list[dict]:
             a.update(analysis)
         result.append(a)
     return result
+
+
+# ── Workout descriptions (calendar modal coaching notes) ─────────────────────
+
+# Exact step structure of each session type — mirrors workouts.py
+_STEP_SUMMARIES: dict[str, str] = {
+    "Easy Spin":        "10m warm-up → Z1–2 easy riding → 10m cool-down",
+    "Zone 2 Steady":    "10m warm-up → sustained Z2 main block → 10m cool-down",
+    "Recovery Spin":    "10m warm-up → Z1 only (very easy) → 10m cool-down",
+    "Structured Z2":    "10m warm-up → 3 × (12m Z2 + 2m easy recovery) → 10m cool-down",
+    "Z2 + Hills":       "10m warm-up → 20m Z2 → 4 × (3m Z3–4 hill effort + 3m Z1 recovery) → 6m cool-down",
+    "Cadence Drills":   "10m warm-up → 5 × (3m at 90–110 rpm + 2m Z2) → 15m Z2 steady → 10m cool-down",
+    "Hilly Z2":         "10m warm-up → Z2 riding on hilly terrain (Z3 accepted on climbs) → 10m cool-down",
+    "Z2 Endurance":     "10m warm-up → sustained Z2 main block → 10m cool-down",
+    "Low Cadence":      "10m warm-up → 5 × (4m at 60–70 rpm + 2m Z1 recovery) → 10m Z2 → 10m cool-down",
+    "Easy Prep Ride":   "10m warm-up → Z1–2 very easy → 10m cool-down",
+    "FTP Test":         "15m warm-up → 3m priming effort → 5m Z1 easy → 20-min all-out effort → 17m cool-down",
+    "FTP Re-test":      "15m warm-up → 3m priming effort → 5m Z1 easy → 20-min all-out effort → 17m cool-down",
+    "Final FTP Test":   "15m warm-up → 3m priming effort → 5m Z1 easy → 20-min all-out effort → 17m cool-down",
+    "Tempo Intervals":  "15m warm-up → 3 × (10m Z4 + 5m Z1 recovery) → 5m cool-down",
+    "Long Ride":        "15m warm-up → sustained Z2 main block → 15m cool-down",
+    "Long Ride (Easy)": "15m warm-up → easy Z1–2 riding → 15m cool-down",
+}
+
+
+def _ensure_workout_desc_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS workout_descriptions (
+            label TEXT PRIMARY KEY,
+            description TEXT NOT NULL,
+            generated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def _load_workout_descs() -> dict[str, str]:
+    with _conn() as con:
+        _ensure_workout_desc_schema(con)
+        rows = con.execute("SELECT label, description FROM workout_descriptions").fetchall()
+    return {r["label"]: r["description"] for r in rows}
+
+
+def prefetch_workout_descriptions(labels: list[str]) -> dict[str, str]:
+    """Return {label: coaching_description} for all labels; generate missing ones via Claude."""
+    existing = _load_workout_descs()
+    missing = [l for l in labels if l not in existing]
+    if not missing:
+        return existing
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return existing
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+
+    lines = [
+        "You are an experienced cycling coach. For each workout below write exactly 2 sentences:",
+        "Sentence 1: what physiological adaptation this session targets and why it's in the plan.",
+        "Sentence 2: the single most important execution tip for getting it right.",
+        "Reply ONLY with valid JSON mapping label → two-sentence string. No extra keys or text.",
+        "",
+        "Workouts:",
+    ]
+    for label in missing:
+        summary = _STEP_SUMMARIES.get(label, label)
+        lines.append(f'"{label}": {summary}')
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": "\n".join(lines)}],
+        )
+        import json as _json
+        raw = msg.content[0].text.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]
+            raw = raw.rsplit("```", 1)[0].strip()
+        result: dict[str, str] = _json.loads(raw)
+        with _conn() as con:
+            _ensure_workout_desc_schema(con)
+            for label, desc in result.items():
+                if isinstance(desc, str):
+                    con.execute(
+                        "INSERT OR REPLACE INTO workout_descriptions (label, description) VALUES (?,?)",
+                        (label, desc),
+                    )
+        existing.update(result)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("workout desc generation failed: %s", exc)
+
+    return existing

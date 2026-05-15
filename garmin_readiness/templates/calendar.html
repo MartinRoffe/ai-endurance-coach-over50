@@ -8,17 +8,11 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'] },
-        }
-      }
+      theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
     }
   </script>
   <style>
     body { background: #0f1117; }
-
-    /* session type colours */
     .sess-rest     { background: #1a1d25; border-color: #2a2d3a; color: #4a5068; }
     .sess-strength { background: #1e1228; border-color: #6d28d9; color: #c4b5fd; }
     .sess-bike     { background: #0d2118; border-color: #059669; color: #6ee7b7; }
@@ -26,13 +20,11 @@
     .sess-ftp      { background: #1f0e05; border-color: #ea580c; color: #fdba74; }
     .sess-ruck     { background: #1f0a1a; border-color: #be185d; color: #f9a8d4; }
     .sess-long     { background: #1a1205; border-color: #b45309; color: #fde68a; }
-
-    /* today ring */
-    .today-ring { outline: 2px solid #38bdf8; outline-offset: 2px; }
-    /* past fade */
-    .is-past { opacity: 0.45; }
-
-    .day-header { color: #475569; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .today-ring    { outline: 2px solid #38bdf8; outline-offset: 2px; }
+    .is-past       { opacity: 0.45; }
+    .day-header    { color: #475569; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .clickable-session { cursor: pointer; }
+    .clickable-session:hover { filter: brightness(1.2); }
   </style>
 </head>
 <body class="text-slate-200 font-mono min-h-screen">
@@ -46,7 +38,7 @@
     <div class="mb-6">
       <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">12-Week Training Plan</p>
       <h1 class="text-2xl font-bold text-white">Calendar</h1>
-      <p class="text-xs text-slate-500 mt-1">{{ plan_start.strftime("%-d %b %Y") }} → {{ (plan_start + range(84)|list|last|int|timedelta_days).strftime("%-d %b %Y") if false else "9 Aug 2026" }}</p>
+      <p class="text-xs text-slate-500 mt-1">{{ plan_start.strftime("%-d %b %Y") }} → 9 Aug 2026</p>
     </div>
 
     <!-- Legend -->
@@ -58,6 +50,7 @@
       <span class="px-2 py-0.5 rounded text-[11px] border sess-ruck">Ruck</span>
       <span class="px-2 py-0.5 rounded text-[11px] border sess-long">Long Ride</span>
       <span class="px-2 py-0.5 rounded text-[11px] border sess-rest">Rest</span>
+      <span class="text-[11px] text-slate-600 self-center ml-2">· click any cycling session for details</span>
     </div>
 
     <!-- Day-of-week header -->
@@ -71,17 +64,23 @@
     <!-- Weeks -->
     {% for week in weeks %}
     <div class="grid grid-cols-8 gap-1 mb-1">
-      <!-- Week label -->
       <div class="flex flex-col items-end justify-center pr-2">
         <span class="text-[11px] text-slate-600">W{{ "%02d"|format(week.week_num) }}</span>
         <span class="text-[10px] text-slate-700">{{ week.start.strftime("%-d %b") }}</span>
       </div>
 
-      <!-- Days Mon–Sun -->
       {% for day in week.days %}
+      {% set is_cycling = day.type in ['bike', 'tempo', 'ftp', 'long'] %}
       <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type }}
                   {% if day.is_today %}today-ring{% endif %}
-                  {% if day.is_past %}is-past{% endif %}">
+                  {% if day.is_past %}is-past{% endif %}
+                  {% if is_cycling %}clickable-session{% endif %}"
+           {% if is_cycling %}
+             data-label="{{ day.label }}"
+             data-dur="{{ day.dur_min }}"
+             data-dur-fmt="{{ day.dur_fmt }}"
+             onclick="openModal(this)"
+           {% endif %}>
         <div class="flex items-start justify-between mb-0.5">
           <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
           {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
@@ -102,5 +101,201 @@
   </div>
   </div>
 
+  <!-- ── Modal overlay ──────────────────────────────────────────────────────── -->
+  <div id="modal-overlay"
+       class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4"
+       onclick="if(event.target===this) closeModal()">
+    <div class="bg-[#161b27] border border-[#2a2d42] rounded-2xl w-full max-w-md shadow-2xl z-50 overflow-hidden">
+
+      <!-- Modal header -->
+      <div id="modal-header" class="px-6 pt-5 pb-4 border-b border-[#1e2030]">
+        <div class="flex items-start justify-between">
+          <div>
+            <p id="modal-type" class="text-[11px] uppercase tracking-widest mb-1 text-slate-500"></p>
+            <h2 id="modal-title" class="text-lg font-bold text-white"></h2>
+            <p id="modal-dur" class="text-sm text-slate-400 mt-0.5"></p>
+          </div>
+          <button onclick="closeModal()"
+                  class="text-slate-500 hover:text-slate-300 transition-colors ml-4 mt-0.5 text-xl leading-none">✕</button>
+        </div>
+      </div>
+
+      <!-- Coach description -->
+      <div id="modal-desc" class="px-6 py-4 border-b border-[#1e2030] text-sm text-slate-300 leading-relaxed"></div>
+
+      <!-- Steps -->
+      <div class="px-6 py-4">
+        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-3">Session Structure</p>
+        <div id="modal-steps" class="space-y-1.5"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ── Workout descriptions from server (Claude-generated, cached) ────────────
+    const WORKOUT_DESCS = {{ workout_descs | tojson }};
+
+    // ── Step structures (derived from workouts.py, exact match) ───────────────
+    const WORKOUT_STEPS = {
+      "Easy Spin":        dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Easy riding",  mins:dur-20,   zone:"Z1–2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Zone 2 Steady":    dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Z2 steady",    mins:dur-20,   zone:"Z2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Recovery Spin":    dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1"},
+        {name:"Recovery",     mins:dur-20,   zone:"Z1"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Structured Z2":    _  => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Z2 block",     mins:12,       zone:"Z2",  repeat:"× 3  (2m Z1 between each)"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Z2 + Hills":       _  => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Z2 steady",    mins:20,       zone:"Z2"},
+        {name:"Hill effort",  mins:3,        zone:"Z3–4", repeat:"× 4  (3m Z1 recovery between)"},
+        {name:"Cool-down",    mins:6,        zone:"Z1"},
+      ],
+      "Cadence Drills":   _  => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"High cadence", mins:3,        zone:"90–110 rpm", repeat:"× 5  (2m Z2 between each)"},
+        {name:"Z2 steady",    mins:15,       zone:"Z2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Hilly Z2":         dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Hilly riding", mins:dur-20,   zone:"Z2 (Z3 on climbs)"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Z2 Endurance":     dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Z2 steady",    mins:dur-20,   zone:"Z2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Low Cadence":      _  => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Low cadence",  mins:4,        zone:"60–70 rpm", repeat:"× 5  (2m Z1 between each)"},
+        {name:"Z2 steady",    mins:10,       zone:"Z2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "Easy Prep Ride":   dur => [
+        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
+        {name:"Easy riding",  mins:dur-20,   zone:"Z1–2"},
+        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      ],
+      "FTP Test":         _  => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
+        {name:"Priming effort",mins:3,       zone:"Open"},
+        {name:"Easy",         mins:5,        zone:"Z1"},
+        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
+        {name:"Cool-down",    mins:17,       zone:"Z1"},
+      ],
+      "FTP Re-test":      _  => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
+        {name:"Priming effort",mins:3,       zone:"Open"},
+        {name:"Easy",         mins:5,        zone:"Z1"},
+        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
+        {name:"Cool-down",    mins:17,       zone:"Z1"},
+      ],
+      "Final FTP Test":   _  => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
+        {name:"Priming effort",mins:3,       zone:"Open"},
+        {name:"Easy",         mins:5,        zone:"Z1"},
+        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
+        {name:"Cool-down",    mins:17,       zone:"Z1"},
+      ],
+      "Tempo Intervals":  _  => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
+        {name:"Tempo interval",mins:10,      zone:"Z4",  repeat:"× 3  (5m Z1 between each)"},
+        {name:"Cool-down",    mins:5,        zone:"Z1"},
+      ],
+      "Long Ride":        dur => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–2"},
+        {name:"Z2 endurance", mins:dur-30,   zone:"Z2"},
+        {name:"Cool-down",    mins:15,       zone:"Z1"},
+      ],
+      "Long Ride (Easy)": dur => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–2"},
+        {name:"Easy Z2",      mins:dur-30,   zone:"Z1–2"},
+        {name:"Cool-down",    mins:15,       zone:"Z1"},
+      ],
+    };
+
+    // Zone → colour class
+    const ZONE_CLS = {
+      "Z1":                "text-slate-400",
+      "Z1–2":              "text-slate-300",
+      "Z1–3":              "text-slate-300",
+      "Z2":                "text-emerald-400",
+      "Z2 (Z3 on climbs)": "text-teal-400",
+      "Z3–4":              "text-orange-400",
+      "Z4":                "text-orange-500",
+      "Open":              "text-red-400",
+      "Max sustainable":   "text-red-400",
+      "90–110 rpm":        "text-blue-400",
+      "60–70 rpm":         "text-purple-400",
+    };
+
+    function fmtMins(m) {
+      if (m < 60) return m + 'm';
+      const h = Math.floor(m / 60), r = m % 60;
+      return r ? h + 'h ' + r + 'm' : h + 'h';
+    }
+
+    function openModal(el) {
+      const label  = el.dataset.label;
+      const dur    = parseInt(el.dataset.dur, 10);
+      const durFmt = el.dataset.durFmt;
+
+      document.getElementById('modal-type').textContent  = el.classList.contains('sess-ftp')   ? 'FTP Test'
+                                                         : el.classList.contains('sess-tempo') ? 'Tempo'
+                                                         : el.classList.contains('sess-long')  ? 'Long Ride'
+                                                         : 'Cycling';
+      document.getElementById('modal-title').textContent = label;
+      document.getElementById('modal-dur').textContent   = durFmt ? 'Duration: ' + durFmt : '';
+
+      // Coach description
+      const desc = WORKOUT_DESCS[label] || '';
+      document.getElementById('modal-desc').textContent = desc;
+      document.getElementById('modal-desc').classList.toggle('hidden', !desc);
+
+      // Steps
+      const stepFn = WORKOUT_STEPS[label];
+      const steps  = stepFn ? stepFn(dur) : [];
+      const stepsEl = document.getElementById('modal-steps');
+      stepsEl.innerHTML = '';
+      steps.forEach(s => {
+        const zoneCls = ZONE_CLS[s.zone] || 'text-slate-400';
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-3';
+        row.innerHTML = `
+          <div class="w-10 text-right text-[11px] text-slate-500 flex-shrink-0 pt-0.5">${fmtMins(s.mins)}</div>
+          <div class="flex-1">
+            <span class="text-[13px] text-slate-200">${s.name}</span>
+            ${s.repeat ? `<span class="text-[11px] text-slate-500 ml-1">${s.repeat}</span>` : ''}
+            <div class="text-[11px] ${zoneCls} mt-0.5">${s.zone}</div>
+          </div>`;
+        stepsEl.appendChild(row);
+      });
+
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      document.getElementById('modal-overlay').classList.add('flex');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      document.getElementById('modal-overlay').classList.remove('flex');
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  </script>
 </body>
 </html>

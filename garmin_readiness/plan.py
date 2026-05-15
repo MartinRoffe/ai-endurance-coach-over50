@@ -166,6 +166,7 @@ def build_calendar_weeks() -> list[dict]:
                 "type": stype,
                 "label": label,
                 "dur_fmt": dur_fmt,
+                "dur_min": dur,
                 "is_today": d == today,
                 "is_past": d < today,
             })
