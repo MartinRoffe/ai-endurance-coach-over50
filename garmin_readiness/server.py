@@ -13,7 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
-from .analysis import load_analyses_for_activities, prefetch_workout_descriptions, refresh_analyses
+from .analysis import load_analyses_for_activities, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import PLAN_START as _PLAN_START, build_calendar_weeks
@@ -309,7 +309,30 @@ async def training_plan(request: Request):
 
 @app.get("/nutrition", response_class=HTMLResponse)
 async def nutrition_plan(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="nutrition.html", context={})
+    weeks = build_calendar_weeks()
+    unique_sessions = list({(d["type"], d["dur_min"]) for w in weeks for d in w["days"]})
+    nut_targets = prefetch_nutrition_targets(unique_sessions)
+    today = date.today()
+    current_week = max(0, min(11, (today - _PLAN_START).days // 7))
+    # Enrich each day with nutrition target data
+    for week in weeks:
+        for day in week["days"]:
+            key = f"{day['type']}_{day['dur_min']}"
+            target = nut_targets.get(key, {})
+            day["kcal"] = target.get("kcal")
+            day["protein_g"] = target.get("protein_g")
+            day["carbs_g"] = target.get("carbs_g")
+            day["fat_g"] = target.get("fat_g")
+            day["nut_brief"] = target.get("brief")
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="nutrition.html",
+        context={
+            "weeks": weeks,
+            "current_week": current_week,
+            "today": today.isoformat(),
+        },
+    )
 
 
 @app.get("/refresh", response_class=RedirectResponse)

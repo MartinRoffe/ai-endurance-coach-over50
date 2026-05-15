@@ -348,3 +348,104 @@ def prefetch_workout_descriptions(labels: list[str]) -> dict[str, str]:
         logging.getLogger(__name__).warning("workout desc generation failed: %s", exc)
 
     return existing
+
+
+# ── Nutrition targets (Claude-calculated kcal per session type+duration) ─────
+
+_SESSION_TYPE_DESC: dict[str, str] = {
+    "rest":     "complete rest day",
+    "strength": "kettlebell and MaxiClimber strength training",
+    "bike":     "Zone 2 steady cycling",
+    "tempo":    "tempo intervals cycling (high intensity)",
+    "ftp":      "FTP test — maximal 20-minute cycling effort",
+    "ruck":     "weighted rucking carrying 8–15 kg pack",
+    "long":     "long Zone 2 cycling endurance ride",
+}
+
+
+def _ensure_nutrition_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS nutrition_targets (
+            session_key  TEXT PRIMARY KEY,
+            kcal         INTEGER,
+            protein_g    INTEGER,
+            carbs_g      INTEGER,
+            fat_g        INTEGER,
+            brief        TEXT,
+            generated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def _load_nutrition_targets() -> dict[str, dict]:
+    with _conn() as con:
+        _ensure_nutrition_schema(con)
+        rows = con.execute("SELECT * FROM nutrition_targets").fetchall()
+    return {r["session_key"]: dict(r) for r in rows}
+
+
+def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dict]:
+    """Return {f"{type}_{dur}": {kcal, protein_g, carbs_g, fat_g, brief}} for every session."""
+    existing = _load_nutrition_targets()
+    missing = [(t, d) for t, d in sessions if f"{t}_{d}" not in existing]
+    if not missing:
+        return existing
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return existing
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+
+    lines = [
+        "You are a sports nutritionist for a male athlete aged 50+, ~85 kg body weight.",
+        "Goal: support training performance AND maintain a small calorie deficit for ~0.5 kg/week weight loss.",
+        "Protein target: 160 g+ on every day.",
+        "For each training session below provide TOTAL DAILY nutrition targets (all meals + snacks combined).",
+        "Reply ONLY with valid JSON: a dict mapping session_key -> {\"kcal\": int, \"protein_g\": int, \"carbs_g\": int, \"fat_g\": int, \"brief\": \"one-sentence tip\"}",
+        "No extra text, no markdown fences.",
+        "",
+        "Sessions (key: description, duration):",
+    ]
+    for stype, dur in missing:
+        desc = _SESSION_TYPE_DESC.get(stype, stype)
+        key = f"{stype}_{dur}"
+        dur_str = f"{dur} min" if dur > 0 else "no exercise"
+        lines.append(f'"{key}": {desc}, {dur_str}')
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=3000,
+            messages=[{"role": "user", "content": "\n".join(lines)}],
+        )
+        import json as _json
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]
+            raw = raw.rsplit("```", 1)[0].strip()
+        result: dict = _json.loads(raw)
+        with _conn() as con:
+            _ensure_nutrition_schema(con)
+            for key, data in result.items():
+                if isinstance(data, dict):
+                    con.execute(
+                        """INSERT OR REPLACE INTO nutrition_targets
+                           (session_key, kcal, protein_g, carbs_g, fat_g, brief)
+                           VALUES (?,?,?,?,?,?)""",
+                        (
+                            key,
+                            data.get("kcal"),
+                            data.get("protein_g"),
+                            data.get("carbs_g"),
+                            data.get("fat_g"),
+                            data.get("brief"),
+                        ),
+                    )
+        existing.update(result)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("nutrition target generation failed: %s", exc)
+
+    return existing
