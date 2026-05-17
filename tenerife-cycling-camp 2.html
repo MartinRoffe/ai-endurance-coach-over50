@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tenerife Pro Cycling Camp — Los Gigantes</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f2ec;
+    --cream: #f0ebe1;
+    --gold: #c8a45a;
+    --gold-light: #e8c97a;
+    --red: #c0392b;
+    --green: #2d6a4f;
+    --blue: #1a3a5c;
+    --mid: #6b6054;
+    --border: rgba(200, 164, 90, 0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 3rem 2.5rem;
+    position: relative;
+    background:
+      linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.6) 50%, transparent 100%),
+      linear-gradient(135deg, #0d1f35 0%, #1a0a05 40%, #0a0a0a 100%);
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+      radial-gradient(ellipse at 20% 30%, rgba(200,164,90,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(26,58,92,0.3) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s forwards 0.2s;
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 15vw, 11rem);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s forwards 0.4s;
+  }
+
+  .hero h1 span {
+    color: var(--gold);
+    display: block;
+  }
+
+  .hero-sub {
+    font-size: 1rem;
+    color: rgba(245,242,236,0.5);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s forwards 0.6s;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.8s forwards 0.8s;
+  }
+
+  .hero-stat {
+    border-left: 2px solid var(--gold);
+    padding-left: 1rem;
+  }
+
+  .hero-stat .val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .hero-stat .lbl {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(245,242,236,0.4);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 2.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    opacity: 0;
+    animation: fadeUp 0.8s forwards 1.2s;
+  }
+
+  /* STRUCTURE */
+  .section {
+    padding: 4rem 2.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    margin-bottom: 2rem;
+  }
+
+  /* WEEK DIVIDER */
+  .week-divider {
+    background: linear-gradient(90deg, var(--gold), transparent);
+    height: 1px;
+    margin: 1rem 0 2.5rem;
+  }
+
+  .week-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    margin: 3rem 0 1.5rem;
+    padding-left: 2.5rem;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* DAY CARD */
+  .day-card {
+    background: #111;
+    border: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .day-card:hover {
+    border-color: rgba(200,164,90,0.6);
+  }
+
+  .day-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+  }
+
+  .day-card.hard::before { background: var(--red); }
+  .day-card.medium::before { background: var(--gold); }
+  .day-card.easy::before { background: var(--green); }
+  .day-card.rest::before { background: var(--mid); }
+
+  .day-header {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    gap: 1rem;
+    user-select: none;
+  }
+
+  .day-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    color: rgba(245,242,236,0.15);
+    line-height: 1;
+    min-width: 3rem;
+  }
+
+  .day-info {
+    flex: 1;
+  }
+
+  .day-type-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 1px;
+    display: inline-block;
+    margin-bottom: 0.4rem;
+  }
+
+  .hard .day-type-badge { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.4); }
+  .medium .day-type-badge { background: rgba(200,164,90,0.15); color: var(--gold); border: 1px solid rgba(200,164,90,0.3); }
+  .easy .day-type-badge { background: rgba(45,106,79,0.2); color: #52c98a; border: 1px solid rgba(45,106,79,0.4); }
+  .rest .day-type-badge { background: rgba(107,96,84,0.2); color: #a89880; border: 1px solid rgba(107,96,84,0.3); }
+
+  .day-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--white);
+    line-height: 1.3;
+  }
+
+  .day-metrics {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .metric {
+    text-align: right;
+  }
+
+  .metric .mval {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .metric .mlbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(245,242,236,0.3);
+  }
+
+  .day-chevron {
+    color: var(--gold);
+    font-size: 0.8rem;
+    transition: transform 0.3s;
+    min-width: 1rem;
+  }
+
+  .day-card.open .day-chevron {
+    transform: rotate(90deg);
+  }
+
+  .day-body {
+    display: none;
+    padding: 0 1.5rem 1.5rem 4rem;
+    border-top: 1px solid rgba(200,164,90,0.1);
+  }
+
+  .day-card.open .day-body {
+    display: block;
+  }
+
+  .route-desc {
+    font-size: 0.88rem;
+    color: rgba(245,242,236,0.65);
+    line-height: 1.7;
+    margin-top: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .detail-block {
+    background: rgba(200,164,90,0.05);
+    border: 1px solid rgba(200,164,90,0.15);
+    padding: 0.75rem 1rem;
+  }
+
+  .detail-block h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+
+  .detail-block p {
+    font-size: 0.8rem;
+    color: rgba(245,242,236,0.6);
+    line-height: 1.5;
+  }
+
+  .coffee-stop {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(200,164,90,0.08);
+    border: 1px solid rgba(200,164,90,0.2);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--gold-light);
+    margin-bottom: 1rem;
+  }
+
+  /* NUTRITION TABLE */
+  .nutrition-section {
+    background: #0d0d0d;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 4rem 2.5rem;
+  }
+
+  .nutrition-inner {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+
+  .nutrition-cell {
+    background: #111;
+    padding: 1.25rem 1rem;
+  }
+
+  .nutrition-cell.header-cell {
+    background: rgba(200,164,90,0.08);
+  }
+
+  .nutrition-cell h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  .nutrition-cell p {
+    font-size: 0.78rem;
+    color: rgba(245,242,236,0.6);
+    line-height: 1.6;
+  }
+
+  .nutrition-cell .big-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 0.2rem;
+  }
+
+  .meal-plan {
+    margin-top: 1.5rem;
+  }
+
+  .meal-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(200,164,90,0.08);
+    align-items: start;
+  }
+
+  .meal-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-transform: uppercase;
+    padding-top: 0.1rem;
+  }
+
+  .meal-detail h5 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 0.2rem;
+  }
+
+  .meal-detail p {
+    font-size: 0.75rem;
+    color: rgba(245,242,236,0.5);
+    line-height: 1.5;
+  }
+
+  /* TIPS */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .tip-card {
+    background: #111;
+    padding: 1.5rem;
+  }
+
+  .tip-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tip-card h4 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+  }
+
+  .tip-card p {
+    font-size: 0.78rem;
+    color: rgba(245,242,236,0.5);
+    line-height: 1.6;
+  }
+
+  /* WEEKLY LOAD */
+  .load-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .load-bar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: rgba(245,242,236,0.5);
+    min-width: 55px;
+    text-transform: uppercase;
+  }
+
+  .load-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(200,164,90,0.1);
+    position: relative;
+  }
+
+  .load-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    transition: width 1s ease;
+  }
+
+  .load-bar-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* DIVIDERS */
+  .full-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  footer {
+    padding: 2.5rem;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: rgba(245,242,236,0.2);
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 4.5rem; }
+    .hero-stats { gap: 1.5rem; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .nutrition-grid { grid-template-columns: 1fr; }
+    .tips-grid { grid-template-columns: 1fr; }
+    .day-metrics { flex-wrap: wrap; gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Pro Cycling Camp · Los Gigantes, Tenerife</div>
+  <h1>12 Days<span>On Teide</span></h1>
+  <p class="hero-sub">A structured training camp — all routes start & finish in Los Gigantes</p>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="val">12</div>
+      <div class="lbl">Days Riding</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">~580km</div>
+      <div class="lbl">Total Distance</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">~14,000m</div>
+      <div class="lbl">Total Elevation</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">4</div>
+      <div class="lbl">Teide Ascents</div>
+    </div>
+  </div>
+  <div class="scroll-hint">Scroll to explore ↓</div>
+</div>
+
+<!-- INTRO -->
+<div class="section">
+  <div class="section-label">Camp Philosophy</div>
+  <div class="section-title">Built Like a Pro Block</div>
+  <p style="font-size:0.88rem;color:rgba(245,242,236,0.6);line-height:1.8;max-width:620px;">
+    You currently ride 160km/week. This camp takes you to approximately 3× your weekly volume in a periodised structure: hard days are genuinely hard, easy days protect your legs, and coffee rides keep the joy in cycling. The week follows a classic 3:1 load-to-recovery ratio. Every ride starts and finishes at Los Gigantes harbour.
+  </p>
+  <br>
+  <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:1rem;">
+    <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.75rem;color:rgba(245,242,236,0.5);">
+      <span style="width:12px;height:12px;background:#e74c3c;display:inline-block;flex-shrink:0;"></span> HARD — Threshold / climbing
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.75rem;color:rgba(245,242,236,0.5);">
+      <span style="width:12px;height:12px;background:var(--gold);display:inline-block;flex-shrink:0;"></span> MEDIUM — Endurance
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.75rem;color:rgba(245,242,236,0.5);">
+      <span style="width:12px;height:12px;background:#52c98a;display:inline-block;flex-shrink:0;"></span> EASY — Recovery / coffee
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.75rem;color:rgba(245,242,236,0.5);">
+      <span style="width:12px;height:12px;background:var(--mid);display:inline-block;flex-shrink:0;"></span> REST — Active recovery
+    </div>
+  </div>
+</div>
+
+<hr class="full-divider">
+
+<!-- WEEK 1 -->
+<div class="week-label">── WEEK ONE · Building the Base</div>
+<div class="section" style="padding-top:0;">
+
+  <!-- DAY 1 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">01</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Coffee Ride</span>
+        <div class="day-title">Legs Openers — Coastal Loop South</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">40km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">450m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Alcalá seafront — Bar La Caleta</div>
+      <p class="route-desc">Start gently. Head south from Los Gigantes along the TF-47 coast road through Puerto de Santiago and Playa de San Juan, down to Alcalá. Keep the effort conversational — this is about moving your legs after travel, not training. Enjoy the La Gomera views across the channel. Return the same way or via Guía de Isora for a tiny loop variation. Keep heart rate in Zone 1–2 throughout.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Puerto de Santiago → Playa San Juan → Alcalá → return</p></div>
+        <div class="detail-block"><h4>Key Roads</h4><p>TF-47 coastal road (quiet, smooth, flat-ish)</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 1–2 only. Chat pace. No surges. This is a leg-opener.</p></div>
+        <div class="detail-block"><h4>Duration</h4><p>~1.5–2 hrs. Stop for coffee mid-ride. No rush.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 2 -->
+  <div class="day-card medium">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">02</div>
+      <div class="day-info">
+        <span class="day-type-badge">Medium · Endurance</span>
+        <div class="day-title">Tamaimo Climb + Teno Loop</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">65km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">1,100m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Bar Soto, Santiago del Teide</div>
+      <p class="route-desc">Your first proper climb. Head north out of Los Gigantes on the TF-454 toward Tamaimo — 5.8km at 7% average, a proper Category 2 effort that'll reveal your climbing legs. Reach Santiago del Teide for coffee, then swing west into the Teno mountains on quiet roads toward Erjos and El Tanque before looping back south via the coast. Steady endurance pace — this establishes your aerobic base for the week.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Tamaimo (TF-454) → Santiago del Teide → Erjos → El Tanque → Los Silos → coast south → Los Gigantes</p></div>
+        <div class="detail-block"><h4>Key Climb</h4><p>Tamaimo: 5.8km / 7% avg — Cat 2. Steady effort, keep something in reserve.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 2–3. Climbs at solid tempo, descents and flats at easy endurance.</p></div>
+        <div class="detail-block"><h4>Notes</h4><p>First real climb — don't smash it. The Teno roads are quiet and scenic. Bring a light jacket for the descent.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 3 -->
+  <div class="day-card hard">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">03</div>
+      <div class="day-info">
+        <span class="day-type-badge">Hard · Big Climb</span>
+        <div class="day-title">Teide from the West — TF-38 Ascent</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">90km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">2,100m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Bar Parada, Chío — legendary cycling café</div>
+      <p class="route-desc">The signature route from Los Gigantes. Head north through Tamaimo and Santiago del Teide, then follow the TF-38 all the way to the Teide high point at 2,078m. This is 36.6km of climbing gaining 2,068m at 5.6% average — one of the longest sustained climbs in Europe. Stop at Bar Parada in Chío (the pro peloton's favourite stop) before the final push. Descend back to Los Gigantes via the same route. Dress in layers — it's warm at the bottom and cold at the top.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Tamaimo → Santiago del Teide → Chío → TF-38 → Teide high point → descend same route</p></div>
+        <div class="detail-block"><h4>The Climb</h4><p>36.6km total / 2,068m gain / 5.6% avg. Quiet road, good surface. Very little traffic.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Climb at Zone 3–4. Find a sustainable rhythm early — the bulk of climbing is in the first 37km. Last 5km gets tough.</p></div>
+        <div class="detail-block"><h4>Gear</h4><p>Gilet or jacket for descent mandatory. Arm warmers. Sunscreen for the crater. At least 3 bottles or plan to refill at Chío.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 4 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">04</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Recovery</span>
+        <div class="day-title">Active Recovery — Harbour Spin</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">30km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">300m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at harbour café, Los Gigantes — linger as long as you like</div>
+      <p class="route-desc">Yesterday was big. Today is about flushing your legs and protecting your form for the second half of the camp. Ride south along the coast to Playa San Juan and back, keeping everything Zone 1. No climbs, no effort, no heroics. This is where amateurs make mistakes by going too hard — trust the process. After the ride, 10 minutes of stretching is mandatory. Consider a sea swim at the harbour instead of or after the spin.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Puerto de Santiago → Playa San Juan → return. Flat as possible.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 1 only. If you can't hold a conversation, you're going too hard.</p></div>
+        <div class="detail-block"><h4>Recovery Protocol</h4><p>Post-ride: legs up for 20 mins. Sea swim if possible. Foam roll quads & calves.</p></div>
+        <div class="detail-block"><h4>Optional</h4><p>Skip the bike and swim/walk instead. Real recovery sometimes means no saddle.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 5 -->
+  <div class="day-card hard">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">05</div>
+      <div class="day-info">
+        <span class="day-type-badge">Hard · Epic Loop</span>
+        <div class="day-title">Masca + North Coast Grand Tour</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">105km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">2,200m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Buenavista del Norte — town square café</div>
+      <p class="route-desc">The most spectacular day of the camp. Climb to Tamaimo and Santiago del Teide, then continue to the Mirador de Masca. Descend into Masca village (650m altitude) — the descent is technical and hair-raising — then climb out the other side (3.8km at 11.5% avg — a World Top 25 epic climb). Continue to El Palmar and Buenavista del Norte for coffee on the north coast. Return via El Tanque, Erjos, and Santiago del Teide, descending back to Los Gigantes. A full day in the saddle.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Santiago del Teide → Masca descent → Masca climb → El Palmar → Buenavista → El Tanque → Erjos → Santiago del Teide → Los Gigantes</p></div>
+        <div class="detail-block"><h4>Key Climb</h4><p>Masca: 3.8km / 11.5% avg / 430m gain. Brutal and beautiful. One of the most epic climbs in the world.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Masca at Zone 4–5. Long endurance on the rest. Eat and drink early — this is a long day.</p></div>
+        <div class="detail-block"><h4>Notes</h4><p>Start early (7–7:30am) to beat heat and tourist traffic. The Masca descent is technical — brake early, watch for gravel.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 6 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">06</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Coffee Ride</span>
+        <div class="day-title">Banana Plantations & Alcalá Coffee</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">45km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">500m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Guía de Isora — local café in the main square</div>
+      <p class="route-desc">A gentle ramble through the banana plantations above Los Gigantes toward Guía de Isora. The roads weave through lush greenery with views back down to the cliffs — some of the prettiest riding on the island and largely ignored by tourist routes. Descend to Alcalá for a seafront coffee before the easy roll back. This is a social pace — no watches, no power, just enjoying being on a bike in Tenerife.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Cueva del Polvo → banana plantation roads → Guía de Isora → Alcalá → coast back</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 1–2. No structured effort. Enjoy the scenery.</p></div>
+        <div class="detail-block"><h4>Week 1 Total</h4><p>~375km / ~6,650m. Approx 2.3× your normal weekly volume. Well done.</p></div>
+        <div class="detail-block"><h4>Evening</h4><p>Legs up. Good meal. Proud of yourself — Masca yesterday was serious.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<hr class="full-divider">
+
+<!-- WEEK 2 -->
+<div class="week-label">── WEEK TWO · Peak & Punch</div>
+<div class="section" style="padding-top:0;">
+
+  <!-- DAY 7 -->
+  <div class="day-card rest">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">07</div>
+      <div class="day-info">
+        <span class="day-type-badge">Rest Day</span>
+        <div class="day-title">Full Rest — Explore Los Gigantes</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">0km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">Rest</div><div class="mlbl">Protocol</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <p class="route-desc">A full rest day between the two training blocks is non-negotiable. You've covered roughly 375km and 6,600m of climbing in 6 days — your body needs this. Walk to the cliffs viewpoint, take the boat trip to see the 600m vertical walls of Los Gigantes from the sea, or just eat, sleep, and stretch. Stay off the bike completely. This is where the adaptation happens.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Morning</h4><p>Sleep in. Gentle walk to the cliffs viewpoint or along the harbour promenade.</p></div>
+        <div class="detail-block"><h4>Activity</h4><p>Optional: boat trip to see Los Gigantes cliffs from the sea. 30 min swim. Light stretching.</p></div>
+        <div class="detail-block"><h4>Nutrition</h4><p>Eat well but slightly less volume — you're not burning much today. Focus on quality protein and carbs to repair.</p></div>
+        <div class="detail-block"><h4>Evening</h4><p>Plan week 2 mentally. Visualise the Teide loop. Sleep 9 hours.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 8 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">08</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Coffee Ride</span>
+        <div class="day-title">Legs Back — Coastal Ramble with Punchy Climb</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">50km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">600m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Playa San Juan — café on the seafront</div>
+      <p class="route-desc">Wake the legs after rest day. South to Playa San Juan, then a short punch up the climb to Guía de Isora before descending back to the coast and home. Keep the climbing effort controlled — just enough to open the engine, not enough to light it up. This primes you for the hard days ahead in week 2.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Playa San Juan → Guía de Isora climb → return coast</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 2 mostly. One short Zone 3 effort on the climb to wake up the legs.</p></div>
+        <div class="detail-block"><h4>Focus</h4><p>Pedalling mechanics. Smooth cadence. Check your position feels right after the rest day.</p></div>
+        <div class="detail-block"><h4>Notes</h4><p>Don't be tempted to push. Tomorrow is a big day.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 9 -->
+  <div class="day-card hard">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">09</div>
+      <div class="day-info">
+        <span class="day-type-badge">Hard · Teide Repeat</span>
+        <div class="day-title">Teide Full Loop — West Up, South Down</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">115km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">2,400m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Bar Parada, Chío (en route) + Visitor Centre at summit</div>
+      <p class="route-desc">The big loop. Climb Teide via the western TF-38 (same as Day 3) but this time continue over the summit plateau and descend the southern side toward Vilaflor and Arona, then sweep back along the TF-82 to the coast and return north to Los Gigantes. You'll cross multiple climate zones — sub-tropical coast, pine forest, lunar lava fields, and the volcanic crater plateau. One of the greatest cycling experiences in Europe.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Tamaimo → Chío → TF-38 → Teide plateau → Vilaflor → Arona → Los Cristianos → coastal TF-47 north → Los Gigantes</p></div>
+        <div class="detail-block"><h4>Key Stats</h4><p>The TF-38 ascent: 36.6km / 2,068m. Total loop is a genuine all-day epic. Allow 5–7 hours.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Pace the climb at Zone 3 — you have 115km total. The plateau is cold and windy. Descend carefully.</p></div>
+        <div class="detail-block"><h4>Gear</h4><p>Full kit for summit: gilet, arm warmers, knee warmers, gloves. Pack in jersey pockets. 4+ bottles or hydration pack.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 10 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">10</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Recovery</span>
+        <div class="day-title">Recovery Spin — Cliffs Views Route</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">35km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">350m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Los Gigantes harbour — earned it</div>
+      <p class="route-desc">After yesterday's epic, your legs will be asking questions. Answer them gently. A short spin north toward Punta de Teno — one of the most dramatic roads on the island, hugging the coast with views of the cliffs — and back. Legs only, no power. This ride is about moving blood, not building fitness.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → north coast road toward Punta de Teno → return. Keep it short.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 1. Strictly. No matter how good your legs feel.</p></div>
+        <div class="detail-block"><h4>Recovery</h4><p>Post-ride contrast shower. Protein-forward lunch. Afternoon rest.</p></div>
+        <div class="detail-block"><h4>Notes</h4><p>Two more hard days to go — save yourself.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 11 -->
+  <div class="day-card hard">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">11</div>
+      <div class="day-info">
+        <span class="day-type-badge">Hard · Queen Stage</span>
+        <div class="day-title">Masca + Teide Double — The Camp Finale</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">130km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">3,200m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Coffee at Santiago del Teide + Bar Parada Chío — two stops deserved</div>
+      <p class="route-desc">The queen stage. Climb to Santiago del Teide, descend to Masca and climb back out (that 11.5% wall again — you know what to expect now), continue north to Buenavista, swing back south through El Tanque and Erjos, then chain across to Chío and begin the Teide ascent on TF-38 to the high point. Descend back to Los Gigantes. Two of Tenerife's greatest climbs in one day. This is what training camp is about.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Los Gigantes → Santiago del Teide → Masca → Buenavista → El Tanque → Erjos → Chío → Teide TF-38 high point → Los Gigantes</p></div>
+        <div class="detail-block"><h4>Climbs</h4><p>Masca (3.8km / 11.5%) + Teide TF-38 (36.6km / 5.6%). Combined: ~2,500m+ in key ascents.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Masca at Zone 4. Teide at Zone 3 — you'll be tired. Nutrition is everything today.</p></div>
+        <div class="detail-block"><h4>Nutrition</h4><p>Start eating at 30 mins. Gel or bar every 45 mins. Don't wait to feel hungry — you won't catch up.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 12 -->
+  <div class="day-card easy">
+    <div class="day-header" onclick="toggle(this)">
+      <div class="day-num">12</div>
+      <div class="day-info">
+        <span class="day-type-badge">Easy · Celebration Ride</span>
+        <div class="day-title">The Farewell Loop — Cliffs & Coffee</div>
+      </div>
+      <div class="day-metrics">
+        <div class="metric"><div class="mval">40km</div><div class="mlbl">Distance</div></div>
+        <div class="metric"><div class="mval">400m</div><div class="mlbl">Elevation</div></div>
+      </div>
+      <div class="day-chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="coffee-stop">☕ Long coffee stop wherever looks good — this one's for memories</div>
+      <p class="route-desc">The final ride. No training objectives. No zones. Just you, the bike, and the cliffs of Los Gigantes in the morning light. Head north briefly along the coast, take in the views you've earned, stop for the longest coffee of the camp, and roll back. Reflect on what you've done — 580km, 14,000m of climbing, four Teide ascents. You'll go home a different rider than you arrived.</p>
+      <div class="detail-grid">
+        <div class="detail-block"><h4>Route</h4><p>Your choice. Keep it beautiful and keep it easy.</p></div>
+        <div class="detail-block"><h4>Effort</h4><p>Zone 1. Photos welcome. Strava irrelevant today.</p></div>
+        <div class="detail-block"><h4>Camp Total</h4><p>~580km / ~14,000m elevation / 12 riding days</p></div>
+        <div class="detail-block"><h4>On Return</h4><p>First 2 weeks home: return to 160km/week. Don't race until week 3. The adaptation continues for 14–21 days.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NUTRITION SECTION -->
+<div class="nutrition-section">
+  <div class="nutrition-inner">
+    <div class="section-label">Pro Camp Nutrition</div>
+    <div class="section-title" style="margin-bottom:0.5rem;">Eat Like You Mean It</div>
+    <p style="font-size:0.83rem;color:rgba(245,242,236,0.5);line-height:1.7;margin-bottom:2rem;max-width:600px;">
+      At this volume, nutrition is training. Under-eating is the most common mistake at cycling camps. The targets below are for hard days — adjust down by 15–20% on easy and rest days.
+    </p>
+
+    <div class="nutrition-grid">
+      <div class="nutrition-cell header-cell">
+        <h4>Hard Day Calories</h4>
+        <div class="big-num">3,200–3,800</div>
+        <p>kcal total. More for 100km+ days with big elevation.</p>
+      </div>
+      <div class="nutrition-cell header-cell">
+        <h4>Carbohydrate Target</h4>
+        <div class="big-num">8–10g/kg</div>
+        <p>Body weight per day. Carbs are your fuel — don't fear them.</p>
+      </div>
+      <div class="nutrition-cell header-cell">
+        <h4>Protein Target</h4>
+        <div class="big-num">1.8–2.2g/kg</div>
+        <p>Per day for muscle repair. Spread across all meals.</p>
+      </div>
+      <div class="nutrition-cell">
+        <h4>On-Bike Fuelling</h4>
+        <p>60–90g carbs per hour while riding. Gels, bars, rice cakes, bananas. Start at 30 mins in — don't wait.</p>
+      </div>
+      <div class="nutrition-cell">
+        <h4>Hydration</h4>
+        <p>500–750ml per hour on the bike. Add electrolyte tabs — you're sweating in Tenerife's heat even in cool months. 2–3L total on big days.</p>
+      </div>
+      <div class="nutrition-cell">
+        <h4>Recovery Window</h4>
+        <p>Within 30 mins of finishing: 60–80g carbs + 20–30g protein. Chocolate milk, rice + eggs, or recovery shake work perfectly.</p>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:2.5rem;">Daily Meal Structure</div>
+    <div class="section-title" style="font-size:1.8rem;margin-bottom:0.5rem;">Hard Day Template</div>
+
+    <div class="meal-plan">
+      <div class="meal-row">
+        <div class="meal-time">6:00 AM — Pre-Ride</div>
+        <div class="meal-detail">
+          <h5>Carb-Loading Breakfast</h5>
+          <p>Large bowl of oats or porridge with banana + honey. 2 slices toast with jam. Strong espresso. Small glass of juice. Eat 90 mins before riding. Avoid fibre-heavy or fatty foods.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">On Bike</div>
+        <div class="meal-detail">
+          <h5>Continuous Fuelling</h5>
+          <p>Energy gels or bars every 30–45 mins from the 30-min mark. Alternate with real food: banana halves, rice cakes, Canarian papas arrugadas (small salty potatoes — the local secret). Aim for 60–90g carbs/hr. Water + electrolytes every 15 mins.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Coffee Stop</div>
+        <div class="meal-detail">
+          <h5>Mid-Ride Café</h5>
+          <p>Cortado or café con leche + a tostada (toast with tomato and olive oil) or a small bocadillo. The Canarian Barraquito (espresso + condensed milk + Licor 43) is a local speciality — great sugar hit but not on hard climbing days. A banana or fruit too.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Within 30 Mins</div>
+        <div class="meal-detail">
+          <h5>Recovery Meal — Golden Window</h5>
+          <p>Don't skip this. Chocolate milk + banana is ideal if you can't face a full meal immediately. Or: rice with grilled chicken or eggs. This triggers muscle protein synthesis while glycogen stores are depleted and receptive.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Lunch</div>
+        <div class="meal-detail">
+          <h5>Main Recovery Meal</h5>
+          <p>Large carb base: pasta, rice, or potatoes. Lean protein: chicken, fish, or eggs. Plenty of vegetables. Canarian options: Ropa Vieja (chickpea stew with shredded meat), fresh grilled fish at the harbour. Avoid heavy fried food — it sits badly before the next day's ride.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Afternoon Snack</div>
+        <div class="meal-detail">
+          <h5>Bridge Snack (if needed)</h5>
+          <p>Greek yoghurt + honey. Or a handful of nuts + piece of fruit. Don't go to dinner starving — you'll overeat the wrong things.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Dinner</div>
+        <div class="meal-detail">
+          <h5>Replenishment Dinner</h5>
+          <p>Another carb-forward meal to top up glycogen for tomorrow. Pasta, risotto, rice dishes. Protein from fish or meat. A glass of wine is fine — but not on the night before a hard day. Good-quality sleep matters more than any single meal.</p>
+        </div>
+      </div>
+      <div class="meal-row">
+        <div class="meal-time">Before Bed</div>
+        <div class="meal-detail">
+          <h5>Casein Protein Hit</h5>
+          <p>Cottage cheese, Greek yoghurt, or a glass of warm milk. Casein digests slowly overnight and extends muscle repair while you sleep. Small portion — not a full meal.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(200,164,90,0.06);border:1px solid rgba(200,164,90,0.2);">
+      <div class="section-label" style="margin-bottom:0.5rem;">Easy Day & Rest Day Adjustment</div>
+      <p style="font-size:0.82rem;color:rgba(245,242,236,0.55);line-height:1.7;">
+        On easy days, reduce overall calorie intake by ~15–20% and cut back on simple carbs. Prioritise protein and vegetables. On the full rest day, eat intuitively — your hunger will drop naturally. Don't under-eat protein on rest days: that's when repair happens. Avoid the temptation to eat a huge dinner the night before a hard day — pre-loading works better spread across the whole day before.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY LOAD -->
+<div class="section">
+  <div class="section-label">Training Load</div>
+  <div class="section-title">Weekly Volume Progression</div>
+  <div style="margin-bottom:2rem;">
+    <div class="load-bar-row">
+      <div class="load-bar-label">Normal wk</div>
+      <div class="load-bar-track"><div class="load-bar-fill" style="width:25%;background:rgba(200,164,90,0.4);"></div></div>
+      <div class="load-bar-val" style="font-size:0.85rem;color:rgba(245,242,236,0.5);">160km</div>
+    </div>
+    <div class="load-bar-row">
+      <div class="load-bar-label">Camp Wk 1</div>
+      <div class="load-bar-track"><div class="load-bar-fill" style="width:75%;"></div></div>
+      <div class="load-bar-val">~375km</div>
+    </div>
+    <div class="load-bar-row">
+      <div class="load-bar-label">Camp Wk 2</div>
+      <div class="load-bar-track"><div class="load-bar-fill" style="width:85%;"></div></div>
+      <div class="load-bar-val">~370km</div>
+    </div>
+    <div class="load-bar-row">
+      <div class="load-bar-label">Return Wk1</div>
+      <div class="load-bar-track"><div class="load-bar-fill" style="width:25%;background:rgba(200,164,90,0.4);"></div></div>
+      <div class="load-bar-val" style="font-size:0.85rem;color:rgba(245,242,236,0.5);">160km</div>
+    </div>
+  </div>
+  <p style="font-size:0.78rem;color:rgba(245,242,236,0.4);line-height:1.6;font-style:italic;">The fitness gains from a camp emerge 2–4 weeks after you return, as your body adapts. The first week home may feel flat — this is normal and expected.</p>
+</div>
+
+<!-- PRO TIPS -->
+<div class="section" style="padding-top:0;">
+  <div class="section-label">Camp Intelligence</div>
+  <div class="section-title">Pro Camp Tips</div>
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="tip-icon">🌡️</div>
+      <h4>Dress in Layers</h4>
+      <p>Los Gigantes is warm at sea level. Teide at 2,000m+ can be near-freezing. Always carry a gilet and arm warmers in your back pocket on any Teide day. The descent is brutally cold.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🌅</div>
+      <h4>Start Early</h4>
+      <p>Aim to leave by 7–7:30am on all hard days. The roads are quieter, it's cooler for the climbs, and you'll be back before the afternoon heat hits. Teide days especially — don't start after 8am.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">💧</div>
+      <h4>Water Sources</h4>
+      <p>Bar Parada in Chío will refill your bottles. Santiago del Teide has a fountain. The Teide Visitor Centre at the summit has water and a café. Plan your refills and carry more than you think you need.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">😴</div>
+      <h4>Sleep Is Training</h4>
+      <p>Aim for 8–9 hours per night. This is where your body adapts. Avoid late dinners, limit alcohol to rest days, and keep screens off an hour before bed. Pro teams are in bed by 10pm.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🚲</div>
+      <h4>Gearing</h4>
+      <p>If hiring a bike, ask for a 34T or 32T compact chainring as minimum. Teide from Los Gigantes is relentless. Spinning a lower gear is smarter than grinding and burning out your knees on a 36km climb.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">📍</div>
+      <h4>Respect the Roads</h4>
+      <p>Masca descent and northern mountain roads can have loose gravel especially after rain. The TF-38 to Teide has some patchy surface in places. Brake earlier than you think, especially when cold on descents.</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Los Gigantes Pro Cycling Camp — 12 Days · Tenerife, Canary Islands<br>
+  All routes start & finish at Los Gigantes Harbour
+</footer>
+
+<script>
+  function toggle(header) {
+    const card = header.parentElement;
+    card.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

@@ -471,6 +471,11 @@ async def nutrition_plan(request: Request):
     )
 
 
+@app.get("/tenerife", response_class=HTMLResponse)
+async def tenerife_view(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="tenerife.html", context={})
+
+
 @app.get("/refresh", response_class=RedirectResponse)
 async def refresh(date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()
