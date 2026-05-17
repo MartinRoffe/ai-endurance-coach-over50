@@ -217,9 +217,89 @@ def build_camp_weeks() -> list[dict]:
                     "is_today": d == today, "is_past": d < today, "is_camp": True,
                 })
             else:
+                workout = CAMP_GRID_WORKOUTS.get(d)
+                if workout:
+                    dur = workout["dur_min"]
+                    if dur < 60:
+                        dur_fmt = f"{dur}m"
+                    elif dur % 60:
+                        dur_fmt = f"{dur // 60}h{dur % 60:02d}m"
+                    else:
+                        dur_fmt = f"{dur // 60}h"
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "type": workout["type"], "label": workout["label"],
+                        "dur_fmt": dur_fmt, "dur_min": dur,
+                        "is_today": d == today, "is_past": d < today,
+                        "is_camp": False, "is_workout": True,
+                    })
+                else:
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "intensity": "empty", "is_camp": False, "is_workout": False,
+                    })
+        weeks.append({"week_label": wk_start.strftime("%-d %b"), "days": cells})
+    return weeks
+
+
+# Non-camp workout days that sit within the Tenerife grid window (Aug 10–30).
+# Aug 10–11: pre-camp activation; Aug 28–30: first recovery days post-camp.
+CAMP_GRID_WORKOUTS: dict[date, dict] = {
+    date(2026, 8, 10): {"type": "bike",  "label": "Easy Spin",     "dur_min": 45},
+    date(2026, 8, 11): {"type": "bike",  "label": "Zone 2 Steady", "dur_min": 60},
+    date(2026, 8, 28): {"type": "bike",  "label": "Easy Spin",     "dur_min": 45},
+    date(2026, 8, 30): {"type": "bike",  "label": "Recovery Spin", "dur_min": 60},
+}
+
+# ── Ghent–Amsterdam Event Prep ────────────────────────────────────────────────
+# AI-designed periodised block: recovery → sweetspot build → back-to-back simulation → taper.
+# Aug 31–Sep 3: recovery rides to absorb the Tenerife gains.
+# Sep 5–9: event-specific quality (sweetspot, 2.5h + 1.5h back-to-back, tempo sharpener).
+# Sep 11: short activation; Sep 12: full rest before the start.
+EVENT_PREP_DAYS: list[dict] = [
+    {"date": date(2026, 8, 31), "type": "bike",  "label": "Easy Spin",           "dur_min": 45},
+    {"date": date(2026, 9,  1), "type": "bike",  "label": "Zone 2 Steady",       "dur_min": 90},
+    {"date": date(2026, 9,  3), "type": "long",  "label": "Z2 Endurance",        "dur_min": 120},
+    {"date": date(2026, 9,  5), "type": "tempo", "label": "Sweetspot Intervals", "dur_min": 90},
+    {"date": date(2026, 9,  6), "type": "long",  "label": "Long Ride",           "dur_min": 150},
+    {"date": date(2026, 9,  7), "type": "long",  "label": "Long Ride (Easy)",    "dur_min": 90},
+    {"date": date(2026, 9,  8), "type": "bike",  "label": "Recovery Spin",       "dur_min": 45},
+    {"date": date(2026, 9,  9), "type": "tempo", "label": "Tempo Intervals",     "dur_min": 75},
+    {"date": date(2026, 9, 11), "type": "bike",  "label": "Easy Prep Ride",      "dur_min": 30},
+]
+
+
+def build_event_prep_weeks() -> list[dict]:
+    """Two Mon–Sun rows covering Aug 31–Sep 13 (event prep + taper)."""
+    today = date.today()
+    days_by_date = {d["date"]: d for d in EVENT_PREP_DAYS}
+    grid_start = date(2026, 8, 31)  # Monday
+    weeks = []
+    for wk in range(2):
+        wk_start = grid_start + timedelta(weeks=wk)
+        cells = []
+        for day_off in range(7):
+            d = wk_start + timedelta(days=day_off)
+            day = days_by_date.get(d)
+            if day:
+                dur = day["dur_min"]
+                if dur < 60:
+                    dur_fmt = f"{dur}m"
+                elif dur % 60:
+                    dur_fmt = f"{dur // 60}h{dur % 60:02d}m"
+                else:
+                    dur_fmt = f"{dur // 60}h"
                 cells.append({
                     "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
-                    "intensity": "empty", "is_camp": False,
+                    "type": day["type"], "label": day["label"],
+                    "dur_fmt": dur_fmt, "dur_min": dur,
+                    "is_today": d == today, "is_past": d < today,
+                })
+            else:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
+                    "is_today": d == today, "is_past": d < today,
                 })
         weeks.append({"week_label": wk_start.strftime("%-d %b"), "days": cells})
     return weeks

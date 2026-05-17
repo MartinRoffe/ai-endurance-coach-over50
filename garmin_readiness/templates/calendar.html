@@ -223,9 +223,83 @@
         </div>
         <p class="text-[11px] opacity-40 mt-auto">{{ day.label }}</p>
       </div>
+      {% elif day.is_workout %}
+      {% set is_cycling = day.type in ['bike', 'tempo', 'ftp', 'long'] %}
+      <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type }}
+                  {% if day.is_today %}today-ring{% endif %}
+                  {% if day.is_past %}is-past{% endif %}
+                  {% if is_cycling %}clickable-session{% endif %}"
+           {% if is_cycling %}
+             data-label="{{ day.label }}"
+             data-dur="{{ day.dur_min }}"
+             data-dur-fmt="{{ day.dur_fmt }}"
+             onclick="openModal(this)"
+           {% endif %}>
+        <div class="flex items-start justify-between mb-0.5">
+          <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
+        </div>
+        <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+        <p class="text-[10px] opacity-60 mt-auto">{{ day.dur_fmt }}</p>
+      </div>
       {% else %}
       <div class="min-h-[64px]"></div>
       {% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- ── Ghent–Amsterdam Build (event prep + taper) ──────────────────── -->
+    <div class="border-t border-slate-800 mt-4 mb-5"></div>
+
+    <div class="mb-4">
+      <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Event Prep · Cycling Only</p>
+      <h2 class="text-lg font-bold text-violet-400">Ghent–Amsterdam Build</h2>
+      <p class="text-xs text-slate-500 mt-1">31 Aug – 12 Sep 2026 · recovery → back-to-back build → taper</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-4">
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-bike">Z2 / Easy</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-long">Long Ride</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-tempo">Sweetspot / Tempo</span>
+      <span class="px-2 py-0.5 rounded text-[11px] border sess-rest">Rest</span>
+      <span class="text-[11px] text-slate-600 self-center ml-2">· click any session for details</span>
+    </div>
+
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div class="text-[10px] text-slate-600 uppercase tracking-wider text-right pr-2 pt-1">Wk</div>
+      {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <div class="day-header text-center">{{ d }}</div>
+      {% endfor %}
+    </div>
+
+    {% for prep_week in event_prep_weeks %}
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div class="flex flex-col items-end justify-center pr-2">
+        <span class="text-[10px] text-slate-700">{{ prep_week.week_label }}</span>
+      </div>
+      {% for day in prep_week.days %}
+      {% set is_cycling = day.type in ['bike', 'tempo', 'ftp', 'long'] %}
+      <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type }}
+                  {% if day.is_today %}today-ring{% endif %}
+                  {% if day.is_past %}is-past{% endif %}
+                  {% if is_cycling %}clickable-session{% endif %}"
+           {% if is_cycling %}
+             data-label="{{ day.label }}"
+             data-dur="{{ day.dur_min }}"
+             data-dur-fmt="{{ day.dur_fmt }}"
+             onclick="openModal(this)"
+           {% endif %}>
+        <div class="flex items-start justify-between mb-0.5">
+          <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
+          {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
+        </div>
+        {% if day.type != 'rest' and day.label %}
+          <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+          {% if day.dur_fmt %}<p class="text-[10px] opacity-60 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
+        {% else %}
+          <p class="text-[11px] opacity-40 mt-auto">Rest</p>
+        {% endif %}
+      </div>
       {% endfor %}
     </div>
     {% endfor %}
@@ -388,6 +462,16 @@
         {name:"Warm-up",      mins:15,       zone:"Z1–3"},
         {name:"Tempo interval",mins:10,      zone:"Z4",  repeat:"× 3  (5m Z1 between each)"},
         {name:"Cool-down",    mins:5,        zone:"Z1"},
+      ],
+      "Sweetspot Intervals": _ => [
+        {name:"Warm-up",         mins:15, zone:"Z1–3"},
+        {name:"Sweetspot block", mins:15, zone:"88–93% FTP", repeat:"× 3  (5m Z2 between each)"},
+        {name:"Cool-down",       mins:15, zone:"Z1"},
+      ],
+      "Z2 Endurance":     dur => [
+        {name:"Warm-up",   mins:15,      zone:"Z1–2"},
+        {name:"Z2 steady", mins:dur-30,  zone:"Z2"},
+        {name:"Cool-down", mins:15,      zone:"Z1"},
       ],
       "Long Ride":        dur => [
         {name:"Warm-up",      mins:15,       zone:"Z1–2"},

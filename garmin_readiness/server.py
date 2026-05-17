@@ -16,7 +16,9 @@ from fastapi.requests import Request
 from .analysis import load_analyses_for_activities, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
-from .plan import PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks, build_charity_weeks, session_for_date
+from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
+                   build_charity_weeks, build_event_prep_weeks,
+                   CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, session_for_date)
 from .report import generate_advice, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer
 from .history import (
     ACTIVITY_MATCH,
@@ -74,6 +76,7 @@ def _build_calendar_ctx() -> dict[str, Any]:
         "today": date.today(),
         "plan_start": _PLAN_START,
         "camp_weeks": build_camp_weeks(),
+        "event_prep_weeks": build_event_prep_weeks(),
         "charity_weeks": build_charity_weeks(),
     }
 
@@ -403,13 +406,15 @@ def _build_preplan_weeks(acts_by_date: dict) -> list[dict]:
 @app.get("/calendar", response_class=HTMLResponse)
 async def calendar_view(request: Request):
     ctx = _build_calendar_ctx()
-    cycling_labels = list({
+    cycling_labels = {
         day["label"]
         for week in ctx["weeks"]
         for day in week["days"]
         if day["type"] in _BIKE_TYPES
-    })
-    ctx["workout_descs"] = prefetch_workout_descriptions(cycling_labels)
+    }
+    cycling_labels |= {d["label"] for d in EVENT_PREP_DAYS if d["type"] in _BIKE_TYPES}
+    cycling_labels |= {v["label"] for v in CAMP_GRID_WORKOUTS.values() if v["type"] in _BIKE_TYPES}
+    ctx["workout_descs"] = prefetch_workout_descriptions(list(cycling_labels))
 
     # Pre-plan history (4 weeks before plan start)
     pre_start = _PLAN_START - timedelta(weeks=_PRE_PLAN_WEEKS)
