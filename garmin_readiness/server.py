@@ -17,7 +17,7 @@ from .analysis import load_analyses_for_activities, prefetch_nutrition_targets, 
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import PLAN_START as _PLAN_START, build_calendar_weeks, session_for_date
-from .report import generate_advice, generate_pmc_analysis, generate_pmc_explainer
+from .report import generate_advice, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer
 from .history import (
     ACTIVITY_MATCH,
     baseline_stats,
@@ -261,6 +261,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "activity_blurb": _activity_context_blurb(activities),
         "advice": _advice_cache[date_key],
         "week_completion": _week_completion(),
+        "metric_explainer": generate_dashboard_explainer(),
     }
 
 

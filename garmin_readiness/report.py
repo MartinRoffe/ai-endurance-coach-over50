@@ -623,3 +623,56 @@ def generate_pmc_explainer() -> str:
         return text
     except Exception:
         return ""
+
+
+_DASHBOARD_EXPLAINER_KEY = "dashboard_explainer_v1"
+
+
+def generate_dashboard_explainer() -> str:
+    """Plain-English explainer for all dashboard metrics — cached permanently."""
+    cached = get_cached_text(_DASHBOARD_EXPLAINER_KEY)
+    if cached:
+        return cached
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return ""
+
+    prompt = (
+        "Explain the following five metrics shown on an athlete's daily readiness dashboard. "
+        "The athlete is 50+, male, ~85 kg, training 6+ hours/week with a mix of Zone 2 cycling, "
+        "tempo intervals, strength training, and weighted rucking. "
+        "The metrics use Garmin's units (not Coggan TSS). CTL uses a 28-day window, ATL uses 7 days.\n\n"
+        "Write a separate section for each metric with a **bold heading**. "
+        "Keep each section to 3–5 sentences. Be direct and practical — explain what it means "
+        "day-to-day and what to do about it. Address the athlete as 'you'.\n\n"
+        "Metrics to explain:\n"
+        "1. **Composite Score** — a mean z-score across all readiness metrics (HRV, sleep, resting HR, "
+        "stress, body battery, etc.), measured in standard deviations from a 30-day personal baseline. "
+        "Positive = above your norm, negative = below. Lower-is-better fields are sign-flipped.\n"
+        "2. **ACWR (Acute:Chronic Workload Ratio)** — ATL divided by CTL. "
+        "The sweet spot is roughly 0.8–1.3. Above 1.5 is high injury-risk territory.\n"
+        "3. **ATL (Acute Training Load)** — 7-day rolling training load. Represents current fatigue.\n"
+        "4. **CTL (Chronic Training Load)** — 28-day rolling training load. Represents fitness base.\n"
+        "5. **TSB (Training Stress Balance)** — CTL minus ATL. Positive = fresh, negative = fatigued. "
+        "Not absolute Coggan zones — interpret relative to zero only.\n\n"
+        "End with one short paragraph titled **How they work together** connecting all five."
+    )
+
+    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=800,
+            system=(
+                "You are a knowledgeable endurance coach writing a concise reference guide "
+                "for an athlete who wants to understand their training metrics. "
+                "Use **bold** markdown for section headings. Write in second person."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = msg.content[0].text
+        set_cached_text(_DASHBOARD_EXPLAINER_KEY, text)
+        return text
+    except Exception:
+        return ""
