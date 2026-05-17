@@ -15,7 +15,9 @@ from .history import (
     LOWER_IS_BETTER,
     baseline_stats,
     composite_score,
+    load_advice,
     load_recent_activities,
+    save_advice,
     seven_day_composite_trend_csv,
     z_score,
 )
@@ -79,6 +81,10 @@ def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
 
 
 def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+    cached = load_advice(m.date)
+    if cached:
+        return cached
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         return _rule_based_advice(m, stats, comp_z)
@@ -97,7 +103,9 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
                 "Be direct, warm, and evidence-based. Never be vague."
             ),
         )
-        return message.content[0].text
+        text = message.content[0].text
+        save_advice(m.date, text)
+        return text
     except anthropic.APIStatusError as e:
         import logging
         logging.getLogger(__name__).warning("Anthropic API error (%s), using rule-based advice", e.status_code)

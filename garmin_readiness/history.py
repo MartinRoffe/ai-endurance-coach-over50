@@ -87,6 +87,37 @@ def _ensure_activities_schema(con: sqlite3.Connection) -> None:
     """)
 
 
+def save_advice(target_date: date, text: str) -> None:
+    with _conn() as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS daily_advice (
+                date TEXT PRIMARY KEY,
+                advice TEXT NOT NULL,
+                recorded_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        con.execute(
+            "INSERT OR REPLACE INTO daily_advice (date, advice) VALUES (?, ?)",
+            (target_date.isoformat(), text),
+        )
+
+
+def load_advice(target_date: date) -> Optional[str]:
+    with _conn() as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS daily_advice (
+                date TEXT PRIMARY KEY,
+                advice TEXT NOT NULL,
+                recorded_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        row = con.execute(
+            "SELECT advice FROM daily_advice WHERE date = ?",
+            (target_date.isoformat(),),
+        ).fetchone()
+    return row["advice"] if row else None
+
+
 def save_activities(activities: list[dict]) -> None:
     with _conn() as con:
         _ensure_activities_schema(con)
