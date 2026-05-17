@@ -1,179 +1,195 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Post-Training Analysis</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
-    }
-  </script>
   <style>
-    body { background: #0f1117; }
-    .zone-bar { height: 8px; border-radius: 4px; }
-    .z1 { background: #64748b; }
-    .z2 { background: #34d399; }
-    .z3 { background: #facc15; }
-    .z4 { background: #f97316; }
-    .z5 { background: #ef4444; }
+    body { background: #09090b; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+
+    /* Zone bars */
+    .zbar { height: 3px; border-radius: 2px; }
+    .z1 { background: #52525b; }
+    .z2 { background: #a3e635; }
+    .z3 { background: #fde047; }
+    .z4 { background: #fb923c; }
+    .z5 { background: #f87171; }
+
+    /* Training effect badges */
+    .te-badge {
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 3px 10px;
+      border-radius: 2px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { animation: fadeUp 0.3s ease both; }
   </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen">
+<body>
 
-  {% set active_tab = 'analysis' %}
-  {% include 'nav.html' %}
+{% set active_tab = 'analysis' %}
+{% include 'nav.html' %}
 
-  <div class="p-6">
-  <div class="max-w-5xl mx-auto">
+<div class="page">
 
-    <div class="flex items-end justify-between mb-6">
-      <div>
-        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Post-Training</p>
-        <h1 class="text-2xl font-bold text-white">Activity Analysis</h1>
-      </div>
-      <a href="/analysis-refresh"
-         class="px-4 py-2 rounded-lg bg-[#1e2030] hover:bg-[#2a2d42] border border-[#2a2d42] text-xs text-slate-400 hover:text-slate-200 transition-colors">
-        Fetch &amp; Analyse ↺
+  <!-- ── Header ────────────────────────────────────────────────────── -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:12px">
+    <div>
+      <p class="eyebrow" style="margin-bottom:8px">Post-Training</p>
+      <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Activity Analysis</h1>
+    </div>
+    <a href="/analysis-refresh"
+       style="font-family:var(--font-m);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
+       onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+       onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+      Fetch &amp; Analyse ↺
+    </a>
+  </div>
+
+  {% if not activities %}
+    <div class="card" style="padding:48px;text-align:center">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">No activities in the last 14 days.</p>
+      <a href="/analysis-refresh" style="font-family:var(--font-m);font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:0.08em">
+        Fetch from Garmin Connect ↺
       </a>
     </div>
+  {% else %}
 
-    {% if not activities %}
-      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-8 text-center">
-        <p class="text-slate-500 text-sm mb-3">No activities in the last 14 days.</p>
-        <a href="/analysis-refresh" class="text-sky-400 hover:text-sky-300 text-sm transition-colors">
-          Fetch from Garmin Connect ↺
-        </a>
+  <div style="display:flex;flex-direction:column;gap:10px">
+  {% for a in activities %}
+  <div class="card" style="padding:24px">
+
+    <!-- Activity header -->
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;flex-wrap:wrap">
+      <span style="font-size:22px;flex-shrink:0;margin-top:2px">{{ a.icon }}</span>
+      <div style="flex:1;min-width:0">
+        <p style="font-size:15px;font-weight:400;color:var(--text);line-height:1.3">{{ a.name or a.type_label }}</p>
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:0.06em">
+          {{ a.type_label }}{% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}
+        </p>
       </div>
-    {% else %}
+      {% if a.training_effect_label %}
+        {% set te = a.training_effect_label | replace('_', ' ') | title %}
+        {% set te_map = {
+          'Recovery':     'border-[#3f3f46] text-[#a1a1aa] bg-[#18181b]',
+          'Base':         'border-[#166534] text-[#4ade80] bg-[#052e16]/40',
+          'Tempo':        'border-[#854d0e] text-[#fde047] bg-[#1c1200]/60',
+          'Threshold':    'border-[#7c2d12] text-[#fb923c] bg-[#1c0a00]/60',
+          'Overreaching': 'border-[#7f1d1d] text-[#f87171] bg-[#1c0000]/60',
+        } %}
+        <span class="te-badge {{ te_map.get(te, 'border-[#3f3f46] text-[#a1a1aa] bg-[#18181b]') }}">{{ te }}</span>
+      {% endif %}
+    </div>
 
-      <div class="space-y-5">
-      {% for a in activities %}
-      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
-
-        <!-- Activity header -->
-        <div class="flex items-start gap-3 mb-4">
-          <span class="text-2xl mt-0.5">{{ a.icon }}</span>
-          <div class="flex-1 min-w-0">
-            <p class="text-base font-semibold text-white leading-tight">{{ a.name or a.type_label }}</p>
-            <p class="text-xs text-slate-500 mt-0.5">
-              {{ a.type_label }}{% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}
-            </p>
-          </div>
-          {% if a.training_effect_label %}
-            {% set te_label = a.training_effect_label | replace('_', ' ') | title %}
-            {% set te_colours = {
-              'Recovery':     'border-slate-600 text-slate-300 bg-slate-800/50',
-              'Base':         'border-emerald-700 text-emerald-300 bg-emerald-900/20',
-              'Tempo':        'border-yellow-600 text-yellow-300 bg-yellow-900/20',
-              'Threshold':    'border-orange-600 text-orange-300 bg-orange-900/20',
-              'Overreaching': 'border-red-600 text-red-300 bg-red-900/20',
-            } %}
-            <span class="px-3 py-1 rounded-full text-[11px] font-semibold border flex-shrink-0
-                         {{ te_colours.get(te_label, 'border-slate-600 text-slate-300 bg-slate-800/50') }}">
-              {{ te_label }}
-            </span>
-          {% endif %}
-        </div>
-
-        <!-- Stats row -->
-        <div class="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-          {% if a.duration_fmt %}
-          <div>
-            <p class="text-xs text-slate-500">Duration</p>
-            <p class="text-sm font-semibold">{{ a.duration_fmt }}</p>
-          </div>
-          {% endif %}
-          {% if a.distance_fmt %}
-          <div>
-            <p class="text-xs text-slate-500">Distance</p>
-            <p class="text-sm font-semibold">{{ a.distance_fmt }}</p>
-          </div>
-          {% endif %}
-          {% if a.avg_hr %}
-          <div>
-            <p class="text-xs text-slate-500">Avg HR</p>
-            <p class="text-sm font-semibold">{{ a.avg_hr | int }} bpm</p>
-          </div>
-          {% endif %}
-          {% if a.max_hr %}
-          <div>
-            <p class="text-xs text-slate-500">Max HR</p>
-            <p class="text-sm font-semibold">{{ a.max_hr | int }} bpm</p>
-          </div>
-          {% endif %}
-          {% if a.training_effect %}
-          <div>
-            <p class="text-xs text-slate-500">Aerobic TE</p>
-            <p class="text-sm font-semibold">{{ "%.1f"|format(a.training_effect) }}</p>
-          </div>
-          {% endif %}
-          {% if a.training_load %}
-          <div>
-            <p class="text-xs text-slate-500">Training Load</p>
-            <p class="text-sm font-semibold">{{ a.training_load | int }}</p>
-          </div>
-          {% endif %}
-          {% if a.calories %}
-          <div>
-            <p class="text-xs text-slate-500">Calories</p>
-            <p class="text-sm font-semibold">{{ a.calories | int }}</p>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- HR zones -->
-        {% if a.hr_zones %}
-        <div class="mb-4">
-          <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Heart Rate Zones</p>
-          <div class="space-y-1.5">
-            {% for z in a.hr_zones %}
-            {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] text-slate-500 w-5 text-right">Z{{ z.zone }}</span>
-              <div class="flex-1 bg-[#1e2030] rounded-full h-2 overflow-hidden">
-                <div class="zone-bar {{ zc }}" style="width: {{ [z.pct, 100]|min }}%;"></div>
-              </div>
-              <span class="text-[10px] text-slate-400 w-8 text-right">{{ z.pct }}%</span>
-              <span class="text-[10px] text-slate-600 w-12 text-right">
-                {% set m = (z.secs // 60) %}
-                {% set s = (z.secs % 60) %}
-                {{ m }}m{% if s %}{{ "%02d"|format(s) }}s{% endif %}
-              </span>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
-        <!-- Claude analysis -->
-        {% if a.analysis_text %}
-        <div class="border-t border-[#1e2030] pt-4">
-          <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Coach's Analysis</p>
-          {% for para in a.analysis_text.strip().split('\n\n') %}
-            {% if para.strip() %}
-              <p class="text-sm text-slate-300 leading-relaxed {% if not loop.last %}mb-2{% endif %}">{{ para.strip() }}</p>
-            {% endif %}
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="border-t border-[#1e2030] pt-4">
-          <p class="text-[11px] text-slate-500">
-            No analysis yet —
-            <a href="/analysis-refresh" class="text-sky-500 hover:text-sky-400 transition-colors">fetch &amp; analyse ↺</a>
-          </p>
-        </div>
-        {% endif %}
-
+    <!-- Stats row -->
+    <div style="display:flex;flex-wrap:wrap;gap:20px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--surface2)">
+      {% if a.duration_fmt %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Duration</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.duration_fmt }}</p>
       </div>
+      {% endif %}
+      {% if a.distance_fmt %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Distance</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.distance_fmt }}</p>
+      </div>
+      {% endif %}
+      {% if a.avg_hr %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Avg HR</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.avg_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
+      </div>
+      {% endif %}
+      {% if a.max_hr %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Max HR</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.max_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
+      </div>
+      {% endif %}
+      {% if a.training_effect %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Aerobic TE</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ "%.1f"|format(a.training_effect) }}</p>
+      </div>
+      {% endif %}
+      {% if a.training_load %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Training Load</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.training_load | int }}</p>
+      </div>
+      {% endif %}
+      {% if a.calories %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Calories</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.calories | int }} <span style="font-size:11px;color:var(--muted)">kcal</span></p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- HR zones -->
+    {% if a.hr_zones %}
+    <div style="margin-bottom:18px">
+      <p class="eyebrow" style="margin-bottom:10px">Heart Rate Zones</p>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        {% for z in a.hr_zones %}
+        {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-m);font-size:9px;color:var(--muted);width:16px;text-align:right;letter-spacing:0.05em">Z{{ z.zone }}</span>
+          <div style="flex:1;background:var(--border);border-radius:2px;height:3px;overflow:hidden">
+            <div class="zbar {{ zc }}" style="width:{{ [z.pct, 100]|min }}%"></div>
+          </div>
+          <span style="font-family:var(--font-m);font-size:10px;color:var(--text-dim);width:30px;text-align:right">{{ z.pct }}%</span>
+          <span style="font-family:var(--font-m);font-size:10px;color:var(--muted);width:44px;text-align:right">
+            {% set m = (z.secs // 60) %}{% set s = (z.secs % 60) %}{{ m }}m{% if s %}{{ "%02d"|format(s) }}s{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Coach analysis -->
+    {% if a.analysis_text %}
+    <div style="border-top:1px solid var(--surface2);padding-top:16px;border-left:3px solid var(--accent);padding-left:16px;margin-left:-3px">
+      <p class="eyebrow" style="margin-bottom:10px;color:var(--accent)">Coach's Analysis</p>
+      {% for para in a.analysis_text.strip().split('\n\n') %}
+        {% if para.strip() %}
+          <p style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:8px{% endif %}">{{ para.strip() }}</p>
+        {% endif %}
       {% endfor %}
-      </div>
-
+    </div>
+    {% else %}
+    <div style="border-top:1px solid var(--surface2);padding-top:14px">
+      <p style="font-family:var(--font-m);font-size:10px;color:var(--border2)">
+        No analysis yet —
+        <a href="/analysis-refresh" style="color:var(--accent);text-decoration:none">fetch &amp; analyse ↺</a>
+      </p>
+    </div>
     {% endif %}
 
   </div>
+  {% endfor %}
   </div>
+
+  {% endif %}
+
+</div>
 </body>
 </html>

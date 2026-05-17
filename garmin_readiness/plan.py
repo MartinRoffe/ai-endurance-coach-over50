@@ -15,7 +15,7 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("strength", "KB + MaxiClimber",     45),
         ("bike",     "Easy Spin",            60),
         ("strength", "KB + MaxiClimber",     45),
-        ("bike",     "Easy Spin",            60),
+        ("tempo",    "Threshold / Tempo Ride", 80),  # AI coach upgrade from Easy Spin
         ("ruck",     "Ruck  8 kg",           60),
         ("long",     "Long Ride",            90),
     ],
@@ -133,6 +133,15 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
 
 _PLAN_DAYS = len(TRAINING_WEEKS) * 7  # 84
 
+# AI coach recommendations keyed by ISO date; surfaced on the calendar card + modal.
+COACH_NOTES: dict[str, str] = {
+    "2026-05-22": (
+        "You've earned capacity to absorb moderate work. Replace the second easy spin "
+        "(May 22) with a threshold or tempo effort around 75–90 minutes. This maintains "
+        "fatigue clearance while stimulating fitness without regression."
+    ),
+}
+
 
 def session_for_date(d: date) -> tuple[str, str, int] | None:
     """Return (type, label, duration_min) for the given date, or None if outside the plan."""
@@ -169,6 +178,7 @@ def build_calendar_weeks() -> list[dict]:
                 "dur_min": dur,
                 "is_today": d == today,
                 "is_past": d < today,
+                "coach_note": COACH_NOTES.get(d.isoformat(), ""),
             })
         weeks.append({"week_num": wk_idx + 1, "start": wk_start, "days": days})
     return weeks

@@ -1,63 +1,56 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Training Calendar · 12 Weeks</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
-    }
-  </script>
   <style>
-    body { background: #0f1117; }
-    .sess-rest     { background: #1a1d25; border-color: #2a2d3a; color: #4a5068; }
-    .sess-strength { background: #1e1228; border-color: #6d28d9; color: #c4b5fd; }
-    .sess-bike     { background: #0d2118; border-color: #059669; color: #6ee7b7; }
-    .sess-tempo    { background: #1f1a05; border-color: #d97706; color: #fcd34d; }
-    .sess-ftp      { background: #1f0e05; border-color: #ea580c; color: #fdba74; }
-    .sess-ruck     { background: #1f0a1a; border-color: #be185d; color: #f9a8d4; }
-    .sess-long     { background: #1a1205; border-color: #b45309; color: #fde68a; }
-    .sess-camp-hard   { background: #1f0d0d; border-color: #ef4444; color: #fca5a5; }
-    .sess-camp-medium { background: #1f1405; border-color: #fbbf24; color: #fde68a; }
-    .sess-camp-easy   { background: #0d1f14; border-color: #34d399; color: #6ee7b7; }
-    .sess-camp-travel { background: #111827; border-color: #374151; color: #6b7280; }
-    .sess-charity     { background: #0c1a2e; border-color: #0ea5e9; color: #7dd3fc; }
-    .sess-camp-rest   { background: #1a1d25; border-color: #2a2d3a; color: #4a5068; }
+    body { background: #09090b; }
+    .sess-rest     { background: #111114; border-color: #27272a; color: #52525b; }
+    .sess-strength { background: #1a0e28; border-color: #7c3aed; color: #c4b5fd; }
+    .sess-bike     { background: #091c12; border-color: #059669; color: #6ee7b7; }
+    .sess-tempo    { background: #1c1600; border-color: #ca8a04; color: #fde047; }
+    .sess-ftp      { background: #1c0c00; border-color: #ea580c; color: #fdba74; }
+    .sess-ruck     { background: #1c0714; border-color: #be185d; color: #f9a8d4; }
+    .sess-long     { background: #181000; border-color: #b45309; color: #fde68a; }
+    .sess-camp-hard   { background: #1c0c0c; border-color: #ef4444; color: #fca5a5; }
+    .sess-camp-medium { background: #1c1400; border-color: #fbbf24; color: #fde68a; }
+    .sess-camp-easy   { background: #091c12; border-color: #34d399; color: #6ee7b7; }
+    .sess-camp-travel { background: #111114; border-color: #27272a; color: #52525b; }
+    .sess-charity     { background: #091525; border-color: #0ea5e9; color: #7dd3fc; }
+    .sess-camp-rest   { background: #111114; border-color: #27272a; color: #52525b; }
     a.no-underline    { text-decoration: none; }
-    .today-ring    { outline: 2px solid #38bdf8; outline-offset: 2px; }
-    .is-past       { opacity: 0.45; }
-    .day-header    { color: #475569; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .today-ring    { outline: 2px solid #a3e635; outline-offset: 2px; }
+    .is-past       { opacity: 0.4; }
+    .day-header    { color: #3f3f46; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
     .clickable-session { cursor: pointer; }
-    .clickable-session:hover { filter: brightness(1.2); }
+    .clickable-session:hover { filter: brightness(1.18); }
   </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen">
+<body>
 
   {% set active_tab = 'calendar' %}
   {% include 'nav.html' %}
 
-  <div class="p-6">
-  <div class="max-w-5xl mx-auto">
+  <div style="max-width:1080px;margin:0 auto;padding:40px 24px 80px">
 
-    <div class="mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">12-Week Training Plan</p>
-      <h1 class="text-2xl font-bold text-white">Calendar</h1>
-      <p class="text-xs text-slate-500 mt-1">{{ plan_start.strftime("%-d %b %Y") }} → 9 Aug 2026</p>
+    <div style="margin-bottom:28px">
+      <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#71717a;margin-bottom:8px">12-Week Training Plan</p>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:#fafafa;line-height:1">Calendar</h1>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#3f3f46;margin-top:6px">{{ plan_start.strftime("%-d %b %Y") }} → 9 Aug 2026</p>
     </div>
 
     <!-- Legend -->
-    <div class="flex flex-wrap gap-2 mb-6">
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-strength">Strength</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-bike">Bike / Z2</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-tempo">Tempo</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-ftp">FTP Test</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-ruck">Ruck</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-long">Long Ride</span>
-      <span class="px-2 py-0.5 rounded text-[11px] border sess-rest">Rest</span>
-      <span class="text-[11px] text-slate-600 self-center ml-2">· click any cycling session for details</span>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center">
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-strength" style="border-radius:2px">Strength</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-bike" style="border-radius:2px">Bike / Z2</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-tempo" style="border-radius:2px">Tempo</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-ftp" style="border-radius:2px">FTP Test</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-ruck" style="border-radius:2px">Ruck</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-long" style="border-radius:2px">Long Ride</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-rest" style="border-radius:2px">Rest</span>
+      <span style="font-family:'DM Mono',monospace;font-size:10px;color:#3f3f46;margin-left:6px">· click any cycling session for details</span>
     </div>
 
     <!-- ── Pre-plan history ──────────────────────────────────────────────── -->
@@ -147,11 +140,14 @@
              data-label="{{ day.label }}"
              data-dur="{{ day.dur_min }}"
              data-dur-fmt="{{ day.dur_fmt }}"
+             data-coach-note="{{ day.coach_note }}"
              onclick="openModal(this)"
            {% endif %}>
         <div class="flex items-start justify-between mb-0.5">
           <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
-          {% if day.is_today %}
+          {% if day.coach_note %}
+            <span class="text-[9px] text-amber-400 font-semibold leading-none" title="AI coach recommendation">✦</span>
+          {% elif day.is_today %}
             <span class="text-[9px] text-sky-400 font-semibold">TODAY</span>
           {% elif day.completed == true %}
             <span class="text-[10px] text-emerald-400 font-bold leading-none" title="Completed">✓</span>
@@ -345,34 +341,41 @@
     {% endfor %}
 
   </div>
-  </div>
 
   <!-- ── Modal overlay ──────────────────────────────────────────────────────── -->
   <div id="modal-overlay"
-       class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4"
+       class="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4"
        onclick="if(event.target===this) closeModal()">
-    <div class="bg-[#161b27] border border-[#2a2d42] rounded-2xl w-full max-w-md shadow-2xl z-50 overflow-hidden">
+    <div style="background:#111114;border:1px solid #27272a;border-radius:2px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:50;overflow:hidden">
 
       <!-- Modal header -->
-      <div id="modal-header" class="px-6 pt-5 pb-4 border-b border-[#1e2030]">
-        <div class="flex items-start justify-between">
+      <div id="modal-header" style="padding:20px 24px 16px;border-bottom:1px solid #18181b">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
           <div>
-            <p id="modal-type" class="text-[11px] uppercase tracking-widest mb-1 text-slate-500"></p>
-            <h2 id="modal-title" class="text-lg font-bold text-white"></h2>
-            <p id="modal-dur" class="text-sm text-slate-400 mt-0.5"></p>
+            <p id="modal-type" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#71717a;margin-bottom:5px"></p>
+            <h2 id="modal-title" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#fafafa;line-height:1.1"></h2>
+            <p id="modal-dur" style="font-family:'DM Mono',monospace;font-size:12px;color:#71717a;margin-top:4px"></p>
           </div>
-          <button onclick="closeModal()"
-                  class="text-slate-500 hover:text-slate-300 transition-colors ml-4 mt-0.5 text-xl leading-none">✕</button>
+          <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:14px;color:#71717a;margin-left:12px;margin-top:2px;line-height:1;transition:color 0.15s"
+                  onmouseover="this.style.color='#fafafa'" onmouseout="this.style.color='#71717a'">✕</button>
         </div>
       </div>
 
       <!-- Coach description -->
-      <div id="modal-desc" class="px-6 py-4 border-b border-[#1e2030] text-sm text-slate-300 leading-relaxed"></div>
+      <div id="modal-desc" style="padding:14px 24px;border-bottom:1px solid #18181b;font-size:12px;color:#a1a1aa;line-height:1.7"></div>
+
+      <!-- AI coach recommendation -->
+      <div id="modal-coach-note" class="hidden" style="padding:12px 24px;border-bottom:1px solid #18181b;background:rgba(163,230,53,0.04);border-left:3px solid #a3e635">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#a3e635;margin-bottom:6px">✦ AI Coach Recommendation</p>
+        <p id="modal-coach-note-text" style="font-size:12px;color:#a1a1aa;line-height:1.7"></p>
+        <a href="/performance" style="display:inline-block;margin-top:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#a3e635;text-decoration:none;opacity:0.8"
+           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">View performance analysis →</a>
+      </div>
 
       <!-- Steps -->
-      <div class="px-6 py-4">
-        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-3">Session Structure</p>
-        <div id="modal-steps" class="space-y-1.5"></div>
+      <div style="padding:16px 24px">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#71717a;margin-bottom:12px">Session Structure</p>
+        <div id="modal-steps" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
 
     </div>
@@ -458,6 +461,11 @@
         {name:"20-min test",  mins:20,       zone:"Max sustainable"},
         {name:"Cool-down",    mins:17,       zone:"Z1"},
       ],
+      "Threshold / Tempo Ride": dur => [
+        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
+        {name:"Threshold block", mins:dur-35, zone:"Z4"},
+        {name:"Cool-down",    mins:20,       zone:"Z1"},
+      ],
       "Tempo Intervals":  _  => [
         {name:"Warm-up",      mins:15,       zone:"Z1–3"},
         {name:"Tempo interval",mins:10,      zone:"Z4",  repeat:"× 3  (5m Z1 between each)"},
@@ -528,6 +536,11 @@
       document.getElementById('modal-desc').textContent = desc;
       document.getElementById('modal-desc').classList.toggle('hidden', !desc);
 
+      // AI coach recommendation
+      const coachNote = el.dataset.coachNote || '';
+      document.getElementById('modal-coach-note-text').textContent = coachNote;
+      document.getElementById('modal-coach-note').classList.toggle('hidden', !coachNote);
+
       // Steps
       const stepFn = WORKOUT_STEPS[label];
       const steps  = stepFn ? stepFn(dur) : [];
@@ -536,13 +549,13 @@
       steps.forEach(s => {
         const zoneCls = ZONE_CLS[s.zone] || 'text-slate-400';
         const row = document.createElement('div');
-        row.className = 'flex items-start gap-3';
+        row.style.cssText = 'display:flex;align-items:flex-start;gap:10px';
         row.innerHTML = `
-          <div class="w-10 text-right text-[11px] text-slate-500 flex-shrink-0 pt-0.5">${fmtMins(s.mins)}</div>
-          <div class="flex-1">
-            <span class="text-[13px] text-slate-200">${s.name}</span>
-            ${s.repeat ? `<span class="text-[11px] text-slate-500 ml-1">${s.repeat}</span>` : ''}
-            <div class="text-[11px] ${zoneCls} mt-0.5">${s.zone}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:#71717a;width:36px;text-align:right;flex-shrink:0;padding-top:1px">${fmtMins(s.mins)}</div>
+          <div style="flex:1">
+            <span style="font-size:13px;color:#fafafa">${s.name}</span>
+            ${s.repeat ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:#52525b;margin-left:6px">${s.repeat}</span>` : ''}
+            <div style="font-family:'DM Mono',monospace;font-size:10px;margin-top:2px" class="${zoneCls}">${s.zone}</div>
           </div>`;
         stepsEl.appendChild(row);
       });

@@ -1,18 +1,115 @@
 <style>
-  .gr-nav { background: #0a0c10; border-bottom: 1px solid #1e2030; padding: 10px 24px; font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; }
-  .gr-nav-inner { max-width: 980px; margin: 0 auto; display: flex; gap: 4px; align-items: center; }
-  .gr-nav a { text-decoration: none; padding: 5px 14px; border-radius: 4px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; transition: color 0.15s, background 0.15s; }
-  .gr-nav a:hover { color: #e2e8f0; }
-  .gr-nav a.active { background: #1e2030; color: #e2e8f0; }
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:         #09090b;
+  --surface:    #111114;
+  --surface2:   #18181b;
+  --border:     #27272a;
+  --border2:    #3f3f46;
+  --accent:     #a3e635;
+  --accent-dim: rgba(163,230,53,0.07);
+  --blue:       #60a5fa;
+  --blue-dim:   rgba(96,165,250,0.1);
+  --orange:     #fb923c;
+  --red:        #f87171;
+  --green:      #4ade80;
+  --muted:      #71717a;
+  --text:       #fafafa;
+  --text-dim:   #a1a1aa;
+  --font-d: 'Bebas Neue', sans-serif;
+  --font-b: 'DM Sans', system-ui, sans-serif;
+  --font-m: 'DM Mono', 'ui-monospace', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-weight: 300;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.gr-nav {
+  background: rgba(9,9,11,0.92);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.gr-nav-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gr-nav-inner::-webkit-scrollbar { display: none; }
+
+.gr-brand {
+  font-family: var(--font-d);
+  font-size: 19px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.gr-brand-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+.gr-brand-sub {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.gr-nav a.tab {
+  text-decoration: none;
+  padding: 4px 12px 0;
+  font-family: var(--font-b);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--muted);
+  transition: color 0.15s;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.gr-nav a.tab:hover { color: var(--text-dim); }
+.gr-nav a.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 </style>
+
 <nav class="gr-nav">
   <div class="gr-nav-inner">
-    <a href="/" {% if active_tab == 'readiness' %}class="active"{% endif %}>Readiness</a>
-    <a href="/performance" {% if active_tab == 'performance' %}class="active"{% endif %}>Performance</a>
-    <a href="/analysis" {% if active_tab == 'analysis' %}class="active"{% endif %}>Analysis</a>
-    <a href="/calendar" {% if active_tab == 'calendar' %}class="active"{% endif %}>Calendar</a>
-    <a href="/training" {% if active_tab == 'training' %}class="active"{% endif %}>Training Plan</a>
-    <a href="/nutrition" {% if active_tab == 'nutrition' %}class="active"{% endif %}>Nutrition</a>
-    <a href="/tenerife" {% if active_tab == 'tenerife' %}class="active"{% endif %}>Tenerife</a>
+    <a href="/" class="tab {% if active_tab == 'readiness' %}active{% endif %}">Readiness</a>
+    <a href="/performance" class="tab {% if active_tab == 'performance' %}active{% endif %}">Performance</a>
+    <a href="/analysis" class="tab {% if active_tab == 'analysis' %}active{% endif %}">Analysis</a>
+    <a href="/calendar" class="tab {% if active_tab == 'calendar' %}active{% endif %}">Calendar</a>
+    <a href="/training" class="tab {% if active_tab == 'training' %}active{% endif %}">Training</a>
+    <a href="/nutrition" class="tab {% if active_tab == 'nutrition' %}active{% endif %}">Nutrition</a>
+    <a href="/tenerife" class="tab {% if active_tab == 'tenerife' %}active{% endif %}">Tenerife</a>
   </div>
 </nav>

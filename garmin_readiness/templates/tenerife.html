@@ -1,34 +1,24 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tenerife Cycling Camp</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'] },
-        }
-      }
-    }
-  </script>
   <style>
-    body { background: #0f1117; }
+    body { background: #09090b; }
     .day-body { display: none; }
     .day-card.open .day-body { display: block; }
     .day-card.open .day-chevron { transform: rotate(90deg); }
     .day-chevron { transition: transform 0.2s; display: inline-block; }
-    .day-hard  { border-left: 4px solid #ef4444; }
-    .day-medium { border-left: 4px solid #fbbf24; }
-    .day-easy  { border-left: 4px solid #34d399; }
-    .day-rest  { border-left: 4px solid #475569; }
-    .day-card  { scroll-margin-top: 56px; }
+    .day-hard   { border-left: 3px solid #ef4444; }
+    .day-medium { border-left: 3px solid #fbbf24; }
+    .day-easy   { border-left: 3px solid #a3e635; }
+    .day-rest   { border-left: 3px solid #27272a; }
+    .day-card   { scroll-margin-top: 56px; }
   </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen">
+<body>
 
   {% set active_tab = 'tenerife' %}
   {% include 'nav.html' %}

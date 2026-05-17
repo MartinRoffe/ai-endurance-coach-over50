@@ -1,301 +1,242 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Performance Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
+  <style>
+    body { background: #09090b; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
-  </script>
-  <style>body { background: #0f1117; }</style>
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+
+    .pmc-num {
+      font-family: var(--font-d);
+      font-size: clamp(56px, 10vw, 88px);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+    }
+    .pmc-sub {
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    .legend-dot { display: inline-block; width: 24px; height: 2px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { animation: fadeUp 0.3s ease both; }
+  </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen">
+<body>
 
-  {% set active_tab = 'performance' %}
-  {% include 'nav.html' %}
+{% set active_tab = 'performance' %}
+{% include 'nav.html' %}
 
-  <div class="p-6">
-  <div class="max-w-5xl mx-auto">
+<!-- Ambient glow -->
+<div style="position:fixed;top:-160px;right:-80px;width:640px;height:640px;background:radial-gradient(circle,rgba(96,165,250,0.025) 0%,transparent 65%);pointer-events:none;z-index:0"></div>
 
-    <!-- Header -->
-    <div class="mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Training Load</p>
-      <h1 class="text-2xl font-bold text-white">Performance Management</h1>
-      <p class="text-xs text-slate-600 mt-1">Garmin 7-day acute · 28-day chronic · all values in Garmin training-load units</p>
-    </div>
+<div class="page">
 
-    <!-- Today's summary cards -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
-
-      {% set ctl = today.ctl %}
-      {% set atl = today.atl %}
-      {% set tsb = today.tsb %}
-
-      <!-- CTL / Fitness -->
-      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
-        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Fitness · CTL</p>
-        {% if ctl is not none %}
-          <p class="text-3xl font-bold text-blue-400">{{ ctl | int }}</p>
-          <p class="text-xs text-slate-500 mt-1">28-day chronic load</p>
-        {% else %}
-          <p class="text-3xl text-slate-600">—</p>
-          <p class="text-xs text-slate-600 mt-1">no data</p>
-        {% endif %}
-      </div>
-
-      <!-- ATL / Fatigue -->
-      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
-        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Fatigue · ATL</p>
-        {% if atl is not none %}
-          <p class="text-3xl font-bold text-orange-400">{{ atl | int }}</p>
-          <p class="text-xs text-slate-500 mt-1">7-day acute load</p>
-        {% else %}
-          <p class="text-3xl text-slate-600">—</p>
-          <p class="text-xs text-slate-600 mt-1">no data</p>
-        {% endif %}
-      </div>
-
-      <!-- TSB / Form -->
-      <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
-        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-2">Form · TSB</p>
-        {% if tsb is not none %}
-          {% if tsb >= 0 %}
-            <p class="text-3xl font-bold text-emerald-400">+{{ tsb | int }}</p>
-            <p class="text-xs text-emerald-600 mt-1">fresh · fitness > fatigue</p>
-          {% elif tsb >= -100 %}
-            <p class="text-3xl font-bold text-yellow-400">{{ tsb | int }}</p>
-            <p class="text-xs text-yellow-700 mt-1">moderate training load</p>
-          {% elif tsb >= -200 %}
-            <p class="text-3xl font-bold text-orange-400">{{ tsb | int }}</p>
-            <p class="text-xs text-orange-700 mt-1">heavy training load</p>
-          {% else %}
-            <p class="text-3xl font-bold text-red-400">{{ tsb | int }}</p>
-            <p class="text-xs text-red-700 mt-1">very high fatigue</p>
-          {% endif %}
-        {% else %}
-          <p class="text-3xl text-slate-600">—</p>
-          <p class="text-xs text-slate-600 mt-1">no data</p>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- Coach analysis -->
-    {% if pmc_analysis %}
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Coach's Analysis</p>
-      {% for para in pmc_analysis.strip().split('\n\n') %}
-        {% if para.strip() %}
-          <p class="text-sm text-slate-300 leading-relaxed {% if not loop.last %}mb-2{% endif %}">{{ para.strip() }}</p>
-        {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- CTL vs ATL chart -->
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-4">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-xs text-slate-500 uppercase tracking-widest">Fitness vs Fatigue · 90 days</p>
-        <div class="flex gap-4 text-[11px]">
-          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-0.5 bg-blue-400 rounded"></span> CTL fitness</span>
-          <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-0.5 bg-orange-400 rounded"></span> ATL fatigue</span>
-        </div>
-      </div>
-      <div class="h-52">
-        <canvas id="ctlAtlChart"></canvas>
-      </div>
-    </div>
-
-    <!-- TSB chart -->
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-xs text-slate-500 uppercase tracking-widest">Form · TSB (CTL − ATL)</p>
-        <div class="flex gap-4 text-[11px] text-slate-500">
-          <span class="text-emerald-600">▲ fresh</span>
-          <span class="text-red-700">▼ fatigued</span>
-        </div>
-      </div>
-      <div class="h-36">
-        <canvas id="tsbChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Note -->
-    <p class="text-xs text-slate-700 text-center mb-8">
-      CTL = Garmin 28-day chronic training load · ATL = 7-day acute load · TSB = CTL − ATL ·
-      thresholds are relative to zero, not Coggan TSS
-    </p>
-
-    <!-- Metric explainer -->
-    {% if pmc_explainer %}
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">Understanding ATL, CTL &amp; TSB</p>
-      <div id="explainer-body" class="space-y-3 text-sm text-slate-300 leading-relaxed"></div>
-    </div>
-    <script>
-      (function() {
-        const raw = {{ pmc_explainer | tojson }};
-        const container = document.getElementById('explainer-body');
-        raw.split(/\n\n+/).forEach(para => {
-          para = para.trim();
-          if (!para) return;
-          const p = document.createElement('p');
-          p.innerHTML = para.replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-100">$1</strong>');
-          container.appendChild(p);
-        });
-      })();
-    </script>
-    {% endif %}
-
-  </div>
+  <!-- ── Header ────────────────────────────────────────────────────── -->
+  <div style="margin-bottom:40px">
+    <p class="eyebrow" style="margin-bottom:8px">Training Load</p>
+    <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Performance Management</h1>
+    <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);margin-top:6px">Garmin 7-day acute · 28-day chronic · values in Garmin training-load units</p>
   </div>
 
+  {% set ctl = today.ctl %}
+  {% set atl = today.atl %}
+  {% set tsb = today.tsb %}
+
+  <!-- ── PMC Hero: 3 numbers ────────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+
+    <!-- CTL -->
+    <div class="card" style="padding:28px 24px;border-top:2px solid #60a5fa">
+      <p class="eyebrow" style="margin-bottom:14px">Fitness · CTL</p>
+      <p class="pmc-num" style="color:#60a5fa">{% if ctl is not none %}{{ ctl | int }}{% else %}<span style="color:var(--border2)">—</span>{% endif %}</p>
+      <p class="pmc-sub" style="color:#3b6ea8">28-day chronic load</p>
+    </div>
+
+    <!-- ATL -->
+    <div class="card" style="padding:28px 24px;border-top:2px solid #fb923c">
+      <p class="eyebrow" style="margin-bottom:14px">Fatigue · ATL</p>
+      <p class="pmc-num" style="color:#fb923c">{% if atl is not none %}{{ atl | int }}{% else %}<span style="color:var(--border2)">—</span>{% endif %}</p>
+      <p class="pmc-sub" style="color:#7c4d2a">7-day acute load</p>
+    </div>
+
+    <!-- TSB -->
+    <div class="card" style="padding:28px 24px;
+      {% if tsb is not none %}
+        {% if tsb >= 0 %}border-top:2px solid #a3e635
+        {% elif tsb >= -100 %}border-top:2px solid #fde047
+        {% elif tsb >= -200 %}border-top:2px solid #fb923c
+        {% else %}border-top:2px solid #f87171{% endif %}
+      {% else %}border-top:2px solid var(--border){% endif %}">
+      <p class="eyebrow" style="margin-bottom:14px">Form · TSB</p>
+      {% if tsb is not none %}
+        {% if tsb >= 0 %}
+          <p class="pmc-num" style="color:#a3e635">+{{ tsb | int }}</p>
+          <p class="pmc-sub" style="color:#5a7020">fresh · fitness > fatigue</p>
+        {% elif tsb >= -100 %}
+          <p class="pmc-num" style="color:#fde047">{{ tsb | int }}</p>
+          <p class="pmc-sub" style="color:#7a6e20">moderate training load</p>
+        {% elif tsb >= -200 %}
+          <p class="pmc-num" style="color:#fb923c">{{ tsb | int }}</p>
+          <p class="pmc-sub" style="color:#7c4d2a">heavy training load</p>
+        {% else %}
+          <p class="pmc-num" style="color:#f87171">{{ tsb | int }}</p>
+          <p class="pmc-sub" style="color:#7a2e2e">very high fatigue</p>
+        {% endif %}
+      {% else %}
+        <p class="pmc-num" style="color:var(--border2)">—</p>
+        <p class="pmc-sub" style="color:var(--border2)">no data</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Coach analysis ────────────────────────────────────────────── -->
+  {% if pmc_analysis %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px;border-left:3px solid var(--accent)">
+    <p class="eyebrow" style="margin-bottom:12px;color:var(--accent)">Coach's Analysis</p>
+    {% for para in pmc_analysis.strip().split('\n\n') %}
+      {% if para.strip() %}
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:10px{% endif %}">{{ para.strip() }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── CTL vs ATL chart ───────────────────────────────────────────── -->
+  <div class="card" style="padding:20px 24px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <p class="eyebrow">Fitness vs Fatigue · 90 days</p>
+      <div style="display:flex;gap:16px;font-family:var(--font-m);font-size:10px;letter-spacing:0.06em">
+        <span><span class="legend-dot" style="background:#60a5fa"></span>CTL fitness</span>
+        <span><span class="legend-dot" style="background:#fb923c"></span>ATL fatigue</span>
+      </div>
+    </div>
+    <div style="height:200px;position:relative"><canvas id="ctlAtlChart"></canvas></div>
+  </div>
+
+  <!-- ── TSB chart ─────────────────────────────────────────────────── -->
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <p class="eyebrow">Form · TSB (CTL − ATL)</p>
+      <div style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;display:flex;gap:12px">
+        <span style="color:#a3e635">▲ fresh</span>
+        <span style="color:#f87171">▼ fatigued</span>
+      </div>
+    </div>
+    <div style="height:130px;position:relative"><canvas id="tsbChart"></canvas></div>
+  </div>
+
+  <!-- ── Note ──────────────────────────────────────────────────────── -->
+  <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);text-align:center;margin-bottom:28px">
+    CTL = 28-day chronic · ATL = 7-day acute · TSB = CTL − ATL
+  </p>
+
+  <!-- ── Explainer ─────────────────────────────────────────────────── -->
+  {% if pmc_explainer %}
+  <div class="card" style="padding:20px 24px">
+    <p class="eyebrow" style="margin-bottom:14px">Understanding ATL, CTL &amp; TSB</p>
+    <div id="explainer-body" style="font-size:13px;color:var(--text-dim);line-height:1.75"></div>
+  </div>
   <script>
-    const labels = {{ history | map(attribute='label') | list | tojson }};
-    const ctlData = {{ history | map(attribute='ctl') | list | tojson }};
-    const atlData = {{ history | map(attribute='atl') | list | tojson }};
-    const tsbData = {{ history | map(attribute='tsb') | list | tojson }};
-
-    const gridColour = '#1e2030';
-    const tickStyle  = { color: '#64748b', font: { family: 'monospace', size: 11 } };
-
-    // ── CTL vs ATL ──────────────────────────────────────────────────────────
-    new Chart(document.getElementById('ctlAtlChart'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'CTL (fitness)',
-            data: ctlData,
-            borderColor: '#60a5fa',
-            backgroundColor: 'rgba(96,165,250,0.08)',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-            fill: false,
-            spanGaps: true,
-          },
-          {
-            label: 'ATL (fatigue)',
-            data: atlData,
-            borderColor: '#fb923c',
-            backgroundColor: 'rgba(251,146,60,0.08)',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-            fill: false,
-            spanGaps: true,
-          },
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => `${ctx.dataset.label}: ${ctx.raw ?? '—'}`
-            }
-          }
-        },
-        scales: {
-          x: { grid: { color: gridColour }, ticks: { ...tickStyle, maxTicksLimit: 10 } },
-          y: {
-            grid: { color: gridColour },
-            ticks: { ...tickStyle },
-            min: 0,
-          }
-        }
-      }
-    });
-
-    // ── TSB with fill ────────────────────────────────────────────────────────
-    // Build segment colours: green above zero, red below
-    const tsbGreenPlugin = {
-      id: 'tsbFill',
-      beforeDatasetDraw(chart) {
-        const { ctx, chartArea: { top, bottom }, scales: { x, y } } = chart;
-        const ds = chart.data.datasets[0];
-        const meta = chart.getDatasetMeta(0);
-        const zero = y.getPixelForValue(0);
-
-        ctx.save();
-        for (let i = 0; i < meta.data.length - 1; i++) {
-          const p1 = meta.data[i];
-          const p2 = meta.data[i + 1];
-          if (p1.skip || p2.skip) continue;
-          const v1 = ds.data[i], v2 = ds.data[i + 1];
-          if (v1 === null || v2 === null) continue;
-
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.lineTo(p2.x, zero);
-          ctx.lineTo(p1.x, zero);
-          ctx.closePath();
-
-          const avg = (v1 + v2) / 2;
-          ctx.fillStyle = avg >= 0
-            ? 'rgba(52,211,153,0.20)'   // emerald
-            : 'rgba(248,113,113,0.18)'; // red
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-    };
-
-    new Chart(document.getElementById('tsbChart'), {
-      type: 'line',
-      plugins: [tsbGreenPlugin],
-      data: {
-        labels,
-        datasets: [{
-          label: 'TSB (form)',
-          data: tsbData,
-          borderColor: tsbData.map(v => v === null ? 'transparent' : v >= 0 ? '#34d399' : '#f87171'),
-          borderWidth: 0,
-          pointRadius: 0,
-          tension: 0.3,
-          spanGaps: true,
-          segment: {
-            borderColor: ctx => {
-              const v = ctx.p1.parsed.y;
-              return v >= 0 ? '#34d399' : '#f87171';
-            }
-          }
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => `TSB: ${ctx.raw !== null ? (ctx.raw >= 0 ? '+' : '') + ctx.raw : '—'}`
-            }
-          }
-        },
-        scales: {
-          x: { grid: { color: gridColour }, ticks: { ...tickStyle, maxTicksLimit: 10 } },
-          y: {
-            grid: {
-              color: ctx => ctx.tick.value === 0 ? '#475569' : gridColour,
-              lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
-            },
-            ticks: { ...tickStyle },
-          }
-        }
-      }
-    });
+    (function() {
+      const raw = {{ pmc_explainer | tojson }};
+      const c = document.getElementById('explainer-body');
+      raw.split(/\n\n+/).forEach(para => {
+        para = para.trim(); if (!para) return;
+        const p = document.createElement('p');
+        p.style.marginBottom = '10px';
+        p.innerHTML = para.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
+        c.appendChild(p);
+      });
+    })();
   </script>
+  {% endif %}
+
+</div>
+
+<script>
+  const labels  = {{ history | map(attribute='label') | list | tojson }};
+  const ctlData = {{ history | map(attribute='ctl') | list | tojson }};
+  const atlData = {{ history | map(attribute='atl') | list | tojson }};
+  const tsbData = {{ history | map(attribute='tsb') | list | tojson }};
+
+  const G = '#18181b', T = { color: '#3f3f46', font: { family: 'DM Mono', size: 10 } };
+
+  new Chart(document.getElementById('ctlAtlChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'CTL (fitness)', data:ctlData, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.06)', borderWidth:1.5, pointRadius:0, tension:0.3, fill:false, spanGaps:true },
+        { label:'ATL (fatigue)', data:atlData, borderColor:'#fb923c', backgroundColor:'rgba(251,146,60,0.06)', borderWidth:1.5, pointRadius:0, tension:0.3, fill:false, spanGaps:true },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${ctx.raw ?? '—'}` }}},
+      scales:{ x:{grid:{color:G},ticks:{...T,maxTicksLimit:10}}, y:{grid:{color:G},ticks:{...T},min:0} }
+    }
+  });
+
+  const tsbFillPlugin = {
+    id:'tsbFill',
+    beforeDatasetDraw(chart) {
+      const {ctx, scales:{x,y}} = chart;
+      const ds = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      const zero = y.getPixelForValue(0);
+      ctx.save();
+      for (let i=0;i<meta.data.length-1;i++) {
+        const p1=meta.data[i], p2=meta.data[i+1];
+        if(p1.skip||p2.skip) continue;
+        const v1=ds.data[i], v2=ds.data[i+1];
+        if(v1===null||v2===null) continue;
+        ctx.beginPath();
+        ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p2.x,zero); ctx.lineTo(p1.x,zero);
+        ctx.closePath();
+        ctx.fillStyle = (v1+v2)/2>=0 ? 'rgba(163,230,53,0.14)' : 'rgba(248,113,113,0.14)';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  };
+
+  new Chart(document.getElementById('tsbChart'), {
+    type:'line', plugins:[tsbFillPlugin],
+    data:{
+      labels,
+      datasets:[{ label:'TSB (form)', data:tsbData, borderWidth:0, pointRadius:0, tension:0.3, spanGaps:true,
+        segment:{ borderColor: ctx => ctx.p1.parsed.y>=0 ? '#a3e635' : '#f87171' }
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx=>`TSB: ${ctx.raw!==null?(ctx.raw>=0?'+':'')+ctx.raw:'—'}`}}},
+      scales:{
+        x:{grid:{color:G},ticks:{...T,maxTicksLimit:10}},
+        y:{grid:{color: ctx=>ctx.tick.value===0?'#3f3f46':G, lineWidth: ctx=>ctx.tick.value===0?1.5:1}, ticks:{...T}}
+      }
+    }
+  });
+</script>
 </body>
 </html>

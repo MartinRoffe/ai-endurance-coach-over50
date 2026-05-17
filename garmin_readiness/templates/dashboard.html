@@ -1,322 +1,325 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Daily Readiness · {{ date }}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Readiness · {{ date }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'] },
-        }
-      }
-    }
-  </script>
   <style>
-    body { background: #0f1117; }
-    .z-bar-track { background: #1e2030; }
-    .z-bar-fill-pos { background: linear-gradient(90deg, #34d399, #10b981); }
-    .z-bar-fill-neg { background: linear-gradient(90deg, #f87171, #ef4444); }
-    .z-bar-fill-neutral { background: #a3a3a3; }
-    .metric-card { border: 1px solid #1e2030; }
-    .metric-card:hover { border-color: #374151; }
+    body { background: #09090b; }
+
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    /* Hero score */
+    .score-num {
+      font-family: var(--font-d);
+      font-size: clamp(80px, 14vw, 128px);
+      line-height: 0.88;
+      letter-spacing: -0.01em;
+    }
+    .score-sigma {
+      font-family: var(--font-m);
+      font-size: 0.28em;
+      vertical-align: super;
+      opacity: 0.45;
+      letter-spacing: 0;
+    }
+    .score-label {
+      font-family: var(--font-m);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 14px;
+    }
+
+    /* Metric cards */
+    .m-label {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .m-val {
+      font-family: var(--font-m);
+      font-size: 26px;
+      font-weight: 500;
+      line-height: 1;
+    }
+    .m-unit { font-size: 13px; color: var(--muted); font-weight: 400; }
+    .m-avg  { font-family: var(--font-m); font-size: 10px; color: var(--muted); }
+
+    /* Z-bar */
+    .z-track { background: var(--border); height: 3px; border-radius: 2px; position: relative; overflow: hidden; }
+    .z-pos { background: #a3e635; position: absolute; left: 50%; top: 0; height: 100%; }
+    .z-neg { background: #f87171; position: absolute; right: 50%; top: 0; height: 100%; }
+    .z-mid { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--border2); }
+    .z-reading { font-family: var(--font-m); font-size: 10px; text-align: right; margin-top: 4px; }
+
+    /* Activities */
+    .act-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--surface2); }
+    .act-row:last-child { border-bottom: none; }
+    .act-name { font-size: 13px; font-weight: 400; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .act-meta { font-family: var(--font-m); font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .act-stat { text-align: right; }
+    .act-stat-val { font-family: var(--font-m); font-size: 12px; font-weight: 500; color: var(--text); }
+    .act-stat-lbl { font-family: var(--font-m); font-size: 9px; color: var(--muted); }
+
+    /* Fade in */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { animation: fadeUp 0.3s ease both; }
+
+    /* Badge */
+    .bdg { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 2px; border: 1px solid; white-space: nowrap; }
   </style>
 </head>
-<body class="text-slate-200 font-mono min-h-screen">
+<body>
 
-  {% set active_tab = 'readiness' %}
-  {% include 'nav.html' %}
+{% set active_tab = 'readiness' %}
+{% include 'nav.html' %}
 
-  <div class="p-6">
-  <!-- ── Header ─────────────────────────────────────────────────────── -->
-  <div class="max-w-5xl mx-auto">
-    <div class="flex items-start justify-between mb-1">
-      <div>
-        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Daily Readiness</p>
-        <h1 class="text-2xl font-bold text-white">{{ date_long }}</h1>
-      </div>
-      <div class="text-right">
-        <p class="text-xs text-slate-500 mb-1">refreshes every 5 min</p>
-        <p class="text-xs text-slate-600" id="last-updated">updated just now</p>
-      </div>
+<!-- Ambient glow -->
+<div style="position:fixed;top:-160px;right:-80px;width:640px;height:640px;background:radial-gradient(circle,rgba(163,230,53,0.028) 0%,transparent 65%);pointer-events:none;z-index:0"></div>
+
+<div class="page">
+
+  <!-- ── Header ────────────────────────────────────────────────────── -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px">
+    <div>
+      <p class="eyebrow" style="margin-bottom:8px">Daily Readiness</p>
+      <h1 style="font-family:var(--font-d);font-size:clamp(24px,4vw,36px);letter-spacing:0.05em;color:var(--text);line-height:1">{{ date_long }}</h1>
     </div>
-
-    <!-- ── Composite score hero ──────────────────────────────────────── -->
-    <div class="mt-5 mb-6 rounded-xl bg-[#161b27] border border-[#1e2030] p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="flex-1">
-        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Composite Score</p>
-        {% if comp_z is not none %}
-          <p class="text-5xl font-bold {{ comp_colour }}">
-            {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="text-2xl text-slate-500">σ</span>
-          </p>
-        {% else %}
-          <p class="text-3xl text-slate-500">—</p>
-        {% endif %}
-        <p class="mt-1 text-lg {{ comp_colour }}">{{ comp_label }}</p>
-      </div>
-
-      <!-- Status badges -->
-      <div class="flex flex-wrap gap-2">
-        {% for badge_text, badge_cls in badges %}
-          <span class="px-3 py-1 rounded-full text-xs font-semibold border {{ badge_cls }}">{{ badge_text }}</span>
-        {% endfor %}
-      </div>
+    <div style="text-align:right;padding-top:2px">
+      <p class="eyebrow">refreshes every 5 min</p>
+      <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);margin-top:3px" id="last-updated">just now</p>
     </div>
+  </div>
 
-    <!-- ── AI advice ────────────────────────────────────────────────── -->
-    {% if advice %}
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Today's Advice</p>
-      {% for para in advice.strip().split('\n\n') %}
-        {% if para.strip() %}
-          <p class="text-sm text-slate-300 leading-relaxed {% if not loop.last %}mb-3{% endif %}">{{ para.strip() }}</p>
-        {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- ── Weekly training completion ──────────────────────────────── -->
-    {% if week_completion %}
-    {% set wc = week_completion %}
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">This Week · Training</p>
-      <div class="flex items-center gap-5">
-        <!-- % label -->
-        <div class="flex-shrink-0 w-16 text-right">
-          <p class="text-3xl font-bold
-            {% if wc.pct >= 90 %}text-emerald-400
-            {% elif wc.pct >= 60 %}text-yellow-400
-            {% else %}text-red-400{% endif %}">{{ wc.pct }}%</p>
+  <!-- ── Hero: Composite Score ──────────────────────────────────────── -->
+  <div class="card" style="padding:32px 36px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+    <div style="flex:1;min-width:180px">
+      <p class="eyebrow" style="margin-bottom:14px">Composite Score</p>
+      {% if comp_z is not none %}
+        <div class="score-num {{ comp_colour }}">
+          {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="score-sigma">σ</span>
         </div>
-        <!-- bar + labels -->
-        <div class="flex-1 min-w-0">
-          <div class="flex justify-between text-[11px] mb-1.5">
-            <span class="text-slate-300 font-semibold">{{ wc.done_min_fmt }} done</span>
-            <span class="text-slate-500">of {{ wc.plan_min_fmt }} · day {{ wc.day_of_week }}/7</span>
-          </div>
-          <div class="w-full h-2 rounded-full bg-[#1e2030] overflow-hidden">
-            <div class="h-full rounded-full transition-all
-              {% if wc.pct >= 90 %}bg-emerald-500
-              {% elif wc.pct >= 60 %}bg-yellow-500
-              {% else %}bg-red-500{% endif %}"
-              style="width: {{ wc.bar_filled }}%"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- ── Narrative context (same signals as daily email prompt) ────── -->
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Same context as your email</p>
-      <p class="text-[11px] text-slate-500 mb-1">7-day composite trend (oldest→today)</p>
-      <p class="text-sm text-slate-300 font-mono break-words leading-relaxed">{{ trend_note }}</p>
-      <p class="text-[11px] text-slate-500 uppercase tracking-widest mt-4 mb-1">Recent workouts</p>
-      <p class="text-sm text-slate-400">{{ activity_blurb }}</p>
-    </div>
-
-    <!-- ── Metrics grid ──────────────────────────────────────────────── -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-      {% for m in metrics %}
-      <div class="metric-card rounded-lg bg-[#161b27] p-4 transition-colors">
-        <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-1">{{ m.label }}</p>
-        <div class="flex items-baseline gap-2 mb-2">
-          <span class="text-2xl font-bold {% if m.z_val is not none %}{{ m.value_colour }}{% else %}text-white{% endif %}">
-            {{ m.value }}{% if m.unit %}<span class="text-sm text-slate-400">{{ m.unit }}</span>{% endif %}
-          </span>
-          {% if m.avg != "—" %}
-            <span class="text-xs text-slate-500">avg {{ m.avg }}</span>
-          {% endif %}
-        </div>
-
-        {% if m.z_val is not none %}
-          <!-- z-score bar -->
-          <div class="flex items-center gap-2">
-            <div class="flex-1 h-1.5 rounded-full z-bar-track relative overflow-hidden">
-              {% if m.z_val >= 0 %}
-                <div class="absolute left-1/2 top-0 h-full rounded-full z-bar-fill-pos"
-                     style="width: {{ [m.z_val / 2.0 * 50, 50]|min }}%;"></div>
-              {% else %}
-                <div class="absolute top-0 h-full rounded-full z-bar-fill-neg"
-                     style="width: {{ [(-m.z_val) / 2.0 * 50, 50]|min }}%; right: 50%;"></div>
-              {% endif %}
-              <div class="absolute left-1/2 top-0 w-px h-full bg-slate-600"></div>
-            </div>
-            <span class="text-[11px] w-14 text-right {% if m.z_val >= 0.5 %}text-emerald-400{% elif m.z_val <= -0.5 %}text-red-400{% else %}text-slate-400{% endif %}">
-              {% if m.z_val >= 0 %}+{% endif %}{{ "%.2f"|format(m.z_val) }}σ
-            </span>
-          </div>
-        {% elif m.context_only %}
-          <p class="text-[11px] text-slate-600">context only</p>
-        {% else %}
-          <p class="text-[11px] text-slate-600">no baseline</p>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- ── 14-day trend chart ────────────────────────────────────────── -->
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">14-Day Composite Trend</p>
-      <div class="h-40">
-        <canvas id="trendChart"></canvas>
-      </div>
-    </div>
-
-    <!-- ── Last 7 days workouts ─────────────────────────────────────── -->
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] p-5 mb-6">
-      <p class="text-xs text-slate-500 uppercase tracking-widest mb-4">Last 7 Days · Workouts</p>
-      {% if activities %}
-        <div class="space-y-2">
-          {% for a in activities %}
-          <div class="flex items-center gap-3 py-2 border-b border-[#1e2030] last:border-0">
-            <span class="text-xl w-7 flex-shrink-0">{{ a.icon }}</span>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-slate-200 truncate">{{ a.name or a.type_label }}</p>
-              <p class="text-[11px] text-slate-500">
-                {{ a.type_label }}
-                {% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}
-              </p>
-            </div>
-            <div class="flex gap-4 text-right flex-shrink-0">
-              {% if a.duration_fmt %}
-                <div>
-                  <p class="text-sm font-semibold text-slate-200">{{ a.duration_fmt }}</p>
-                  <p class="text-[10px] text-slate-500">duration</p>
-                </div>
-              {% endif %}
-              {% if a.distance_fmt %}
-                <div>
-                  <p class="text-sm font-semibold text-slate-200">{{ a.distance_fmt }}</p>
-                  <p class="text-[10px] text-slate-500">distance</p>
-                </div>
-              {% endif %}
-              {% if a.pace_fmt %}
-                <div>
-                  <p class="text-sm font-semibold text-slate-200">{{ a.pace_fmt }}</p>
-                  <p class="text-[10px] text-slate-500">{% if 'km/h' in a.pace_fmt %}speed{% else %}pace{% endif %}</p>
-                </div>
-              {% endif %}
-              {% if a.avg_hr %}
-                <div>
-                  <p class="text-sm font-semibold text-slate-200">{{ a.avg_hr | int }}</p>
-                  <p class="text-[10px] text-slate-500">avg HR</p>
-                </div>
-              {% endif %}
-              {% if a.calories %}
-                <div>
-                  <p class="text-sm font-semibold text-slate-200">{{ a.calories | int }}</p>
-                  <p class="text-[10px] text-slate-500">kcal</p>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
+        <p class="score-label {{ comp_colour }}">{{ comp_label }}</p>
       {% else %}
-        <p class="text-sm text-slate-600">No workouts cached yet — <a href="/refresh" class="hover:text-slate-400 transition-colors">force refresh ↺</a> to load from Garmin.</p>
+        <div class="score-num" style="color:var(--border2)">—</div>
+        <p class="score-label" style="color:var(--muted)">no data</p>
       {% endif %}
     </div>
+    <!-- Status badges -->
+    <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px">
+      {% for badge_text, badge_cls in badges %}
+        <span class="bdg {{ badge_cls }}">{{ badge_text }}</span>
+      {% endfor %}
+    </div>
+  </div>
 
-    <!-- ── Metric help ──────────────────────────────────────────────── -->
-    {% if metric_explainer %}
-    <div class="rounded-xl bg-[#161b27] border border-[#1e2030] mb-6" id="help-card">
-      <button onclick="toggleHelp()"
-              class="w-full flex items-center justify-between px-5 py-4 text-left">
-        <p class="text-xs text-slate-500 uppercase tracking-widest">Understanding Your Metrics</p>
-        <span id="help-chevron" class="text-slate-600 text-xs transition-transform">▼</span>
-      </button>
-      <div id="help-body" class="hidden px-5 pb-5">
-        <div id="help-content" class="space-y-4 text-sm text-slate-300 leading-relaxed"></div>
+  <!-- ── Week progress ─────────────────────────────────────────────── -->
+  {% if week_completion %}
+  {% set wc = week_completion %}
+  <div class="card" style="padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:20px">
+    <div style="flex-shrink:0;min-width:56px">
+      <p class="eyebrow" style="margin-bottom:4px">Week</p>
+      <p style="font-family:var(--font-d);font-size:36px;line-height:1;
+        {% if wc.pct >= 90 %}color:#a3e635{% elif wc.pct >= 60 %}color:#fb923c{% else %}color:#f87171{% endif %}">{{ wc.pct }}%</p>
+    </div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+        <span style="font-family:var(--font-m);font-size:11px;color:var(--text)">{{ wc.done_min_fmt }} done</span>
+        <span style="font-family:var(--font-m);font-size:11px;color:var(--muted)">of {{ wc.plan_min_fmt }} · day {{ wc.day_of_week }}/7</span>
+      </div>
+      <div style="background:var(--border);height:3px;border-radius:2px;overflow:hidden">
+        <div style="height:100%;border-radius:2px;width:{{ wc.bar_filled }}%;
+          {% if wc.pct >= 90 %}background:#a3e635{% elif wc.pct >= 60 %}background:#fb923c{% else %}background:#f87171{% endif %}"></div>
       </div>
     </div>
-    <script>
-      (function() {
-        const raw = {{ metric_explainer | tojson }};
-        const container = document.getElementById('help-content');
-        raw.split(/\n\n+/).forEach(para => {
-          para = para.trim();
-          if (!para) return;
-          const p = document.createElement('p');
-          p.innerHTML = para.replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-100">$1</strong>');
-          container.appendChild(p);
-        });
-      })();
-
-      function toggleHelp() {
-        const body = document.getElementById('help-body');
-        const chevron = document.getElementById('help-chevron');
-        const open = body.classList.toggle('hidden');
-        chevron.style.transform = open ? '' : 'rotate(180deg)';
-      }
-    </script>
-    {% endif %}
-
-    <!-- ── Footer ───────────────────────────────────────────────────── -->
-    <p class="text-xs text-slate-600 text-center">
-      Baseline: 30-day rolling window ·
-      {% if baseline_count > 0 %}{{ baseline_count }} metrics tracked{% else %}building…{% endif %}
-      · <a href="/refresh" class="hover:text-slate-400 transition-colors">force refresh ↺</a>
-    </p>
   </div>
-  </div><!-- end p-6 -->
+  {% endif %}
 
+  <!-- ── AI Advice ─────────────────────────────────────────────────── -->
+  {% if advice %}
+  <div class="card" style="padding:20px 24px;margin-bottom:12px;border-left:3px solid var(--accent)">
+    <p class="eyebrow" style="margin-bottom:12px;color:var(--accent)">Today's Advice</p>
+    {% for para in advice.strip().split('\n\n') %}
+      {% if para.strip() %}
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:10px{% endif %}">{{ para.strip() }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Context ───────────────────────────────────────────────────── -->
+  <div class="card" style="padding:20px 24px;margin-bottom:28px">
+    <p class="eyebrow" style="margin-bottom:8px">Context · 7-day trend</p>
+    <p style="font-family:var(--font-m);font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">{{ trend_note }}</p>
+    <p class="eyebrow" style="margin-bottom:6px">Recent workouts</p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6">{{ activity_blurb }}</p>
+  </div>
+
+  <!-- ── Metrics grid ──────────────────────────────────────────────── -->
+  <p class="eyebrow" style="margin-bottom:14px">Metrics · 30-day baseline</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:32px">
+    {% for m in metrics %}
+    <div class="card" style="padding:16px;
+      border-left-width:2px;
+      border-left-style:solid;
+      border-left-color:{% if m.z_val is not none %}{% if m.z_val >= 0.5 %}#a3e635{% elif m.z_val <= -0.5 %}#f87171{% else %}var(--border2){% endif %}{% else %}var(--border){% endif %}">
+      <p class="m-label" style="margin-bottom:9px">{{ m.label }}</p>
+      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="m-val {% if m.z_val is not none %}{{ m.value_colour }}{% else %}{% endif %}">{{ m.value }}</span>
+        {% if m.unit %}<span class="m-unit">{{ m.unit }}</span>{% endif %}
+        {% if m.avg != "—" %}<span class="m-avg" style="margin-left:auto">avg {{ m.avg }}</span>{% endif %}
+      </div>
+      {% if m.z_val is not none %}
+        <div class="z-track">
+          {% if m.z_val >= 0 %}
+            <div class="z-pos" style="width:{{ [m.z_val / 2.0 * 50, 50]|min }}%"></div>
+          {% else %}
+            <div class="z-neg" style="width:{{ [(-m.z_val) / 2.0 * 50, 50]|min }}%"></div>
+          {% endif %}
+          <div class="z-mid"></div>
+        </div>
+        <p class="z-reading" style="{% if m.z_val >= 0.5 %}color:#a3e635{% elif m.z_val <= -0.5 %}color:#f87171{% else %}color:var(--muted){% endif %}">
+          {% if m.z_val >= 0 %}+{% endif %}{{ "%.2f"|format(m.z_val) }}σ
+        </p>
+      {% elif m.context_only %}
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);margin-top:4px">context only</p>
+      {% else %}
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);margin-top:4px">no baseline</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── 14-day trend chart ─────────────────────────────────────────── -->
+  <div class="card" style="padding:20px 24px;margin-bottom:12px">
+    <p class="eyebrow" style="margin-bottom:18px">14-Day Composite Trend</p>
+    <div style="height:136px;position:relative">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Activities ────────────────────────────────────────────────── -->
+  <div class="card" style="padding:20px 24px;margin-bottom:12px">
+    <p class="eyebrow" style="margin-bottom:16px">Last 7 Days · Workouts</p>
+    {% if activities %}
+      {% for a in activities %}
+      <div class="act-row">
+        <span style="font-size:18px;flex-shrink:0;width:26px">{{ a.icon }}</span>
+        <div style="flex:1;min-width:0">
+          <p class="act-name">{{ a.name or a.type_label }}</p>
+          <p class="act-meta">{{ a.type_label }}{% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}</p>
+        </div>
+        <div style="display:flex;gap:14px;flex-shrink:0">
+          {% if a.duration_fmt %}
+          <div class="act-stat"><p class="act-stat-val">{{ a.duration_fmt }}</p><p class="act-stat-lbl">dur</p></div>
+          {% endif %}
+          {% if a.distance_fmt %}
+          <div class="act-stat"><p class="act-stat-val">{{ a.distance_fmt }}</p><p class="act-stat-lbl">dist</p></div>
+          {% endif %}
+          {% if a.avg_hr %}
+          <div class="act-stat"><p class="act-stat-val">{{ a.avg_hr | int }}</p><p class="act-stat-lbl">hr</p></div>
+          {% endif %}
+          {% if a.calories %}
+          <div class="act-stat"><p class="act-stat-val">{{ a.calories | int }}</p><p class="act-stat-lbl">kcal</p></div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p style="font-size:13px;color:var(--border2)">No workouts cached — <a href="/refresh" style="color:var(--accent);text-decoration:none">force refresh ↺</a></p>
+    {% endif %}
+  </div>
+
+  <!-- ── Metric explainer ──────────────────────────────────────────── -->
+  {% if metric_explainer %}
+  <div class="card" style="margin-bottom:12px">
+    <button onclick="toggleHelp()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:none;border:none;cursor:pointer;text-align:left">
+      <p class="eyebrow">Understanding Your Metrics</p>
+      <span id="help-chev" style="font-family:var(--font-m);font-size:10px;color:var(--muted);transition:transform 0.2s">▼</span>
+    </button>
+    <div id="help-body" style="display:none;padding:0 20px 20px">
+      <div id="help-content" style="font-size:13px;color:var(--text-dim);line-height:1.75"></div>
+    </div>
+  </div>
   <script>
-    // ── Trend chart ──────────────────────────────────────────────────
-    const labels  = {{ chart_labels | tojson }};
-    const values  = {{ chart_values | tojson }};
-
-    const colours = values.map(v =>
-      v === null ? 'transparent'
-      : v >= 0.25  ? '#34d399'
-      : v <= -0.25 ? '#f87171'
-      : '#facc15'
-    );
-
-    new Chart(document.getElementById('trendChart'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colours,
-          borderRadius: 3,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: {
-          callbacks: {
-            label: ctx => ctx.raw === null ? 'no data' : (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + 'σ'
-          }
-        }},
-        scales: {
-          x: { grid: { color: '#1e2030' }, ticks: { color: '#64748b', font: { family: 'monospace', size: 11 } } },
-          y: {
-            grid: { color: '#1e2030' },
-            ticks: { color: '#64748b', font: { family: 'monospace', size: 11 },
-                     callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + 'σ' },
-            suggestedMin: -2, suggestedMax: 2,
-          }
-        }
-      }
-    });
-
-    // ── Auto-refresh every 5 min ─────────────────────────────────────
-    const startTime = Date.now();
-    const updEl = document.getElementById('last-updated');
-    setInterval(() => {
-      const secs = Math.round((Date.now() - startTime) / 1000);
-      if (secs < 60) updEl.textContent = `updated ${secs}s ago`;
-      else updEl.textContent = `updated ${Math.round(secs/60)}m ago`;
-    }, 10000);
-    setTimeout(() => location.reload(), 300000);
+    (function() {
+      const raw = {{ metric_explainer | tojson }};
+      const c = document.getElementById('help-content');
+      raw.split(/\n\n+/).forEach(para => {
+        para = para.trim(); if (!para) return;
+        const p = document.createElement('p');
+        p.style.marginBottom = '10px';
+        p.innerHTML = para.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
+        c.appendChild(p);
+      });
+    })();
+    function toggleHelp() {
+      const b = document.getElementById('help-body'), chev = document.getElementById('help-chev');
+      const open = b.style.display === 'block';
+      b.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? '' : 'rotate(180deg)';
+    }
   </script>
+  {% endif %}
+
+  <!-- ── Footer ────────────────────────────────────────────────────── -->
+  <p style="font-family:var(--font-m);font-size:10px;color:var(--border2);text-align:center;padding-top:8px">
+    30-day rolling baseline ·
+    {% if baseline_count > 0 %}{{ baseline_count }} fields tracked{% else %}building baseline{% endif %}
+    · <a href="/refresh" style="color:var(--border2);text-decoration:none">↺ refresh</a>
+  </p>
+
+</div>
+
+<script>
+  const labels = {{ chart_labels | tojson }};
+  const values = {{ chart_values | tojson }};
+  const colours = values.map(v =>
+    v === null ? 'transparent' :
+    v >= 0.25 ? '#a3e635' : v <= -0.25 ? '#f87171' : '#fb923c'
+  );
+  new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: colours, borderRadius: 1, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw === null ? 'no data' : (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + 'σ' } }
+      },
+      scales: {
+        x: { grid: { color: '#18181b' }, ticks: { color: '#3f3f46', font: { family: 'DM Mono', size: 10 } } },
+        y: { grid: { color: '#18181b' }, ticks: { color: '#3f3f46', font: { family: 'DM Mono', size: 10 }, callback: v => (v>=0?'+':'')+v.toFixed(1)+'σ' }, suggestedMin: -2, suggestedMax: 2 }
+      }
+    }
+  });
+
+  const startTime = Date.now();
+  const updEl = document.getElementById('last-updated');
+  setInterval(() => {
+    const s = Math.round((Date.now() - startTime) / 1000);
+    updEl.textContent = s < 60 ? `${s}s ago` : `${Math.round(s/60)}m ago`;
+  }, 10000);
+  setTimeout(() => location.reload(), 300000);
+</script>
 </body>
 </html>
