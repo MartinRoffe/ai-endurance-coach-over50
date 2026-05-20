@@ -154,6 +154,42 @@
   </div>
   {% endif %}
 
+  <!-- ── Today's session ──────────────────────────────────────────────── -->
+  {% if today_plan %}
+  {% set type_badge = {
+    'bike':     'border-emerald-700 text-emerald-300',
+    'tempo':    'border-yellow-700  text-yellow-300',
+    'ftp':      'border-orange-700  text-orange-300',
+    'long':     'border-amber-700   text-amber-300',
+    'strength': 'border-violet-700  text-violet-300',
+    'ruck':     'border-pink-800    text-pink-300',
+  } %}
+  <div class="card" style="padding:16px 20px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <p class="eyebrow">Today's Session</p>
+      <span class="bdg {{ type_badge.get(today_plan.type, 'border-zinc-700 text-zinc-400') }}">{{ today_plan.type | upper }}</span>
+    </div>
+    {% if today_plan.compound %}
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:20px;line-height:1;margin-top:2px">{{ today_plan.icon }}</span>
+        <div style="flex:1">
+          <p style="font-size:15px;font-weight:500;color:var(--text);line-height:1.2;margin-bottom:6px">{{ today_plan.label }}</p>
+          {% for sub in today_plan.compound %}
+            <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);line-height:1.8">· {{ sub.label }}</p>
+          {% endfor %}
+        </div>
+        <p style="font-family:var(--font-m);font-size:18px;font-weight:500;color:var(--text-dim);align-self:center;flex-shrink:0">{{ today_plan.dur_fmt }}</p>
+      </div>
+    {% else %}
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:20px;line-height:1">{{ today_plan.icon }}</span>
+        <p style="font-size:15px;font-weight:500;color:var(--text);flex:1">{{ today_plan.label }}</p>
+        <p style="font-family:var(--font-m);font-size:18px;font-weight:500;color:var(--text-dim);flex-shrink:0">{{ today_plan.dur_fmt }}</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- ── AI Advice ─────────────────────────────────────────────────── -->
   {% if advice %}
   <div class="card" style="padding:20px 24px;margin-bottom:12px;border-left:3px solid var(--accent)">
@@ -169,6 +205,28 @@
       p.innerHTML = p.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
     });
   </script>
+  {% endif %}
+
+  <!-- ── Event readiness tracker ──────────────────────────────────────── -->
+  {% if event_tracker %}
+  {% set et = event_tracker %}
+  <div class="card" style="padding:16px 20px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <p class="eyebrow">Ghent–Amsterdam · 13–14 Sep 2026</p>
+      <span style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;{{ 'color:#4ade80' if et.on_track_label == 'On track' else 'color:#facc15' if 'behind' in et.on_track_label.lower() else 'color:#f87171' }}">{{ et.on_track_label }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">Week {{ et.week_num }} / 12</span>
+      <span style="font-family:var(--font-m);font-size:12px;color:var(--muted)">{{ et.days_to_event }} days to event</span>
+    </div>
+    <div style="background:var(--border);height:3px;border-radius:2px;overflow:hidden">
+      <div style="height:100%;border-radius:2px;width:{{ et.plan_pct }}%;
+        {% if et.on_track_label == 'On track' %}background:#a3e635
+        {% elif 'Slightly' in et.on_track_label %}background:#facc15
+        {% else %}background:#f87171{% endif %}"></div>
+    </div>
+    <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:5px;text-align:right">{{ et.plan_pct }}% of training block complete</p>
+  </div>
   {% endif %}
 
   <!-- ── Context ───────────────────────────────────────────────────── -->

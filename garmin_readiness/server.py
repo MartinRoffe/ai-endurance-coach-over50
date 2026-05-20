@@ -264,6 +264,49 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     if date_key not in _advice_cache:
         _advice_cache[date_key] = generate_advice(m, stats, comp_z)
 
+    # Today's planned session
+    _SESSION_ICONS = {
+        "bike": "🚴", "tempo": "🚴", "ftp": "🚴", "long": "🚴",
+        "strength": "🏋️", "ruck": "🎒",
+    }
+    _session = session_for_date(target)
+    if _session and _session[0] != "rest":
+        _stype, _slabel, _sdur = _session
+        today_plan: Optional[dict] = {
+            "type":     _stype,
+            "label":    _slabel,
+            "dur_fmt":  _fmt_min(_sdur),
+            "icon":     _SESSION_ICONS.get(_stype, "📋"),
+            "compound": COMPOUND_SESSIONS.get(_slabel),
+        }
+    else:
+        today_plan = None
+
+    # Event readiness tracker
+    _EVENT_DATE = date(2026, 9, 13)
+    _PLAN_DAYS  = 84
+    _days_into  = (target - _PLAN_START).days
+    _wc = _week_completion()
+    if target >= _PLAN_START and (_EVENT_DATE - target).days > 0:
+        _week_pct = _wc.get("pct") if _wc else None
+        if _week_pct is None:
+            _on_label, _on_col = "No data yet", "text-zinc-500"
+        elif _week_pct >= 80:
+            _on_label, _on_col = "On track", "text-emerald-400"
+        elif _week_pct >= 50:
+            _on_label, _on_col = "Slightly behind", "text-yellow-400"
+        else:
+            _on_label, _on_col = "Behind", "text-red-400"
+        event_tracker: Optional[dict] = {
+            "week_num":        min(12, max(1, _days_into // 7 + 1)),
+            "plan_pct":        min(100, max(0, int(_days_into / _PLAN_DAYS * 100))),
+            "days_to_event":   (_EVENT_DATE - target).days,
+            "on_track_label":  _on_label,
+            "on_track_colour": _on_col,
+        }
+    else:
+        event_tracker = None
+
     return {
         "date": date_key,
         "date_long": target.strftime("%A, %-d %B %Y"),
@@ -279,9 +322,11 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "trend_note": seven_day_composite_trend_csv(),
         "activity_blurb": _activity_context_blurb(activities),
         "advice": _advice_cache[date_key],
-        "week_completion": _week_completion(),
+        "week_completion": _wc,
         "metric_explainer": generate_dashboard_explainer(),
         "sparklines": sparklines,
+        "today_plan": today_plan,
+        "event_tracker": event_tracker,
     }
 
 
