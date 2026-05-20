@@ -553,7 +553,15 @@ def _rule_based_pmc(history: list[dict]) -> str:
 
 
 def generate_pmc_analysis(history: list[dict]) -> str:
-    """Return a short Claude Haiku commentary on the current PMC state."""
+    """Return a short Claude Haiku commentary on the current PMC state.
+
+    Cached in text_cache keyed by date so restarts don't produce a different answer.
+    """
+    cache_key = f"pmc_analysis_{date.today().isoformat()}"
+    cached = get_cached_text(cache_key)
+    if cached:
+        return cached
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         return _rule_based_pmc(history)
@@ -574,7 +582,9 @@ def generate_pmc_analysis(history: list[dict]) -> str:
             ),
             messages=[{"role": "user", "content": prompt}],
         )
-        return msg.content[0].text
+        text = msg.content[0].text
+        set_cached_text(cache_key, text)
+        return text
     except Exception:
         return _rule_based_pmc(history)
 

@@ -163,12 +163,12 @@
           <span class="text-[10px] opacity-60">{{ day.month_abbr }} {{ day.day_num }}</span>
           {% if day.coach_note %}
             <span class="text-[9px] text-amber-400 font-semibold leading-none" title="AI coach recommendation">✦</span>
-          {% elif day.is_today %}
-            <span class="text-[9px] text-sky-400 font-semibold">TODAY</span>
           {% elif day.completed == true %}
             <span class="text-[13px] text-emerald-400 font-bold leading-none" title="Completed">✓</span>
           {% elif day.completed == false %}
             <span class="text-[13px] text-red-500 font-bold leading-none" title="Missed — click for recovery advice">✗</span>
+          {% elif day.is_today %}
+            <span class="text-[9px] text-sky-400 font-semibold">TODAY</span>
           {% endif %}
         </div>
         {% if day.type != 'rest' %}
