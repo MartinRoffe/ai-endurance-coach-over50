@@ -236,8 +236,49 @@
 
   const G = '#18181b', T = { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 } };
 
+  const CAMP_START  = {{ camp_start_label  | tojson }};
+  const CAMP_END    = {{ camp_end_label    | tojson }};
+  const PREP_START  = {{ event_prep_label  | tojson }};
+
+  const periodBandsPlugin = {
+    id: 'periodBands',
+    beforeDatasetsDraw(chart) {
+      const { ctx, scales: { x, y }, data: { labels } } = chart;
+      const top = y.top, bottom = y.bottom;
+
+      function px(labelStr) {
+        const i = labels.indexOf(labelStr);
+        return i < 0 ? null : x.getPixelForValue(i);
+      }
+
+      ctx.save();
+      ctx.font = '500 10px "DM Mono", monospace';
+
+      const campX1 = px(CAMP_START), campX2 = px(CAMP_END);
+      if (campX1 !== null && campX2 !== null) {
+        ctx.fillStyle = 'rgba(251,146,60,0.10)';
+        ctx.fillRect(campX1, top, campX2 - campX1, bottom - top);
+        ctx.fillStyle = 'rgba(251,146,60,0.55)';
+        ctx.textAlign = 'center';
+        ctx.fillText('TENERIFE', (campX1 + campX2) / 2, top + 12);
+      }
+
+      const prepX1 = px(PREP_START), chartRight = x.right;
+      if (prepX1 !== null) {
+        ctx.fillStyle = 'rgba(163,230,53,0.08)';
+        ctx.fillRect(prepX1, top, chartRight - prepX1, bottom - top);
+        ctx.fillStyle = 'rgba(163,230,53,0.50)';
+        ctx.textAlign = 'center';
+        ctx.fillText('EVENT PREP', (prepX1 + chartRight) / 2, top + 12);
+      }
+
+      ctx.restore();
+    }
+  };
+
   new Chart(document.getElementById('ctlAtlChart'), {
     type: 'line',
+    plugins: [periodBandsPlugin],
     data: {
       labels: allLabels,
       datasets: [

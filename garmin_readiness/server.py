@@ -18,7 +18,7 @@ from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
                    build_charity_weeks, build_event_prep_weeks, COMPOUND_SESSIONS,
-                   CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, session_for_date)
+                   CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date)
 from .report import generate_advice, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer
 from .body import bp_classification, fetch_body_composition, fetch_blood_pressure
 from .history import (
@@ -504,6 +504,9 @@ async def performance_view(request: Request):
             "proj_data": proj_data,
             "event_ctl": event_ctl,
             "event_date_label": _PLAN_EVENT_DATE.strftime("%-d %b %Y"),
+            "camp_start_label": date(2026, 8, 13).strftime("%-d %b"),
+            "camp_end_label":   date(2026, 8, 27).strftime("%-d %b"),
+            "event_prep_label": date(2026, 8, 31).strftime("%-d %b"),
         },
     )
 
@@ -524,12 +527,52 @@ _CTL_PER_MIN: dict[str, float] = {
 _CTL_REST_DECLINE = -3.5
 
 
+_TENERIFE_BY_DATE: dict = {}   # populated lazily below
+_EVENT_PREP_BY_DATE: dict = {}
+
+def _build_lookup_dicts() -> None:
+    global _TENERIFE_BY_DATE, _EVENT_PREP_BY_DATE
+    # Intensity → session type mapping for Tenerife days
+    _intensity_type = {"easy": "bike", "medium": "bike", "hard": "long"}
+    for day in TENERIFE_DAYS:
+        intensity = day.get("intensity", "rest")
+        stype = _intensity_type.get(intensity)
+        if stype:
+            km = day.get("km", 0) or 0
+            elev = day.get("elev_m", 0) or 0
+            # Duration estimate: flat km at 25 km/h + climbing at 700 m/h
+            dur_min = int((km / 25 + elev / 700) * 60)
+            _TENERIFE_BY_DATE[day["date"]] = (stype, day["label"], max(dur_min, 30))
+    for day in EVENT_PREP_DAYS:
+        _EVENT_PREP_BY_DATE[day["date"]] = (day["type"], day["label"], day["dur_min"])
+    for day in CAMP_GRID_WORKOUTS.values():
+        pass  # handled via session_for_date for the pre/post camp days
+
+_build_lookup_dicts()
+
+
+def _session_for_projection(d) -> tuple[str, str, int] | None:
+    """Return (type, label, dur_min) for any plan day — 12-week plan, camp, or event prep."""
+    sess = session_for_date(d)
+    if sess:
+        return sess
+    if d in _TENERIFE_BY_DATE:
+        return _TENERIFE_BY_DATE[d]
+    if d in _EVENT_PREP_BY_DATE:
+        return _EVENT_PREP_BY_DATE[d]
+    # CAMP_GRID_WORKOUTS (pre/post camp activation rides)
+    cg = CAMP_GRID_WORKOUTS.get(d)
+    if cg:
+        return (cg["type"], cg["label"], cg["dur_min"])
+    return None
+
+
 def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict], float]:
-    """Project CTL from today to event day using remaining plan sessions.
+    """Project CTL from today to event day using all plan sessions including Tenerife camp.
 
     Uses additive deltas calibrated against observed week-1 data rather than
     the standard Coggan EMA, because Garmin's CTL units don't follow the
-    standard TSS-based scale. A soft ceiling (diminishing returns above CTL 500)
+    standard TSS-based scale. A soft ceiling (diminishing returns above CTL 300)
     prevents runaway growth.
     """
     today = date.today()
@@ -541,12 +584,10 @@ def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict],
     result = []
     for i in range(1, days_ahead + 1):
         d = today + timedelta(days=i)
-        sess = session_for_date(d)
+        sess = _session_for_projection(d)
         if sess and sess[0] != "rest":
             stype, _, dur_min = sess
             rate = _CTL_PER_MIN.get(stype, 0.35)
-            # Diminishing returns above CTL 300 (where rates were calibrated).
-            # (300/CTL)^2 curve: full rate at CTL≤300, ~72% at CTL=353, ~25% at CTL=600.
             ceiling = (300 / max(ctl, 300)) ** 2
             delta = rate * (dur_min or 0) * ceiling
         else:
