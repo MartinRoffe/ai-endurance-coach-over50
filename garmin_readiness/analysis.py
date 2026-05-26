@@ -221,6 +221,14 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                         "Only this component was logged today. Do not flag the duration as short.",
                     ]
 
+    type_key = activity.get("type_key", "")
+    equipment_note = (
+        "Equipment note: this 'stair_climbing' activity was performed on a MaxiClimber — "
+        "a vertical climbing machine that works arms AND legs simultaneously (full-body). "
+        "It is NOT a stair stepper or step machine (legs only). Treat it as a full-body cardio/strength effort."
+        if type_key == "stair_climbing" else ""
+    )
+
     lines = [
         f"Activity: {name}",
         f"Date: {act_date}",
@@ -230,6 +238,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         f"Aerobic training effect: {te} ({te_label}) — {aerobic_msg}",
         f"Training load: {tl}",
         f"Avg respiration: {resp} breaths/min" if resp else "",
+        equipment_note,
         "",
         "Heart rate zone distribution:",
         *zone_lines,
