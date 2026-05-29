@@ -43,7 +43,7 @@ def fetch_body_composition(api, days: int = 90) -> list[dict]:
         weight_g = entry.get("weight") or entry.get("weightInGrams")
         weight_kg = round(weight_g / 1000.0, 2) if weight_g else None
 
-        fat_pct = entry.get("bodyFatPercent") or entry.get("percentFat")
+        fat_pct = entry.get("bodyFat") or entry.get("bodyFatPercent") or entry.get("percentFat")
         muscle_g = entry.get("muscleMass") or entry.get("muscleMassInGrams")
         muscle_kg = round(muscle_g / 1000.0, 2) if muscle_g else None
         bone_g = entry.get("boneMass") or entry.get("boneMassInGrams")

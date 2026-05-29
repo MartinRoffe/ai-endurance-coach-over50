@@ -321,24 +321,14 @@ def main() -> None:
             # Also fetch today after backfill
             pass
 
-    # Optionally push Withings data to Garmin, then pull body metrics back into SQLite
+    # Push Withings data to Garmin and save directly to SQLite
     if args.withings_sync:
         from .withings import sync_withings_to_garmin
-        from .body import fetch_body_composition, fetch_blood_pressure
-        from .history import save_body_metrics, save_blood_pressure
         _w_api = get_api(email, password)
         with console.status("Syncing Withings → Garmin…"):
             _synced = sync_withings_to_garmin(_w_api)
         if _synced:
-            console.print("[green]Withings data synced to Garmin Connect.[/green]")
-            with console.status("Refreshing body metrics from Garmin…"):
-                _body = fetch_body_composition(_w_api, days=90)
-                if _body:
-                    save_body_metrics(_body)
-                _bp = fetch_blood_pressure(_w_api, days=90)
-                if _bp:
-                    save_blood_pressure(_bp)
-            console.print("[green]Body metrics updated.[/green]")
+            console.print("[green]Withings data synced.[/green]")
         else:
             console.print("[dim]No new Withings data to sync.[/dim]")
 

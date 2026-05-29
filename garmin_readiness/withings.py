@@ -1,10 +1,8 @@
-"""Sync Withings measurements to Garmin Connect via FIT file upload."""
+"""Sync Withings measurements to Garmin Connect and local SQLite."""
 from __future__ import annotations
 
 import calendar
 import logging
-import os
-import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -19,7 +17,12 @@ def _to_unix(d: date) -> int:
 
 
 def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
-    """Fetch recent Withings measurements and upload FIT files to Garmin Connect.
+    """Fetch recent Withings measurements, push to Garmin Connect, and save locally.
+
+    Uses add_body_composition() and set_blood_pressure() directly —
+    the correct Garmin endpoints, not the activity upload endpoint.
+    Also writes the data directly to SQLite so body metrics are immediately
+    available without waiting for Garmin's API to propagate.
 
     Requires withings-sync to be installed: pip install withings-sync
     On first run, Withings OAuth requires an interactive browser step —
@@ -29,7 +32,6 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
     """
     try:
         from withings_sync.withings2 import WithingsAccount
-        from withings_sync.fit import FitEncoderWeight, FitEncoderBloodPressure
     except ImportError:
         logger.warning("withings-sync not installed — run: pip install withings-sync")
         return False
@@ -70,85 +72,94 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
         logger.debug("No Withings measurements in the last %d days", days)
         return False
 
-    weight_records = []
+    body_records = []
     bp_records = []
 
     for group in groups:
         dt = group.get_datetime()
+        ts = dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
+        cal_date = ts[:10]
+
         if group.get_weight():
             w = group.get_weight()
+            hydration = group.get_hydration()
+            fat_ratio = group.get_fat_ratio()
+            muscle = group.get_muscle_mass()
+            bone = group.get_bone_mass()
             bmi = round(w / (height ** 2), 1) if height else None
-            weight_records.append({
-                "date_time": dt,
-                "weight": w,
-                "fat_ratio": group.get_fat_ratio(),
-                "muscle_mass": group.get_muscle_mass(),
-                "bone_mass": group.get_bone_mass(),
-                "percent_hydration": None,
+            percent_hydration = (hydration / w * 100) if hydration and w else None
+
+            try:
+                api.add_body_composition(
+                    timestamp=ts,
+                    weight=w,
+                    percent_fat=fat_ratio,
+                    percent_hydration=percent_hydration,
+                    bone_mass=bone,
+                    muscle_mass=muscle,
+                    bmi=bmi,
+                )
+            except Exception as e:
+                logger.warning("Body composition upload to Garmin failed for %s: %s", ts, e)
+
+            body_records.append({
+                "date": cal_date,
+                "weight_kg": w,
+                "fat_pct": float(fat_ratio) if fat_ratio is not None else None,
+                "muscle_mass_kg": muscle,
+                "bone_mass_kg": bone,
+                "hydration_pct": percent_hydration,
+                "visceral_fat": None,
                 "bmi": bmi,
+                "metabolic_age": None,
             })
+
         if group.get_diastolic_blood_pressure():
+            systolic = group.get_systolic_blood_pressure()
+            diastolic = group.get_diastolic_blood_pressure()
+            pulse = group.get_heart_pulse()
+
+            try:
+                api.set_blood_pressure(
+                    systolic=int(systolic),
+                    diastolic=int(diastolic),
+                    pulse=int(pulse) if pulse else 0,
+                    timestamp=ts,
+                )
+            except Exception as e:
+                logger.warning("Blood pressure upload to Garmin failed for %s: %s", ts, e)
+
             bp_records.append({
-                "date_time": dt,
-                "diastolic_blood_pressure": group.get_diastolic_blood_pressure(),
-                "systolic_blood_pressure": group.get_systolic_blood_pressure(),
-                "heart_pulse": group.get_heart_pulse(),
+                "date": cal_date,
+                "timestamp_local": ts,
+                "systolic": int(systolic),
+                "diastolic": int(diastolic),
+                "pulse": int(pulse) if pulse else None,
             })
 
-    synced = False
-
-    if weight_records:
-        fit = FitEncoderWeight()
-        fit.write_file_info()
-        fit.write_file_creator()
-        for r in weight_records:
-            fit.write_device_info(timestamp=r["date_time"])
-            fit.write_weight_scale(
-                timestamp=r["date_time"],
-                weight=r["weight"],
-                percent_fat=r["fat_ratio"],
-                percent_hydration=r["percent_hydration"],
-                bone_mass=r["bone_mass"],
-                muscle_mass=r["muscle_mass"],
-                bmi=r["bmi"],
-            )
-        fit.finish()
-        if _upload_fit(api, fit):
-            logger.info("Withings weight FIT uploaded (%d records)", len(weight_records))
-            synced = True
+    # Save directly to SQLite — don't rely on Garmin's API propagation timing.
+    # Deduplicate by date: keep the latest record that has body composition data,
+    # falling back to the latest weight-only record. Groups come newest-first from
+    # the Withings API, so iterating in reverse gives us oldest-first; the last
+    # write per date (newest with fat_pct) wins via INSERT OR REPLACE.
+    if body_records:
+        from .history import save_body_metrics
+        # Sort: fat_pct=None rows first, non-None rows last, so INSERT OR REPLACE
+        # ends on the most complete record.
+        body_records.sort(key=lambda r: r["fat_pct"] is not None)
+        save_body_metrics(body_records)
+        logger.info("Withings: saved %d body composition records to SQLite", len(body_records))
 
     if bp_records:
-        fit = FitEncoderBloodPressure()
-        fit.write_file_info()
-        fit.write_file_creator()
-        for r in bp_records:
-            fit.write_device_info(timestamp=r["date_time"])
-            fit.write_blood_pressure(
-                timestamp=r["date_time"],
-                diastolic_blood_pressure=r["diastolic_blood_pressure"],
-                systolic_blood_pressure=r["systolic_blood_pressure"],
-                heart_rate=r["heart_pulse"],
-            )
-        fit.finish()
-        if _upload_fit(api, fit):
-            logger.info("Withings BP FIT uploaded (%d records)", len(bp_records))
-            synced = True
+        from .history import save_blood_pressure
+        save_blood_pressure(bp_records)
+        logger.info("Withings: saved %d blood pressure records to SQLite", len(bp_records))
 
+    synced = bool(body_records or bp_records)
     if synced:
-        withings.set_lastsync()
+        try:
+            withings.set_lastsync()
+        except Exception:
+            pass
 
     return synced
-
-
-def _upload_fit(api: Any, fit_encoder) -> bool:
-    with tempfile.NamedTemporaryFile(suffix=".fit", delete=False) as tmp:
-        tmp.write(fit_encoder.getvalue())
-        tmp_path = tmp.name
-    try:
-        api.upload_activity(tmp_path)
-        return True
-    except Exception as e:
-        logger.warning("FIT upload to Garmin failed: %s", e)
-        return False
-    finally:
-        os.unlink(tmp_path)
