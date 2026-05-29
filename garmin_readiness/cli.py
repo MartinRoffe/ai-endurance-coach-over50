@@ -419,7 +419,7 @@ def _setup_schedule() -> None:
         f"# Retry every 30 min until 10:00 if watch hasn't synced yet (exit 2 = not ready)\n"
         f"DEADLINE=$(date -v+3H +%s 2>/dev/null || date --date='+3 hours' +%s)\n"
         f"while true; do\n"
-        f"    {python} -m garmin_readiness.cli --email --fetch\n"
+        f"    {python} -m garmin_readiness.cli --withings-sync --email --fetch\n"
         f"    CODE=$?\n"
         f"    [ $CODE -eq 0 ] && exit 0\n"
         f"    [ $CODE -ne 2 ] && exit $CODE\n"
