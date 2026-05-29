@@ -53,7 +53,7 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
         logger.warning("Withings auth failed: %s", e)
         return False
 
-    end = date.today()
+    end = date.today() + timedelta(days=1)  # end-of-today inclusive
     start = end - timedelta(days=days)
 
     try:
