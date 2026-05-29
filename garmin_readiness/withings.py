@@ -18,7 +18,7 @@ def _to_unix(d: date) -> int:
     return calendar.timegm(d.timetuple())
 
 
-def sync_withings_to_garmin(api: Any, days: int = 7) -> bool:
+def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
     """Fetch recent Withings measurements and upload FIT files to Garmin Connect.
 
     Requires withings-sync to be installed: pip install withings-sync
@@ -36,6 +36,16 @@ def sync_withings_to_garmin(api: Any, days: int = 7) -> bool:
 
     WITHINGS_CONFIG.mkdir(parents=True, exist_ok=True)
     config_folder = str(WITHINGS_CONFIG)
+
+    # Silence the "app config not found" warning by copying the bundled config once
+    app_cfg = WITHINGS_CONFIG / "withings_app.json"
+    if not app_cfg.exists():
+        try:
+            from withings_sync.withings2 import APP_CONFIG
+            import shutil
+            shutil.copy2(APP_CONFIG, app_cfg)
+        except Exception:
+            pass
 
     try:
         withings = WithingsAccount(config_folder=config_folder)
