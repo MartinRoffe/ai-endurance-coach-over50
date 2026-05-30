@@ -354,10 +354,11 @@ def main() -> None:
             console.print(f"[dim]Email already sent for {target}, skipping.[/dim]")
             sys.exit(0)
 
-        # Require at least 4 numeric fields — fewer means the watch hasn't synced yet
-        if available_count(m) < 4 and not args.dry_run:
+        # Require sleep_score and body_battery — these only appear after the watch syncs overnight data
+        _missing = [f for f in ("sleep_score", "body_battery_morning") if getattr(m, f, None) is None]
+        if _missing and not args.dry_run:
             console.print(
-                f"[yellow]Only {available_count(m)} metrics available — watch hasn't synced yet. "
+                f"[yellow]Watch hasn't synced yet — missing: {', '.join(_missing)}. "
                 "Will retry later.[/yellow]"
             )
             sys.exit(2)
