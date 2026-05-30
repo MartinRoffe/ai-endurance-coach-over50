@@ -372,10 +372,47 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, date: Optional[str] = None):
+async def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     ctx = _build_context(target)
+    ctx["flash_msg"] = msg
     return TEMPLATES.TemplateResponse(request=request, name="dashboard.html", context=ctx)
+
+
+@app.get("/send-email", response_class=RedirectResponse)
+async def send_email_now():
+    from pathlib import Path
+    today = _today()
+    sentinel = Path.home() / ".garmin_readiness" / f"sent_{today.isoformat()}"
+    if sentinel.exists():
+        return RedirectResponse(url="/?msg=already_sent", status_code=303)
+
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    m = None
+    if email_addr and password:
+        try:
+            api = get_api(email_addr, password)
+            raw = fetch_metrics(api, today)
+            if raw:
+                save(raw)
+                m = raw
+        except Exception:
+            pass
+    if m is None:
+        m = load(today)
+
+    if m is None or (m.sleep_score is None and m.body_battery_morning is None):
+        return RedirectResponse(url="/?msg=no_data", status_code=303)
+
+    try:
+        from .report import run_report
+        run_report(m, dry_run=False)
+        sentinel.touch()
+        return RedirectResponse(url="/?msg=sent", status_code=303)
+    except Exception as e:
+        logger.error("send-email failed: %s", e)
+        return RedirectResponse(url="/?msg=error", status_code=303)
 
 
 def _merge_compound_activities(activities: list[dict]) -> list[dict]:
