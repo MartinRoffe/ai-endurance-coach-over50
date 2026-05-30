@@ -138,6 +138,11 @@ def save_advice(target_date: date, text: str) -> None:
         )
 
 
+def delete_advice(target_date: date) -> None:
+    with _conn() as con:
+        con.execute("DELETE FROM daily_advice WHERE date = ?", (target_date.isoformat(),))
+
+
 def load_advice(target_date: date) -> Optional[str]:
     with _conn() as con:
         con.execute("""

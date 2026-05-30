@@ -25,6 +25,7 @@ from .history import (
     ACTIVITY_MATCH,
     baseline_stats,
     composite_score,
+    delete_advice,
     history_for_chart,
     load,
     load_activities_by_date,
@@ -271,6 +272,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
 
     date_key = target.isoformat()
+    if force_fetch:
+        # Evict stale advice so it's regenerated with the freshly synced metrics
+        delete_advice(target)
+        _advice_cache.pop(date_key, None)
     if date_key not in _advice_cache:
         _advice_cache[date_key] = generate_advice(m, stats, comp_z)
 
