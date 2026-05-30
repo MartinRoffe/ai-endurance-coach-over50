@@ -470,6 +470,10 @@ _STEP_SUMMARIES: dict[str, str] = {
     "Tempo Intervals":  "15m warm-up → 3 × (10m Z4 + 5m Z1 recovery) → 5m cool-down",
     "Long Ride":        "15m warm-up → sustained Z2 main block → 15m cool-down",
     "Long Ride (Easy)": "15m warm-up → easy Z1–2 riding → 15m cool-down",
+    "KB + MaxiClimber": "Kettlebell strength work (swings, presses, carries) then MaxiClimber full-body climbing intervals — arms and legs simultaneously. Interval protocol progresses each phase toward Norwegian 4×4 in the peak block.",
+    "MaxiClimber":      "MaxiClimber full-body vertical climbing (arms and legs) at easy pace — deload or recovery week session.",
+    "Easy MaxiClimber": "Easy-pace MaxiClimber full-body climbing for active recovery — low intensity, focus on movement quality.",
+    "Light KB":         "Light kettlebell technique and conditioning work emphasising form and movement quality over load.",
 }
 
 
@@ -505,7 +509,7 @@ def prefetch_workout_descriptions(labels: list[str]) -> dict[str, str]:
     client = anthropic.Anthropic(api_key=api_key)
 
     lines = [
-        "You are an experienced cycling coach. For each workout below write exactly 2 sentences:",
+        "You are an experienced endurance and conditioning coach. For each workout below write exactly 2 sentences:",
         "Sentence 1: what physiological adaptation this session targets and why it's in the plan.",
         "Sentence 2: the single most important execution tip for getting it right.",
         "Reply ONLY with valid JSON mapping label → two-sentence string. No extra keys or text.",

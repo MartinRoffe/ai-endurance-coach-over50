@@ -144,6 +144,28 @@ COMPOUND_SESSIONS: dict[str, list[dict]] = {
     ],
 }
 
+# MaxiClimber interval progression keyed by 1-based week number.
+# Weeks not listed use the session as easy/recovery (deload or Easy MaxiClimber weeks).
+# Norwegian 4×4 introduced in week 9 after the week-8 deload — body is fresh and
+# has 4 weeks of interval base. 4-min intervals at 85–95% max HR with full 3-min recovery.
+MAXI_INTERVALS: dict[int, dict] = {
+    # KB + MaxiClimber — progressive intervals (kb: True)
+    1:  {"sets": 10, "work_s": 150, "rest_s":  45, "kb": True},
+    2:  {"sets": 10, "work_s": 150, "rest_s":  45, "kb": True},
+    5:  {"sets": 10, "work_s": 180, "rest_s":  45, "kb": True},
+    6:  {"sets":  8, "work_s": 210, "rest_s":  45, "kb": True},
+    9:  {"sets":  4, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
+    10: {"sets":  5, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
+    11: {"sets":  4, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
+    # Easy MaxiClimber — standalone, no KB, easy aerobic (kb: False, easy: True)
+    3:  {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
+    7:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False, "easy": True},   # 25m
+    12: {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
+    # Standalone MaxiClimber — deload weeks, no KB, steady aerobic (kb: False)
+    4:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False},   # 20m
+    8:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False},   # 20m
+}
+
 _PLAN_DAYS = len(TRAINING_WEEKS) * 7  # 84
 
 # AI coach recommendations keyed by ISO date; surfaced on the calendar card + modal.
@@ -181,6 +203,9 @@ def build_calendar_weeks() -> list[dict]:
                  for s in compound]
                 if compound else None
             )
+            maxi_intervals = None
+            if stype == "strength" and "MaxiClimber" in label:
+                maxi_intervals = MAXI_INTERVALS.get(wk_idx + 1)
             days.append({
                 "date": d,
                 "day_num": d.day,
@@ -193,6 +218,7 @@ def build_calendar_weeks() -> list[dict]:
                 "is_past": d < today,
                 "coach_note": COACH_NOTES.get(d.isoformat(), ""),
                 "sub_sessions": sub_sessions,
+                "maxi_intervals": maxi_intervals,
             })
         weeks.append({"week_num": wk_idx + 1, "start": wk_start, "days": days})
     return weeks

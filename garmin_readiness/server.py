@@ -716,15 +716,16 @@ def _build_preplan_weeks(acts_by_date: dict) -> list[dict]:
 @app.get("/calendar", response_class=HTMLResponse)
 async def calendar_view(request: Request):
     ctx = _build_calendar_ctx()
-    cycling_labels = {
+    _CLICKABLE_TYPES = _BIKE_TYPES | {"strength"}
+    session_labels = {
         day["label"]
         for week in ctx["weeks"]
         for day in week["days"]
-        if day["type"] in _BIKE_TYPES
+        if day["type"] in _CLICKABLE_TYPES
     }
-    cycling_labels |= {d["label"] for d in EVENT_PREP_DAYS if d["type"] in _BIKE_TYPES}
-    cycling_labels |= {v["label"] for v in CAMP_GRID_WORKOUTS.values() if v["type"] in _BIKE_TYPES}
-    ctx["workout_descs"] = prefetch_workout_descriptions(list(cycling_labels))
+    session_labels |= {d["label"] for d in EVENT_PREP_DAYS if d["type"] in _BIKE_TYPES}
+    session_labels |= {v["label"] for v in CAMP_GRID_WORKOUTS.values() if v["type"] in _BIKE_TYPES}
+    ctx["workout_descs"] = prefetch_workout_descriptions(list(session_labels))
 
     # Pre-plan history (4 weeks before plan start)
     pre_start = _PLAN_START - timedelta(weeks=_PRE_PLAN_WEEKS)
