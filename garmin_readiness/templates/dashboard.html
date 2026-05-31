@@ -201,10 +201,12 @@
       <span style="font-family:var(--font-m);font-size:11px;text-align:right;white-space:nowrap;min-width:42px">
         {% if day.type == 'rest' %}
           <span style="color:var(--muted)">—</span>
-        {% elif day.is_future or day.is_today %}
+        {% elif day.is_future %}
           <span style="color:var(--muted)">·</span>
         {% elif day.completed %}
           <span style="color:#a3e635">✓ {{ day.actual_min }}m</span>
+        {% elif day.is_today %}
+          <span style="color:var(--muted)">·</span>
         {% else %}
           <span style="color:#f87171">✗</span>
         {% endif %}
