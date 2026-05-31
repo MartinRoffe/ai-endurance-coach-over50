@@ -566,8 +566,8 @@
       return m + ':' + (sec < 10 ? '0' + sec : sec);
     }
 
-    function buildMaxiSteps(dur, intervals) {
-      const hasKB   = intervals.kb !== false;
+    function buildMaxiSteps(dur, intervals, skipKB = false) {
+      const hasKB   = intervals.kb !== false && !skipKB;
       const easy    = !!intervals.easy;
       const workFmt = fmtSecs(intervals.work_s);
       const restFmt = intervals.rest_s >= 60 ? fmtSecs(intervals.rest_s) : intervals.rest_s + 's';
@@ -644,8 +644,15 @@
       const kbRaw   = el.dataset.kbSpec;
       let desc, steps;
       if (maxiRaw) {
-        desc  = WORKOUT_DESCS[label] || '';
-        steps = buildMaxiSteps(dur, JSON.parse(maxiRaw));
+        const intervals = JSON.parse(maxiRaw);
+        if (kbRaw) {
+          const kbSpec = JSON.parse(kbRaw);
+          desc  = kbSpec.note || '';
+          steps = buildKBSteps(kbSpec).concat(buildMaxiSteps(dur, intervals, true));
+        } else {
+          desc  = WORKOUT_DESCS[label] || '';
+          steps = buildMaxiSteps(dur, intervals);
+        }
       } else if (ruckRaw) {
         const ruckSpec = JSON.parse(ruckRaw);
         desc  = ruckSpec.note || '';

@@ -181,6 +181,100 @@ RUCK_SPECS: dict[int, dict] = {
     12: {"weight_lo": 8,  "weight_hi": None, "note": "Celebration ruck — any comfortable load, enjoy it"},
 }
 
+# Full KB circuit for KB+MaxiClimber sessions (done before the MaxiClimber block).
+# Progression: add 1 rep per set each week; at the top end, increase weight and reset.
+KB_FULL_SPECS: dict[int, dict] = {
+    1: {
+        "note": "Complete the KB block first, then move to MaxiClimber intervals.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 12",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 8",    "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 6/s",  "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 20m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 6/s",  "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 4/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 8/s",  "target": "Rotational stability"},
+        ]
+    },
+    2: {
+        "note": "Complete the KB block first, then move to MaxiClimber intervals.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 13",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 9",    "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 7/s",  "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 20m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 7/s",  "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 4/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 9/s",  "target": "Rotational stability"},
+        ]
+    },
+    5: {
+        "note": "Reset weight up, rebuild reps. KB block first, then MaxiClimber.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 10",   "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 8/s",  "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 20m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 8/s",  "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 10/s", "target": "Rotational stability"},
+        ]
+    },
+    6: {
+        "note": "Extend carry distance this week. KB block first, then MaxiClimber.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 12",   "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 8/s",  "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 30m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 8/s",  "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 10/s", "target": "Rotational stability"},
+        ]
+    },
+    9: {
+        "note": "Peak loading. KB block first, then Norwegian 4×4 on MaxiClimber.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 12",   "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 10/s", "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 30m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 10/s", "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 12/s", "target": "Rotational stability"},
+        ]
+    },
+    10: {
+        "note": "Match or exceed last week. KB block first, then Norwegian 4×4.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 12",   "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 10/s", "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 30m/s","target": "Lateral core"},
+            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 10/s", "target": "Anti-rotation + shoulder"},
+            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
+            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 12/s", "target": "Rotational stability"},
+        ]
+    },
+    11: {
+        "note": "Taper — A+B+C only before the Norwegian 4×4.",
+        "exercises": [
+            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "3 × 5",    "target": "Posterior chain"},
+            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "3 × 12",   "target": "Explosive hip extension"},
+            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 10",   "target": "Quad + hip mobility"},
+            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 8/s",  "target": "Balance + hip stability"},
+            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "2 × 20m/s","target": "Lateral core"},
+        ]
+    },
+}
+
+# Abbreviated KB circuit for Light KB / post-ruck sessions.
 KB_SPECS: dict[int, dict] = {
     1: {
         "note": "After the ruck — abbreviated. Hip hinge quality over volume.",
@@ -290,7 +384,9 @@ def build_calendar_weeks() -> list[dict]:
                 ruck_spec = RUCK_SPECS.get(wk_idx + 1)
                 if label == "Ruck + KB":
                     kb_spec = KB_SPECS.get(wk_idx + 1)
-            elif stype == "strength" and "MaxiClimber" not in label:
+            elif stype == "strength" and "MaxiClimber" in label:
+                kb_spec = KB_FULL_SPECS.get(wk_idx + 1)
+            elif stype == "strength":
                 kb_spec = KB_SPECS.get(wk_idx + 1)
             days.append({
                 "date": d,
