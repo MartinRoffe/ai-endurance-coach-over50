@@ -330,9 +330,10 @@
           }
         }
       },
+      layout: { padding: { left: 8 } },
       scales: {
         x: { grid: { color: G }, ticks: { ...T, maxTicksLimit: 12 } },
-        y: { grid: { color: G }, ticks: T, min: 0 }
+        y: { grid: { color: G }, ticks: { ...T, maxTicksLimit: 6 }, min: 0 }
       }
     }
   });
