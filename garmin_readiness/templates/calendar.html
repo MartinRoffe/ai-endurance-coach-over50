@@ -384,10 +384,10 @@
   <div id="modal-overlay"
        class="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4"
        onclick="if(event.target===this) closeModal()">
-    <div style="background:#111114;border:1px solid #27272a;border-radius:2px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:50;overflow:hidden">
+    <div style="background:#111114;border:1px solid #27272a;border-radius:2px;width:100%;max-width:420px;max-height:calc(100vh - 40px);box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:50;display:flex;flex-direction:column;overflow:hidden">
 
-      <!-- Modal header -->
-      <div id="modal-header" style="padding:20px 24px 16px;border-bottom:1px solid #18181b">
+      <!-- Modal header — always visible -->
+      <div id="modal-header" style="padding:20px 24px 16px;border-bottom:1px solid #18181b;flex-shrink:0">
         <div style="display:flex;align-items:flex-start;justify-content:space-between">
           <div>
             <p id="modal-type" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#c4c4cc;margin-bottom:5px"></p>
@@ -399,23 +399,27 @@
         </div>
       </div>
 
-      <!-- Coach description -->
-      <div id="modal-desc" style="padding:14px 24px;border-bottom:1px solid #18181b;font-size:12px;color:#a1a1aa;line-height:1.7"></div>
+      <!-- Scrollable body -->
+      <div style="overflow-y:auto;flex:1;min-height:0">
 
-      <!-- AI coach recommendation -->
-      <div id="modal-coach-note" class="hidden" style="padding:12px 24px;border-bottom:1px solid #18181b;background:rgba(163,230,53,0.04);border-left:3px solid #a3e635">
-        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#a3e635;margin-bottom:6px">✦ AI Coach Recommendation</p>
-        <p id="modal-coach-note-text" style="font-size:12px;color:#a1a1aa;line-height:1.7"></p>
-        <a href="/performance" style="display:inline-block;margin-top:8px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;color:#a3e635;text-decoration:none;opacity:0.9"
-           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'">View performance analysis →</a>
-      </div>
+        <!-- Coach description -->
+        <div id="modal-desc" style="padding:14px 24px;border-bottom:1px solid #18181b;font-size:12px;color:#a1a1aa;line-height:1.7"></div>
 
-      <!-- Steps -->
-      <div style="padding:16px 24px">
-        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#c4c4cc;margin-bottom:12px">Session Structure</p>
-        <div id="modal-steps" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
+        <!-- AI coach recommendation -->
+        <div id="modal-coach-note" class="hidden" style="padding:12px 24px;border-bottom:1px solid #18181b;background:rgba(163,230,53,0.04);border-left:3px solid #a3e635">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#a3e635;margin-bottom:6px">✦ AI Coach Recommendation</p>
+          <p id="modal-coach-note-text" style="font-size:12px;color:#a1a1aa;line-height:1.7"></p>
+          <a href="/performance" style="display:inline-block;margin-top:8px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;color:#a3e635;text-decoration:none;opacity:0.9"
+             onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'">View performance analysis →</a>
+        </div>
 
+        <!-- Steps -->
+        <div style="padding:16px 24px 20px">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#c4c4cc;margin-bottom:12px">Session Structure</p>
+          <div id="modal-steps" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+      </div><!-- end scrollable body -->
     </div>
   </div>
 
