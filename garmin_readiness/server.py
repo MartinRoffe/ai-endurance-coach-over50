@@ -19,7 +19,8 @@ from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
                    build_charity_weeks, build_event_prep_weeks, COMPOUND_SESSIONS,
                    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date)
-from .hr_plan import (HR_PHASES, build_hr_calendar_weeks, build_hr_event_weeks,
+from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
+                      build_hr_calendar_weeks, build_hr_event_weeks,
                       HR_EVENT_START, HR_EVENT_END)
 from .report import generate_advice, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer
 from .body import bp_classification, fetch_body_composition, fetch_blood_pressure
@@ -648,6 +649,42 @@ def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict],
 
 _BIKE_TYPES = {"bike", "tempo", "ftp", "long"}
 
+# CTL rates for Haute Route plan session types.
+# Reuses calibrated values from _CTL_PER_MIN where keys overlap.
+_HR_CTL_PER_MIN: dict[str, float] = {
+    "endurance":    0.32,   # Z2 steady (same as "bike")
+    "recovery":     0.25,   # recovery spin / easy core
+    "sweetspot":    0.45,   # sweetspot intervals
+    "tempo":        0.58,   # tempo / under-overs (same as "tempo")
+    "vo2":          0.65,   # VO2max intervals
+    "long":         0.40,   # long ride (same as "long")
+    "back_to_back": 0.40,   # multi-hour back-to-back days
+    "ftp":          0.78,   # threshold test (same as "ftp")
+    "gym":          0.55,   # gym strength session
+}
+
+
+def _hr_ctl_projection(starting_ctl: float) -> list[dict]:
+    """Project CTL across all 46 HR plan weeks, returning one point per week (Sunday)."""
+    ctl = starting_ctl
+    result = []
+    for wk_idx, sessions in enumerate(HR_TRAINING_WEEKS):
+        week_num = wk_idx + 1
+        for stype, _, dur_min in sessions:
+            if stype != "rest":
+                rate = _HR_CTL_PER_MIN.get(stype, 0.35)
+                ceiling = (300 / max(ctl, 300)) ** 2
+                ctl = max(0.0, ctl + rate * dur_min * ceiling)
+            else:
+                ctl = max(0.0, ctl + _CTL_REST_DECLINE)
+        week_end = HR_PLAN_START + timedelta(weeks=wk_idx, days=6)
+        result.append({
+            "label":    week_end.strftime("%-d %b"),
+            "ctl":      round(ctl, 1),
+            "week":     week_num,
+        })
+    return result
+
 # Map Garmin type_key → display session type for pre-plan activity cells
 _TYPE_KEY_SESSION: dict[str, str] = {
     "road_biking": "bike", "cycling": "bike", "virtual_ride": "bike",
@@ -929,13 +966,42 @@ async def tenerife_view(request: Request):
 
 @app.get("/haute-route", response_class=HTMLResponse)
 async def haute_route_view(request: Request):
+    today = date.today()
+    history = pmc_history(days=1)
+    today_pmc = history[-1] if history else {}
+    ctl_now = today_pmc.get("ctl")
+    atl_now = today_pmc.get("atl")
+
+    hr_proj_data: list[dict] = []
+    hr_start_ctl: Optional[float] = None
+    hr_event_ctl: Optional[float] = None
+
+    if ctl_now is not None:
+        if today < _PLAN_EVENT_DATE:
+            # Before charity ride: project through the remaining 12-week plan, then apply rest gap
+            _, event_ctl = _ctl_projection(ctl_now, atl_now or ctl_now)
+            gap_days = (HR_PLAN_START - _PLAN_EVENT_DATE).days  # 22
+            hr_start_ctl = max(0.0, event_ctl + _CTL_REST_DECLINE * gap_days)
+        elif today < HR_PLAN_START:
+            # Between charity ride and HR plan start: apply remaining rest days
+            gap_days = (HR_PLAN_START - today).days
+            hr_start_ctl = max(0.0, ctl_now + _CTL_REST_DECLINE * gap_days)
+        else:
+            hr_start_ctl = ctl_now
+
+        hr_proj_data = _hr_ctl_projection(hr_start_ctl)
+        hr_event_ctl = hr_proj_data[-1]["ctl"] if hr_proj_data else None
+
     ctx = {
-        "active_tab": "haute_route",
-        "phases": HR_PHASES,
-        "weeks": build_hr_calendar_weeks(),
-        "event_weeks": build_hr_event_weeks(),
-        "event_start": HR_EVENT_START,
-        "event_end": HR_EVENT_END,
+        "active_tab":    "haute_route",
+        "phases":        HR_PHASES,
+        "weeks":         build_hr_calendar_weeks(),
+        "event_weeks":   build_hr_event_weeks(),
+        "event_start":   HR_EVENT_START,
+        "event_end":     HR_EVENT_END,
+        "hr_proj_data":  hr_proj_data,
+        "hr_start_ctl":  round(hr_start_ctl, 1) if hr_start_ctl is not None else None,
+        "hr_event_ctl":  round(hr_event_ctl, 1) if hr_event_ctl is not None else None,
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
 
