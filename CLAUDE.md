@@ -38,7 +38,7 @@ The app has two interfaces sharing the same data layer:
 
 **CLI** (`cli.py`) — terminal dashboard using `rich`, with flags for fetching, backfilling, emailing, and workout upload.
 
-**Web dashboard** (`server.py`) — FastAPI app with Jinja2 templates. Five tabs: Readiness, Analysis, Calendar, Training Plan, Nutrition. Auth via HTTP Basic (`DASHBOARD_USER`/`DASHBOARD_PASSWORD` env vars; open access if unset).
+**Web dashboard** (`server.py`) — FastAPI app with Jinja2 templates. Tabs: Readiness, Performance, Analysis, Calendar, Training Plan, Nutrition, Tenerife, Body, Haute Route. Auth via HTTP Basic (`DASHBOARD_USER`/`DASHBOARD_PASSWORD` env vars; open access if unset). The `/send-email` endpoint triggers a manual email send (same logic as the CLI `--email` flag); the dashboard shows a flash message on the result. The `/refresh` endpoint force-fetches fresh Garmin data and evicts both advice caches (`_advice_cache` dict + `daily_advice` SQLite row) so advice always regenerates from current data.
 
 **Data layer:**
 - `metrics.py` — `DailyMetrics` dataclass + `fetch_metrics()`/`fetch_activities()` calling the `garminconnect` API.
@@ -47,9 +47,11 @@ The app has two interfaces sharing the same data layer:
 
 **Report** (`report.py`) — builds and sends an HTML email via Gmail SMTP. Calls Claude Haiku for advice text; falls back to rule-based if no API key. Includes planned workout from `plan.py`.
 
-**Training plan** (`plan.py`) — single source of truth for the 12-week plan (`PLAN_START = 2026-05-18`, `TRAINING_WEEKS`). `session_for_date()` returns `(type, label, duration_min)` for any date in the plan window. Consumed by both `report.py` (email) and `server.py` (calendar tab).
+**Training plan** (`plan.py`) — single source of truth for the 12-week charity-ride prep plan (`PLAN_START = 2026-05-18`, `TRAINING_WEEKS`). `session_for_date()` returns `(type, label, duration_min)` for any date in the plan window. Consumed by `report.py` (email) and `server.py` (calendar tab). Also contains `MAXI_INTERVALS` — a dict keyed by week number (1–12) with interval specs (`sets`, `work_s`, `rest_s`, `kb`, `easy`, `norwegian` flags) used to populate clickable interval modals on MaxiClimber calendar tiles. Week 9 introduces the Norwegian 4×4 protocol.
 
-**Post-training analysis** (`analysis.py`) — separate SQLite table `activity_analyses` in the same DB. `refresh_analyses()` fetches HR zone data + `summaryDTO` from Garmin for each unanalysed activity, calls Claude Haiku with a strength-and-conditioning coach prompt, saves result. `load_analyses_for_activities()` enriches activity dicts for the Analysis tab. `_find_compound_companion()` detects when an activity is one half of a compound plan session and returns the paired activity so the prompt can reference both.
+**Haute Route plan** (`hr_plan.py`) — separate 46-week plan for Haute Route Alpes 2027 (`HR_PLAN_START = 2026-10-05`, event Aug 23–29 2027). Five phases: Base (wks 1–13), Build (14–25), Specific Build (26–35, mountain camp wk 31), Peak (36–43, two 3-day simulation blocks), Taper (44–46). `hr_session_for_date()` and `build_hr_calendar_weeks()` mirror the API of `plan.py`. `HR_EVENT_STAGES` holds the 7 stage details (km, elevation, key climb). Rendered at `/haute-route`.
+
+**Post-training analysis** (`analysis.py`) — separate SQLite table `activity_analyses` in the same DB. `refresh_analyses()` fetches HR zone data + `summaryDTO` from Garmin for each unanalysed activity, calls Claude Haiku with a strength-and-conditioning coach prompt, saves result. `load_analyses_for_activities()` enriches activity dicts for the Analysis tab. `_find_compound_companion()` detects when an activity is one half of a compound plan session and returns the paired activity so the prompt can reference both. `_build_analysis_prompt()` injects a "do not flag as short" note when actual duration meets or exceeds the plan (≥95%), preventing Claude from misreading a completed session as cut short. To regenerate a stale analysis: `DELETE FROM activity_analyses WHERE activity_id = <id>` then hit `/analysis-refresh`.
 
 **Compound sessions** (`plan.py` → `COMPOUND_SESSIONS`) — dict mapping plan label → list of sub-sessions with `garmin_key`. Example: `"KB + MaxiClimber"` maps to `strength_training` + `stair_climbing`. This is the single source of truth consumed by three places: calendar completion (tracks each sub-session independently), `_merge_compound_activities()` in `server.py` (collapses paired activities into one analysis card with side-by-side HR zones), and `_find_compound_companion()` in `analysis.py` (adds companion context to the coach prompt). Add new compound session types here first.
 
@@ -66,7 +68,7 @@ Key vars: `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `GMAIL_ADDRESS
 ## Notes
 
 - The composite readiness score is the mean z-score across all `SCORED_FIELDS` (excludes `training_load_chronic` and `vo2_max` which are context-only). Z-scores for lower-is-better fields (stress, ACWR, acute load) are sign-flipped so positive always means better.
-- `available_count()` checks how many non-null numeric fields exist — used to detect empty fetches.
+- `available_count()` checks how many non-null numeric fields exist — used to detect empty fetches. The email gate checks specifically for `sleep_score` and `body_battery_morning` (only populated after the watch syncs overnight data); if either is missing, the CLI exits with code 2 and the launchd retry loop tries again in 30 minutes.
 - All Garmin API calls are individually try/except'd; a failed endpoint logs at DEBUG and leaves the field `None` rather than crashing.
 - Templates are package data — any change to a `.html` file requires `pip install --force-reinstall .` before the running server picks it up.
 
