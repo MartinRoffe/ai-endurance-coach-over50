@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔</text></svg>">
+  <title>Haute Route Alpes 2027 · Training Plan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #09090b; }
+
+    /* ── Session type colours ─────────────────────────────── */
+    .sess-rest        { background: #111114; border-color: #27272a; color: #52525b; }
+    .sess-endurance   { background: #091c12; border-color: #059669; color: #6ee7b7; }
+    .sess-sweetspot   { background: #0c1426; border-color: #3b82f6; color: #93c5fd; }
+    .sess-recovery    { background: #111114; border-color: #3f3f46; color: #a1a1aa; }
+    .sess-tempo       { background: #1c1600; border-color: #ca8a04; color: #fde047; }
+    .sess-vo2         { background: #1c0c0c; border-color: #ef4444; color: #fca5a5; }
+    .sess-long        { background: #181000; border-color: #d97706; color: #fde68a; }
+    .sess-ftp         { background: #1c0c1c; border-color: #a855f7; color: #d8b4fe; }
+    .sess-gym         { background: #120e1c; border-color: #6d28d9; color: #c4b5fd; }
+    .sess-back_to_back{ background: #1c0e00; border-color: #f97316; color: #fed7aa; }
+
+    /* ── Phase stripe colours ─────────────────────────────── */
+    .phase-emerald { border-left: 3px solid #059669; }
+    .phase-blue    { border-left: 3px solid #3b82f6; }
+    .phase-violet  { border-left: 3px solid #8b5cf6; }
+    .phase-orange  { border-left: 3px solid #f97316; }
+    .phase-rose    { border-left: 3px solid #f43f5e; }
+
+    .phase-label-emerald { color: #34d399; }
+    .phase-label-blue    { color: #60a5fa; }
+    .phase-label-violet  { color: #a78bfa; }
+    .phase-label-orange  { color: #fb923c; }
+    .phase-label-rose    { color: #fb7185; }
+
+    .phase-badge-emerald { background:#052e16; border-color:#065f46; color:#34d399; }
+    .phase-badge-blue    { background:#1e3a5f; border-color:#1d4ed8; color:#93c5fd; }
+    .phase-badge-violet  { background:#2e1065; border-color:#6d28d9; color:#c4b5fd; }
+    .phase-badge-orange  { background:#431407; border-color:#c2410c; color:#fed7aa; }
+    .phase-badge-rose    { background:#4c0519; border-color:#be123c; color:#fda4af; }
+
+    /* ── Event stage colour ───────────────────────────────── */
+    .sess-event { background: #091525; border-color: #0ea5e9; color: #7dd3fc; }
+
+    .today-ring { outline: 2px solid #a3e635; outline-offset: 2px; }
+    .is-past    { opacity: 0.42; }
+    .day-header { color: #c4c4cc; font-family: 'DM Mono', monospace; font-size: 11px;
+                  letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  {% include 'nav.html' %}
+
+  <div style="max-width:1080px;margin:0 auto;padding:40px 24px 100px">
+
+    <!-- ── Page header ──────────────────────────────────────────────────────── -->
+    <div style="margin-bottom:28px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">10-Month Training Plan · Oct 2026 → Aug 2027</p>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,48px);letter-spacing:0.05em;color:#fafafa;line-height:1">Haute Route Alpes 2027</h1>
+      <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">
+        808 km &nbsp;·&nbsp; 19,255 m &nbsp;·&nbsp; 7 stages &nbsp;·&nbsp; 23–29 Aug 2027
+      </p>
+    </div>
+
+    <!-- ── Phase overview strip ─────────────────────────────────────────────── -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px">
+      {% for p in phases %}
+      <div class="border rounded-sm px-3 py-1.5 phase-badge-{{ p.colour }}" style="border-radius:3px">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;opacity:0.7;margin-bottom:1px">Phase {{ loop.index }}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.06em">{{ p.label }}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6">Wks {{ p.week_start }}–{{ p.week_end }}</div>
+      </div>
+      {% endfor %}
+      <div class="border rounded-sm px-3 py-1.5" style="border-radius:3px;background:#091525;border-color:#0369a1;color:#7dd3fc">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;opacity:0.7;margin-bottom:1px">Event</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.06em">Haute Route</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6">23–29 Aug 2027</div>
+      </div>
+    </div>
+
+    <!-- ── Session type legend ──────────────────────────────────────────────── -->
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:28px;align-items:center">
+      {% for label, cls in [
+          ("Rest",        "rest"),
+          ("Z2 Endurance","endurance"),
+          ("Sweet Spot",  "sweetspot"),
+          ("Recovery",    "recovery"),
+          ("Tempo / Under-Overs", "tempo"),
+          ("VO2 Max",     "vo2"),
+          ("Long Ride",   "long"),
+          ("FTP Test",    "ftp"),
+          ("Gym",         "gym"),
+          ("Back-to-Back","back_to_back"),
+      ] %}
+      <span class="text-[11px] border px-2 py-0.5 sess-{{ cls }}" style="border-radius:2px">{{ label }}</span>
+      {% endfor %}
+    </div>
+
+    <!-- ── Calendar grid ────────────────────────────────────────────────────── -->
+
+    {% set current_phase_name = namespace(value="") %}
+
+    {% for week in weeks %}
+
+    {# Phase header when phase changes #}
+    {% if week.phase and week.phase.name != current_phase_name.value %}
+    {% set current_phase_name.value = week.phase.name %}
+
+    {% if not loop.first %}
+    <div class="border-t border-slate-800 mt-4 mb-5"></div>
+    {% endif %}
+
+    <div class="mb-3 mt-2 flex items-baseline gap-3 phase-{{ week.phase.colour }}" style="padding-left:10px">
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.06em" class="phase-label-{{ week.phase.colour }}">{{ week.phase.label }}</h2>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a">
+        {% if week.phase.name == "base"     %}Aerobic engine · gym strength · 7–11 hrs/wk{% endif %}
+        {% if week.phase.name == "build"    %}FTP + VO2 max · TTE extension · 10–14 hrs/wk{% endif %}
+        {% if week.phase.name == "specific" %}Back-to-back days · mountain camp · 14–16 hrs/wk{% endif %}
+        {% if week.phase.name == "peak"     %}Multi-day simulation · peak durability · 14–17 hrs/wk{% endif %}
+        {% if week.phase.name == "taper"    %}Arrive fresh · 60% → 40% volume{% endif %}
+      </span>
+    </div>
+
+    <!-- Day-of-week header (once per phase) -->
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:#52525b;text-align:right;padding-right:8px;padding-top:2px;text-transform:uppercase;letter-spacing:0.08em">Wk</div>
+      {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <div class="day-header text-center">{{ d }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Week row -->
+    <div class="grid grid-cols-8 gap-1 mb-1">
+
+      <!-- Week label + total hours -->
+      <div class="flex flex-col items-end justify-center pr-2">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:#52525b">{{ week.start.strftime("%-d %b") }}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a;margin-top:1px">{{ week.total_hrs }}h</span>
+      </div>
+
+      {% for day in week.days %}
+      <div class="rounded border p-1.5 flex flex-col sess-{{ day.type }}
+                  {% if day.is_today %}today-ring{% endif %}
+                  {% if day.is_past %}is-past{% endif %}"
+           style="min-height:60px">
+        <div class="flex items-start justify-between" style="margin-bottom:2px">
+          <span style="font-size:11px;opacity:0.7">{{ day.month_abbr }} {{ day.day_num }}</span>
+          {% if day.is_today %}<span style="font-size:10px;color:#a3e635;font-weight:600;font-family:'DM Mono',monospace">TODAY</span>{% endif %}
+        </div>
+        {% if day.type != "rest" %}
+          <p style="font-size:11px;font-weight:600;line-height:1.25;flex:1;margin:0">{{ day.label }}</p>
+          {% if day.dur_fmt %}
+          <span style="font-size:11px;opacity:0.7;margin-top:auto">{{ day.dur_fmt }}</span>
+          {% endif %}
+        {% else %}
+          <p style="font-size:11px;opacity:0.4;margin-top:auto">—</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+    </div>
+    {% endfor %}
+
+    <!-- ── Event: Haute Route Alpes 2027 ────────────────────────────────────── -->
+    <div class="border-t border-slate-800 mt-5 mb-5"></div>
+
+    <div style="margin-bottom:14px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#0ea5e9;margin-bottom:4px">The Event</p>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.05em;color:#7dd3fc">Haute Route Alpes 2027</h2>
+      <p style="font-family:'DM Mono',monospace;font-size:12px;color:#64748b;margin-top:2px">7 stages · 808 km · 19,255 m · Nice → Thonon-les-Bains</p>
+    </div>
+
+    <!-- Day-of-week header -->
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:#52525b;text-align:right;padding-right:8px;padding-top:2px;text-transform:uppercase;letter-spacing:0.08em">Wk</div>
+      {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <div class="day-header text-center">{{ d }}</div>
+      {% endfor %}
+    </div>
+
+    {% for week in event_weeks %}
+    <div class="grid grid-cols-8 gap-1 mb-1">
+      <div class="flex flex-col items-end justify-center pr-2">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:#52525b">{{ week.week_label }}</span>
+      </div>
+      {% for day in week.days %}
+      {% if day.is_event %}
+      <div class="rounded border p-1.5 flex flex-col sess-event
+                  {% if day.is_today %}today-ring{% endif %}
+                  {% if day.is_past %}is-past{% endif %}"
+           style="min-height:72px">
+        <div class="flex items-start justify-between" style="margin-bottom:2px">
+          <span style="font-size:10px;opacity:0.6;font-family:'DM Mono',monospace">Stage {{ day.day_num_stage }}</span>
+          <span style="font-size:10px;opacity:0.5;font-family:'DM Mono',monospace">{{ day.month_abbr }} {{ day.day_num }}</span>
+        </div>
+        <p style="font-size:11px;font-weight:600;line-height:1.25;flex:1;margin:0 0 3px 0">{{ day.label }}</p>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6;line-height:1.3">
+          {{ day.km }} km · {{ day.elev_m | int | string }}m↑
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.5;line-height:1.3;margin-top:1px">{{ day.key_climb }}</div>
+      </div>
+      {% else %}
+      <div class="rounded border p-1.5 sess-rest" style="min-height:72px;opacity:0.2"></div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- ── Event totals ──────────────────────────────────────────────────────── -->
+    <div style="display:flex;gap:20px;margin-top:16px;flex-wrap:wrap">
+      {% for stat in [("Total Distance","808 km"),("Total Climbing","19,255 m"),("Stages","7 days"),("Biggest Day","182 km / 4,020 m")] %}
+      <div style="font-family:'DM Mono',monospace">
+        <div style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#52525b;margin-bottom:2px">{{ stat[0] }}</div>
+        <div style="font-size:16px;color:#7dd3fc;font-weight:500">{{ stat[1] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</body>
+</html>

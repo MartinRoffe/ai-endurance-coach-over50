@@ -19,6 +19,8 @@ from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
                    build_charity_weeks, build_event_prep_weeks, COMPOUND_SESSIONS,
                    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date)
+from .hr_plan import (HR_PHASES, build_hr_calendar_weeks, build_hr_event_weeks,
+                      HR_EVENT_START, HR_EVENT_END)
 from .report import generate_advice, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer
 from .body import bp_classification, fetch_body_composition, fetch_blood_pressure
 from .history import (
@@ -923,6 +925,19 @@ async def nutrition_plan(request: Request):
 @app.get("/tenerife", response_class=HTMLResponse)
 async def tenerife_view(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="tenerife.html", context={})
+
+
+@app.get("/haute-route", response_class=HTMLResponse)
+async def haute_route_view(request: Request):
+    ctx = {
+        "active_tab": "haute_route",
+        "phases": HR_PHASES,
+        "weeks": build_hr_calendar_weeks(),
+        "event_weeks": build_hr_event_weeks(),
+        "event_start": HR_EVENT_START,
+        "event_end": HR_EVENT_END,
+    }
+    return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
 
 
 def _week_summary() -> Optional[dict]:
