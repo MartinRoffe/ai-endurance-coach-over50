@@ -181,6 +181,17 @@ RUCK_SPECS: dict[int, dict] = {
     12: {"weight_lo": 8,  "weight_hi": None, "note": "Celebration ruck — any comfortable load, enjoy it"},
 }
 
+KB_VIDEO_URLS: dict[str, str] = {
+    "KB Deadlift":            "https://www.youtube.com/watch?v=-N4NjwW7bGA",
+    "KB Swing (Two-Hand)":    "https://www.youtube.com/watch?v=1Qi0NQW89Oc",
+    "KB Goblet Squat":        "https://www.youtube.com/watch?v=aNDUbH_Uv4g",
+    "Single-Leg KB Deadlift": "https://www.youtube.com/watch?v=0P0t3h7Qbns",
+    "KB Suitcase Carry":      "https://www.youtube.com/watch?v=SXf6ePnQMJ8",
+    "KB Half-Kneeling Press": "https://www.youtube.com/watch?v=5cUBtrQ5LPQ",
+    "KB Windmill":            "https://www.youtube.com/watch?v=1N1Qs9FO4GU",
+    "Single-Arm Swing":       "https://www.youtube.com/watch?v=ANjKto7aSH0",
+}
+
 # Full KB circuit for KB+MaxiClimber sessions (done before the MaxiClimber block).
 # Progression: add 1 rep per set each week; at the top end, increase weight and reset.
 KB_FULL_SPECS: dict[int, dict] = {
@@ -388,6 +399,14 @@ def build_calendar_weeks() -> list[dict]:
                 kb_spec = KB_FULL_SPECS.get(wk_idx + 1)
             elif stype == "strength":
                 kb_spec = KB_SPECS.get(wk_idx + 1)
+            if kb_spec:
+                kb_spec = {
+                    **kb_spec,
+                    "exercises": [
+                        {**ex, "video_url": KB_VIDEO_URLS.get(ex["name"])}
+                        for ex in kb_spec["exercises"]
+                    ],
+                }
             days.append({
                 "date": d,
                 "day_num": d.day,

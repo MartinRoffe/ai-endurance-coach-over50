@@ -616,10 +616,11 @@
 
     function buildKBSteps(spec) {
       return spec.exercises.map(ex => ({
-        fmt:    ex.id,
-        name:   ex.name,
-        repeat: ex.sets_reps,
-        zone:   'Strength',
+        fmt:       ex.id,
+        name:      ex.name,
+        repeat:    ex.sets_reps,
+        zone:      'Strength',
+        video_url: ex.video_url || null,
       }));
     }
 
@@ -683,6 +684,7 @@
           <div style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;width:36px;text-align:right;flex-shrink:0;padding-top:1px">${s.fmt !== undefined ? s.fmt : fmtMins(s.mins)}</div>
           <div style="flex:1">
             <span style="font-size:13px;color:#fafafa">${s.name}</span>
+            ${s.video_url ? `<a href="${s.video_url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="margin-left:8px;font-size:11px;color:#60aaff;text-decoration:none;opacity:0.8" onmouseover="this.style.opacity='1';this.style.textDecoration='underline'" onmouseout="this.style.opacity='0.8';this.style.textDecoration='none'">▶ video</a>` : ''}
             ${s.repeat ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a;margin-left:6px">${s.repeat}</span>` : ''}
             <div style="font-family:'DM Mono',monospace;font-size:12px;margin-top:2px" class="${zoneCls}">${s.zone}</div>
           </div>`;
