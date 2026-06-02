@@ -174,8 +174,8 @@ RUCK_SPECS: dict[int, dict] = {
     6:  {"weight_lo": 10, "weight_hi": 12,   "note": "Push to 12 kg if last week felt manageable"},
     7:  {"weight_lo": 12, "weight_hi": None, "note": "Peak week — hold 12 kg for the full distance"},
     8:  {"weight_lo": 10, "weight_hi": None, "note": "Deload — step back to 10 kg, easy effort"},
-    9:  {"weight_lo": 12, "weight_hi": 15,   "note": "Heaviest block — work up to 15 kg if form holds"},
-    10: {"weight_lo": 12, "weight_hi": 15,   "note": "Match or exceed last week's load"},
+    9:  {"weight_lo": 12, "weight_hi": 15,   "mersea_build": True, "note": "Mersea build — swap this ruck for the Eastern Arc (12 km, ~3 hr at easy load) to start building duration for the Sep 20 circuit. Or do a regular heavy ruck if you prefer — both work."},
+    10: {"weight_lo": 12, "weight_hi": 15,   "mersea_build": True, "note": "Mersea build — repeat the Eastern Arc or step up to the Coastal Spur (13 km). Either way keep load light (~10 kg) so the focus is duration, not weight."},
     11: {"weight_lo": 8,  "weight_hi": None, "note": "Taper — 8 kg, focus on stride quality and pace"},
     12: {"weight_lo": 8,  "weight_hi": None, "note": "Celebration ruck — any comfortable load, enjoy it"},
 }
@@ -421,6 +421,7 @@ def build_calendar_weeks() -> list[dict]:
                 "maxi_intervals": maxi_intervals,
                 "ruck_spec": ruck_spec,
                 "kb_spec": kb_spec,
+                "mersea_build": bool(ruck_spec and ruck_spec.get("mersea_build")),
             })
         weeks.append({"week_num": wk_idx + 1, "start": wk_start, "days": days})
     return weeks
@@ -557,6 +558,10 @@ def build_event_prep_weeks() -> list[dict]:
     return weeks
 
 
+MERSEA_EVENT_DAYS: list[dict] = [
+    {"date": date(2026, 9, 20), "label": "Round Mersea", "km": 22},
+]
+
 # ── Ghent–Amsterdam Charity Ride ──────────────────────────────────────────────
 CHARITY_DAYS: list[dict] = [
     {"day": 1, "date": date(2026, 9, 13), "label": "Ghent → Eindhoven", "km": 190},
@@ -565,10 +570,11 @@ CHARITY_DAYS: list[dict] = [
 
 
 def build_combined_event_weeks() -> list[dict]:
-    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions and charity ride days."""
+    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions, charity ride days, and Mersea goal."""
     today = date.today()
     prep_by_date = {d["date"]: d for d in EVENT_PREP_DAYS}
     charity_by_date = {d["date"]: d for d in CHARITY_DAYS}
+    mersea_by_date = {d["date"]: d for d in MERSEA_EVENT_DAYS}
     grid_start = date(2026, 8, 31)
     weeks = []
     for wk in range(3):
@@ -577,15 +583,24 @@ def build_combined_event_weeks() -> list[dict]:
         for day_off in range(7):
             d = wk_start + timedelta(days=day_off)
             charity = charity_by_date.get(d)
+            mersea = mersea_by_date.get(d)
             prep = prep_by_date.get(d)
             if charity:
                 cells.append({
                     "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
-                    "is_event": True,
+                    "is_event": True, "is_mersea": False,
                     "label": charity["label"], "km": charity["km"],
                     "day_num_ride": charity["day"],
                     "is_today": d == today, "is_past": d < today,
                     "type": "charity",
+                })
+            elif mersea:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "is_event": True, "is_mersea": True,
+                    "label": mersea["label"], "km": mersea["km"],
+                    "is_today": d == today, "is_past": d < today,
+                    "type": "mersea",
                 })
             elif prep:
                 dur = prep["dur_min"]
