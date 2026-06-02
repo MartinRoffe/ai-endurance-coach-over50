@@ -48,6 +48,8 @@
     .is-past    { opacity: 0.42; }
     .day-header { color: #c4c4cc; font-family: 'DM Mono', monospace; font-size: 11px;
                   letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+    .clickable-session { cursor: pointer; }
+    .clickable-session:hover { filter: brightness(1.18); }
   </style>
 </head>
 <body>
@@ -167,10 +169,17 @@
       </div>
 
       {% for day in week.days %}
+      {% set is_clickable = day.type != 'rest' %}
       <div class="rounded border p-1.5 flex flex-col sess-{{ day.type }}
                   {% if day.is_today %}today-ring{% endif %}
-                  {% if day.is_past %}is-past{% endif %}"
-           style="min-height:60px">
+                  {% if day.is_past %}is-past{% endif %}
+                  {% if is_clickable %}clickable-session{% endif %}"
+           style="min-height:60px"
+           {% if is_clickable %}
+             data-label="{{ day.label }}"
+             data-dur-fmt="{{ day.dur_fmt }}"
+             onclick="openHrModal(this)"
+           {% endif %}>
         <div class="flex items-start justify-between" style="margin-bottom:2px">
           <span style="font-size:11px;opacity:0.7">{{ day.month_abbr }} {{ day.day_num }}</span>
           {% if day.is_today %}<span style="font-size:10px;color:#a3e635;font-weight:600;font-family:'DM Mono',monospace">TODAY</span>{% endif %}
@@ -213,10 +222,16 @@
       </div>
       {% for day in week.days %}
       {% if day.is_event %}
-      <div class="rounded border p-1.5 flex flex-col sess-event
+      <div class="rounded border p-1.5 flex flex-col sess-event clickable-session
                   {% if day.is_today %}today-ring{% endif %}
                   {% if day.is_past %}is-past{% endif %}"
-           style="min-height:72px">
+           style="min-height:72px"
+           data-label="{{ day.label }}"
+           data-stage="{{ day.day_num_stage }}"
+           data-km="{{ day.km }}"
+           data-elev="{{ day.elev_m }}"
+           data-climb="{{ day.key_climb }}"
+           onclick="openHrStageModal(this)">
         <div class="flex items-start justify-between" style="margin-bottom:2px">
           <span style="font-size:10px;opacity:0.6;font-family:'DM Mono',monospace">Stage {{ day.day_num_stage }}</span>
           <span style="font-size:10px;opacity:0.5;font-family:'DM Mono',monospace">{{ day.month_abbr }} {{ day.day_num }}</span>
@@ -245,6 +260,370 @@
     </div>
 
   </div>
+
+<!-- ── Session modal ──────────────────────────────────────────────────────── -->
+<div id="hrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:200;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeHrModal()">
+  <div style="background:#111114;border:1px solid #27272a;border-radius:6px;max-width:500px;width:100%;max-height:82vh;overflow-y:auto;padding:24px;position:relative">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <h3 id="hrModalTitle" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#fafafa;margin:0;line-height:1"></h3>
+        <span id="hrModalDur" style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a;display:block;margin-top:3px"></span>
+      </div>
+      <button onclick="closeHrModal()" style="background:none;border:none;color:#71717a;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-left:12px">&times;</button>
+    </div>
+    <div id="hrModalSteps"></div>
+    <div id="hrModalNote"></div>
+  </div>
+</div>
+
+<script>
+const SESSION_INFO = {
+  // ── Endurance ────────────────────────────────────────────────────────────
+  "Z2 Endurance": { steps: [
+    { name: "Warm-up",   time: "10 min",    desc: "Easy spin, let HR settle naturally" },
+    { name: "Z2 Block",  time: "Main",      desc: "Zone 2 throughout — conversational pace, full sentences. Back off any gradient that pushes HR into Z3." },
+    { name: "Cool-down", time: "10 min",    desc: "Easy spin out" },
+  ], note: "Fuel every 45 min on rides over 90 min (60–90g carbs/hr). The bulk of your aerobic adaptation comes from here." },
+
+  "Z2 Steady": { steps: [
+    { name: "Warm-up",   time: "10 min", desc: "Easy spin" },
+    { name: "Z2 Block",  time: "Main",   desc: "Target the middle of your Z2 HR band and hold it steady — like a metronome. More controlled than Z2 Endurance." },
+    { name: "Cool-down", time: "10 min", desc: "Easy spin" },
+  ], note: "Steadier pacing than a general endurance ride. Flat or rolling route preferred so HR stays consistent." },
+
+  "Z2 Easy": { steps: [
+    { name: "Easy Ride", time: "Full ride", desc: "Z1–Z2, no targets. Just turn the legs over easily." },
+  ], note: "Deload session. If it feels too easy, that's the point. Active recovery — not fitness building." },
+
+  "Easy Endurance": { steps: [
+    { name: "Easy Ride", time: "Full ride", desc: "Z1–Z2, conversational pace. Keep it very easy." },
+  ], note: "Pre-event taper ride. Arrive at the start line fresh — resist the urge to test the legs." },
+
+  "Easy Spin": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Completely easy — just wake the legs up. HR below Z2 the whole ride." },
+  ], note: "Race week. This is maintenance, not training." },
+
+  "Easy Prep Ride": { steps: [
+    { name: "Easy Ride", time: "Full ride", desc: "Short and easy — freshen legs. You can include 2–3 × 30s fast spins to wake up the neuromuscular system." },
+  ], note: "2 days out from the event. Pack your kit instead of riding hard." },
+
+  // ── Sweetspot ────────────────────────────────────────────────────────────
+  "Low Cadence Sweetspot": { steps: [
+    { name: "Warm-up",      time: "10 min",         desc: "Easy spin, build to Z2" },
+    { name: "SS Intervals", time: "12–15 min × 3–4", desc: "Sweetspot effort (Z3–4, 88–94% FTP). Hold cadence at 55–65 rpm. Legs will burn — that's the strength component working." },
+    { name: "Recovery",     time: "4–5 min between", desc: "Easy Z1, spin cadence back up to 90+ rpm to clear the legs" },
+    { name: "Cool-down",    time: "10 min",          desc: "Easy spin" },
+  ], note: "Low cadence builds quad strength essential for sustained Alpine climbing. If form breaks down, increase cadence rather than stopping." },
+
+  "Short Sweetspot": { steps: [
+    { name: "Warm-up",   time: "10 min", desc: "Easy spin" },
+    { name: "SS Block",  time: "2 × 10 min", desc: "Sweetspot (Z3–4), normal cadence. 5 min Z1 recovery between." },
+    { name: "Cool-down", time: "10 min", desc: "Easy spin" },
+  ], note: "Taper session — remind the legs what hard feels like without costing you anything. Nothing that needs recovery." },
+
+  // ── Recovery ────────────────────────────────────────────────────────────
+  "Recovery + Core": { steps: [
+    { name: "Easy Spin", time: "30–40 min", desc: "Z1 only — no HR targets, just movement. Flushes yesterday's fatigue." },
+    { name: "Core Work", time: "15–20 min", desc: "Dead bugs, Copenhagen plank (30s each side), pallof press, bird-dogs. Quality over quantity." },
+  ], note: "The core block protects the lower back on long climbs where position degrades late in a stage. Don't skip it." },
+
+  "Recovery Spin": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Z1 only. Spin freely — no targets, no pressure. If legs feel dead, that's fine." },
+  ], note: "Active recovery. Movement is the medicine." },
+
+  "Leg Openers": { steps: [
+    { name: "Easy Warm-up",  time: "15 min",    desc: "Comfortable spin" },
+    { name: "Openers",       time: "3 × 1 min", desc: "Slightly above race pace — open the legs, clear lactate. Full 3 min easy recovery between each." },
+    { name: "Easy Cool-down",time: "10 min",    desc: "Very easy spin" },
+  ], note: "Pre-event. The short efforts wake the neuromuscular system up — you're not training today, just priming." },
+
+  "Camp — Active Recovery": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Z1 only — spin the legs out. No climbs, no efforts, no HR targets." },
+  ], note: "Mid-camp recovery day. Sleep, eat, hydrate aggressively. Recovery today determines output for the remaining camp days." },
+
+  // ── Tempo ────────────────────────────────────────────────────────────────
+  "Tempo Intervals 2×20": { steps: [
+    { name: "Warm-up",     time: "15 min", desc: "Build from easy to Z3 by the end" },
+    { name: "Interval 1",  time: "20 min", desc: "Zone 4 — threshold effort, sustainable but uncomfortable. Hold steady HR." },
+    { name: "Recovery",    time: "5 min",  desc: "Easy Z1 spin" },
+    { name: "Interval 2",  time: "20 min", desc: "Match or slightly exceed Interval 1 — this is the real training stimulus" },
+    { name: "Cool-down",   time: "10 min", desc: "Easy spin" },
+  ], note: "Classic TTE builder. Don't blow up on the first interval — the second one is where the adaptation happens." },
+
+  "Tempo Intervals 3×15": { steps: [
+    { name: "Warm-up",    time: "15 min", desc: "Build to Z3" },
+    { name: "Interval 1", time: "15 min", desc: "Zone 4 — threshold" },
+    { name: "Recovery",   time: "5 min",  desc: "Easy Z1" },
+    { name: "Interval 2", time: "15 min", desc: "Hold the effort" },
+    { name: "Recovery",   time: "5 min",  desc: "Easy Z1" },
+    { name: "Interval 3", time: "15 min", desc: "Dig for the last one — consistent across all three" },
+    { name: "Cool-down",  time: "10 min", desc: "Easy spin" },
+  ], note: "Three shorter intervals — focus on even pacing across all three rather than going hard and fading." },
+
+  "Tempo Intervals 3×20": { steps: [
+    { name: "Warm-up",    time: "15 min", desc: "Build to Z3" },
+    { name: "Interval 1", time: "20 min", desc: "Zone 4 — threshold" },
+    { name: "Recovery",   time: "5 min",  desc: "Easy Z1" },
+    { name: "Interval 2", time: "20 min", desc: "Hold the effort" },
+    { name: "Recovery",   time: "5 min",  desc: "Easy Z1" },
+    { name: "Interval 3", time: "20 min", desc: "60 total threshold minutes — the peak volume of this format" },
+    { name: "Cool-down",  time: "10 min", desc: "Easy spin" },
+  ], note: "60 min of threshold work is a significant dose. If Interval 2 falls apart, dial back — quality beats volume here." },
+
+  "Tempo Intervals 2×15": { steps: [
+    { name: "Warm-up",    time: "15 min", desc: "Build to Z3" },
+    { name: "Interval 1", time: "15 min", desc: "Zone 4 threshold" },
+    { name: "Recovery",   time: "5 min",  desc: "Easy Z1" },
+    { name: "Interval 2", time: "15 min", desc: "Match Interval 1" },
+    { name: "Cool-down",  time: "10 min", desc: "Easy spin" },
+  ], note: "Deload/taper format — maintain intensity quality without digging deep into fatigue." },
+
+  "Tempo Sharpener": { steps: [
+    { name: "Warm-up",   time: "15 min", desc: "Easy to Z3" },
+    { name: "Set 1",     time: "5 min",  desc: "Z4 — sharp threshold effort" },
+    { name: "Recovery",  time: "3 min",  desc: "Easy" },
+    { name: "Set 2",     time: "5 min",  desc: "Match Set 1" },
+    { name: "Recovery",  time: "3 min",  desc: "Easy" },
+    { name: "Set 3",     time: "5 min",  desc: "Last one" },
+    { name: "Cool-down", time: "15 min", desc: "Easy spin" },
+  ], note: "Final quality work before the taper deepens. Sharp and short — sharpening the blade, not forging it." },
+
+  "Under-Overs 3×10 min": { steps: [
+    { name: "Warm-up",   time: "15 min", desc: "Build to Z3" },
+    { name: "Set 1",     time: "10 min", desc: "Alternate: 3 min Z4 (under threshold) → 2 min Z5 (over threshold), repeat × 2. Forces lactate clearance under continued stress." },
+    { name: "Recovery",  time: "5 min",  desc: "Easy Z1" },
+    { name: "Set 2",     time: "10 min", desc: "Same pattern. Keep the Z4 sections controlled — don't let them drift too easy." },
+    { name: "Recovery",  time: "5 min",  desc: "Easy Z1" },
+    { name: "Set 3",     time: "10 min", desc: "Final set. Hold form even as the Z5 sections hurt more." },
+    { name: "Cool-down", time: "15 min", desc: "Easy spin" },
+  ], note: "Builds lactate clearance — the ability to surge on a climb then settle back to threshold. Essential for Alpine stage racing." },
+
+  "Under-Overs 3×12 min": { steps: [
+    { name: "Warm-up",   time: "15 min", desc: "Build to Z3" },
+    { name: "Set 1",     time: "12 min", desc: "4 min Z4 (under) → 2 min Z5 (over) × 2. Longer under-sections mean more accumulated time at lactate threshold." },
+    { name: "Recovery",  time: "5 min",  desc: "Easy Z1" },
+    { name: "Set 2",     time: "12 min", desc: "Hold the pattern. Don't let the unders drift too easy." },
+    { name: "Recovery",  time: "5 min",  desc: "Easy Z1" },
+    { name: "Set 3",     time: "12 min", desc: "36 total minutes — the hardest version of this format." },
+    { name: "Cool-down", time: "15 min", desc: "Easy spin" },
+  ], note: "Peak under-over volume. If Set 3 falls apart significantly, stop there — quality beats a death march." },
+
+  "Under-Overs 2×10 min": { steps: [
+    { name: "Warm-up",   time: "15 min", desc: "Build to Z3" },
+    { name: "Set 1",     time: "10 min", desc: "3 min Z4 → 2 min Z5, repeat. Taper version — 2 sets only." },
+    { name: "Recovery",  time: "5 min",  desc: "Easy Z1" },
+    { name: "Set 2",     time: "10 min", desc: "Match Set 1" },
+    { name: "Cool-down", time: "15 min", desc: "Easy out" },
+  ], note: "Taper intensity session — enough to stay sharp, low enough volume to leave you fresh for the event." },
+
+  // ── VO2 Max ──────────────────────────────────────────────────────────────
+  "VO2 Intervals 4×3 min": { steps: [
+    { name: "Warm-up",   time: "15 min",       desc: "Easy to Z3. Include 2 × 30s fast spins to prime the system." },
+    { name: "Sets 1–4",  time: "3 min each",   desc: "Zone 5 — maximal sustainable effort. Full 3 min Z1 recovery between every set." },
+    { name: "Cool-down", time: "15 min",       desc: "Easy spin, let HR drop fully before stopping" },
+  ], note: "True VO2 work — you should be breathing very hard but pacing evenly, not sprinting. 3 min at the right intensity takes practice to calibrate." },
+
+  "VO2 Intervals 5×3 min": { steps: [
+    { name: "Warm-up",   time: "15 min",     desc: "Easy to Z3. 2 × 30s fast spins." },
+    { name: "Sets 1–5",  time: "3 min each", desc: "Zone 5. Full 3 min Z1 recovery between each set. Pace evenly across all five." },
+    { name: "Cool-down", time: "15 min",     desc: "Easy spin" },
+  ], note: "5 sets — sets 2–4 are usually the hardest. Start slightly conservatively and build." },
+
+  "VO2 Intervals 6×3 min": { steps: [
+    { name: "Warm-up",   time: "15 min",     desc: "Build from easy, include activation efforts" },
+    { name: "Sets 1–6",  time: "3 min each", desc: "Zone 5. 3 min Z1 recovery between. 18 total VO2 minutes." },
+    { name: "Cool-down", time: "15 min",     desc: "Easy spin" },
+  ], note: "High VO2 dose. If sets 5–6 are significantly worse than set 1, reduce to 5 sets next session." },
+
+  "VO2 Intervals 5×4 min": { steps: [
+    { name: "Warm-up",   time: "15 min",     desc: "Build from easy. 2 × 30s fast spins to prime." },
+    { name: "Sets 1–5",  time: "4 min each", desc: "Zone 5. 4 min Z1 recovery between. 20 total VO2 minutes — harder to pace than 3 min efforts." },
+    { name: "Cool-down", time: "15 min",     desc: "Easy spin" },
+  ], note: "Longer VO2 intervals demand better pacing — aim to feel hardest in minutes 3–4. Don't go full gas from the whistle." },
+
+  // ── Long rides ───────────────────────────────────────────────────────────
+  "Long Ride": { steps: [
+    { name: "Warm-up",   time: "15 min",      desc: "Easy spin from home" },
+    { name: "Main Ride", time: "Rest",        desc: "Z2 base. Z3 acceptable on hills. Don't let cumulative fatigue push you into Z4 — that changes the training stimulus." },
+    { name: "Cool-down", time: "15 min",      desc: "Easy spin home" },
+  ], note: "Fuel every 45 min regardless of hunger (60–90g carbs/hr on rides over 2 hr). This is where your aerobic engine is built." },
+
+  "Long Ride (Easy)": { steps: [
+    { name: "Easy Ride", time: "Full ride", desc: "Z1–Z2 only. Flat or gently rolling route preferred." },
+  ], note: "Deload long ride — active recovery, not fitness building. If it feels too easy, that's the point." },
+
+  "Long Ride (Moderate)": { steps: [
+    { name: "Warm-up",   time: "15 min", desc: "Easy spin" },
+    { name: "Main Ride", time: "Rest",   desc: "Z2–Z3. Some gentle tempo on climbs is fine. Taper pace — controlled throughout." },
+    { name: "Cool-down", time: "15 min", desc: "Easy spin" },
+  ], note: "Taper long ride — enough to maintain sharpness without digging a recovery hole. Aim to finish feeling good." },
+
+  // ── FTP tests ────────────────────────────────────────────────────────────
+  "FTP Baseline Test": { steps: [
+    { name: "Warm-up",        time: "15 min", desc: "Easy spin, relaxed — don't pre-fatigue" },
+    { name: "Priming effort", time: "3 min",  desc: "Hard but not maximal — opens the legs without exhausting them" },
+    { name: "Easy recovery",  time: "5 min",  desc: "Easy Z1, let HR drop" },
+    { name: "20-min test",    time: "20 min", desc: "All-out sustainable effort. Go by feel — hold the highest average you can maintain. Record average HR (and power if available)." },
+    { name: "Cool-down",      time: "15 min", desc: "Easy spin" },
+  ], note: "FTP ≈ 95% of your 20-min average power. This is your baseline at plan start — use it to set all training zones for the months ahead." },
+
+  "FTP Re-test": { steps: [
+    { name: "Warm-up",        time: "15 min", desc: "Easy spin" },
+    { name: "Priming effort", time: "3 min",  desc: "Hard-ish effort to open the legs" },
+    { name: "Easy recovery",  time: "5 min",  desc: "Easy" },
+    { name: "20-min test",    time: "20 min", desc: "All-out. Compare to your last test — expect 3–8% improvement after each build phase." },
+    { name: "Cool-down",      time: "15 min", desc: "Easy" },
+  ], note: "Update your training zones after this test. A higher number means all your interval targets shift up — don't ignore it." },
+
+  "FTP Final Test": { steps: [
+    { name: "Warm-up",        time: "15 min", desc: "Easy spin" },
+    { name: "Priming effort", time: "3 min",  desc: "Hard-ish effort" },
+    { name: "Easy recovery",  time: "5 min",  desc: "Easy" },
+    { name: "20-min test",    time: "20 min", desc: "All-out. This should be your best number yet — the culmination of 41 weeks of training." },
+    { name: "Cool-down",      time: "15 min", desc: "Easy" },
+  ], note: "Use this result to set your race pacing strategy for the Haute Route. Your climbing pace for sustained efforts should be ~70–80% of this." },
+
+  // ── Gym ──────────────────────────────────────────────────────────────────
+  "Gym — Strength": { steps: [
+    { name: "Activation",  time: "10 min",          desc: "Glute bridges, clamshells, band walks — prime the hips and glutes before loading" },
+    { name: "Main lifts",  time: "3–4 × 8–12 reps", desc: "Bulgarian split squat, Romanian deadlift, step-ups, goblet squat. Prioritise single-leg work — it transfers directly to climbing power." },
+    { name: "Core block",  time: "15 min",           desc: "Dead bugs, Copenhagen plank (30s each side), pallof press, bird-dogs" },
+    { name: "Cool-down",   time: "5 min",            desc: "Hip flexor stretch, pigeon pose, calf stretch" },
+  ], note: "Cycling strength = single-leg hip extension power. Bulgarian split squats and step-ups beat bilateral squats for transfer to climbing." },
+
+  "Gym — Maintenance": { steps: [
+    { name: "Activation",  time: "5 min",  desc: "Glute bridges, band work" },
+    { name: "Main lifts",  time: "2 × each", desc: "Same movements as strength days, lighter weight. Keep movement quality — don't push for fatigue." },
+    { name: "Core",        time: "10 min", desc: "Dead bugs, plank, side plank" },
+  ], note: "Maintenance — preserve the adaptation without adding fatigue. Two sets, comfortable weight." },
+
+  // ── Back-to-back / Simulation ────────────────────────────────────────────
+  "Back-to-Back Day 1": { steps: [
+    { name: "Pacing",   time: "Full ride",    desc: "Start conservatively — Z2 base, accept Z3 on climbs. Day 1 sets the tone for the block." },
+    { name: "Fuelling", time: "Every 45 min", desc: "Don't rely on hunger cues. 60–90g carbs/hr from the first hour." },
+    { name: "Finish",   time: "Final 20%",   desc: "You should feel like you could do more — that's the correct effort level." },
+  ], note: "The goal is to complete both days, not win Day 1. Hold back on the first day and Day 2 will prove the fitness." },
+
+  "Back-to-Back Day 2": { steps: [
+    { name: "Start",    time: "First 30 min", desc: "Legs will be heavy. Spin easy and let them wake up — don't panic at how they feel." },
+    { name: "Main",     time: "Rest",         desc: "Z2 base. The fatigue is the training stimulus — stay patient and consistent." },
+    { name: "Fuelling", time: "Aggressive",   desc: "Start fuelling from minute 30 today. Under-fuelling on Day 2 is the most common failure mode." },
+  ], note: "Day 2 is the adaptation signal. Finishing Day 2 on tired legs builds the exact resilience the Haute Route demands every day." },
+
+  "Back-to-Back Day 3": { steps: [
+    { name: "Start",  time: "First 30 min", desc: "Three consecutive days — start easier than Day 2. Let the legs find their rhythm." },
+    { name: "Main",   time: "Rest",         desc: "Z2 only. No heroics. Completing it is the win." },
+    { name: "Finish", time: "Final 30 min", desc: "If legs come back in the final third, a slight push is fine — but only then." },
+  ], note: "Completing three consecutive days is the Haute Route simulation. Finishing strong matters more than average speed." },
+
+  "Simulation Day 1": { steps: [
+    { name: "Pacing",    time: "Full ride",    desc: "Haute Route discipline: start at 65–70% of FTP on climbs, even if you feel strong. The week is long." },
+    { name: "Fuelling",  time: "Every 30 min", desc: "Race-level fuelling: 60–90g carbs/hr. Practice exactly what you'll use on race day." },
+    { name: "Climbing",  time: "On hills",    desc: "Hold pace, don't chase other riders. Let the hill come to you." },
+  ], note: "First day of a multi-day simulation block — your closest preview of race week. Treat every decision as race practice." },
+
+  "Simulation Day 2": { steps: [
+    { name: "Morning",  time: "Pre-ride",     desc: "Full breakfast, coffee — same routine you'll run at the Haute Route." },
+    { name: "Main",     time: "Full ride",    desc: "Legs not fresh. Race pacing discipline pays off here more than anywhere." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Keep fuelling even when appetite drops — it will drop." },
+  ], note: "Day 2 of simulation. This is the Haute Route's mid-stage grind. Consistency over heroics." },
+
+  "Simulation Day 3": { steps: [
+    { name: "Morning",  time: "Pre-ride",  desc: "Recovery breakfast — three consecutive days takes a toll. Eat well." },
+    { name: "Main",     time: "Full ride", desc: "Z2 only. This is the adaptation gold — completing Day 3 is the milestone." },
+    { name: "Finish",   time: "Final 30%", desc: "If legs come back late, that's a great sign of fatigue resistance building." },
+  ], note: "Completing Day 3 means you can finish the Haute Route. The fitness is there — trust the training." },
+
+  // ── Camp ─────────────────────────────────────────────────────────────────
+  "Camp — Arrival + Leg Openers": { steps: [
+    { name: "Easy Start",  time: "60+ min",  desc: "Shake out travel stiffness — easy pace, explore the area" },
+    { name: "Leg Openers", time: "3 × 2 min", desc: "Short efforts at race pace to wake the legs. Nothing hard — just priming." },
+    { name: "Easy Finish", time: "Rest",      desc: "Continue easy, end feeling fresh" },
+  ], note: "Arrival day. Scope the roads, find the coffee stops — resist the urge to test the big climbs on Day 1." },
+
+  "Camp — Mountain Stage": { steps: [
+    { name: "Pacing",    time: "Full ride",    desc: "First proper mountain day. Pace for 5+ days ahead — Z2 on flats, Z3 on climbs, no Z4." },
+    { name: "Fuelling",  time: "Every 45 min", desc: "Mountain riding burns more than expected — fuel proactively from the start" },
+    { name: "Descents",  time: "Downhills",   desc: "Control on descents — save energy, stay safe. Not the day to practise cornering limits." },
+  ], note: "Respect the terrain. A 2000m+ climb is not the same as a local hill — the sustained gradient compounds fatigue differently." },
+
+  "Camp — Summit Day": { steps: [
+    { name: "Pacing",   time: "Full ride",    desc: "Biggest day of camp. Start easier than feels necessary — seriously." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Altitude can suppress appetite. Fuel by the clock, not by hunger." },
+    { name: "Summit",   time: "Final climb",  desc: "Pace the final climb — you still have days ahead. Getting up in good shape beats climbing fast and blowing up." },
+  ], note: "Peak volume day of camp. Reaching the summit in good shape matters far more than climbing time." },
+
+  "Camp — Back-to-Back Day 1": { steps: [
+    { name: "Pacing",   time: "Full ride",    desc: "Conservative start. 5–6 hour days in the mountains demand early patience." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Race-level nutrition from the first hour — full calories on long mountain days" },
+    { name: "Reserve",  time: "Full",         desc: "Save something for Day 2. The hardest part of Day 1 is holding back." },
+  ], note: "Day 1 of the camp back-to-back. The most common mistake is going too hard on Day 1 and destroying Day 2." },
+
+  "Camp — Back-to-Back Day 2": { steps: [
+    { name: "Morning",  time: "Pre-ride",     desc: "Aggressive recovery breakfast. Legs may feel surprisingly good or terrible — both are normal at camp." },
+    { name: "Main",     time: "Full ride",    desc: "Tired legs in the mountains. This is the adaptation stimulus — dig in and stay patient." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Don't cut corners on nutrition on Day 2 — that's exactly when it costs you most." },
+  ], note: "Completing Day 2 of camp is a milestone. This replicates the Haute Route's mid-week grind." },
+};
+
+function _buildStep(s, i) {
+  return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #1f1f23">
+    <div style="width:5px;height:5px;border-radius:50%;background:#a3e635;margin-top:5px;flex-shrink:0"></div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap">
+        <span style="font-weight:600;font-size:13px;color:#fafafa">${s.name}</span>
+        ${s.time ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a">${s.time}</span>` : ''}
+      </div>
+      <p style="font-size:12px;color:#a1a1aa;margin:0;line-height:1.5">${s.desc}</p>
+    </div>
+  </div>`;
+}
+
+function openHrModal(el) {
+  const label = el.dataset.label;
+  const durFmt = el.dataset.durFmt;
+  const info = SESSION_INFO[label];
+  document.getElementById('hrModalTitle').textContent = label;
+  document.getElementById('hrModalDur').textContent = durFmt || '';
+  const stepsEl = document.getElementById('hrModalSteps');
+  const noteEl = document.getElementById('hrModalNote');
+  if (info) {
+    stepsEl.innerHTML = info.steps.map(_buildStep).join('');
+    noteEl.innerHTML = info.note
+      ? `<div style="margin-top:12px;padding:10px 14px;border-left:3px solid #ca8a04;background:rgba(28,22,0,0.5);border-radius:2px;font-size:12px;color:#a1a1aa;line-height:1.5">${info.note}</div>`
+      : '';
+  } else {
+    stepsEl.innerHTML = `<p style="color:#71717a;font-size:13px;margin:8px 0">${durFmt ? durFmt + ' ' : ''}session</p>`;
+    noteEl.innerHTML = '';
+  }
+  document.getElementById('hrModal').style.display = 'flex';
+}
+
+function openHrStageModal(el) {
+  const label = el.dataset.label;
+  const stage = el.dataset.stage;
+  const km = el.dataset.km;
+  const elev = el.dataset.elev;
+  const climb = el.dataset.climb;
+  document.getElementById('hrModalTitle').textContent = `Stage ${stage} · ${label}`;
+  document.getElementById('hrModalDur').textContent = `${km} km · ${Math.round(elev).toLocaleString()}m elevation`;
+  const stepsEl = document.getElementById('hrModalSteps');
+  const noteEl = document.getElementById('hrModalNote');
+  stepsEl.innerHTML = [
+    { name: "Key climb",    time: climb,    desc: "The defining feature of this stage — pace the ascent conservatively. If you feel good on the lower slopes, save it for the final kilometres." },
+    { name: "Race pacing",  time: "All day", desc: "65–70% of FTP on sustained climbs. Let riders who go harder come back to you — they will." },
+    { name: "Fuelling",     time: "Every 30 min", desc: "60–90g carbs/hr. Use feed zones. Don't miss a bottle hand-up." },
+    { name: "Descents",     time: "Downhills",    desc: "Save energy on descents — stay tucked, stay safe, recover for what's next." },
+  ].map(_buildStep).join('');
+  noteEl.innerHTML = `<div style="margin-top:12px;padding:10px 14px;border-left:3px solid #0ea5e9;background:rgba(9,21,37,0.6);border-radius:2px;font-size:12px;color:#a1a1aa;line-height:1.5">Haute Route Alpes stage race. Survive to fight tomorrow — stage racing is about cumulative performance over 7 days, not winning individual stages.</div>`;
+  document.getElementById('hrModal').style.display = 'flex';
+}
+
+function closeHrModal() {
+  document.getElementById('hrModal').style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHrModal(); });
+</script>
 
 {% if hr_proj_data %}
 <script>
