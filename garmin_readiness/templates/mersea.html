@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥾</text></svg>">
+  <title>Mersea Island · King Charles Coastal Path</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #09090b; }
+    .route-card { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .route-card.active { border-color: #a3e635 !important; background: #0f1a00 !important; }
+    .route-card:hover:not(.active) { border-color: #3f3f46 !important; }
+  </style>
+</head>
+<body>
+
+  {% set active_tab = 'mersea' %}
+  {% include 'nav.html' %}
+
+  <div style="max-width:1080px;margin:0 auto;padding:40px 24px 100px">
+
+    <!-- ── Page header ──────────────────────────────────────────────────────── -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+      <div>
+        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">Goal · King Charles Coastal Path · Mersea Island, Essex</p>
+        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,48px);letter-spacing:0.05em;color:#fafafa;line-height:1">Round Mersea</h1>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">
+          22 km &nbsp;·&nbsp; +113 m &nbsp;·&nbsp; Sea wall circuit &nbsp;·&nbsp; Start: Waldegraves
+        </p>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#c4c4cc;margin-bottom:4px">Target date</p>
+        <p id="countdown-num" style="font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1;color:#a3e635">—</p>
+        <p id="countdown-label" style="font-family:'DM Mono',monospace;font-size:11px;color:#c4c4cc">days to go</p>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#71717a;margin-top:4px">20 Sep 2026</p>
+      </div>
+    </div>
+
+    <!-- ── Feasibility banner ───────────────────────────────────────────────── -->
+    <div style="background:#0c1a00;border:1px solid #3a5c00;border-radius:8px;padding:16px 20px;margin-bottom:32px;display:flex;gap:16px;align-items:flex-start">
+      <div style="font-size:20px;flex-shrink:0;margin-top:1px">✓</div>
+      <div>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#a3e635;margin-bottom:4px">Achievable by target date</p>
+        <p style="font-size:13px;color:#d1d5db;line-height:1.6">
+          Your 12-week plan peaks at 12–15 kg / ~110 min rucks. Fitness and load-carry capacity will be there.
+          The only gap is <strong style="color:#fafafa">duration</strong> — the full circuit is a ~5½ hr day out vs. your current longest session.
+          A single 3–4 hr long ruck in the build-up week (week 9 or 10) bridges that gap cleanly.
+          The two shorter routes below are perfect warm-up targets to do before the main event.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Route selector + stats ───────────────────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:28px">
+      {% for r in routes %}
+      <div class="route-card {% if loop.first %}active{% endif %}"
+           style="border:1px solid #27272a;border-radius:8px;padding:16px 18px;background:#111114"
+           onclick="selectRoute({{ loop.index0 }})">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;margin-bottom:6px">Route {{ loop.index }}</p>
+        <p style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;color:#fafafa;margin-bottom:2px">{{ r.label }}</p>
+        <p style="font-size:12px;color:#a1a1aa;margin-bottom:12px">{{ r.description }}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em">Dist</p>
+            <p style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#a3e635">{{ r.distance_km }}<span style="font-size:11px;color:#71717a"> km</span></p>
+          </div>
+          <div>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em">Gain</p>
+            <p style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fb923c">{{ r.elevation_gain_m }}<span style="font-size:11px;color:#71717a"> m</span></p>
+          </div>
+          <div>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.1em">~Time</p>
+            <p style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#60a5fa">{{ "%.1f"|format(r.est_hours) }}<span style="font-size:11px;color:#71717a"> hr</span></p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ── Elevation profile chart ───────────────────────────────────────────── -->
+    <div style="background:#111114;border:1px solid #27272a;border-radius:8px;padding:20px 24px;margin-bottom:32px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;margin-bottom:16px" id="chart-title">Elevation Profile — Full Island Circuit</p>
+      <div style="position:relative;height:160px">
+        <canvas id="elevChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── Build-up suggestion ───────────────────────────────────────────────── -->
+    <div style="background:#111114;border:1px solid #27272a;border-radius:8px;padding:20px 24px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;margin-bottom:16px">Suggested build-up</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% set steps = [
+          ("Plan wks 1–8",   "Build ruck base to 12 kg / 80–100 min as per schedule", "#27272a", "#a1a1aa"),
+          ("Plan wk 9–10",   "Swap one Saturday ruck for the Eastern Arc (12 km, ~3 hr) at easy load", "#1a2e00", "#a3e635"),
+          ("Plan wk 11",     "Taper as scheduled — keep ruck easy, legs fresh", "#27272a", "#a1a1aa"),
+          ("Charity ride",   "13 Sep — event day", "#091525", "#7dd3fc"),
+          ("Recovery wk",    "Light walking only, no pack — let legs recover from the ride", "#27272a", "#a1a1aa"),
+          ("20 Sep 2026",    "Round Mersea — Full Island Circuit. Light pack, 4–5 km/h, enjoy it.", "#0f1a00", "#a3e635"),
+        ] %}
+        {% for wk, desc, bg, col in steps %}
+        <div style="display:flex;gap:14px;align-items:flex-start;background:{{ bg }};border-radius:5px;padding:10px 14px">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:{{ col }};white-space:nowrap;width:100px;flex-shrink:0;padding-top:1px">{{ wk }}</div>
+          <div style="font-size:13px;color:#d1d5db">{{ desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- /max-width wrapper -->
+
+  <script>
+    // Route data injected from server
+    const ROUTES = {{ routes_json | safe }};
+
+    let chart = null;
+    let activeIdx = 0;
+
+    function buildDataset(route) {
+      return {
+        labels: route.profile.map(p => p[0]),
+        data:   route.profile.map(p => p[1]),
+      };
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('elevChart').getContext('2d');
+      const ds  = buildDataset(ROUTES[0]);
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ds.labels,
+          datasets: [{
+            data: ds.data,
+            borderColor: '#a3e635',
+            backgroundColor: 'rgba(163,230,53,0.08)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: {
+            callbacks: {
+              title: ctx => ctx[0].parsed.x.toFixed(2) + ' km',
+              label: ctx => ctx.parsed.y.toFixed(1) + ' m',
+            }
+          }},
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Distance (km)', color: '#71717a', font: { size: 10 } },
+              ticks: { color: '#71717a', font: { size: 10 },
+                       callback: v => v.toFixed(0) + ' km' },
+              grid: { color: '#1e1e1e' },
+            },
+            y: {
+              title: { display: true, text: 'Elevation (m)', color: '#71717a', font: { size: 10 } },
+              ticks: { color: '#71717a', font: { size: 10 },
+                       callback: v => v + ' m' },
+              grid: { color: '#1e1e1e' },
+              min: 0,
+            }
+          }
+        }
+      });
+    }
+
+    function selectRoute(idx) {
+      if (idx === activeIdx) return;
+      activeIdx = idx;
+      const cards = document.querySelectorAll('.route-card');
+      cards.forEach((c, i) => c.classList.toggle('active', i === idx));
+      const route = ROUTES[idx];
+      const ds = buildDataset(route);
+      chart.data.labels = ds.labels;
+      chart.data.datasets[0].data = ds.data;
+      chart.update();
+      document.getElementById('chart-title').textContent =
+        'Elevation Profile — ' + route.label;
+    }
+
+    // Countdown
+    (function() {
+      const target = new Date('2026-09-20T00:00:00');
+      const today  = new Date(); today.setHours(0,0,0,0);
+      const diff   = Math.round((target - today) / 86400000);
+      const el     = document.getElementById('countdown-num');
+      const lbl    = document.getElementById('countdown-label');
+      if (diff > 0) {
+        el.textContent = diff;
+      } else if (diff === 0) {
+        el.textContent = '🥾';
+        el.style.fontSize = '40px';
+        lbl.textContent = 'today!';
+        el.style.color = '#4ade80';
+      } else {
+        el.textContent = '✓';
+        el.style.color = '#4ade80';
+        lbl.textContent = 'completed';
+      }
+    })();
+
+    initChart();
+  </script>
+
+</body>
+</html>
