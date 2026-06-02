@@ -17,7 +17,7 @@ from .analysis import generate_recovery_suggestion, load_analyses_for_activities
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
-                   build_charity_weeks, build_event_prep_weeks, COMPOUND_SESSIONS,
+                   build_combined_event_weeks, COMPOUND_SESSIONS,
                    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date)
 from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
                       build_hr_calendar_weeks, build_hr_event_weeks,
@@ -92,8 +92,7 @@ def _build_calendar_ctx() -> dict[str, Any]:
         "today": date.today(),
         "plan_start": _PLAN_START,
         "camp_weeks": build_camp_weeks(),
-        "event_prep_weeks": build_event_prep_weeks(),
-        "charity_weeks": build_charity_weeks(),
+        "combined_event_weeks": build_combined_event_weeks(),
     }
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))

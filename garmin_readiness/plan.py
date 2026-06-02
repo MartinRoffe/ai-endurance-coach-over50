@@ -564,6 +564,55 @@ CHARITY_DAYS: list[dict] = [
 ]
 
 
+def build_combined_event_weeks() -> list[dict]:
+    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions and charity ride days."""
+    today = date.today()
+    prep_by_date = {d["date"]: d for d in EVENT_PREP_DAYS}
+    charity_by_date = {d["date"]: d for d in CHARITY_DAYS}
+    grid_start = date(2026, 8, 31)
+    weeks = []
+    for wk in range(3):
+        wk_start = grid_start + timedelta(weeks=wk)
+        cells = []
+        for day_off in range(7):
+            d = wk_start + timedelta(days=day_off)
+            charity = charity_by_date.get(d)
+            prep = prep_by_date.get(d)
+            if charity:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "is_event": True,
+                    "label": charity["label"], "km": charity["km"],
+                    "day_num_ride": charity["day"],
+                    "is_today": d == today, "is_past": d < today,
+                    "type": "charity",
+                })
+            elif prep:
+                dur = prep["dur_min"]
+                if dur < 60:
+                    dur_fmt = f"{dur}m"
+                elif dur % 60:
+                    dur_fmt = f"{dur // 60}h{dur % 60:02d}m"
+                else:
+                    dur_fmt = f"{dur // 60}h"
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "is_event": False,
+                    "type": prep["type"], "label": prep["label"],
+                    "dur_fmt": dur_fmt, "dur_min": dur,
+                    "is_today": d == today, "is_past": d < today,
+                })
+            else:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "is_event": False,
+                    "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
+                    "is_today": d == today, "is_past": d < today,
+                })
+        weeks.append({"week_label": wk_start.strftime("%-d %b"), "days": cells})
+    return weeks
+
+
 def build_charity_weeks() -> list[dict]:
     today = date.today()
     days_by_date = {d["date"]: d for d in CHARITY_DAYS}
