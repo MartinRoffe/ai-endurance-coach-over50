@@ -10,7 +10,7 @@ from typing import Any, Optional
 import anthropic as _anthropic
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
@@ -1456,6 +1456,94 @@ async def coach_chat(body: _CoachChatRequest):
     save_coach_message("assistant", reply, json.dumps(proposal) if proposal else None)
 
     return JSONResponse({"reply": reply, "proposal": proposal})
+
+
+def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
+    """Sync generator yielding SSE events for the coach chat stream."""
+    context = _build_coach_context()
+    system = _COACH_SYSTEM + f"\n\n## Current Context\n{context}"
+    client = _anthropic.Anthropic(api_key=api_key)
+
+    full_text: list[str] = []
+    proposal: Optional[dict] = None
+
+    try:
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=800,
+            system=system,
+            tools=[_COACH_TOOL],
+            messages=messages,
+        ) as stream:
+            for chunk in stream.text_stream:
+                full_text.append(chunk)
+                yield f"data: {json.dumps({'type': 'text', 'chunk': chunk})}\n\n"
+            final = stream.get_final_message()
+
+        tool_call = None
+        for block in final.content:
+            if block.type == "tool_use" and block.name == "propose_plan_change":
+                tool_call = block
+                proposal = dict(block.input)
+
+        if tool_call and final.stop_reason == "tool_use":
+            followup = messages + [
+                {"role": "assistant", "content": final.content},
+                {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_call.id, "content": "Proposal ready for athlete confirmation."}]},
+            ]
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=300,
+                system=system,
+                tools=[_COACH_TOOL],
+                messages=followup,
+            ) as stream2:
+                for chunk in stream2.text_stream:
+                    full_text.append(chunk)
+                    yield f"data: {json.dumps({'type': 'text', 'chunk': chunk})}\n\n"
+
+        if proposal:
+            try:
+                d = date.fromisoformat(proposal["date"])
+                sess = session_for_date(d)
+                ov = get_plan_override(proposal["date"])
+                current_dur = ov["duration_min"] if ov else (sess[2] if sess else None)
+                proposal["session_label"] = sess[1] if sess else None
+                proposal["session_type"] = sess[0] if sess else None
+                proposal["current_duration_min"] = current_dur
+            except Exception:
+                proposal["session_label"] = None
+            yield f"data: {json.dumps({'type': 'proposal', 'data': proposal})}\n\n"
+
+        full_reply = "".join(full_text)
+        save_coach_message("user", user_message)
+        save_coach_message("assistant", full_reply, json.dumps(proposal) if proposal else None)
+
+    except Exception as exc:
+        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+
+@app.post("/coach-chat-stream")
+async def coach_chat_stream(body: _CoachChatRequest):
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return JSONResponse({"error": "No API key configured."})
+
+    user_message = body.message.strip()
+    if not user_message:
+        return JSONResponse({"error": "Empty message."})
+
+    history = load_coach_history(limit=20)
+    messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": user_message})
+
+    return StreamingResponse(
+        _stream_coach_sse(messages, user_message, api_key),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/coach-history")
