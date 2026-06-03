@@ -1242,6 +1242,27 @@ async def body_refresh():
     return RedirectResponse(url="/body", status_code=303)
 
 
+@app.get("/withings-sync", response_class=RedirectResponse)
+async def withings_sync():
+    """Push Withings measurements to Garmin Connect, then refresh body data from Garmin."""
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        try:
+            api = get_api(email_addr, password)
+            from .withings import sync_withings_to_garmin
+            sync_withings_to_garmin(api, days=30)
+            body_readings = fetch_body_composition(api, days=90)
+            if body_readings:
+                save_body_metrics(body_readings)
+            bp_readings = fetch_blood_pressure(api, days=90)
+            if bp_readings:
+                save_blood_pressure(bp_readings)
+        except Exception:
+            pass
+    return RedirectResponse(url="/body", status_code=303)
+
+
 @app.get("/refresh", response_class=RedirectResponse)
 async def refresh(date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()

@@ -37,12 +37,22 @@
       <p class="eyebrow" style="margin-bottom:8px">Health Tracking</p>
       <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Body Metrics</h1>
     </div>
-    <a href="/body-refresh"
-       style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
-       onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
-       onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
-      Sync from Garmin ↺
-    </a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/withings-sync"
+         style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
+         onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'"
+         title="Push Withings measurements to Garmin, then refresh local data">
+        Sync Withings ↺
+      </a>
+      <a href="/body-refresh"
+         style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
+         onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'"
+         title="Refresh body data from Garmin Connect only">
+        Sync from Garmin ↺
+      </a>
+    </div>
   </div>
 
   {% if not has_body and not has_bp %}
