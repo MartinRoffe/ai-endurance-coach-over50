@@ -22,7 +22,8 @@ from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
                    build_combined_event_weeks, COMPOUND_SESSIONS,
-                   CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date)
+                   CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date,
+                   CAMP_START, CAMP_END)
 from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
                       build_hr_calendar_weeks, build_hr_event_weeks,
                       HR_EVENT_START, HR_EVENT_END)
@@ -1376,14 +1377,15 @@ def _build_coach_context() -> str:
     stats = baseline_stats(today)
     comp_z = composite_score(m, stats)
 
-    # Show all remaining plan sessions (up to 90 days ahead) so the coach
-    # can reason about the full training block, not just the current week.
+    # Show all remaining sessions across the full plan + Tenerife camp + event prep.
     upcoming_lines = []
+
+    # 12-week training plan sessions
     for i in range(90):
         d = today + timedelta(days=i)
         sess = session_for_date(d)
         if sess is None:
-            break  # past the end of the plan
+            break
         stype, label, dur = sess
         if stype == "rest":
             continue
@@ -1392,6 +1394,38 @@ def _build_coach_context() -> str:
             dur = ov["duration_min"]
             label = f"{label} [MODIFIED]"
         upcoming_lines.append(f"  {d.strftime('%a %d %b')} ({d.isoformat()}): {label} ({dur}min) [{stype}]")
+
+    # Camp grid workouts (Aug 10–11, Aug 28–30 — pre/post Tenerife buffer days)
+    for camp_date, s in sorted(CAMP_GRID_WORKOUTS.items()):
+        if camp_date >= today:
+            upcoming_lines.append(
+                f"  {camp_date.strftime('%a %d %b')} ({camp_date.isoformat()}): "
+                f"{s['label']} ({s['dur_min']}min) [{s['type']}]"
+            )
+
+    # Tenerife cycling camp (Aug 13–27)
+    if today <= CAMP_END:
+        upcoming_lines.append("  --- Tenerife Cycling Camp (13–27 Aug) ---")
+        for day in TENERIFE_DAYS:
+            d = day["date"]
+            if d >= today:
+                km = day.get("km", 0)
+                elev = day.get("elev_m", 0)
+                detail = f"{km}km, {elev}m elev" if km else "travel/rest"
+                upcoming_lines.append(
+                    f"  {d.strftime('%a %d %b')} ({d.isoformat()}): "
+                    f"{day['label']} — {detail} [{day['intensity']}]"
+                )
+
+    # Event prep days (Aug 31 – Sep 6)
+    event_prep_future = [ep for ep in EVENT_PREP_DAYS if ep["date"] >= today]
+    if event_prep_future:
+        upcoming_lines.append("  --- Event Prep (Lap the Map, 6 Sep 2026) ---")
+        for ep in event_prep_future:
+            upcoming_lines.append(
+                f"  {ep['date'].strftime('%a %d %b')} ({ep['date'].isoformat()}): "
+                f"{ep['label']} ({ep['dur_min']}min) [{ep['type']}]"
+            )
 
     recent_acts = load_recent_activities(days=14)
     act_lines = []
