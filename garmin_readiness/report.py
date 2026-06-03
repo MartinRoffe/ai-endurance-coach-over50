@@ -595,7 +595,7 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=320,
             system=(
                 "You are an experienced endurance coach reviewing an athlete's training load and recovery data. "
@@ -644,7 +644,7 @@ def generate_pmc_explainer() -> str:
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=600,
             system=(
                 "You are a knowledgeable endurance coach writing a concise reference guide "

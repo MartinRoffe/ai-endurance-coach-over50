@@ -169,7 +169,7 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
     name = activity.get("name") or ""
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=500,
             system=_coach_system_prompt(type_key, name),
             messages=[{"role": "user", "content": prompt}],
