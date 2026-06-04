@@ -34,7 +34,8 @@ class DailyMetrics:
     hrv_weekly_avg: Optional[float] = None        # ms
     hrv_status: Optional[str] = None              # BALANCED / UNBALANCED / LOW / POOR
     # Body Battery
-    body_battery_morning: Optional[float] = None  # 0–100
+    body_battery_morning: Optional[float] = None  # 0–100 (reading at/after sleep end)
+    sleep_end_ts: Optional[float] = None          # Unix seconds of sleepEndTimestampGMT
     # Stress (lower = better)
     avg_stress: Optional[float] = None            # 0–100
     rest_stress: Optional[float] = None           # 0–100
@@ -63,6 +64,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
     m = DailyMetrics(date=target_date)
 
     # --- Sleep ---
+    _sleep_end_ms: Optional[float] = None  # passed to body battery section
     try:
         sleep = api.get_sleep_data(date_str)
         dto = sleep.get("dailySleepDTO") or {}
@@ -72,6 +74,10 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
         m.sleep_score = float(score) if score is not None else None
         raw_secs = dto.get("sleepTimeSeconds")
         m.sleep_seconds = float(raw_secs) if raw_secs is not None else None
+        end_ms = dto.get("sleepEndTimestampGMT")
+        if end_ms is not None:
+            m.sleep_end_ts = float(end_ms) / 1000.0
+            _sleep_end_ms = float(end_ms)
     except Exception as e:
         logger.debug("Sleep fetch failed: %s", e)
 
@@ -91,19 +97,23 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
     try:
         bb = api.get_body_battery(date_str, date_str)
         if bb and isinstance(bb, list):
-            values: list[float] = []
+            all_readings: list[tuple[float, float]] = []  # (timestamp_ms, value)
             for entry in bb:
-                # Prefer the time-series array — last entry is the current level
                 ts_array = entry.get("bodyBatteryValuesArray") if isinstance(entry, dict) else None
                 if ts_array:
                     for reading in ts_array:
                         if isinstance(reading, (list, tuple)) and len(reading) >= 2 and reading[1] is not None:
-                            values.append(float(reading[1]))
+                            all_readings.append((float(reading[0]), float(reading[1])))
                 elif isinstance(entry, (list, tuple)) and len(entry) >= 2:
                     if entry[1] is not None:
-                        values.append(float(entry[1]))
-            if values:
-                m.body_battery_morning = max(values)
+                        all_readings.append((0.0, float(entry[1])))
+            if all_readings:
+                if _sleep_end_ms is not None:
+                    # Use first reading at/after sleep end — the true wake-up BB level
+                    post_sleep = [v for ts, v in all_readings if ts >= _sleep_end_ms]
+                    m.body_battery_morning = post_sleep[0] if post_sleep else max(v for _, v in all_readings)
+                else:
+                    m.body_battery_morning = max(v for _, v in all_readings)
     except Exception as e:
         logger.debug("Body Battery fetch failed: %s", e)
 

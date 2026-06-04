@@ -55,6 +55,23 @@
     </div>
   </div>
 
+  {% if flash_msg %}
+  <div id="flash-banner" style="margin-bottom:16px;padding:10px 16px;border-radius:2px;display:flex;align-items:center;justify-content:space-between;
+    {% if flash_msg == 'synced' %}background:rgba(163,230,53,0.08);border:1px solid #a3e635;
+    {% elif flash_msg == 'no_data' %}background:rgba(250,204,21,0.08);border:1px solid #facc15;
+    {% else %}background:rgba(248,113,113,0.08);border:1px solid #f87171;{% endif %}">
+    <span style="font-family:var(--font-m);font-size:12px;letter-spacing:0.05em;
+      {% if flash_msg == 'synced' %}color:#a3e635;
+      {% elif flash_msg == 'no_data' %}color:#facc15;
+      {% else %}color:#f87171;{% endif %}">
+      {% if flash_msg == 'synced' %}Withings sync complete — data updated.
+      {% elif flash_msg == 'no_data' %}No new Withings measurements found.
+      {% else %}Sync failed — check server logs (withings-sync may need to be installed or re-authorised).{% endif %}
+    </span>
+    <button onclick="document.getElementById('flash-banner').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 0 0 12px">✕</button>
+  </div>
+  {% endif %}
+
   {% if not has_body and not has_bp %}
   <!-- Empty state -->
   <div class="card" style="padding:56px 48px;text-align:center">

@@ -11,7 +11,7 @@ from typing import Optional
 import anthropic
 
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
-from .plan import session_for_date
+from .plan import session_for_date, session_for_date_extended
 from .history import (
     ACTIVITY_MATCH,
     LOWER_IS_BETTER,
@@ -62,7 +62,7 @@ def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
 
-    session = session_for_date(target)
+    session = session_for_date_extended(target)
     if session:
         stype, label, dur = session
         dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"
@@ -203,7 +203,7 @@ def _workouts_html(activities: list[dict]) -> str:
 
 
 def _planned_session_html(d: date) -> str:
-    session = session_for_date(d)
+    session = session_for_date_extended(d)
     if not session:
         return ""
     stype, label, dur = session
@@ -237,14 +237,13 @@ def _planned_session_html(d: date) -> str:
 
 def _week_completion_html(today: date) -> str:
     """Return an HTML block showing this week's plan vs actual training time."""
-    from .plan import session_for_date
     mon = today - timedelta(days=today.weekday())
     # Plan: full week (Mon–Sun); actual: Mon–yesterday only (today not done yet)
     acts_by_date = load_activities_by_date(mon, today - timedelta(days=1))
 
     plan_min = 0
     for i in range(7):
-        session = session_for_date(mon + timedelta(days=i))
+        session = session_for_date_extended(mon + timedelta(days=i))
         if session:
             stype, _, dur = session
             if stype != "rest" and dur:
@@ -531,7 +530,7 @@ def _build_pmc_prompt(history: list[dict], m=None, comp_z: Optional[float] = Non
     lines += ["", "Upcoming 7 days (planned sessions):"]
     for i in range(7):
         d = today + timedelta(days=i)
-        session = session_for_date(d)
+        session = session_for_date_extended(d)
         if session:
             stype, label, dur = session
             dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"

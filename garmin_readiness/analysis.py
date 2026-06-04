@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .history import DB_PATH, _conn, get_cached_text, set_cached_text
-from .plan import COMPOUND_SESSIONS, session_for_date
+from .plan import COMPOUND_SESSIONS, session_for_date, session_for_date_extended
 
 # ── DB schema ────────────────────────────────────────────────────────────────
 
@@ -210,7 +210,7 @@ def _find_compound_companion(activity: dict, day_acts: list[dict]) -> Optional[d
     if not act_date:
         return None
     d_obj = date.fromisoformat(act_date)
-    session = session_for_date(d_obj)
+    session = session_for_date_extended(d_obj)
     if not session:
         return None
     _, slabel, _ = session
@@ -264,7 +264,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
     plan_line = ""
     compound_lines: list[str] = []
     if d_obj:
-        session = session_for_date(d_obj)
+        session = session_for_date_extended(d_obj)
         if session:
             stype, slabel, sdur = session
             plan_line = f"\nPlanned workout for this day: {slabel} ({stype}, {sdur}m total)"
@@ -318,7 +318,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         "show significant Z1–Z2 time from the warm-up and cool-down — this is expected and correct. "
         "Focus your analysis on whether the 20-minute test effort was well-executed: "
         "was max HR high, did the athlete sustain effort into Z4–Z5, and how does the training load reflect the test demand?"
-        if (d_obj and session_for_date(d_obj) and session_for_date(d_obj)[1] in _ftp_labels) else ""
+        if (d_obj and session_for_date_extended(d_obj) and session_for_date_extended(d_obj)[1] in _ftp_labels) else ""
     )
 
     lines = [

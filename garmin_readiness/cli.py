@@ -354,8 +354,13 @@ def main() -> None:
             console.print(f"[dim]Email already sent for {target}, skipping.[/dim]")
             sys.exit(0)
 
-        # Require sleep_score and body_battery — these only appear after the watch syncs overnight data
-        _missing = [f for f in ("sleep_score", "body_battery_morning") if getattr(m, f, None) is None]
+        # Require sleep end + body battery — ensures overnight sleep was recorded and
+        # body battery reflects the post-sleep reading, not a mid-sleep partial value
+        _missing = []
+        if getattr(m, "sleep_end_ts", None) is None:
+            _missing.append("sleep_end (sleep not yet recorded)")
+        if getattr(m, "body_battery_morning", None) is None:
+            _missing.append("body_battery_morning")
         if _missing and not args.dry_run:
             console.print(
                 f"[yellow]Watch hasn't synced yet — missing: {', '.join(_missing)}. "
@@ -455,7 +460,7 @@ def _setup_schedule() -> None:
         """<key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>7</integer>
+        <integer>8</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>""",

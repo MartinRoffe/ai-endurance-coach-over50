@@ -363,6 +363,40 @@ def session_for_date(d: date) -> tuple[str, str, int] | None:
     return TRAINING_WEEKS[week_idx][day_idx]
 
 
+def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
+    """Like session_for_date but also covers camp buffer days, Tenerife, event prep and charity ride."""
+    result = session_for_date(d)
+    if result is not None:
+        return result
+
+    # Camp buffer days (pre/post Tenerife)
+    if d in CAMP_GRID_WORKOUTS:
+        s = CAMP_GRID_WORKOUTS[d]
+        return (s["type"], s["label"], s["dur_min"])
+
+    # Tenerife cycling camp
+    for day in TENERIFE_DAYS:
+        if day["date"] == d:
+            if day["intensity"] in ("travel", "rest"):
+                return ("rest", day["label"], 0)
+            km = day.get("km", 0)
+            elev = day.get("elev_m", 0)
+            label = f"{day['label']} — {km}km, {elev}m elev"
+            return ("bike", label, 0)
+
+    # Event prep days
+    for ep in EVENT_PREP_DAYS:
+        if ep["date"] == d:
+            return (ep["type"], ep["label"], ep["dur_min"])
+
+    # Charity ride days
+    for cr in CHARITY_DAYS:
+        if cr["date"] == d:
+            return ("bike", f"{cr['label']} ({cr['km']}km charity ride)", 0)
+
+    return None
+
+
 def build_calendar_weeks() -> list[dict]:
     today = date.today()
     weeks = []
