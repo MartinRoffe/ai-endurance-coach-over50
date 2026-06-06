@@ -161,6 +161,30 @@
     </div>
   </div>
 
+  <!-- ── Injury risk indicator ────────────────────────────────────── -->
+  {% if acwr is not none and acwr > 1.5 %}
+  {% set ir_high = acwr > 1.8 %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;
+    border-left-width:3px;border-left-style:solid;
+    {% if ir_high %}border-left-color:#f87171;background:rgba(248,113,113,0.05)
+    {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">{% if ir_high %}🔴{% else %}🟡{% endif %}</span>
+      <div style="flex:1">
+        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
+          {% if ir_high %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
+          Injury Risk · {% if ir_high %}Warning{% else %}Caution{% endif %}
+        </p>
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.55">
+          {% if ir_high %}Acute load is significantly above your chronic baseline (ACWR {{ "%.2f"|format(acwr) }}). Consider reducing intensity today — pushing hard here raises injury risk.
+          {% else %}Acute load is above your chronic baseline (ACWR {{ "%.2f"|format(acwr) }}). Train at moderate intensity and monitor fatigue carefully.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── Week progress ─────────────────────────────────────────────── -->
   {% if week_summary %}
   {% set ws = week_summary %}

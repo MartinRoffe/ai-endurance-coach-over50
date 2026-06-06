@@ -411,6 +411,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "comp_label": comp_label,
         "comp_colour": comp_colour,
         "badges": badges,
+        "acwr": m.acwr,
         "metrics": metric_rows,
         "chart_labels": chart_labels,
         "chart_values": chart_values,
