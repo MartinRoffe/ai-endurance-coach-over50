@@ -48,6 +48,8 @@ from .history import (
     load_coach_history,
     load_recent_activities,
     pmc_history,
+    vo2_history,
+    zone_distribution,
     raw_history,
     save,
     save_activities,
@@ -536,7 +538,10 @@ async def analysis_view(request: Request):
     return TEMPLATES.TemplateResponse(
         request=request,
         name="analysis.html",
-        context={"activities": activities},
+        context={
+            "activities": activities,
+            "zone_dist": zone_distribution(days=7),
+        },
     )
 
 
@@ -634,6 +639,7 @@ async def performance_view(request: Request):
             "camp_start_label": date(2026, 8, 13).strftime("%-d %b"),
             "camp_end_label":   date(2026, 8, 27).strftime("%-d %b"),
             "event_prep_label": date(2026, 8, 31).strftime("%-d %b"),
+            "vo2_history": vo2_history(days=90),
         },
     )
 

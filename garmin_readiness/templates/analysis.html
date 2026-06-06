@@ -63,6 +63,31 @@
     </a>
   </div>
 
+  <!-- ── HR Zone Distribution ─────────────────────────────────────── -->
+  {% if zone_dist %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+      <p class="eyebrow">HR Zone Distribution · Last {{ zone_dist.activity_count }} Ride{% if zone_dist.activity_count != 1 %}s{% endif %}</p>
+      <span style="font-family:var(--font-m);font-size:11px;color:var(--muted)">{{ zone_dist.total_min }} min total</span>
+    </div>
+    {% for znum, zpct, zcls, zname in [
+      (1, zone_dist.z1_pct, 'z1', 'Recovery'),
+      (2, zone_dist.z2_pct, 'z2', 'Endurance'),
+      (3, zone_dist.z3_pct, 'z3', 'Tempo'),
+      (4, zone_dist.z4_pct, 'z4', 'Threshold'),
+      (5, zone_dist.z5_pct, 'z5', 'VO₂ Max'),
+    ] %}
+    <div style="display:grid;grid-template-columns:28px 1fr 40px;align-items:center;gap:8px;{% if not loop.last %}margin-bottom:7px{% endif %}">
+      <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-align:right">Z{{ znum }}</span>
+      <div style="background:var(--border);height:8px;border-radius:2px;overflow:hidden">
+        <div class="zbar {{ zcls }}" style="width:{{ [zpct, 100]|min }}%;height:100%;border-radius:2px"></div>
+      </div>
+      <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-align:right">{{ zpct }}%</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if not activities %}
     <div class="card" style="padding:48px;text-align:center">
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">No activities in the last 14 days.</p>

@@ -217,6 +217,49 @@ def load_recent_activities(days: int = 7) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+_ZONE_BIKE_KEYS = {"road_biking", "cycling", "virtual_ride", "indoor_cycling", "mountain_biking"}
+
+
+def zone_distribution(days: int = 7) -> Optional[dict]:
+    """Aggregate HR zone distribution across cycling activities for the last `days` days.
+
+    Returns zone percentages and totals, or None if no zone data is available.
+    """
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    placeholders = ",".join("?" * len(_ZONE_BIKE_KEYS))
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            f"""SELECT hr_zone_1_sec, hr_zone_2_sec, hr_zone_3_sec, hr_zone_4_sec, hr_zone_5_sec
+               FROM activities
+               WHERE date >= ? AND type_key IN ({placeholders})""",
+            (start, *_ZONE_BIKE_KEYS),
+        ).fetchall()
+
+    z = [0.0] * 5
+    count = 0
+    for row in rows:
+        vals = [row[f"hr_zone_{i}_sec"] or 0 for i in range(1, 6)]
+        if any(v > 0 for v in vals):
+            for i, v in enumerate(vals):
+                z[i] += v
+            count += 1
+
+    total = sum(z)
+    if total == 0 or count == 0:
+        return None
+
+    return {
+        "z1_pct": round(z[0] / total * 100, 1),
+        "z2_pct": round(z[1] / total * 100, 1),
+        "z3_pct": round(z[2] / total * 100, 1),
+        "z4_pct": round(z[3] / total * 100, 1),
+        "z5_pct": round(z[4] / total * 100, 1),
+        "total_min": round(total / 60),
+        "activity_count": count,
+    }
+
+
 def load_activities_by_date(start: date, end: date) -> dict[str, list[dict]]:
     """Return {date_str: [activity, ...]} for all activities in [start, end]."""
     with _conn() as con:
@@ -538,6 +581,29 @@ def pmc_history(days: int = 90) -> list[dict]:
             "atl": round(atl, 1) if atl is not None else None,
             "ctl": round(ctl, 1) if ctl is not None else None,
             "tsb": tsb,
+        })
+    return result
+
+
+def vo2_history(days: int = 90) -> list[dict]:
+    """Return daily VO2 max readings for the last `days` days (oldest first)."""
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    with _conn() as con:
+        _ensure_schema(con)
+        rows = con.execute(
+            "SELECT date, vo2_max FROM daily_metrics WHERE date >= ? AND date <= ? ORDER BY date",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    by_date = {row["date"]: row["vo2_max"] for row in rows}
+    result = []
+    for i in range(days):
+        d = start + timedelta(days=i)
+        v = by_date.get(d.isoformat())
+        result.append({
+            "date": d.isoformat(),
+            "label": d.strftime("%-d %b"),
+            "vo2_max": round(v, 1) if v is not None else None,
         })
     return result
 

@@ -61,8 +61,8 @@
   {% set atl = today.atl %}
   {% set tsb = today.tsb %}
 
-  <!-- ── PMC Hero: 3 numbers ────────────────────────────────────────── -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:{% if event_ctl %}10{% else %}16{% endif %}px">
+  <!-- ── PMC Hero: 4 numbers ────────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:{% if event_ctl %}10{% else %}16{% endif %}px">
 
     <!-- CTL -->
     <div class="card" style="padding:28px 24px;border-top:2px solid #60a5fa">
@@ -105,6 +105,20 @@
         <p class="pmc-num" style="color:var(--muted)">—</p>
         <p class="pmc-sub" style="color:var(--muted)">no data</p>
       {% endif %}
+    </div>
+
+    <!-- VO2 Max -->
+    {% set vo2_now = (vo2_history | selectattr('vo2_max') | list | last) %}
+    <div class="card" style="padding:28px 24px;border-top:2px solid #a78bfa">
+      <p class="eyebrow" style="margin-bottom:14px">Aerobic Capacity · VO₂ Max</p>
+      {% if vo2_now and vo2_now.vo2_max %}
+        <p class="pmc-num" style="color:#a78bfa">{{ vo2_now.vo2_max | int }}</p>
+        <p class="pmc-sub" style="color:#7a6aaa">ml/kg/min</p>
+      {% else %}
+        <p class="pmc-num" style="color:var(--muted)">—</p>
+        <p class="pmc-sub" style="color:var(--muted)">no data yet</p>
+      {% endif %}
+      <div style="height:36px;position:relative;margin-top:12px"><canvas id="sparkVo2"></canvas></div>
     </div>
   </div>
 
@@ -515,6 +529,27 @@
     });
   })();
   {% endif %}
+
+  (function() {
+    const vo2Vals   = {{ vo2_history | map(attribute='vo2_max') | list | tojson }};
+    const vo2Labels = {{ vo2_history | map(attribute='label') | list | tojson }};
+    const canvas = document.getElementById('sparkVo2');
+    if (!canvas) return;
+    if (vo2Vals.every(v => v === null)) return;
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: vo2Labels,
+        datasets: [{ data: vo2Vals, borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, tension: 0.3, spanGaps: false, fill: false }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+        animation: false,
+      }
+    });
+  })();
 </script>
 </body>
 </html>
