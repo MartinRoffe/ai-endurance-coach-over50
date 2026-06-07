@@ -163,7 +163,7 @@
       {% endif %}
       {% if a.training_effect %}
       <div>
-        <p class="eyebrow" style="margin-bottom:3px">Aerobic TE</p>
+        <p class="eyebrow" style="margin-bottom:3px">Aerobic TE <button type="button" class="gr-tip-trigger" data-tip="Training Effect 1 = recovery, 2 = base building, 3 = tempo (improving aerobic), 4 = threshold (hard), 5 = overreach. Aim for mostly 2–3, with 4s on scheduled quality days. Repeated 5s = overtraining risk." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ "%.1f"|format(a.training_effect) }}</p>
       </div>
       {% endif %}
@@ -268,7 +268,7 @@
     </div>
     {% elif a.hr_zones %}
     <div style="margin-bottom:18px">
-      <p class="eyebrow" style="margin-bottom:10px">Heart Rate Zones</p>
+      <p class="eyebrow" style="margin-bottom:10px">Heart Rate Zones <button type="button" class="gr-tip-trigger" data-tip="Z1 = very easy recovery. Z2 = aerobic base (conversational pace). Z3 = tempo (somewhat hard — the grey zone, use sparingly). Z4 = threshold (race-pace hard effort). Z5 = max intervals. Most sessions should be Z1–Z2." aria-label="More info" aria-expanded="false">?</button></p>
       <div style="display:flex;flex-direction:column;gap:5px">
         {% for z in a.hr_zones %}
         {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
@@ -309,7 +309,7 @@
     <!-- RPE widget -->
     {% set saved_rpe = rpe_by_activity.get(a.activity_id | string, {}).get('rpe') %}
     <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-      <p class="eyebrow" style="margin-bottom:8px">Session Feel</p>
+      <p class="eyebrow" style="margin-bottom:8px">Session Feel <button type="button" class="gr-tip-trigger" data-tip="Rate of Perceived Exertion: 😴 easy recovery, 😊 comfortable aerobic, 😤 pushing hard, 🔥 very hard, 💀 maximal. Log this immediately after your session. If RPE is high but HR data is low, fatigue may be masking true effort." aria-label="More info" aria-expanded="false">?</button></p>
       <div style="display:flex;gap:6px;flex-wrap:wrap" data-rpe-container="{{ a.activity_id }}">
         {% for rpe_val, rpe_emoji in [(1,'😴'),(2,'😊'),(3,'😤'),(4,'🔥'),(5,'💀')] %}
         <button

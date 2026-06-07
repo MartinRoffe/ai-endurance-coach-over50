@@ -66,14 +66,14 @@
 
     <!-- CTL -->
     <div class="card" style="padding:28px 24px;border-top:2px solid #60a5fa">
-      <p class="eyebrow" style="margin-bottom:14px">Fitness · CTL</p>
+      <p class="eyebrow" style="margin-bottom:14px">Fitness · CTL <button type="button" class="gr-tip-trigger" data-tip="Chronic Training Load: your accumulated fitness over 28 days. Rising week-by-week = getting fitter. For a century ride, aim to build CTL steadily — sudden large jumps risk injury." aria-label="More info" aria-expanded="false">?</button></p>
       <p class="pmc-num" style="color:#60a5fa">{% if ctl is not none %}{{ ctl | int }}{% else %}<span style="color:var(--muted)">—</span>{% endif %}</p>
       <p class="pmc-sub" style="color:#7eb4f0">28-day chronic load</p>
     </div>
 
     <!-- ATL -->
     <div class="card" style="padding:28px 24px;border-top:2px solid #fb923c">
-      <p class="eyebrow" style="margin-bottom:14px">Fatigue · ATL</p>
+      <p class="eyebrow" style="margin-bottom:14px">Fatigue · ATL <button type="button" class="gr-tip-trigger" data-tip="Acute Training Load: fatigue from the last 7 days. High ATL relative to CTL means you're tired. Allow 2–3 easy days to bring it down before key sessions or events." aria-label="More info" aria-expanded="false">?</button></p>
       <p class="pmc-num" style="color:#fb923c">{% if atl is not none %}{{ atl | int }}{% else %}<span style="color:var(--muted)">—</span>{% endif %}</p>
       <p class="pmc-sub" style="color:#c07840">7-day acute load</p>
     </div>
@@ -86,7 +86,7 @@
         {% elif tsb >= -200 %}border-top:2px solid #fb923c
         {% else %}border-top:2px solid #f87171{% endif %}
       {% else %}border-top:2px solid var(--border){% endif %}">
-      <p class="eyebrow" style="margin-bottom:14px">Form · TSB</p>
+      <p class="eyebrow" style="margin-bottom:14px">Form · TSB <button type="button" class="gr-tip-trigger" data-tip="Training Stress Balance = Fitness minus Fatigue. Negative = under training load (normal during a build). Aim to arrive at your event with TSB slightly positive — means you tapered and are sharp." aria-label="More info" aria-expanded="false">?</button></p>
       {% if tsb is not none %}
         {% if tsb >= 0 %}
           <p class="pmc-num" style="color:#a3e635">+{{ tsb | int }}</p>
@@ -110,7 +110,7 @@
     <!-- VO2 Max -->
     {% set vo2_now = (vo2_history | selectattr('vo2_max') | list | last) %}
     <div class="card" style="padding:28px 24px;border-top:2px solid #a78bfa">
-      <p class="eyebrow" style="margin-bottom:14px">Aerobic Capacity · VO₂ Max</p>
+      <p class="eyebrow" style="margin-bottom:14px">Aerobic Capacity · VO₂ Max <button type="button" class="gr-tip-trigger" data-tip="Garmin estimate of your aerobic ceiling. Improves slowly over months of consistent training. Use as a long-term trend — it does not change day-to-day. A rise of 1–2 ml/kg/min over 4 weeks is meaningful progress." aria-label="More info" aria-expanded="false">?</button></p>
       {% if vo2_now and vo2_now.vo2_max %}
         <p class="pmc-num" style="color:#a78bfa">{{ vo2_now.vo2_max | int }}</p>
         <p class="pmc-sub" style="color:#7a6aaa">ml/kg/min</p>
@@ -173,7 +173,7 @@
   <!-- ── TSB chart ─────────────────────────────────────────────────── -->
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
-      <p class="eyebrow">Form · TSB (CTL − ATL)</p>
+      <p class="eyebrow">Form · TSB (CTL − ATL) <button type="button" class="gr-tip-trigger" data-tip="Projected TSB to your event date based on completing all remaining plan sessions. Aim to peak slightly positive on race day via a 10–14 day taper. Note: values shown are in Garmin training-load units, not standard TSS." aria-label="More info" aria-expanded="false">?</button></p>
       <div style="font-family:var(--font-m);font-size:12px;letter-spacing:0.06em;display:flex;gap:12px;flex-wrap:wrap">
         <span style="color:#a3e635">▲ fresh</span>
         <span style="color:#f87171">▼ fatigued</span>
@@ -204,7 +204,7 @@
   <div id="ftpChartCard" class="card" style="padding:20px 24px;margin-bottom:16px;display:none">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">FTP Trend · Estimated LTHR</p>
+        <p class="eyebrow" style="margin-bottom:4px">FTP Trend · Estimated LTHR <button type="button" class="gr-tip-trigger" data-tip="Your estimated lactate threshold heart rate from FTP test efforts. Lower HR for the same effort over time = improved threshold fitness. Retest every 4–6 weeks to track progress." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Average HR during FTP test effort · lower = improved threshold economy</p>
       </div>
       <span id="ftpCurrentLabel" style="font-family:var(--font-m);font-size:12px;color:#60a5fa;flex-shrink:0;padding-top:2px"></span>
@@ -217,7 +217,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Training Polarisation · Zone Distribution</p>
+        <p class="eyebrow" style="margin-bottom:4px">Training Polarisation · Zone Distribution <button type="button" class="gr-tip-trigger" data-tip="How your training time is split across intensity zones. Endurance science supports 80%+ in Z1–Z2 (easy/conversational), less than 10% in Z3 (the grey zone), and 10–20% in Z4–Z5 (hard intervals). Z3 is the most common mistake — too hard to be easy, too easy to be hard." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Cycling activities since plan start · target: 80%+ Z1–Z2, &lt;10% Z3, 10–20% Z4–Z5</p>
       </div>
       <div style="display:flex;gap:10px;font-family:var(--font-m);font-size:11px;flex-wrap:wrap;flex-shrink:0">
@@ -240,7 +240,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:10px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Zone 2 HR Drift</p>
+        <p class="eyebrow" style="margin-bottom:4px">Zone 2 HR Drift <button type="button" class="gr-tip-trigger" data-tip="Your average HR per bike session over time. If the same effort produces lower HR as weeks pass, your aerobic engine is getting more efficient — this is the main goal of Z2 training. Hard days are filtered out to show the trend clearly." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Avg HR per bike session since plan start · declining = aerobic adaptation</p>
       </div>
       <div style="display:flex;gap:14px;font-family:var(--font-m);font-size:12px;letter-spacing:0.06em;flex-shrink:0;padding-top:2px">
@@ -258,7 +258,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Z2 Cardiac Drift Trend · Easy rides only</p>
+        <p class="eyebrow" style="margin-bottom:4px">Z2 Cardiac Drift Trend · Easy rides only <button type="button" class="gr-tip-trigger" data-tip="Regression line through easy-only rides. A falling trend line confirms aerobic adaptation — your heart is working less for the same effort. Flat or rising means you may be riding too hard, or need more Z2 volume." aria-label="More info" aria-expanded="false">?</button></p>
         {% if z2_drift_annotation %}
         <p style="font-family:var(--font-m);font-size:12px;color:{% if '−' in z2_drift_annotation %}#4ade80{% else %}var(--muted){% endif %}">{{ z2_drift_annotation }}</p>
         {% endif %}

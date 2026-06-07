@@ -100,6 +100,31 @@ body {
 }
 .gr-nav a.tab:hover { color: var(--text-dim); }
 .gr-nav a.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Coaching tooltip ────────────────────────────────────────────── */
+.gr-tip-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid #3f3f46; background: transparent;
+  color: #71717a; font-family: 'DM Mono','ui-monospace',monospace; font-size: 9px;
+  cursor: default; vertical-align: middle; margin-left: 5px;
+  flex-shrink: 0; transition: border-color 0.15s, color 0.15s;
+  user-select: none; line-height: 1; padding: 0;
+}
+.gr-tip-trigger:hover,
+.gr-tip-trigger[aria-expanded="true"] { border-color: #71717a; color: #c4c4cc; outline: none; }
+
+.gr-tip-popup {
+  position: fixed; z-index: 1000;
+  max-width: 280px; padding: 10px 12px;
+  background: #1c1c1f; border: 1px solid #3f3f46; border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  font-family: 'DM Mono','ui-monospace',monospace;
+  font-size: 12px; line-height: 1.55; color: #c4c4cc;
+  white-space: normal; word-break: break-word;
+  pointer-events: none; opacity: 0; transition: opacity 0.12s ease;
+}
+.gr-tip-popup.is-visible { opacity: 1; pointer-events: auto; }
 </style>
 
 <nav class="gr-nav">
@@ -118,3 +143,33 @@ body {
 
   </div>
 </nav>
+<script>
+(function () {
+  const tip = document.createElement('div');
+  tip.className = 'gr-tip-popup';
+  tip.setAttribute('role', 'tooltip');
+  document.body.appendChild(tip);
+  let active = null;
+  const GAP = 8;
+  function pos(trigger) {
+    tip.textContent = trigger.dataset.tip || '';
+    const r = trigger.getBoundingClientRect();
+    const h = tip.offsetHeight, w = tip.offsetWidth, vw = window.innerWidth;
+    const top = r.top < h + GAP ? r.bottom + GAP : r.top - h - GAP;
+    let left = r.left + r.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, vw - w - 8));
+    tip.style.top = top + 'px'; tip.style.left = left + 'px';
+  }
+  function show(t) { if (active && active !== t) hide(); active = t; t.setAttribute('aria-expanded','true'); pos(t); tip.classList.add('is-visible'); }
+  function hide() { if (!active) return; active.setAttribute('aria-expanded','false'); active = null; tip.classList.remove('is-visible'); }
+  const canHover = window.matchMedia('(hover:hover)').matches;
+  document.addEventListener('mouseover', e => { if (canHover) { const t = e.target.closest('[data-tip]'); if (t) show(t); } });
+  document.addEventListener('mouseout',  e => { if (canHover) { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) hide(); } });
+  document.addEventListener('click',     e => { const t = e.target.closest('[data-tip]'); if (t) { e.stopPropagation(); active === t ? hide() : show(t); return; } hide(); });
+  document.addEventListener('keydown',   e => { if (e.key === 'Escape') hide(); });
+  document.addEventListener('focusin',   e => { const t = e.target.closest('[data-tip]'); if (t) show(t); });
+  document.addEventListener('focusout',  e => { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) hide(); });
+  window.addEventListener('scroll', hide, { passive: true, capture: true });
+  window.addEventListener('resize', hide, { passive: true });
+})();
+</script>

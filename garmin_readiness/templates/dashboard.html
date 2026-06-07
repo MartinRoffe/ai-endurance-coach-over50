@@ -163,7 +163,7 @@
   <!-- ── Hero: Composite Score ──────────────────────────────────────── -->
   <div class="card" style="padding:32px 36px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
     <div style="flex:1;min-width:180px">
-      <p class="eyebrow" style="margin-bottom:14px">Composite Score</p>
+      <p class="eyebrow" style="margin-bottom:14px">Composite Score <button type="button" class="gr-tip-trigger" data-tip="Your readiness score in standard deviations vs your 30-day personal baseline. +0.5σ or above = good to train hard. Below −0.5σ = prioritise recovery or lower intensity today." aria-label="More info" aria-expanded="false">?</button></p>
       {% if comp_z is not none %}
         <div class="score-num {{ comp_colour }}">
           {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="score-sigma">σ</span>
@@ -194,7 +194,7 @@
       <div style="flex:1">
         <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
           {% if ir_high %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
-          Injury Risk · {% if ir_high %}Warning{% else %}Caution{% endif %}
+          Injury Risk · {% if ir_high %}Warning{% else %}Caution{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Acute:Chronic Workload Ratio — compares your last 7 days of load to your 28-day average. Above 1.3 = elevated injury risk. Above 1.5 = reduce volume immediately." aria-label="More info" aria-expanded="false">?</button>
         </p>
         <p style="font-size:12px;color:var(--text-dim);line-height:1.55">
           {% if ir_high %}Acute load is significantly above your chronic baseline (ACWR {{ "%.2f"|format(acwr) }}). Consider reducing intensity today — pushing hard here raises injury risk.
@@ -431,13 +431,26 @@
 
   <!-- ── Metrics grid ──────────────────────────────────────────────── -->
   <p class="eyebrow" style="margin-bottom:14px">Metrics · 30-day baseline</p>
+  {% set _metric_tips = {
+    'HRV Last Night':       'Heart Rate Variability: your key recovery signal. A drop of 10+ ms from your rolling average means your nervous system is under stress — consider an easy day or rest.',
+    'HRV Weekly Avg':       'Your 7-day average HRV trend. Compare week-to-week: sustained drops signal accumulated fatigue; a rising trend means you are adapting well to training.',
+    'Sleep Score':          "Garmin's composite sleep quality. Below 70 = recovery compromised. Below 60 = seriously consider skipping any intensity today.",
+    'Sleep Duration':       'Most endurance athletes need 8–9 hours. Below 7 hours consistently impairs glycogen restoration, growth hormone release, and next-day performance.',
+    'Body Battery':         "Garmin's energy reserve estimate (0–100). Below 30 means recovery is the priority. A fully charged body battery overnight means you're ready for a hard session.",
+    'Avg Stress':           'Daily average stress score. Chronically elevated stress (50+) suppresses training adaptation even if workouts feel fine. High stress days count against your recovery budget.',
+    'Rest Stress':          'Your stress level during rest periods specifically. Elevated rest stress (above 35) even with normal average stress can indicate the nervous system is not fully recovering.',
+    'Acute:Chronic Ratio':  'ACWR — compares your last 7 days of training load to your 28-day average. The sweet spot is 0.8–1.3. Above 1.3 = elevated injury risk. Above 1.5 = reduce volume now.',
+    'Acute Load (7d)':      'Your recent 7-day training load. High relative to your chronic load? Give more easy days. Context-only — not scored against baseline.',
+    'Chronic Load (28d)':   'Your rolling 28-day training load — your fitness fingerprint. Steadily rising week-over-week means you are building fitness. Context-only — not scored against baseline.',
+    'VO2 Max':              'Garmin estimate of your aerobic ceiling. Improves slowly over months of consistent training. Does not change day-to-day — use as a long-term trend, not daily indicator.',
+  } %}
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:32px">
     {% for m in metrics %}
     <div class="card" style="padding:16px;
       border-left-width:2px;
       border-left-style:solid;
       border-left-color:{% if m.z_val is not none %}{% if m.z_val >= 0.5 %}#a3e635{% elif m.z_val <= -0.5 %}#f87171{% else %}var(--border2){% endif %}{% else %}var(--border){% endif %}">
-      <p class="m-label" style="margin-bottom:9px">{{ m.label }}</p>
+      <p class="m-label" style="margin-bottom:9px">{{ m.label }}{% if m.label in _metric_tips %} <button type="button" class="gr-tip-trigger" data-tip="{{ _metric_tips[m.label] }}" aria-label="More info" aria-expanded="false">?</button>{% endif %}</p>
       <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;flex-wrap:wrap">
         <span class="m-val {% if m.z_val is not none %}{{ m.value_colour }}{% else %}{% endif %}">{{ m.value }}</span>
         {% if m.unit %}<span class="m-unit">{{ m.unit }}</span>{% endif %}
@@ -487,7 +500,7 @@
 
   <!-- ── 14-day trend chart ─────────────────────────────────────────── -->
   <div class="card" style="padding:20px 24px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:18px">14-Day Composite Trend</p>
+    <p class="eyebrow" style="margin-bottom:18px">14-Day Composite Trend <button type="button" class="gr-tip-trigger" data-tip="Each bar is your composite readiness score for that day vs your 30-day baseline. Green = above average. Red = below. Look for trends, not individual days — one bad night is noise, three in a row is a signal." aria-label="More info" aria-expanded="false">?</button></p>
     <div style="height:136px;position:relative">
       <canvas id="trendChart"></canvas>
     </div>

@@ -113,7 +113,7 @@
 
     {% if latest_body and latest_body.fat_pct %}
     <div class="card" style="padding:20px 22px">
-      <p class="eyebrow" style="margin-bottom:6px">Body Fat</p>
+      <p class="eyebrow" style="margin-bottom:6px">Body Fat <button type="button" class="gr-tip-trigger" data-tip="For cycling power-to-weight, lower is generally better — but don't go below 10% (men) or 18% (women). Around 12–16% is a healthy competitive range for a male endurance cyclist. Losing fat slowly (0.3–0.5 kg/week) preserves power output." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ "%.1f"|format(latest_body.fat_pct) }}</p>
       <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">%</p>
     </div>
@@ -121,7 +121,7 @@
 
     {% if latest_body and latest_body.visceral_fat %}
     <div class="card" style="padding:20px 22px">
-      <p class="eyebrow" style="margin-bottom:6px">Visceral Fat</p>
+      <p class="eyebrow" style="margin-bottom:6px">Visceral Fat <button type="button" class="gr-tip-trigger" data-tip="Fat around your organs matters more for health risk than overall weight. Target below 10 on the Garmin index. Endurance training is one of the most effective ways to reduce visceral fat — even without significant weight loss." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ latest_body.visceral_fat | int }}</p>
       <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">index · target &lt; 13</p>
     </div>
@@ -153,7 +153,7 @@
 
     {% if latest_bp and latest_bp.systolic and latest_bp.diastolic %}
     <div class="card" style="padding:20px 22px">
-      <p class="eyebrow" style="margin-bottom:6px">Blood Pressure</p>
+      <p class="eyebrow" style="margin-bottom:6px">Blood Pressure <button type="button" class="gr-tip-trigger" data-tip="Normal: below 120/80. Elevated: 120–129 / below 80. Stage 1 high: 130–139 / 80–89. Consistent endurance training lowers BP over months. Measure at the same time each day for comparable readings." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ latest_bp.systolic }}<span style="font-size:18px;color:var(--muted)">/{{ latest_bp.diastolic }}</span></p>
       <p style="font-family:var(--font-m);font-size:11px;margin-top:4px" style="color:{{ bp_class_colour }}">
         <span style="color:{{ bp_class_colour }}">{{ bp_class_label }}</span>
@@ -212,7 +212,7 @@
   <!-- ── Calorie Balance ──────────────────────────────────────────────── -->
   {% if cal_ctx %}
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
-    <p class="eyebrow" style="margin-bottom:16px;color:#60a5fa">Calorie Balance</p>
+    <p class="eyebrow" style="margin-bottom:16px;color:#60a5fa">Calorie Balance <button type="button" class="gr-tip-trigger" data-tip="A 250–500 kcal daily deficit supports body recomposition while preserving muscle and training quality. Above 500 kcal deficit risks muscle loss and impaired recovery. On hard training days, eat close to maintenance." aria-label="More info" aria-expanded="false">?</button></p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:{% if cal_values %}20{% else %}0{% endif %}px">
 
       {% if cal_ctx.today_consumed is defined %}

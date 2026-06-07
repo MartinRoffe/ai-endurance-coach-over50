@@ -59,7 +59,7 @@
 
     <!-- Sleep Score -->
     <div class="card" style="padding:24px 20px;border-top:2px solid #a78bfa">
-      <p class="eyebrow" style="margin-bottom:12px">Sleep Score</p>
+      <p class="eyebrow" style="margin-bottom:12px">Sleep Score <button type="button" class="gr-tip-trigger" data-tip="Garmin's composite sleep quality (0–100). Below 70 = meaningful recovery debt. Aim for 75+ consistently. Single bad nights are OK; three or more consecutive poor nights signals a problem that needs addressing." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.sleep_score is not none %}
         {% set sc = last.sleep_score | int %}
         <p class="stat-num" style="color:{% if sc >= 75 %}#a3e635{% elif sc >= 55 %}#fde047{% else %}#f87171{% endif %}">{{ sc }}</p>
@@ -72,7 +72,7 @@
 
     <!-- Total Sleep -->
     <div class="card" style="padding:24px 20px;border-top:2px solid #60a5fa">
-      <p class="eyebrow" style="margin-bottom:12px">Total Sleep</p>
+      <p class="eyebrow" style="margin-bottom:12px">Total Sleep <button type="button" class="gr-tip-trigger" data-tip="Most endurance athletes need 8–9 hours. Below 7 hours consistently impairs glycogen restoration, growth hormone release, and next-day performance. Prioritise duration before optimising stages." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.sleep_hours is not none %}
         {% set h = last.sleep_hours | int %}
         {% set m = ((last.sleep_hours - h) * 60) | int %}
@@ -88,7 +88,7 @@
 
     <!-- Deep Sleep % -->
     <div class="card" style="padding:24px 20px;border-top:2px solid #34d399">
-      <p class="eyebrow" style="margin-bottom:12px">Deep Sleep</p>
+      <p class="eyebrow" style="margin-bottom:12px">Deep Sleep <button type="button" class="gr-tip-trigger" data-tip="Physical repair and growth hormone release happen in deep sleep. Target 13–20% of total sleep. Suppressed by alcohol, late hard training, and high stress. This is where your muscles actually rebuild." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.deep_pct is not none %}
         <p class="stat-num" style="color:{% if last.deep_pct >= 20 %}#a3e635{% elif last.deep_pct >= 13 %}#fde047{% else %}#f87171{% endif %}">{{ last.deep_pct }}<span style="font-size:0.45em;vertical-align:middle">%</span></p>
         <p class="stat-sub" style="color:var(--muted)">last night · 7d avg {{ avgs_7.deep_pct | int if avgs_7.deep_pct else '—' }}%</p>
@@ -104,7 +104,7 @@
 
     <!-- REM % -->
     <div class="card" style="padding:24px 20px;border-top:2px solid #c084fc">
-      <p class="eyebrow" style="margin-bottom:12px">REM Sleep</p>
+      <p class="eyebrow" style="margin-bottom:12px">REM Sleep <button type="button" class="gr-tip-trigger" data-tip="Mental recovery, memory consolidation, and skill learning happen in REM. Target 20–25% of total sleep. Disrupted by alcohol, inconsistent sleep timing, and high training load. Critical for technique-heavy sessions." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.rem_pct is not none %}
         <p class="stat-num" style="color:{% if last.rem_pct >= 20 %}#a3e635{% elif last.rem_pct >= 15 %}#fde047{% else %}#f87171{% endif %}">{{ last.rem_pct }}<span style="font-size:0.45em;vertical-align:middle">%</span></p>
         <p class="stat-sub" style="color:var(--muted)">last night · 7d avg {{ avgs_7.rem_pct | int if avgs_7.rem_pct else '—' }}%</p>
@@ -116,7 +116,7 @@
 
     <!-- HRV during sleep -->
     <div class="card" style="padding:24px 20px;border-top:2px solid #fb923c">
-      <p class="eyebrow" style="margin-bottom:12px">Overnight HRV</p>
+      <p class="eyebrow" style="margin-bottom:12px">Overnight HRV <button type="button" class="gr-tip-trigger" data-tip="Your most sensitive recovery marker. A sustained drop of 10+ ms over 3 or more nights means you need to address accumulated fatigue before it compounds. A single suppressed night after a hard day is normal." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.hrv is not none %}
         <p class="stat-num" style="color:var(--text)">{{ last.hrv | int }}<span style="font-size:0.35em;vertical-align:middle;letter-spacing:0.06em"> ms</span></p>
         <p class="stat-sub" style="color:var(--muted)">last night · 7d avg {{ avgs_7.hrv | int if avgs_7.hrv else '—' }} ms</p>
@@ -128,7 +128,7 @@
 
     <!-- SpO2 -->
     <div class="card" style="padding:24px 20px;border-top:2px solid {% if avgs_7.spo2 and avgs_7.spo2 >= 95 %}#34d399{% else %}#f87171{% endif %}">
-      <p class="eyebrow" style="margin-bottom:12px">Blood Oxygen</p>
+      <p class="eyebrow" style="margin-bottom:12px">Blood Oxygen <button type="button" class="gr-tip-trigger" data-tip="Should stay above 95% all night. Values consistently below 90% can indicate sleep apnoea — worth discussing with a doctor. Important to monitor during any altitude training blocks." aria-label="More info" aria-expanded="false">?</button></p>
       {% if last and last.spo2 is not none %}
         <p class="stat-num" style="color:{% if last.spo2 >= 95 %}#a3e635{% elif last.spo2 >= 92 %}#fde047{% else %}#f87171{% endif %}">{{ last.spo2 | int }}<span style="font-size:0.45em;vertical-align:middle">%</span></p>
         <p class="stat-sub" style="color:var(--muted)">last night · 7d avg {{ avgs_7.spo2 | round(1) if avgs_7.spo2 else '—' }}%</p>
@@ -193,7 +193,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Overnight HRV · 30 nights</p>
+        <p class="eyebrow" style="margin-bottom:4px">Overnight HRV · 30 nights <button type="button" class="gr-tip-trigger" data-tip="30-night HRV history. Look for the weekly pattern: suppression the night after a hard session is expected. A multi-day downtrend — especially into a rest week — signals accumulated fatigue that needs attention." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Higher is better · suppression after hard sessions is normal, multi-day drops signal accumulating fatigue</p>
       </div>
     </div>
@@ -207,7 +207,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Blood Oxygen (SpO₂) · 30 nights</p>
+        <p class="eyebrow" style="margin-bottom:4px">Blood Oxygen (SpO₂) · 30 nights <button type="button" class="gr-tip-trigger" data-tip="Overnight SpO2 history. Occasional brief dips are normal. Sustained values below 90% or frequent drops may indicate sleep-disordered breathing — worth raising with your GP." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Values below 95% warrant attention — relevant during altitude training or fatigue periods</p>
       </div>
       <div style="font-family:var(--font-m);font-size:12px;letter-spacing:0.06em;flex-shrink:0">
@@ -223,7 +223,7 @@
   <div class="card" style="padding:20px 24px;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Respiration Rate · 30 nights</p>
+        <p class="eyebrow" style="margin-bottom:4px">Respiration Rate · 30 nights <button type="button" class="gr-tip-trigger" data-tip="Your sleeping breathing rate in breaths per minute. A rise of 2+ brpm above your norm can be an early illness marker — often shows 12–24 hours before you feel sick. Useful for catching overreaching early." aria-label="More info" aria-expanded="false">?</button></p>
         <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Elevated breathing rate during sleep can indicate illness onset or overreaching before other markers show</p>
       </div>
       <div style="display:flex;gap:12px;font-family:var(--font-m);font-size:12px;letter-spacing:0.06em;flex-shrink:0">
