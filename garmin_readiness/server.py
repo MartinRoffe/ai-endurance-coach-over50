@@ -1663,6 +1663,42 @@ def _build_coach_context() -> str:
     overrides = list_plan_overrides()
     ov_lines = [f"  {o['date']}: {o['label']} → {o['duration_min']}min ({o['note']})" for o in overrides]
 
+    # Body composition context
+    body_rows = load_body_metrics(days=180)
+    body_parts: list[str] = []
+    if body_rows:
+        latest_b = body_rows[-1]
+        def _bf(v, dp=1): return f"{v:.{dp}f}" if v is not None else "—"
+        body_parts += [
+            "## Body Composition (latest reading)",
+            f"Weight: {_bf(latest_b.get('weight_kg'))} kg  |  "
+            f"Body fat: {_bf(latest_b.get('fat_pct'))}%  |  "
+            f"Muscle mass: {_bf(latest_b.get('muscle_mass_kg'))} kg",
+            f"Visceral fat: {_bf(latest_b.get('visceral_fat'), 0)}  |  "
+            f"Hydration: {_bf(latest_b.get('hydration_pct'))}%  |  "
+            f"BMI: {_bf(latest_b.get('bmi'))}  |  "
+            f"Metabolic age: {_bf(latest_b.get('metabolic_age'), 0)}",
+        ]
+        # Weight trend: first vs last reading
+        weight_rows = [r for r in body_rows if r.get("weight_kg") is not None]
+        if len(weight_rows) >= 2:
+            first_w, last_w = weight_rows[0]["weight_kg"], weight_rows[-1]["weight_kg"]
+            n_weeks = max(1, (len(weight_rows)) / 7)
+            rate = (last_w - first_w) / n_weeks
+            from datetime import date as _date
+            weeks_to_tenerife = max(0, (_date(2026, 8, 13) - today).days // 7)
+            projected = last_w + rate * weeks_to_tenerife
+            body_parts += [
+                f"Trend: {first_w:.1f} kg ({weight_rows[0]['date']}) → {last_w:.1f} kg ({weight_rows[-1]['date']}) "
+                f"= {rate:+.2f} kg/week",
+                f"Projected weight at Tenerife (13 Aug, {weeks_to_tenerife} weeks): {projected:.1f} kg",
+            ]
+        # Inject cached AI advisor text if available
+        cached_body = get_cached_text(f"body_analysis_v1_{today.isoformat()}")
+        if cached_body:
+            body_parts += ["", "Coach's body composition analysis (from Body tab):", cached_body]
+        body_parts.append("")
+
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
         "",
@@ -1673,6 +1709,7 @@ def _build_coach_context() -> str:
         f"Composite z-score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'n/a'}",
         f"HRV: {m.hrv_last_night}  |  Sleep score: {m.sleep_score}  |  Body battery (AM): {m.body_battery_morning}  |  Avg stress: {m.avg_stress}",
         "",
+        *body_parts,
         "## Upcoming Plan Sessions (full remaining plan)",
         *upcoming_lines,
         "",
