@@ -1,6 +1,7 @@
-"""Build and schedule Garmin structured cycling workouts from the training plan."""
+"""Build and schedule Garmin structured workouts (cycling, strength, ruck) from the training plan."""
 from __future__ import annotations
 
+import math
 import re
 from collections import defaultdict
 from datetime import timedelta
@@ -8,6 +9,8 @@ from typing import Any
 
 from garminconnect.workout import (
     CyclingWorkout,
+    FitnessEquipmentWorkout,
+    HikingWorkout,
     ExecutableStep,
     WorkoutSegment,
     create_cooldown_step,
@@ -18,10 +21,17 @@ from garminconnect.workout import (
     SportType,
 )
 
-from .plan import TRAINING_WEEKS, PLAN_START
+from .plan import (
+    TRAINING_WEEKS, PLAN_START,
+    MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
+)
 
-_SPORT = {"sportTypeId": SportType.CYCLING, "sportTypeKey": "cycling", "displayOrder": 1}
-_BIKE_TYPES = {"bike", "tempo", "ftp", "long"}
+_SPORT      = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
+_FE_SPORT   = {"sportTypeId": SportType.FITNESS_EQUIPMENT, "sportTypeKey": "fitness_equipment",  "displayOrder": 6}
+_HIKE_SPORT = {"sportTypeId": SportType.HIKING,            "sportTypeKey": "hiking",             "displayOrder": 7}
+
+_BIKE_TYPES         = {"bike", "tempo", "ftp", "long"}
+_STRENGTH_RUCK_TYPES = {"strength", "ruck"}
 
 
 # ── Target type dicts ────────────────────────────────────────────────────────
@@ -80,6 +90,8 @@ def _recovery(order: int, secs: float, target: dict | None = None, lo: int | Non
     return _step(order, StepType.RECOVERY, "recovery", 4, secs, target or _no_target(), lo, hi)
 
 
+# ── Workout factories ────────────────────────────────────────────────────────
+
 def _make(name: str, steps: list, dur_min: int) -> CyclingWorkout:
     return CyclingWorkout(
         workoutName=name,
@@ -88,7 +100,23 @@ def _make(name: str, steps: list, dur_min: int) -> CyclingWorkout:
     )
 
 
-# ── Individual workout builders ──────────────────────────────────────────────
+def _make_fe(name: str, steps: list, dur_min: int) -> FitnessEquipmentWorkout:
+    return FitnessEquipmentWorkout(
+        workoutName=name,
+        estimatedDurationInSecs=dur_min * 60,
+        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_FE_SPORT, workoutSteps=steps)],
+    )
+
+
+def _make_hike(name: str, steps: list, dur_min: int) -> HikingWorkout:
+    return HikingWorkout(
+        workoutName=name,
+        estimatedDurationInSecs=dur_min * 60,
+        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_HIKE_SPORT, workoutSteps=steps)],
+    )
+
+
+# ── Individual cycling workout builders ──────────────────────────────────────
 
 def _easy_spin(dur_min: int) -> CyclingWorkout:
     return _make(f"Easy Spin {dur_min}m", [
@@ -319,7 +347,7 @@ def _hill_repeats(dur_min: int) -> CyclingWorkout:
     return _make(f"Hill Repeats {dur_min}m", steps, dur_min)
 
 
-# ── Label → builder dispatch ─────────────────────────────────────────────────
+# ── Cycling label → builder dispatch ─────────────────────────────────────────
 
 _BUILDERS: dict[str, Any] = {
     "Easy Spin":        lambda d: _easy_spin(d),
@@ -354,6 +382,8 @@ _NAME_PREFIXES: tuple[str, ...] = (
     "FTP Test", "FTP Re-test", "Final FTP Test", "Tempo Intervals ", "Long Ride ",
     "Long Ride Easy ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ", "Sweetspot Ride ",
     "Over-Unders ", "Threshold Ride ", "Hill Repeats ",
+    # Strength & ruck
+    "Kettlebell Wk", "Light KB Wk", "MaxiClimber Wk", "Ruck ",
 )
 
 
@@ -379,8 +409,100 @@ def _resolve_builder(label: str) -> Any | None:
     return None
 
 
+# ── Strength & ruck workout builders ────────────────────────────────────────
+
+def _kb_workout_steps(specs: dict | None, dur_min: int) -> list:
+    """Build timed superset blocks from KB exercise specs; fallback to a single timed block."""
+    if not specs:
+        return [
+            create_warmup_step(180.0, step_order=1),
+            _interval(2, max(60.0, (dur_min - 5) * 60), _open_target()),
+            create_cooldown_step(120.0, step_order=3),
+        ]
+    groups: dict[str, list] = {}
+    for ex in specs["exercises"]:
+        groups.setdefault(ex["id"][0], []).append(ex)
+    steps: list = [create_warmup_step(180.0, step_order=1)]
+    order = 2
+    for _ in sorted(groups.keys()):
+        # One 4-min open interval per superset group (A, B, C, D)
+        steps.append(_interval(order, 240.0, _open_target()))
+        order += 1
+    steps.append(create_cooldown_step(120.0, step_order=order))
+    return steps
+
+
+def _kb_full_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
+    """Full KB circuit for KB + MaxiClimber sessions (from KB_FULL_SPECS)."""
+    steps = _kb_workout_steps(KB_FULL_SPECS.get(week_num), dur_min)
+    return _make_fe(f"Kettlebell Wk{week_num} {dur_min}m", steps, dur_min)
+
+
+def _kb_light_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
+    """Abbreviated KB circuit for Light KB / post-ruck sessions (from KB_SPECS)."""
+    steps = _kb_workout_steps(KB_SPECS.get(week_num), dur_min)
+    return _make_fe(f"Light KB Wk{week_num} {dur_min}m", steps, dur_min)
+
+
+def _maxiclimber_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
+    """Structured MaxiClimber intervals from MAXI_INTERVALS for the given week."""
+    spec = MAXI_INTERVALS.get(week_num)
+    if not spec:
+        steps = [
+            create_warmup_step(180.0, step_order=1),
+            _interval(2, max(60.0, dur_min * 60 - 360.0), _open_target()),
+            create_cooldown_step(180.0, step_order=3),
+        ]
+        return _make_fe(f"MaxiClimber Wk{week_num} {dur_min}m", steps, dur_min)
+
+    sets = spec["sets"]
+    work_s = float(spec["work_s"])
+    rest_s = float(spec["rest_s"])
+    norwegian = spec.get("norwegian", False)
+    # Norwegian 4×4: target HR zone 4 (85–95% max) on work intervals
+    work_target = _hr_zone_target() if norwegian else _open_target()
+    work_lo = 4 if norwegian else None
+    work_hi = 4 if norwegian else None
+
+    steps = [create_warmup_step(180.0, step_order=1)]
+    order = 2
+    for _ in range(sets):
+        steps.append(_interval(order, work_s, work_target, work_lo, work_hi))
+        order += 1
+        steps.append(_recovery(order, rest_s))
+        order += 1
+    steps.append(create_cooldown_step(180.0, step_order=order))
+
+    calculated_dur = math.ceil((sets * (spec["work_s"] + spec["rest_s"]) + 360) / 60)
+    return _make_fe(f"MaxiClimber Wk{week_num} {dur_min}m", steps, calculated_dur)
+
+
+def _ruck_workout(dur_min: int) -> HikingWorkout:
+    """Timed ruck with Z2 HR guidance."""
+    main_secs = max(60.0, (dur_min - 20) * 60)
+    return _make_hike(f"Ruck {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _interval(2, main_secs, _hr_zone_target(), 2, 2),
+        create_cooldown_step(600.0, step_order=3),
+    ], dur_min)
+
+
+def _build_strength_ruck_workout(kind: str, week_num: int, dur_min: int) -> Any | None:
+    if kind == "KB Full":
+        return _kb_full_workout(week_num, dur_min)
+    if kind == "KB Light":
+        return _kb_light_workout(week_num, dur_min)
+    if kind == "MaxiClimber":
+        return _maxiclimber_workout(week_num, dur_min)
+    if kind == "Ruck":
+        return _ruck_workout(dur_min)
+    return None
+
+
+# ── Schedule builders ────────────────────────────────────────────────────────
+
 def _workout_schedule() -> dict[tuple[str, int], list[str]]:
-    """Map (label, duration) → dates, applying any coach plan overrides.
+    """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
 
     An override that swaps a day to a non-bike type (ruck/strength/rest) drops that
     cycling workout entirely so the stale one is removed on the next full re-sync.
@@ -408,6 +530,57 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
                 schedule[(label, dur)].append(d.isoformat())
     return schedule
 
+
+def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
+    """Map (kind, week_num, dur_min) → dates for strength and ruck sessions.
+
+    Compound sessions (KB + MaxiClimber, Ruck + KB) are split into two sub-templates
+    so each appears as a separate workout on the Garmin calendar.
+    week_num=0 is used for ruck (all durations share structure regardless of week).
+    """
+    from .history import get_plan_override
+
+    schedule: dict[tuple[str, int, int], list[str]] = defaultdict(list)
+
+    for wk_idx, week in enumerate(TRAINING_WEEKS):
+        week_num = wk_idx + 1
+        for day_idx, (stype, label, dur) in enumerate(week):
+            if stype not in _STRENGTH_RUCK_TYPES:
+                continue
+            d = PLAN_START + timedelta(weeks=wk_idx, days=day_idx)
+            ov = get_plan_override(d.isoformat())
+            if ov:
+                o_type = ov.get("session_type") or stype
+                o_label = ov.get("label") or label
+                o_dur = ov.get("duration_min") or dur
+                if o_type not in _STRENGTH_RUCK_TYPES:
+                    continue
+                stype, label, dur = o_type, o_label, o_dur
+
+            date_str = d.isoformat()
+
+            if label == "KB + MaxiClimber":
+                spec = MAXI_INTERVALS.get(week_num)
+                maxi_dur = math.ceil((spec["sets"] * (spec["work_s"] + spec["rest_s"]) + 360) / 60) if spec else 25
+                schedule[("KB Full", week_num, 20)].append(date_str)
+                schedule[("MaxiClimber", week_num, maxi_dur)].append(date_str)
+            elif label == "Ruck + KB":
+                ruck_dur = RUCK_SPECS.get(week_num, {}).get("ruck_min", max(30, dur - 30))
+                schedule[("Ruck", 0, ruck_dur)].append(date_str)
+                schedule[("KB Light", week_num, 30)].append(date_str)
+            elif label == "Light KB":
+                schedule[("KB Light", week_num, dur)].append(date_str)
+            elif label in ("Easy MaxiClimber", "MaxiClimber"):
+                schedule[("MaxiClimber", week_num, dur)].append(date_str)
+            elif stype == "ruck":
+                schedule[("Ruck", 0, dur)].append(date_str)
+            else:
+                print(f"  [skip] no handler for strength/ruck label '{label}' on {date_str}")
+
+    return schedule
+
+
+# ── Upload helpers ───────────────────────────────────────────────────────────
 
 def _extract_id(response: Any) -> int | None:
     if isinstance(response, list):
@@ -459,9 +632,11 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     Returns a summary dict: {templates, scheduled, errors}.
     """
     _delete_existing_plan_workouts(api, dry_run=dry_run)
+
+    # ── Cycling workouts ──────────────────────────────────────────────────────
     schedule = _workout_schedule()
     total_sessions = sum(len(v) for v in schedule.values())
-    print(f"\nPlan has {len(schedule)} unique session templates covering {total_sessions} sessions")
+    print(f"\nCycling plan: {len(schedule)} unique templates, {total_sessions} sessions")
 
     summary = {"templates": 0, "scheduled": 0, "errors": 0}
     for (label, dur), dates in sorted(schedule.items()):
@@ -501,4 +676,48 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
             except Exception as exc:
                 summary["errors"] += 1
                 print(f"    [error] schedule {date_str}: {exc}")
+
+    # ── Strength & ruck workouts ──────────────────────────────────────────────
+    sr_schedule = _workout_schedule_strength_ruck()
+    sr_total = sum(len(v) for v in sr_schedule.values())
+    print(f"\nStrength/ruck plan: {len(sr_schedule)} unique templates, {sr_total} sessions")
+
+    for (kind, week_num, dur), dates in sorted(sr_schedule.items()):
+        workout = _build_strength_ruck_workout(kind, week_num, dur)
+        if not workout:
+            print(f"  [skip] no builder for '{kind}' wk{week_num} {dur}m")
+            summary["errors"] += 1
+            continue
+
+        wname = workout.workoutName
+        if dry_run:
+            print(f"  [dry]  '{wname}' → would schedule on {', '.join(dates)}")
+            summary["templates"] += 1
+            summary["scheduled"] += len(dates)
+            continue
+
+        try:
+            response = api.upload_workout(workout.to_dict())
+        except Exception as exc:
+            print(f"  [error] upload failed for '{wname}': {exc}")
+            summary["errors"] += 1
+            continue
+
+        workout_id = _extract_id(response)
+        if not workout_id:
+            print(f"  [error] no workoutId for '{wname}': {response}")
+            summary["errors"] += 1
+            continue
+
+        summary["templates"] += 1
+        print(f"  uploaded '{wname}' → id={workout_id}")
+        for date_str in dates:
+            try:
+                api.schedule_workout(workout_id, date_str)
+                summary["scheduled"] += 1
+                print(f"    scheduled {date_str}")
+            except Exception as exc:
+                summary["errors"] += 1
+                print(f"    [error] schedule {date_str}: {exc}")
+
     return summary
