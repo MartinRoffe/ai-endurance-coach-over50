@@ -161,8 +161,8 @@ MAXI_INTERVALS: dict[int, dict] = {
     3:  {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
     12: {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
     # Standalone MaxiClimber — deload weeks, no KB, steady aerobic (kb: False)
-    4:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False},   # 20m
-    8:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False},   # 20m
+    4:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False, "easy": True},   # 20m
+    8:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False, "easy": True},   # 20m
 }
 
 RUCK_SPECS: dict[int, dict] = {
