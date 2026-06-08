@@ -459,17 +459,21 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout
     work_s = float(spec["work_s"])
     rest_s = float(spec["rest_s"])
     norwegian = spec.get("norwegian", False)
-    # Norwegian 4×4: target HR zone 4 (85–95% max) on work intervals
-    work_target = _hr_zone_target() if norwegian else _open_target()
-    work_lo = 4 if norwegian else None
-    work_hi = 4 if norwegian else None
+    easy = spec.get("easy", False)
+
+    if norwegian:
+        work_lo, work_hi = 4, 4
+    elif easy:
+        work_lo, work_hi = 1, 2
+    else:
+        work_lo, work_hi = 3, 4
 
     steps = [create_warmup_step(180.0, step_order=1)]
     order = 2
     for _ in range(sets):
-        steps.append(_interval(order, work_s, work_target, work_lo, work_hi))
+        steps.append(_interval(order, work_s, _hr_zone_target(), work_lo, work_hi))
         order += 1
-        steps.append(_recovery(order, rest_s))
+        steps.append(_recovery(order, rest_s, _hr_zone_target(), 1, 1))
         order += 1
     steps.append(create_cooldown_step(180.0, step_order=order))
 
