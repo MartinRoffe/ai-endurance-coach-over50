@@ -25,9 +25,17 @@ rolling baseline, and delivers a daily email briefing and live web dashboard.
 
 **Calendar & compliance**
 - **12-week cycling training plan** with structured workout uploads to Garmin Connect
+- **Split compound session tiles** — KB+MaxiClimber and Ruck+KB days render as two independent clickable cards; each opens its own modal (KB exercise list or MaxiClimber interval structure)
 - **Interference load flag** — amber ⚠️ badge on quality bike sessions when strength was logged within 24 h
 - **Back-to-back session tracker** — consecutive cycling pairs table with a fatigue log modal (rating + note)
 - **Plan compliance view** — per-week adherence tracking with discipline breakdown
+
+**Nutrition tracking**
+- **Garmin food log integration** — calories, carbs, protein, and fat pulled daily from Garmin Connect food diary
+- **Readiness tab nutrition card** — logged kcal, TDEE, calorie balance (colour-coded deficit/surplus), carbs, and protein displayed alongside readiness metrics
+- **Body tab macro tiles** — today's carbs/protein plus 14-day rolling averages
+- **Nutrition tab summary** — carbs and protein logged today shown in the summary banner
+- **Coach macro context** — AI coach receives daily and 14-day-average macro breakdown for fuelling and recovery advice
 
 **Other**
 - **Body composition tracking** — weight, fat %, muscle mass, blood pressure (Garmin + Withings)

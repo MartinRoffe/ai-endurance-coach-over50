@@ -234,6 +234,18 @@
       </div>
     </div>
     {% endif %}
+    {% if carbs_today %}
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">Carbs</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--carbs)">{{ carbs_today }}g</div>
+    </div>
+    {% endif %}
+    {% if protein_today %}
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">Protein</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--protein)">{{ protein_today }}g</div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}
