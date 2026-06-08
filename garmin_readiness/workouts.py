@@ -466,7 +466,7 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout
     elif easy:
         work_lo, work_hi = 1, 2
     else:
-        work_lo, work_hi = 3, 4
+        work_lo, work_hi = 2, 3
 
     steps = [create_warmup_step(180.0, step_order=1)]
     order = 2
