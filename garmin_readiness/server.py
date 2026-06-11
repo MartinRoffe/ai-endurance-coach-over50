@@ -27,7 +27,7 @@ from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_w
                    CAMP_START, CAMP_END)
 from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
                       build_hr_calendar_weeks, build_hr_event_weeks,
-                      HR_EVENT_START, HR_EVENT_END)
+                      HR_EVENT_START, HR_EVENT_END, HR_HEAT_PROTOCOL)
 from .mersea_routes import MERSEA_TARGET_DATE
 from .report import generate_advice, generate_body_analysis, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer, generate_sleep_analysis
 from .body import bp_classification, fetch_body_composition, fetch_blood_pressure
@@ -772,16 +772,10 @@ async def performance_view(request: Request):
     z2_trend_line: list[dict] = []
     z2_drift_annotation: Optional[str] = None
     if len(easy_points) >= 3:
-        n = len(easy_points)
-        xs = list(range(n))
-        ys = [p["avg_hr"] for p in easy_points]
-        sx, sy = sum(xs), sum(ys)
-        sxy = sum(x * y for x, y in zip(xs, ys))
-        sx2 = sum(x * x for x in xs)
-        denom = n * sx2 - sx * sx
-        if denom:
-            slope = (n * sxy - sx * sy) / denom
-            intercept = (sy - slope * sx) / n
+        fit = _ols([p["avg_hr"] for p in easy_points])
+        if fit:
+            slope, intercept = fit
+            n = len(easy_points)
             z2_trend_line = [
                 {"date": easy_points[0]["date"], "hr": round(intercept, 1)},
                 {"date": easy_points[-1]["date"], "hr": round(slope * (n - 1) + intercept, 1)},
@@ -791,6 +785,32 @@ async def performance_view(request: Request):
                 z2_drift_annotation = f"−{abs(drop):.1f} bpm since {easy_points[0]['date']}"
             else:
                 z2_drift_annotation = "No improvement yet"
+
+    # Durability: late-ride HR drift trend (≥90 min rides)
+    durability_points = load_durability(180)
+    durability_trend: list[dict] = []
+    if len(durability_points) >= 3:
+        fit = _ols([p["drift_pct"] for p in durability_points])
+        if fit:
+            slope, intercept = fit
+            n = len(durability_points)
+            durability_trend = [
+                {"date": durability_points[0]["date"], "v": round(intercept, 2)},
+                {"date": durability_points[-1]["date"], "v": round(slope * (n - 1) + intercept, 2)},
+            ]
+
+    # Estimated W/kg + monotony + acclimation
+    wkg_history = estimated_wkg_history(180)
+    monotony_weeks = weekly_monotony_strain(8)
+    acclimation = acclimation_latest()
+
+    # Taper scenario simulator (presets over the final 14 days)
+    taper_scenarios: list[dict] = []
+    if _ctl_now is not None and _atl_now is not None:
+        try:
+            taper_scenarios = _taper_scenarios(_ctl_now, _atl_now)
+        except Exception:
+            pass
 
     # Intensity distribution by week
     zone_dist_by_week = intensity_distribution_by_week(_PLAN_START, date.today())
@@ -817,8 +837,31 @@ async def performance_view(request: Request):
             "vo2_history": vo2_history(days=90),
             "zone_dist_by_week": zone_dist_by_week,
             "zone_dist_block": zone_dist_block,
+            "durability_points": durability_points,
+            "durability_trend": durability_trend,
+            "wkg_history": wkg_history,
+            "monotony_weeks": monotony_weeks,
+            "acclimation": acclimation,
+            "taper_scenarios": taper_scenarios,
         },
     )
+
+
+def _ols(ys: list[float]) -> Optional[tuple[float, float]]:
+    """Ordinary least squares on (index, value). Returns (slope, intercept) or None."""
+    n = len(ys)
+    if n < 2:
+        return None
+    xs = list(range(n))
+    sx, sy = sum(xs), sum(ys)
+    sxy = sum(x * y for x, y in zip(xs, ys))
+    sx2 = sum(x * x for x in xs)
+    denom = n * sx2 - sx * sx
+    if not denom:
+        return None
+    slope = (n * sxy - sx * sy) / denom
+    intercept = (sy - slope * sx) / n
+    return slope, intercept
 
 
 _PLAN_EVENT_DATE = date(2026, 9, 13)
@@ -877,13 +920,18 @@ def _session_for_projection(d) -> tuple[str, str, int] | None:
     return None
 
 
-def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict], float]:
+def _ctl_projection(current_ctl: float, current_atl: float,
+                    modifier=None) -> tuple[list[dict], float]:
     """Project CTL/ATL/TSB from today to event day using all plan sessions including Tenerife camp.
 
     Uses additive deltas calibrated against observed week-1 data rather than
     the standard Coggan EMA, because Garmin's CTL units don't follow the
     standard TSS-based scale. A soft ceiling (diminishing returns above CTL 300)
     prevents runaway growth.
+
+    `modifier` (optional) is applied to each (date, session_tuple) before the
+    rate maths: return a replacement tuple, or None to treat the day as rest.
+    Used by the taper scenario simulator.
     """
     import math as _math
     today = date.today()
@@ -897,6 +945,8 @@ def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict],
     for i in range(1, days_ahead + 1):
         d = today + timedelta(days=i)
         sess = _session_for_projection(d)
+        if modifier is not None and sess is not None:
+            sess = modifier(d, sess)
         if sess and sess[0] != "rest":
             stype, _, dur_min = sess
             rate = _CTL_PER_MIN.get(stype, 0.35)
@@ -916,6 +966,54 @@ def _ctl_projection(current_ctl: float, current_atl: float) -> tuple[list[dict],
             "tsb":   tsb,
         })
     return result, round(result[-1]["ctl"], 1) if result else round(current_ctl, 1)
+
+
+def _taper_scenarios(current_ctl: float, current_atl: float) -> list[dict]:
+    """Three preset what-if projections over the final 14 days before the event.
+
+    Turns the TSB projection from a chart into a decision tool: target landing
+    zone on event morning is roughly TSB −5 to +15.
+    """
+    taper_start = _PLAN_EVENT_DATE - timedelta(days=14)
+    final_week = _PLAN_EVENT_DATE - timedelta(days=7)
+
+    scenarios = []
+
+    # 1. As planned
+    series, ctl_event = _ctl_projection(current_ctl, current_atl)
+    if not series:
+        return []
+    scenarios.append({"name": "As planned", "series": series,
+                      "tsb_event": series[-1]["tsb"], "ctl_event": ctl_event})
+
+    # 2. Drop the first quality session (tempo/ftp) inside the final 14 days
+    dropped = {"done": False}
+
+    def _drop_quality(d, sess):
+        if (not dropped["done"] and d >= taper_start
+                and sess and sess[0] in ("tempo", "ftp")):
+            dropped["done"] = True
+            return None
+        return sess
+
+    series2, ctl2 = _ctl_projection(current_ctl, current_atl, modifier=_drop_quality)
+    scenarios.append({"name": "Drop one quality session", "series": series2,
+                      "tsb_event": series2[-1]["tsb"] if series2 else None,
+                      "ctl_event": ctl2})
+
+    # 3. Halve final-week volume
+    def _halve_final_week(d, sess):
+        if d >= final_week and sess and sess[0] != "rest":
+            stype, label, dur = sess
+            return (stype, label, max(15, (dur or 0) // 2))
+        return sess
+
+    series3, ctl3 = _ctl_projection(current_ctl, current_atl, modifier=_halve_final_week)
+    scenarios.append({"name": "Halve final-week volume", "series": series3,
+                      "tsb_event": series3[-1]["tsb"] if series3 else None,
+                      "ctl_event": ctl3})
+
+    return scenarios
 
 
 def _block_zone_totals(weeks: list[dict]) -> dict:
@@ -1375,6 +1473,7 @@ async def haute_route_view(request: Request):
         "hr_proj_data":  hr_proj_data,
         "hr_start_ctl":  round(hr_start_ctl, 1) if hr_start_ctl is not None else None,
         "hr_event_ctl":  round(hr_event_ctl, 1) if hr_event_ctl is not None else None,
+        "heat_protocol": HR_HEAT_PROTOCOL,
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
 
@@ -1567,9 +1666,16 @@ def _body_context() -> dict[str, Any]:
     tdee_values = [r.get("calorie_goal_adjusted") for r in _cal_rows]
     cal_labels  = _short(_cal_isos)
 
+    est_wkg = None
+    try:
+        est_wkg = latest_estimated_wkg()
+    except Exception:
+        pass
+
     return {
         "latest_body": latest_body,
         "latest_bp": latest_bp,
+        "est_wkg": est_wkg,
         "bp_class_label": bp_class_label,
         "bp_class_colour": bp_class_colour,
         "weight_dates": _short(weight_dates),

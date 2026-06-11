@@ -534,6 +534,21 @@ HR_EVENT_STAGES: list[dict] = [
     {"day": 7, "date": date(2027, 8, 29), "label": "Megève → Thonon-les-Bains","km": 119, "elev_m": 2040, "key_climb": "Col de Joux-Plane 1712m"},
 ]
 
+# Heat protocol — static guidance rendered as a banner on the Taper phase.
+# Deliberately NOT merged into HR_TRAINING_WEEKS: those week tuples feed
+# _hr_ctl_projection and mutating them would silently change the projection.
+HR_HEAT_PROTOCOL: dict = {
+    "phase": "taper",
+    "start_week": 44,
+    "title": "Heat protocol — final 10 days",
+    "note": (
+        "5×60 min Z2 heat sessions (extra layers, or indoor trainer with no fan), "
+        "last one 3 days pre-event — the minimal effective dose for plasma volume "
+        "expansion. Maintain sodium 500–800 mg/h in these sessions, and weigh "
+        "before/after to calibrate fluid loss."
+    ),
+}
+
 _HR_PLAN_DAYS = len(HR_TRAINING_WEEKS) * 7  # 322
 
 

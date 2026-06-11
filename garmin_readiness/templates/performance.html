@@ -182,6 +182,32 @@
       </div>
     </div>
     <div style="height:160px;position:relative"><canvas id="tsbChart"></canvas></div>
+
+    {% if taper_scenarios %}
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <p class="eyebrow" style="margin-bottom:8px">Taper what-if · final 14 days <button type="button" class="gr-tip-trigger" data-tip="Three preset scenarios for the last two weeks before the event. Target landing zone on event morning: TSB roughly −5 to +15 (fresh but not detrained). Values in Garmin load units." aria-label="More info" aria-expanded="false">?</button></p>
+      <table style="width:100%;border-collapse:collapse;font-family:var(--font-m);font-size:12px">
+        <thead>
+          <tr style="color:var(--muted);text-align:left">
+            <th style="padding:4px 0;font-weight:400">Scenario</th>
+            <th style="padding:4px 0;font-weight:400;text-align:right">Event-day TSB</th>
+            <th style="padding:4px 0;font-weight:400;text-align:right">Event-day CTL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sc in taper_scenarios %}
+          <tr style="border-top:1px solid var(--border)">
+            <td style="padding:5px 0;color:var(--text-dim)">{{ sc.name }}</td>
+            <td style="padding:5px 0;text-align:right;color:{% if sc.tsb_event is not none and sc.tsb_event >= -5 %}#a3e635{% elif sc.tsb_event is not none and sc.tsb_event >= -60 %}#fbbf24{% else %}#f87171{% endif %}">
+              {% if sc.tsb_event is not none %}{% if sc.tsb_event >= 0 %}+{% endif %}{{ sc.tsb_event }}{% else %}—{% endif %}
+            </td>
+            <td style="padding:5px 0;text-align:right;color:var(--text-dim)">{{ sc.ctl_event if sc.ctl_event is not none else "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
 
   <!-- ── Session Training Load ─────────────────────────────────────── -->
@@ -267,6 +293,73 @@
     <div style="height:160px;position:relative"><canvas id="z2EasyTrendChart"></canvas></div>
   </div>
   {% endif %}
+
+  <!-- ── Durability: late-ride HR drift ───────────────────────────── -->
+  {% if durability_points and durability_points | length >= 2 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Durability · Late-Ride HR Drift <button type="button" class="gr-tip-trigger" data-tip="HR in the final third of long rides (≥90 min) vs the first third. Rising HR at the same effort = fatigue. For multi-day mountain events, performance late in a long ride matters more than fresh FTP. Falling trend = improving fatigue resistance." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Final-third vs first-third HR on rides ≥90 min · lower = better stage-race durability</p>
+      </div>
+    </div>
+    <div style="height:160px;position:relative"><canvas id="durabilityChart"></canvas></div>
+  </div>
+  {% endif %}
+
+  <!-- ── Estimated FTP & W/kg ─────────────────────────────────────── -->
+  {% if wkg_history and wkg_history | length >= 2 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Estimated FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="Estimated from VO2max + weight (ACSM formula) — no power meter, so treat as a trend, not an absolute. W/kg is THE number for climbing: it improves by raising fitness (VO2max) or lowering weight. Both levers are tracked here." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Estimated from VO2max + weight (ACSM) · no power meter — trend, not absolute</p>
+      </div>
+      {% if wkg_history %}
+      <span style="font-family:var(--font-m);font-size:12px;color:#a78bfa;flex-shrink:0;padding-top:2px">
+        Current: ~{{ wkg_history[-1].est_ftp_w }} W · {{ wkg_history[-1].wkg }} W/kg
+      </span>
+      {% endif %}
+    </div>
+    <div style="height:160px;position:relative"><canvas id="wkgChart"></canvas></div>
+  </div>
+  {% endif %}
+
+  <!-- ── Training Monotony & Strain ───────────────────────────────── -->
+  {% if monotony_weeks and monotony_weeks | length >= 2 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Training Monotony &amp; Strain <button type="button" class="gr-tip-trigger" data-tip="Foster's monotony = weekly mean ÷ SD of daily load. Above 2.0 predicts illness/overtraining even when total load looks fine — it means your days are too similar. Fix: make hard days harder and easy days easier. Strain = weekly load × monotony." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Foster method · monotony &gt;2.0 raises illness risk · bars = strain, line = monotony</p>
+      </div>
+      {% set cur_mono = monotony_weeks[-1].monotony %}
+      {% if cur_mono is not none %}
+      <span style="font-family:var(--font-m);font-size:12px;flex-shrink:0;padding-top:2px;color:{% if cur_mono > 2.0 %}#f87171{% else %}#a3e635{% endif %}">
+        This week: {{ cur_mono }}
+      </span>
+      {% endif %}
+    </div>
+    <div style="height:160px;position:relative"><canvas id="monotonyChart"></canvas></div>
+  </div>
+  {% endif %}
+
+  <!-- ── Heat & altitude acclimation ──────────────────────────────── -->
+  <div class="card" style="padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:18px">🌡</span>
+    <div>
+      <p class="eyebrow" style="margin-bottom:3px">Heat &amp; Altitude Acclimation <button type="button" class="gr-tip-trigger" data-tip="Garmin's heat/altitude acclimatization estimate from your device. Builds with training in heat or at altitude, decays after ~3 weeks away. Relevant for alpine events: cols at 2000m+ and hot valley roads." aria-label="More info" aria-expanded="false">?</button></p>
+      <p style="font-family:var(--font-m);font-size:13px;color:var(--text-dim)">
+        {% if acclimation %}
+          {% if acclimation.heat_acclimation_pct is not none %}Heat {{ acclimation.heat_acclimation_pct | round | int }}%{% endif %}
+          {% if acclimation.altitude_acclimation is not none %} · Altitude {{ acclimation.altitude_acclimation | round | int }}{% endif %}
+          <span style="color:var(--muted)">· as of {{ acclimation.date }}</span>
+        {% else %}
+          No data — device hasn't reported acclimation yet
+        {% endif %}
+      </p>
+    </div>
+  </div>
 
   <!-- ── Note ──────────────────────────────────────────────────────── -->
   <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;margin-bottom:28px">
@@ -369,6 +462,14 @@
   const ctlProj = [...Array(nHist).fill(null), lastCtl, ...projCtl.slice(1)];
   const lastTsb = tsbData.filter(v=>v!==null).at(-1) ?? null;
   const tsbProj = [...Array(nHist).fill(null), lastTsb, ...projTsb.slice(1)];
+
+  // Taper scenario 3 ("halve final-week volume") as an extra dashed TSB overlay
+  {% if taper_scenarios and taper_scenarios | length == 3 %}
+  const scen3Tsb_raw = {{ taper_scenarios[2].series | map(attribute='tsb') | list | tojson }};
+  const tsbScen3 = [...Array(nHist).fill(null), lastTsb, ...scen3Tsb_raw.slice(1)];
+  {% else %}
+  const tsbScen3 = [];
+  {% endif %}
 
   const G = '#18181b', T = { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 } };
 
@@ -566,6 +667,7 @@
           segment:{ borderColor: ctx => ctx.p1.parsed.y>=0 ? '#a3e635' : '#f87171' }
         },
         { label:'TSB projected', data:tsbProj, borderColor:'rgba(251,191,36,0.85)', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:0.3, spanGaps:false, fill:false },
+        ...(tsbScen3.length ? [{ label:'TSB (halved final week)', data:tsbScen3, borderColor:'rgba(96,165,250,0.7)', borderWidth:1.5, borderDash:[2,4], pointRadius:0, tension:0.3, spanGaps:false, fill:false }] : []),
       ]
     },
     options:{
@@ -755,6 +857,127 @@
         scales:{
           x:{grid:{color:G},ticks:{...T,maxTicksLimit:8}},
           y:{grid:{color:G},ticks:{...T,callback:v=>v+' bpm'},suggestedMin:110,suggestedMax:175}
+        }
+      }
+    });
+  })();
+  {% endif %}
+
+  // Durability: late-ride HR drift scatter + trend
+  {% if durability_points and durability_points | length >= 2 %}
+  (function() {
+    const pts   = {{ durability_points | tojson }};
+    const trend = {{ durability_trend | tojson }};
+    const n = pts.length;
+    const trendData = (trend.length === 2 && n > 1)
+      ? pts.map((_, i) => +(trend[0].v + (trend[1].v - trend[0].v) * i / (n - 1)).toFixed(2))
+      : [];
+    new Chart(document.getElementById('durabilityChart'), {
+      type: 'line',
+      data: {
+        labels: pts.map(p => p.date.slice(5).replace('-','/')),
+        datasets: [
+          { label:'Drift %', data:pts.map(p=>p.drift_pct),
+            borderColor:'#fb923c', backgroundColor:'#fb923c',
+            pointRadius:5, showLine:false },
+          ...(trendData.length ? [{ label:'Trend', data:trendData, borderColor:'rgba(251,146,60,0.4)', borderWidth:1.5, borderDash:[5,4], pointRadius:0, showLine:true, tension:0 }] : []),
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title: ctx => pts[ctx[0].dataIndex]?.date ?? '',
+              label: ctx => {
+                if (ctx.dataset.label === 'Trend') return null;
+                const p = pts[ctx.dataIndex];
+                return [`Drift: ${p.drift_pct > 0 ? '+' : ''}${p.drift_pct}%`,
+                        `${p.first_third_hr} → ${p.final_third_hr} bpm · ${p.duration_min} min`];
+              }
+            },
+            filter: item => item.dataset.label !== 'Trend',
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:8}},
+          y:{grid:{color: ctx=>ctx.tick.value===0?'#3f3f46':G, lineWidth: ctx=>ctx.tick.value===0?1.5:1},
+             ticks:{...T,callback:v=>v+'%'}}
+        }
+      }
+    });
+  })();
+  {% endif %}
+
+  // Estimated FTP & W/kg dual-axis
+  {% if wkg_history and wkg_history | length >= 2 %}
+  (function() {
+    const wk = {{ wkg_history | tojson }};
+    new Chart(document.getElementById('wkgChart'), {
+      type: 'line',
+      data: {
+        labels: wk.map(p => p.label),
+        datasets: [
+          { label:'Est. FTP (W)', data:wk.map(p=>p.est_ftp_w), borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,0.08)', borderWidth:2, pointRadius:0, tension:0.3, fill:true, yAxisID:'y' },
+          { label:'W/kg', data:wk.map(p=>p.wkg), borderColor:'#34d399', borderWidth:1.5, pointRadius:0, tension:0.3, fill:false, yAxisID:'y1' },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label: ctx => ctx.dataset.label === 'W/kg'
+                ? `W/kg: ${ctx.raw}`
+                : `Est. FTP: ${ctx.raw} W (VO2max ${wk[ctx.dataIndex]?.vo2_max}, ${wk[ctx.dataIndex]?.weight_kg} kg)`,
+            }
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:10}},
+          y:{position:'left',grid:{color:G},ticks:{...T,callback:v=>v+' W'}},
+          y1:{position:'right',grid:{drawOnChartArea:false},ticks:{...T,callback:v=>v.toFixed(1)}},
+        }
+      }
+    });
+  })();
+  {% endif %}
+
+  // Training monotony & strain
+  {% if monotony_weeks and monotony_weeks | length >= 2 %}
+  (function() {
+    const monoVals   = {{ monotony_weeks | map(attribute='monotony') | list | tojson }};
+    const strainVals = {{ monotony_weeks | map(attribute='strain')   | list | tojson }};
+    const labels     = {{ monotony_weeks | map(attribute='label')    | list | tojson }};
+    new Chart(document.getElementById('monotonyChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { type:'bar', label:'Strain', data:strainVals,
+            backgroundColor: monoVals.map(v => v !== null && v > 2.0 ? 'rgba(248,113,113,0.6)' : 'rgba(96,165,250,0.5)'),
+            borderRadius:2, borderSkipped:false, yAxisID:'y' },
+          { type:'line', label:'Monotony', data:monoVals, borderColor:'#fbbf24', borderWidth:2, pointRadius:4, tension:0.2, spanGaps:true, yAxisID:'y1' },
+          { type:'line', label:'Threshold', data:labels.map(()=>2.0), borderColor:'rgba(248,113,113,0.5)', borderWidth:1, borderDash:[5,4], pointRadius:0, yAxisID:'y1' },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{ label: ctx => ctx.dataset.label === 'Threshold' ? null : `${ctx.dataset.label}: ${ctx.raw ?? '—'}` },
+            filter: item => item.dataset.label !== 'Threshold',
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T}},
+          y:{position:'left',grid:{color:G},ticks:{...T},min:0},
+          y1:{position:'right',grid:{drawOnChartArea:false},ticks:{...T},min:0,suggestedMax:3},
         }
       }
     });

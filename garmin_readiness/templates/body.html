@@ -151,6 +151,14 @@
     </div>
     {% endif %}
 
+    {% if est_wkg %}
+    <div class="card" style="padding:20px 22px">
+      <p class="eyebrow" style="margin-bottom:6px">Est. W/kg <button type="button" class="gr-tip-trigger" data-tip="Estimated FTP (from VO2max via the ACSM formula) divided by weight — no power meter, so treat as a trend. W/kg is the number that decides climbing speed: improve it by raising fitness or lowering weight." aria-label="More info" aria-expanded="false">?</button></p>
+      <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ "%.2f"|format(est_wkg.wkg) }}</p>
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">~{{ est_wkg.est_ftp_w }} W est · estimated</p>
+    </div>
+    {% endif %}
+
     {% if latest_bp and latest_bp.systolic and latest_bp.diastolic %}
     <div class="card" style="padding:20px 22px">
       <p class="eyebrow" style="margin-bottom:6px">Blood Pressure <button type="button" class="gr-tip-trigger" data-tip="Normal: below 120/80. Elevated: 120–129 / below 80. Stage 1 high: 130–139 / 80–89. Consistent endurance training lowers BP over months. Measure at the same time each day for comparable readings." aria-label="More info" aria-expanded="false">?</button></p>
