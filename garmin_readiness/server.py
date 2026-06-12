@@ -1311,6 +1311,20 @@ async def calendar_view(request: Request):
         unified.append({**w, "phase": "event_prep", "phase_start": i == 0})
     ctx["unified_weeks"] = unified
 
+    # Per-day pacing & fuelling plans for the two charity-ride days (AI, cached).
+    charity_plans: list[dict] = []
+    try:
+        from .analysis import generate_charity_day_plans
+        from .plan import CHARITY_DAYS
+        plans = generate_charity_day_plans()
+        for cd in CHARITY_DAYS:
+            plan = plans.get(cd["day"])
+            if plan:
+                charity_plans.append({**cd, "plan": plan})
+    except Exception:
+        pass
+    ctx["charity_plans"] = charity_plans
+
     return TEMPLATES.TemplateResponse(request=request, name="calendar.html", context=ctx)
 
 

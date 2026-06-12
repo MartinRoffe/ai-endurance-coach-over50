@@ -331,6 +331,32 @@
 
     {% endfor %}{# end unified_weeks loop #}
 
+  <!-- ── Charity-ride event-day pacing & fuelling plans ───────────────────────── -->
+  {% if charity_plans %}
+  <div style="margin-top:24px">
+    <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#38bdf8;margin-bottom:10px">Event-Day Pacing &amp; Fuelling Plans · Ghent → Amsterdam</p>
+    {% for cd in charity_plans %}
+    {% set cp = cd.plan %}
+    <details class="rounded border" style="border-color:#0c4a6e;background:rgba(56,189,248,0.04);margin-bottom:6px">
+      <summary style="cursor:pointer;padding:10px 14px;font-family:'DM Mono',monospace;font-size:12px;color:#7dd3fc;list-style-position:inside">
+        Day {{ cd.day }} · {{ cd.label }} — {{ cd.km }} km
+      </summary>
+      <div style="padding:4px 16px 14px 16px;font-size:12px;color:#d4d4d8;line-height:1.6">
+        {% if cp.pacing %}<p style="margin:0 0 6px 0"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">Pacing</span><br>{{ cp.pacing }}</p>{% endif %}
+        {% if cp.hr_cap %}<p style="margin:0 0 6px 0"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">Early-hours HR cap</span><br>{{ cp.hr_cap }}</p>{% endif %}
+        {% if cp.carb_load %}<p style="margin:0 0 6px 0"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">Carb load</span><br>{{ cp.carb_load }}</p>{% endif %}
+        <p style="margin:0 0 6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#a1a1aa">
+          {% if cp.carbs_g_per_hr %}⛽ {{ cp.carbs_g_per_hr }} g/h carbs{% endif %}
+          {% if cp.fluid_ml_per_hr %} · 💧 {{ cp.fluid_ml_per_hr }} ml/h{% endif %}
+          {% if cp.sodium_mg_per_hr %} · 🧂 {{ cp.sodium_mg_per_hr }} mg/h sodium{% endif %}
+        </p>
+        {% if cp.brief %}<p style="margin:0;color:#a1a1aa">{{ cp.brief }}</p>{% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ── Back-to-Back Session Log ─────────────────────────────────────────────── -->
   {% if btb_pairs or btb_log_available %}
   <div style="margin-top:28px;background:#111114;border:1px solid #27272a;border-radius:2px;padding:20px 24px">
