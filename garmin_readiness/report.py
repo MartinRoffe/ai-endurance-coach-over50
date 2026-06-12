@@ -445,9 +445,16 @@ def send_email(html: str, subject: str, to_addr: str, from_addr: str, app_passwo
     msg["To"] = to_addr
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(from_addr, app_password)
-        server.sendmail(from_addr, to_addr, msg.as_string())
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(from_addr, app_password)
+            server.sendmail(from_addr, to_addr, msg.as_string())
+    except smtplib.SMTPAuthenticationError as exc:
+        raise RuntimeError(
+            "Gmail rejected the login — check GMAIL_ADDRESS/GMAIL_APP_PASSWORD"
+        ) from exc
+    except (smtplib.SMTPException, OSError) as exc:
+        raise RuntimeError(f"Failed to send email via Gmail SMTP: {exc}") from exc
 
 
 def run_report(m: DailyMetrics, dry_run: bool = False) -> None:

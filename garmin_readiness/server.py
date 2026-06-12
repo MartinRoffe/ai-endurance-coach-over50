@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .alerts import check_fatigue_alerts
 from .analysis import generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, retrieve_relevant_analyses
@@ -522,7 +522,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] = None,
+def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] = None,
                     n: Optional[int] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     ctx = _build_context(target)
@@ -532,7 +532,7 @@ async def dashboard(request: Request, date: Optional[str] = None, msg: Optional[
 
 
 @app.get("/send-email", response_class=RedirectResponse)
-async def send_email_now():
+def send_email_now():
     from pathlib import Path
     today = _today()
     sentinel = Path.home() / ".garmin_readiness" / f"sent_{today.isoformat()}"
@@ -647,7 +647,7 @@ def _merge_compound_activities(activities: list[dict]) -> list[dict]:
 
 
 @app.get("/analysis", response_class=HTMLResponse)
-async def analysis_view(request: Request):
+def analysis_view(request: Request):
     activities_raw = load_recent_activities(days=14)
     activities = load_analyses_for_activities(
         [enrich_activity(a) for a in activities_raw]
@@ -700,16 +700,28 @@ async def log_rpe_endpoint(request: Request, _=Depends(_require_auth)):
     return JSONResponse({"ok": True})
 
 
+class _FuellingLogRequest(BaseModel):
+    date: str
+    activity_id: Optional[int] = None
+    planned_carbs_g_per_hr: Optional[float] = Field(None, ge=0, le=300)
+    actual_carbs_g_per_hr: Optional[float] = Field(None, ge=0, le=300)
+    fluid_ok: bool = False
+    note: Optional[str] = None
+
+
 @app.post("/log-fuelling")
-async def log_fuelling_endpoint(request: Request, _=Depends(_require_auth)):
-    body = await request.json()
+async def log_fuelling_endpoint(body: _FuellingLogRequest, _=Depends(_require_auth)):
+    try:
+        date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be YYYY-MM-DD")
     save_fuelling_log(
-        body["date"],
-        body.get("activity_id"),
-        body.get("planned_carbs_g_per_hr"),
-        body.get("actual_carbs_g_per_hr"),
-        bool(body.get("fluid_ok")),
-        body.get("note"),
+        body.date,
+        body.activity_id,
+        body.planned_carbs_g_per_hr,
+        body.actual_carbs_g_per_hr,
+        body.fluid_ok,
+        body.note,
     )
     return JSONResponse({"ok": True})
 
@@ -732,7 +744,7 @@ async def btb_summary_view(_=Depends(_require_auth)):
 
 
 @app.get("/analysis-refresh", response_class=RedirectResponse)
-async def analysis_refresh():
+def analysis_refresh():
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
     if email_addr and password:
@@ -1478,7 +1490,7 @@ async def tenerife_view(request: Request):
 
 
 @app.get("/haute-route", response_class=HTMLResponse)
-async def haute_route_view(request: Request):
+def haute_route_view(request: Request):
     today = date.today()
     history = pmc_history(days=1)
     today_pmc = history[-1] if history else {}
@@ -1757,7 +1769,7 @@ async def body_view(request: Request, msg: Optional[str] = None):
 
 
 @app.get("/body-refresh", response_class=RedirectResponse)
-async def body_refresh():
+def body_refresh():
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
     if email_addr and password:
@@ -1775,7 +1787,7 @@ async def body_refresh():
 
 
 @app.get("/withings-sync", response_class=RedirectResponse)
-async def withings_sync():
+def withings_sync():
     """Push Withings measurements to Garmin Connect, then refresh body data from Garmin."""
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
@@ -1830,7 +1842,7 @@ async def sleep_view(request: Request):
 
 
 @app.get("/nutrition-test")
-async def nutrition_test():
+def nutrition_test():
     """Debug endpoint: return raw Garmin nutrition API responses for today."""
     import json as _json
     email_addr = os.getenv("GARMIN_EMAIL", "")
@@ -1855,7 +1867,7 @@ async def nutrition_test():
 
 
 @app.get("/refresh", response_class=RedirectResponse)
-async def refresh(date: Optional[str] = None):
+def refresh(date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     _build_context(target, force_fetch=True)
     redirect_url = f"/?date={target.isoformat()}"
@@ -1863,7 +1875,7 @@ async def refresh(date: Optional[str] = None):
 
 
 @app.get("/recovery-suggestion")
-async def recovery_suggestion_view(date: Optional[str] = None):
+def recovery_suggestion_view(date: Optional[str] = None):
     if not date:
         raise HTTPException(status_code=400, detail="date parameter required")
     target = date_fromisoformat_safe(date)
@@ -2489,7 +2501,7 @@ async def apply_plan_change(body: _ApplyChangeRequest):
 
 
 @app.post("/regenerate-advice")
-async def regenerate_advice_endpoint():
+def regenerate_advice_endpoint():
     today = _today()
     delete_advice(today)
     ctx = _build_context(today, force_fetch=True)
@@ -2497,7 +2509,7 @@ async def regenerate_advice_endpoint():
 
 
 @app.post("/regenerate-body-advice")
-async def regenerate_body_advice_endpoint():
+def regenerate_body_advice_endpoint():
     set_cached_text(f"body_analysis_v1_{_today().isoformat()}", "")
     ctx = _body_context()
     return JSONResponse({"analysis": ctx["body_analysis"]})

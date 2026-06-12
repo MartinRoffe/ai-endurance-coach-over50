@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -1182,6 +1182,17 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     if not api_key:
         return plans
 
+    # Negative cache: after a failed generation, don't re-fire a blocking
+    # Sonnet call on every page view — back off for an hour.
+    _FAIL_KEY = "hr_stage_plan_fail_until"
+    fail_until = get_cached_text(_FAIL_KEY)
+    if fail_until:
+        try:
+            if datetime.now() < datetime.fromisoformat(fail_until):
+                return plans
+        except ValueError:
+            pass
+
     # Athlete context: LTHR from the most recent FTP test, estimated FTP watts
     lthr_note = "LTHR unknown — express HR caps as % of LTHR"
     try:
@@ -1249,5 +1260,6 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     except Exception as exc:
         import logging
         logging.getLogger(__name__).warning("HR stage plan generation failed: %s", exc)
+        set_cached_text(_FAIL_KEY, (datetime.now() + timedelta(hours=1)).isoformat())
 
     return plans

@@ -651,12 +651,28 @@ def _delete_existing_plan_workouts(api: Any, dry_run: bool = False) -> None:
         print(f"  {deleted} existing plan workout(s) removed")
 
 
+def _schedule_dates(api: Any, workout_id: Any, dates: list[str],
+                    summary: dict, failed: list[tuple[Any, str]]) -> None:
+    for date_str in dates:
+        try:
+            api.schedule_workout(workout_id, date_str)
+            summary["scheduled"] += 1
+            print(f"    scheduled {date_str}")
+        except Exception as exc:
+            failed.append((workout_id, date_str))
+            print(f"    [error] schedule {date_str}: {exc}")
+
+
 def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     """Delete stale plan workouts, upload fresh ones (override-aware), and schedule them.
 
-    Returns a summary dict: {templates, scheduled, errors}.
+    Schedule failures are retried once at the end; any dates still unscheduled
+    are returned in the summary so the caller knows a re-run is needed.
+
+    Returns a summary dict: {templates, scheduled, errors, failed_dates}.
     """
     _delete_existing_plan_workouts(api, dry_run=dry_run)
+    failed_schedules: list[tuple[Any, str]] = []
 
     # ── Cycling workouts ──────────────────────────────────────────────────────
     schedule = _workout_schedule()
@@ -693,14 +709,7 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
 
         summary["templates"] += 1
         print(f"  uploaded '{label}' {dur}m → id={workout_id}")
-        for date_str in dates:
-            try:
-                api.schedule_workout(workout_id, date_str)
-                summary["scheduled"] += 1
-                print(f"    scheduled {date_str}")
-            except Exception as exc:
-                summary["errors"] += 1
-                print(f"    [error] schedule {date_str}: {exc}")
+        _schedule_dates(api, workout_id, dates, summary, failed_schedules)
 
     # ── Strength & ruck workouts ──────────────────────────────────────────────
     sr_schedule = _workout_schedule_strength_ruck()
@@ -736,13 +745,25 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
 
         summary["templates"] += 1
         print(f"  uploaded '{wname}' → id={workout_id}")
-        for date_str in dates:
+        _schedule_dates(api, workout_id, dates, summary, failed_schedules)
+
+    # Retry failed schedules once (transient API errors are common), then
+    # surface anything still missing so the caller knows to re-run.
+    still_failed: list[str] = []
+    if failed_schedules:
+        print(f"\nRetrying {len(failed_schedules)} failed schedule(s)...")
+        for workout_id, date_str in failed_schedules:
             try:
                 api.schedule_workout(workout_id, date_str)
                 summary["scheduled"] += 1
-                print(f"    scheduled {date_str}")
+                print(f"  scheduled {date_str} (retry)")
             except Exception as exc:
                 summary["errors"] += 1
-                print(f"    [error] schedule {date_str}: {exc}")
+                still_failed.append(date_str)
+                print(f"  [error] schedule {date_str} failed again: {exc}")
+    summary["failed_dates"] = still_failed
+    if still_failed:
+        print(f"\n[warn] {len(still_failed)} date(s) left unscheduled: "
+              f"{', '.join(still_failed)} — re-run --workouts to fill the gaps")
 
     return summary

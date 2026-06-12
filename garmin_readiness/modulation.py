@@ -34,8 +34,13 @@ def hrv_traffic_light(m: DailyMetrics, comp_z: Optional[float]) -> dict:
     with the 7-day vs 30-day mean ratio as a secondary chronic-suppression
     signal, and the composite readiness z as a backstop.
     """
+    # Exclude the row for m's own date from the baseline (when present) rather
+    # than blindly dropping the last row — before the watch syncs, the last DB
+    # row is yesterday and must stay in the baseline.
+    today_iso = m.date.isoformat() if m.date else None
     rows = raw_history(31)
-    baseline = [r["hrv_last_night"] for r in rows[:-1] if r["hrv_last_night"] is not None]
+    baseline = [r["hrv_last_night"] for r in rows
+                if r.get("date") != today_iso and r["hrv_last_night"] is not None]
     hrv_today = m.hrv_last_night
 
     hrv_z = None

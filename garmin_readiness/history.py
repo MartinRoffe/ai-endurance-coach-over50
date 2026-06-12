@@ -58,7 +58,10 @@ LOWER_IS_BETTER = {
 @contextmanager
 def _conn():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB_PATH)
+    # timeout: the FastAPI server (threadpool workers) and the launchd CLI can
+    # write concurrently — wait out short lock contention instead of raising
+    # "database is locked".
+    con = sqlite3.connect(DB_PATH, timeout=30)
     con.row_factory = sqlite3.Row
     try:
         yield con
@@ -544,7 +547,7 @@ def save_blood_pressure(readings: list[dict]) -> None:
         _ensure_blood_pressure_schema(con)
         for r in readings:
             con.execute("""
-                INSERT OR IGNORE INTO blood_pressure
+                INSERT OR REPLACE INTO blood_pressure
                     (date, timestamp_local, systolic, diastolic, pulse)
                 VALUES (?,?,?,?,?)
             """, (
@@ -1128,6 +1131,12 @@ def save_fuelling_log(log_date: str, activity_id: Optional[int],
                       fluid_ok: bool, note: Optional[str] = None) -> None:
     with _conn() as con:
         _ensure_fuelling_log_schema(con)
+        if activity_id is None:
+            # UNIQUE(activity_id) doesn't dedupe NULLs — upsert by date instead
+            con.execute(
+                "DELETE FROM fuelling_logs WHERE date = ? AND activity_id IS NULL",
+                (log_date,),
+            )
         con.execute(
             """INSERT OR REPLACE INTO fuelling_logs
                (date, activity_id, planned_carbs_g_per_hr, actual_carbs_g_per_hr, fluid_ok, note)
