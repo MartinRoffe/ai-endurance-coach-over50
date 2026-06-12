@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 import threading
@@ -82,6 +83,8 @@ from .history import (
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 _advice_cache: dict[str, str] = {}
 _pmc_cache: dict[str, str] = {}
@@ -254,11 +257,6 @@ def _activity_context_blurb(activities: list[dict]) -> str:
     if n == 1:
         return f"1 workout in last 7 days · latest: {title}{tail}"
     return f"{n} workouts in last 7 days · latest: {title}{tail}"
-    if z >= 0.5:
-        return "text-emerald-400"
-    if z <= -0.5:
-        return "text-red-400"
-    return "text-yellow-400"
 
 
 def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
@@ -559,12 +557,15 @@ async def send_email_now():
     if m is None or (m.sleep_score is None and m.body_battery_morning is None):
         return RedirectResponse(url="/?msg=no_data", status_code=303)
 
+    # Sentinel before send: a crash after SMTP delivery must not allow a
+    # duplicate; on a clean failure the sentinel is removed so retry works.
+    sentinel.touch()
     try:
         from .report import run_report
         run_report(m, dry_run=False)
-        sentinel.touch()
         return RedirectResponse(url="/?msg=sent", status_code=303)
     except Exception as e:
+        sentinel.unlink(missing_ok=True)
         logger.error("send-email failed: %s", e)
         return RedirectResponse(url="/?msg=error", status_code=303)
 
