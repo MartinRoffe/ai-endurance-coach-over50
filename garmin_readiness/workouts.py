@@ -289,7 +289,9 @@ def _z2_ride(dur_min: int) -> CyclingWorkout:
 
 
 def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
-    # 10m warmup + 5×(6m 60-70rpm Z3 + 3m Z1) + 25m Z2 + 10m cooldown = 90m
+    # 10m warmup + 5×(6m 60-70rpm Z3 + 3m Z1) + Z2 filler + 10m cooldown.
+    # The Z2 block absorbs the remaining time so total matches dur_min
+    # (25m at the standard 90m).
     steps: list = [create_warmup_step(600.0, step_order=1)]
     o = 2
     for _ in range(5):
@@ -297,8 +299,10 @@ def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
         o += 1
         steps.append(_recovery(o, 180, _hr_zone_target(), 1, 1))
         o += 1
-    steps.append(_interval(o, 1500, _hr_zone_target(), 2, 2))
-    o += 1
+    z2_secs = max(0, (dur_min - 65) * 60)
+    if z2_secs:
+        steps.append(_interval(o, z2_secs, _hr_zone_target(), 2, 2))
+        o += 1
     steps.append(create_cooldown_step(600.0, step_order=o))
     return _make(f"Low Cadence Ride {dur_min}m", steps, dur_min)
 

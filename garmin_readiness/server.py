@@ -81,13 +81,18 @@ from .history import (
     set_cached_text,
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS
+from .llm import MODEL_FAST, MODEL_SMART
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# In-process AI-text caches. Routes are plain `def` (threadpool workers), so
+# guard check-and-generate with a lock — also stops two concurrent page loads
+# firing duplicate billable Claude calls for the same date.
 _advice_cache: dict[str, str] = {}
 _pmc_cache: dict[str, str] = {}
+_ai_cache_lock = threading.Lock()
 
 _BIKE_TYPE_KEYS = {"road_biking", "cycling", "virtual_ride", "indoor_cycling", "mountain_biking"}
 _HARD_LABELS = {"Tempo Intervals", "FTP Test", "FTP Re-test"}
@@ -351,12 +356,14 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
 
     date_key = target.isoformat()
-    if force_fetch:
-        # Pop in-process cache so advice is re-read from SQLite, but keep the
-        # SQLite row — re-generating advice on every refresh causes inconsistency.
-        _advice_cache.pop(date_key, None)
-    if date_key not in _advice_cache:
-        _advice_cache[date_key] = generate_advice(m, stats, comp_z)
+    with _ai_cache_lock:
+        if force_fetch:
+            # Pop in-process cache so advice is re-read from SQLite, but keep the
+            # SQLite row — re-generating advice on every refresh causes inconsistency.
+            _advice_cache.pop(date_key, None)
+        if date_key not in _advice_cache:
+            _advice_cache[date_key] = generate_advice(m, stats, comp_z)
+        advice_text = _advice_cache[date_key]
 
     # Today's planned session
     _SESSION_ICONS = {
@@ -504,7 +511,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "activities": activities,
         "trend_note": seven_day_composite_trend_csv(),
         "activity_blurb": _activity_context_blurb(activities),
-        "advice": _advice_cache[date_key],
+        "advice": advice_text,
         "week_summary": _ws,
         "metric_explainer": generate_dashboard_explainer(),
         "sparklines": sparklines,
@@ -769,11 +776,13 @@ async def performance_view(request: Request):
     history = pmc_history(days=90)
     today_entry = history[-1] if history else {}
     date_key = date.today().isoformat()
-    if date_key not in _pmc_cache:
-        m_today = load(date.today()) or DailyMetrics(date=date.today())
-        stats_today = baseline_stats(date.today())
-        comp_z_today = composite_score(m_today, stats_today)
-        _pmc_cache[date_key] = generate_pmc_analysis(history, m_today, comp_z_today)
+    with _ai_cache_lock:
+        if date_key not in _pmc_cache:
+            m_today = load(date.today()) or DailyMetrics(date=date.today())
+            stats_today = baseline_stats(date.today())
+            comp_z_today = composite_score(m_today, stats_today)
+            _pmc_cache[date_key] = generate_pmc_analysis(history, m_today, comp_z_today)
+        pmc_analysis_text = _pmc_cache[date_key]
 
     plan_acts = load_activities_by_date(_PLAN_START, date.today())
     z2_points: list[dict] = []
@@ -876,7 +885,7 @@ async def performance_view(request: Request):
         context={
             "history": history,
             "today": today_entry,
-            "pmc_analysis": _pmc_cache[date_key],
+            "pmc_analysis": pmc_analysis_text,
             "pmc_explainer": generate_pmc_explainer(),
             "z2_points": z2_points,
             "z2_trend_line": z2_trend_line,
@@ -2221,7 +2230,7 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]
 
     client = _anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model=MODEL_SMART,
         max_tokens=800,
         system=system,
         tools=[_COACH_TOOL],
@@ -2252,7 +2261,7 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]
             },
         ]
         response2 = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=300,
             system=system,
             tools=[_COACH_TOOL],
@@ -2349,7 +2358,7 @@ def _regenerate_coach_memory(api_key: str) -> None:
     try:
         client = _anthropic.Anthropic(api_key=api_key)
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=400,
             system="You are maintaining a compact coaching notes file. Be specific and concise.",
             messages=[{"role": "user", "content": prompt}],
@@ -2382,7 +2391,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
 
     try:
         with client.messages.stream(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=800,
             system=system,
             tools=[_COACH_TOOL],
@@ -2405,7 +2414,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
                 {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_call.id, "content": "Proposal ready for athlete confirmation."}]},
             ]
             with client.messages.stream(
-                model="claude-sonnet-4-6",
+                model=MODEL_SMART,
                 max_tokens=300,
                 system=system,
                 tools=[_COACH_TOOL],
@@ -2432,8 +2441,10 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
         save_coach_message("assistant", full_reply, json.dumps(proposal) if proposal else None)
         _maybe_update_memo_bg(api_key)
 
-    except Exception as exc:
-        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+    except Exception:
+        # Don't leak raw exception text (may contain key/account details)
+        logger.exception("coach-chat-stream failed")
+        yield f"data: {json.dumps({'type': 'error', 'message': 'Coach is temporarily unavailable — check the server logs.'})}\n\n"
 
     yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
@@ -2475,12 +2486,15 @@ async def delete_coach_history_endpoint():
     return JSONResponse({"ok": True})
 
 
+_VALID_SESSION_TYPES = {"bike", "ftp", "long", "rest", "ruck", "strength", "tempo"}
+
+
 class _ApplyChangeRequest(BaseModel):
     date: str
-    duration_min: int
-    reason: str = ""
+    duration_min: int = Field(..., gt=0, le=600)
+    reason: str = Field("", max_length=500)
     session_type: Optional[str] = None  # if provided, overrides the plan session type
-    label: Optional[str] = None         # if provided, overrides the plan session label
+    label: Optional[str] = Field(None, max_length=100)  # overrides the plan session label
 
 
 @app.post("/apply-plan-change")
@@ -2489,6 +2503,8 @@ async def apply_plan_change(body: _ApplyChangeRequest):
         d = date.fromisoformat(body.date)
     except ValueError:
         raise HTTPException(status_code=422, detail="Invalid date format")
+    if body.session_type is not None and body.session_type not in _VALID_SESSION_TYPES:
+        raise HTTPException(status_code=422, detail=f"Unknown session_type '{body.session_type}'")
 
     sess = session_for_date(d)
     if not sess:

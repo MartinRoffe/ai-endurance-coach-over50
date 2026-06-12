@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from .history import DB_PATH, _conn, get_cached_text, set_cached_text
 from .plan import COMPOUND_SESSIONS, session_for_date, session_for_date_extended
+from .llm import MODEL_FAST, MODEL_SMART
 
 # ── DB schema ────────────────────────────────────────────────────────────────
 
@@ -357,7 +358,7 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
     name = activity.get("name") or ""
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=500,
             system=_coach_system_prompt(type_key, name),
             messages=[{"role": "user", "content": prompt}],
@@ -771,7 +772,7 @@ def generate_recovery_suggestion(
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=350,
             system=(
                 "You are an experienced endurance and strength coach advising an athlete who missed "
@@ -902,7 +903,7 @@ def prefetch_workout_descriptions(labels: list[str]) -> dict[str, str]:
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=2000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -995,7 +996,7 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dic
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=3000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -1113,7 +1114,7 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=3000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -1235,7 +1236,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=3000,
             system=(
                 "You are an experienced Haute Route coach who has guided many amateur "
