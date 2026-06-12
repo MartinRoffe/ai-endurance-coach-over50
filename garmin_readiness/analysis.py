@@ -52,6 +52,10 @@ _INTERVAL_CONFIG: dict[str, dict] = {
     "Hill Repeats":        {"effort_min": 120,  "effort_max": 330,  "name": "Hill rep"},
     "Threshold Ride":      {"effort_min": 900,  "effort_max": 1500, "name": "Threshold block"},
     "Over-Unders":         {"effort_min": 840,  "effort_max": 1200, "name": "OU set"},
+    # MaxiClimber work intervals: 90–240 s across all plan weeks (easy → Norwegian 4×4)
+    "MaxiClimber":         {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
+    "Easy MaxiClimber":    {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
+    "KB + MaxiClimber":    {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
 }
 
 
@@ -313,8 +317,11 @@ def _coach_system_prompt(type_key: str, activity_name: str = "") -> str:
         )
     if type_key == "stair_climbing":
         return (
-            "You are an experienced strength and conditioning coach specialising in climbing "
-            "and full-body functional fitness, reviewing a completed MaxiClimber session. " + tail
+            "You are an experienced cardio interval coach reviewing a completed MaxiClimber session. "
+            "The MaxiClimber is a full-body vertical climbing machine (arms AND legs simultaneously) "
+            "used here as a structured cardio interval tool — not a strength exercise. "
+            "Treat it like a cardio interval session: evaluate HR zone execution, interval quality, "
+            "aerobic vs anaerobic balance, and recovery between efforts. " + tail
         )
     if type_key == "strength_training":
         return (
@@ -458,8 +465,12 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
 
     equipment_note = (
         "Equipment note: this 'stair_climbing' activity was performed on a MaxiClimber — "
-        "a vertical climbing machine that works arms AND legs simultaneously (full-body). "
-        "It is NOT a stair stepper or step machine (legs only). Treat it as a full-body cardio/strength effort."
+        "a vertical climbing machine that works arms AND legs simultaneously (not legs-only). "
+        "It is used here as a structured cardio interval tool with timed work/rest sets at prescribed HR zones "
+        "(Z2–Z3 in standard weeks, Z4 for Norwegian 4×4 protocol in the peak block). "
+        "Analyse it as a cardio interval session: focus on HR zone adherence during work intervals, "
+        "recovery completeness during rest intervals, and overall aerobic training effect. "
+        "Do NOT treat it as a strength or resistance session."
         if type_key == "stair_climbing" else
         "Activity note: 'load carry' and 'rucking' are the same activity — walking or hiking with a weighted pack. "
         "Do not treat them as different session types. A planned ruck and a logged load carry are equivalent."

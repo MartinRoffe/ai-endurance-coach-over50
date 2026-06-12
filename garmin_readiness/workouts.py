@@ -26,9 +26,12 @@ from .plan import (
     MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
 )
 
-_SPORT      = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
-_FE_SPORT   = {"sportTypeId": SportType.FITNESS_EQUIPMENT, "sportTypeKey": "fitness_equipment",  "displayOrder": 6}
-_HIKE_SPORT = {"sportTypeId": SportType.HIKING,            "sportTypeKey": "hiking",             "displayOrder": 7}
+_SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
+_FE_SPORT     = {"sportTypeId": SportType.FITNESS_EQUIPMENT, "sportTypeKey": "fitness_equipment",  "displayOrder": 6}
+_HIKE_SPORT   = {"sportTypeId": SportType.HIKING,            "sportTypeKey": "hiking",             "displayOrder": 7}
+# OTHER sport type allows HR zone targets on intervals; FITNESS_EQUIPMENT is treated as
+# strength by Garmin and strips HR zone guidance — wrong for cardio equipment like MaxiClimber.
+_CARDIO_SPORT = {"sportTypeId": SportType.OTHER,             "sportTypeKey": "other",              "displayOrder": 8}
 
 _BIKE_TYPES         = {"bike", "tempo", "ftp", "long"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
@@ -105,6 +108,16 @@ def _make_fe(name: str, steps: list, dur_min: int) -> FitnessEquipmentWorkout:
         workoutName=name,
         estimatedDurationInSecs=dur_min * 60,
         workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_FE_SPORT, workoutSteps=steps)],
+    )
+
+
+def _make_cardio(name: str, steps: list, dur_min: int) -> FitnessEquipmentWorkout:
+    """Use OTHER sport type so Garmin treats this as cardio, not strength, enabling HR zone targets."""
+    return FitnessEquipmentWorkout(
+        workoutName=name,
+        estimatedDurationInSecs=dur_min * 60,
+        sportType=_CARDIO_SPORT,
+        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_CARDIO_SPORT, workoutSteps=steps)],
     )
 
 
@@ -450,10 +463,10 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout
     if not spec:
         steps = [
             create_warmup_step(180.0, step_order=1),
-            _interval(2, max(60.0, dur_min * 60 - 360.0), _open_target()),
+            _interval(2, max(60.0, dur_min * 60 - 360.0), _hr_zone_target(), 2, 3),
             create_cooldown_step(180.0, step_order=3),
         ]
-        return _make_fe(f"MaxiClimber Wk{week_num} {dur_min}m", steps, dur_min)
+        return _make_cardio(f"MaxiClimber Wk{week_num} {dur_min}m", steps, dur_min)
 
     sets = spec["sets"]
     work_s = float(spec["work_s"])
@@ -478,7 +491,7 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout
     steps.append(create_cooldown_step(180.0, step_order=order))
 
     calculated_dur = math.ceil((sets * (spec["work_s"] + spec["rest_s"]) + 360) / 60)
-    return _make_fe(f"MaxiClimber Wk{week_num} {dur_min}m", steps, calculated_dur)
+    return _make_cardio(f"MaxiClimber Wk{week_num} {dur_min}m", steps, calculated_dur)
 
 
 def _ruck_workout(dur_min: int) -> HikingWorkout:
