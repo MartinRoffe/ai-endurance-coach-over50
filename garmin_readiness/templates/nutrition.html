@@ -366,6 +366,22 @@
     </div>
   </section>
 
+  {% if supplements %}
+  <section>
+    <div class="section-label">For The 50+ Athlete</div>
+    <h2>SUPPLEMENTS</h2>
+    <p>Evidence-based for a masters athlete{% if protein_target and protein_target.lean_kg %} (alongside a protein floor of {{ protein_target.low }}–{{ protein_target.high }}g/day on {{ protein_target.basis }}){% endif %}. These complement whole food — they don't replace it.</p>
+    {% for s in supplements %}
+    <div class="footer-note" style="margin-top:8px;border-left-color:var(--protein)">
+      <p><strong style="color:var(--protein)">{{ s.name }}</strong> — {{ s.dose }}<br>{{ s.why }}</p>
+    </div>
+    {% endfor %}
+    <div class="footer-note" style="margin-top:16px;border-left-color:#c0392b">
+      <p><strong style="color:#c0392b">⚕ {{ supplement_disclaimer }}</strong></p>
+    </div>
+  </section>
+  {% endif %}
+
 </div><!-- /container -->
 
 <script>

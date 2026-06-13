@@ -67,7 +67,7 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("strength", "KB + MaxiClimber",     45),
         ("tempo",    "Hill Repeats",          60),
         ("ruck",     "Ruck  10–12 kg",       85),
-        ("long",     "Long Ride",           140),
+        ("long",     "Long Ride",           160),   # raised from 140 to smooth the ramp into wk7 (was +29% to 180; now 135→160→180)
     ],
     # WK 07
     [

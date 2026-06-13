@@ -1493,6 +1493,8 @@ async def nutrition_plan(request: Request):
     recent = raw_history(3)
     today_nut = next((r for r in reversed(recent) if r.get("calories_consumed") is not None), None)
 
+    from .nutrition_plan import SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="nutrition.html",
@@ -1503,6 +1505,9 @@ async def nutrition_plan(request: Request):
             "tdee_today":    int(today_nut["calorie_goal_adjusted"]) if today_nut and today_nut.get("calorie_goal_adjusted") else None,
             "carbs_today":   round(today_nut["carbs_consumed"])     if today_nut and today_nut.get("carbs_consumed")       else None,
             "protein_today": round(today_nut["protein_consumed"])   if today_nut and today_nut.get("protein_consumed")     else None,
+            "supplements":   [{"name": n, "dose": d, "why": w} for n, d, w in SUPPLEMENTS],
+            "supplement_disclaimer": _SUPPLEMENT_DISCLAIMER,
+            "protein_target": protein_target_g(),
         },
     )
 
@@ -1949,7 +1954,12 @@ _COACH_SYSTEM = (
     "rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests (wks 3/7/12), hill repeats "
     "and tempo from wk 5, progressive rucking (Mersea Coastal Spur build in wks 9–10), KB + MaxiClimber strength.\n\n"
     "PMC note: Garmin TSB units differ from Coggan TSS. Rough bands: "
-    "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250."
+    "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250.\n\n"
+    "HR-vs-power note: this athlete trains and races on HEART RATE, not power. HR drifts with heat, "
+    "dehydration, fatigue, sleep, caffeine and altitude, and rises late in long climbs (cardiac drift) "
+    "at steady effort — so treat HR zones as a guide, not a hard ceiling, and cross-check with perceived "
+    "effort, especially on hot days and mountain stages. The estimated W/kg is a coarse VO2max-derived "
+    "proxy (no power meter) — discuss it as a trend, never as a measured number."
 )
 
 _COACH_TOOL = {

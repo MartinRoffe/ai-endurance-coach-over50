@@ -3,12 +3,66 @@
 Encoded here so the AI coach can reference the exact prescribed meals for
 today rather than only seeing what was logged after the fact.
 
-Protein targets revised for 92 kg athlete at 2.0–2.2 g/kg = 185–200g/day.
-Previous plan was 30–90g short on most days; Saturday was 88g short.
+Protein targets are anchored to the athlete's measured bodyweight (carried
+from the most recent body_metrics reading via `current_weight_kg()`), not a
+hardcoded figure — the Block-A weight-loss reset means weight is falling over
+the plan and a static number would drift out of date.
 """
 from __future__ import annotations
 
 from datetime import date
+
+# Fallback used only before any body_metrics reading exists. The athlete is
+# returning from a sedentary decade with high body fat; targets recalibrate
+# automatically once a real weigh-in is logged.
+_FALLBACK_WEIGHT_KG = 92.0
+
+
+def current_weight_kg() -> float:
+    """Latest measured bodyweight, falling back to `_FALLBACK_WEIGHT_KG`."""
+    try:
+        from .history import latest_weight_kg
+        w = latest_weight_kg()
+        return w if w else _FALLBACK_WEIGHT_KG
+    except Exception:
+        return _FALLBACK_WEIGHT_KG
+
+
+# Protein is prescribed on a FAT-FREE-MASS basis, not total bodyweight: at high
+# body fat, g/kg of total weight over-prescribes. 2.2–2.6 g/kg of lean mass is
+# the evidence-based range to preserve muscle in a deficit, and the upper end
+# suits a 50+ athlete (anabolic resistance). Falls back to 1.8 g/kg of total
+# weight when no body-fat reading exists to derive lean mass.
+_PROTEIN_G_PER_KG_LEAN_LOW = 2.2
+_PROTEIN_G_PER_KG_LEAN_HIGH = 2.6
+
+
+def protein_target_g() -> dict:
+    """Daily protein floor/ceiling in grams, on a fat-free-mass basis.
+
+    Returns {"low", "high", "basis", "lean_kg"}; `basis` documents how it was
+    derived so the coach text can be honest about the input.
+    """
+    try:
+        from .history import latest_lean_mass_kg
+        lean = latest_lean_mass_kg()
+    except Exception:
+        lean = None
+    if lean:
+        return {
+            "low": round(lean * _PROTEIN_G_PER_KG_LEAN_LOW),
+            "high": round(lean * _PROTEIN_G_PER_KG_LEAN_HIGH),
+            "basis": f"{_PROTEIN_G_PER_KG_LEAN_LOW:g}–{_PROTEIN_G_PER_KG_LEAN_HIGH:g} g/kg of fat-free mass, ~{lean:.0f} kg",
+            "lean_kg": round(lean, 1),
+        }
+    # No body-fat reading — fall back to total-weight estimate.
+    w = current_weight_kg()
+    return {
+        "low": round(w * 1.8),
+        "high": round(w * 2.0),
+        "basis": f"1.8–2.0 g/kg of bodyweight, ~{w:.0f} kg — no body-fat reading to derive lean mass",
+        "lean_kg": None,
+    }
 
 # ── Calorie tiers ─────────────────────────────────────────────────────────────
 CALORIE_TIERS = {
@@ -22,16 +76,24 @@ CALORIE_TIERS = {
 
 # ── Principles ────────────────────────────────────────────────────────────────
 PRINCIPLES = [
-    "Protein target: 185–200g/day (2.0–2.2 g/kg at ~92 kg). Every meal anchored to a "
-    "protein source. GetPro at lunch on Mon/Tue/Wed/Thu, protein shake on Wed/Thu/Sat.",
+    "Energy strategy (Block A — weight-loss reset): a moderate, LEAN-MASS-SPARING deficit. "
+    "Take the deficit from rest and recovery days; keep the long-ride day close to energy "
+    "balance so the key endurance session is never under-fuelled. The deficit is safe here — "
+    "ample fat reserves mean low under-fuelling risk — but protein and recovery are protected.",
+    "Protein target: lean-mass based (≈2.2 g/kg of fat-free mass), held high to preserve muscle "
+    "in the deficit. Every meal anchored to a protein source. GetPro at lunch on Mon/Tue/Wed/Thu, "
+    "protein shake on Wed/Thu/Sat. Add a pre-sleep casein/dairy dose (~40 g) on training days.",
     "Carbs around training: rice/pasta lunches on ride and KB days. Banana 45 min pre-session. "
     "Ben's Paella Thursday fuels evening kettlebell. Saturday's carb-rich Gousto dinner is the "
     "real pre-ride fuel for Sunday — not breakfast.",
     "Sunday fuelling: 100–150 kcal fast carbs on waking only. On-bike from minute 0: "
     "60 g carbs/hr for rides 1–2.5 h, 75–90 g/hr beyond 2.5 h. Recovery meal within 45 min "
     "(chocolate milk first, then big porridge + GetPro + eggs + banana + PB toast).",
-    "Gut training: weeks 5–8 practise 60 g/hr on every ride ≥75 min. "
-    "Weeks 9–11 push to 75–90 g/hr on long rides.",
+    "Gut training (start early — the gut is trainable and Block B / the alpine event will demand "
+    "90+ g/hr): weeks 1–4 practise 60 g/hr on every ride ≥75 min; weeks 5–8 push long rides to "
+    "70–80 g/hr; weeks 9+ rehearse 90 g/hr on the long ride (1:0.8 glucose:fructose to raise the "
+    "absorption ceiling). The long ride is FUELLED even on the weight-loss block — the calorie "
+    "deficit comes from rest/recovery days, never from under-fuelling the key endurance session.",
     "Recovery week (W4): protein holds at 185g minimum — cut comes from carbs/fat only. "
     "Snacks reduce to 1–2/day. Lighter Gousto (<550 kcal). Protein shake stays in.",
     "Thursday warning: lowest pre-dinner protein day (119g). "
@@ -39,6 +101,26 @@ PRINCIPLES = [
     "Saturday is the highest-risk protein day. Lunch must be chicken+rice (not eggs on toast). "
     "GetPro at post-ruck breakfast. Protein shake as evening snack. These are non-negotiable.",
 ]
+
+# ── Supplements (evidence-based for 50+; discuss with GP before starting) ─────
+# Framed as coach guidance, NOT prescriptions. Each entry: (name, dose, why).
+SUPPLEMENTS: list[tuple[str, str, str]] = [
+    ("Creatine monohydrate", "3–5 g/day, every day",
+     "Best-evidenced supplement for a masters athlete: helps retain lean mass and strength in a "
+     "calorie deficit, supports high-intensity work and recovery, and may aid cognition. No loading "
+     "needed; take any time of day."),
+    ("Vitamin D3", "Per GP / blood test (often 1000–2000 IU/day in winter)",
+     "Supports bone density (important for a cyclist — low impact), immune function and muscle. "
+     "UK sun is insufficient Oct–Mar; dose to a measured blood level rather than guessing."),
+    ("Omega-3 (EPA/DHA)", "~1–2 g combined EPA+DHA/day",
+     "Anti-inflammatory; may blunt training soreness and support cardiovascular and joint health. "
+     "Oily fish 2–3×/week is an alternative to a capsule."),
+]
+
+_SUPPLEMENT_DISCLAIMER = (
+    "Guidance only, not medical advice — confirm doses and suitability with your GP, "
+    "especially alongside any medication or blood-pressure management."
+)
 
 # ── Day-type templates ────────────────────────────────────────────────────────
 # Each meal: (slot, name, detail, kcal, protein_g, carbs_g)
@@ -290,12 +372,15 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
     cycle_label = f"Week {cycle_week + 1}" + (" — Recovery" if cycle_week == 3 else "")
 
     total_protein = sum(m[4] for m in day_data["meals"])
+    pt = protein_target_g()
 
     lines = [
         "## Nutrition Plan — Today's Prescribed Meals",
         f"Cycle: {cycle_label}  |  Day type: {day_data['label']}  |  "
         f"Target: {tier['kcal']} kcal" + (f" ({tier['note']})" if tier.get("note") else ""),
-        f"Prescribed protein: {total_protein}g total  |  "
+        f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}), distributed ~0.4 g/kg "
+        f"across 4+ meals plus a ~40 g pre-sleep casein/dairy dose to preserve muscle in the deficit.",
+        f"Today's meals deliver: {total_protein}g total  |  "
         f"Pre-dinner: {day_data['pre_dinner_protein_g']}g  — {day_data['protein_note']}",
         "",
         "Meals:",
@@ -311,5 +396,9 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
     lines += ["", "Key principles:"]
     for p in PRINCIPLES:
         lines.append(f"  • {p}")
+
+    lines += ["", f"Supplements ({_SUPPLEMENT_DISCLAIMER}):"]
+    for name, dose, why in SUPPLEMENTS:
+        lines.append(f"  • {name} — {dose}: {why}")
 
     return "\n".join(lines)
