@@ -369,11 +369,18 @@ def main() -> None:
             )
             sys.exit(2)
 
-        with console.status("Generating advice…"):
-            run_report(m, dry_run=args.dry_run)
-
+        # Touch the sentinel BEFORE sending so a crash after SMTP delivery can't
+        # cause a duplicate email on the launchd retry. On a clean failure the
+        # sentinel is removed again so the retry loop still works.
         if not args.dry_run:
             sentinel.touch()
+        try:
+            with console.status("Generating advice…"):
+                run_report(m, dry_run=args.dry_run)
+        except Exception:
+            if not args.dry_run:
+                sentinel.unlink(missing_ok=True)
+            raise
         return
 
     stats = baseline_stats(target)

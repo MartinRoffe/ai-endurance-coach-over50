@@ -58,7 +58,10 @@ LOWER_IS_BETTER = {
 @contextmanager
 def _conn():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB_PATH)
+    # timeout: the FastAPI server (threadpool workers) and the launchd CLI can
+    # write concurrently — wait out short lock contention instead of raising
+    # "database is locked".
+    con = sqlite3.connect(DB_PATH, timeout=30)
     con.row_factory = sqlite3.Row
     try:
         yield con
@@ -307,6 +310,26 @@ def load(target_date: date) -> Optional[DailyMetrics]:
     return DailyMetrics(**kwargs)
 
 
+def _stats_from_rows(rows) -> dict[str, tuple[float, float]]:
+    """{field: (mean, std)} for scored fields across the given daily_metrics rows.
+
+    Uses population std (÷n, matching pstdev elsewhere in the app) — slightly
+    tight at small n, but every z-threshold is calibrated against this, so
+    don't switch to sample std without recalibrating.
+    """
+    stats: dict[str, tuple[float, float]] = {}
+    for field in SCORED_FIELDS:
+        values = [row[field] for row in rows if row[field] is not None]
+        if len(values) < 3:
+            continue
+        mean = sum(values) / len(values)
+        variance = sum((v - mean) ** 2 for v in values) / len(values)
+        std = math.sqrt(variance)
+        if std > 0:
+            stats[field] = (mean, std)
+    return stats
+
+
 def baseline_stats(
     reference_date: date,
     window_days: int = 30,
@@ -321,18 +344,7 @@ def baseline_stats(
             "SELECT * FROM daily_metrics WHERE date >= ? AND date <= ? ORDER BY date",
             (start, end),
         ).fetchall()
-
-    stats: dict[str, tuple[float, float]] = {}
-    for field in SCORED_FIELDS:
-        values = [row[field] for row in rows if row[field] is not None]
-        if len(values) < 3:
-            continue
-        mean = sum(values) / len(values)
-        variance = sum((v - mean) ** 2 for v in values) / len(values)
-        std = math.sqrt(variance)
-        if std > 0:
-            stats[field] = (mean, std)
-    return stats
+    return _stats_from_rows(rows)
 
 
 def z_score(value: float, mean: float, std: float, field: str) -> float:
@@ -358,17 +370,35 @@ def composite_score(m: DailyMetrics, stats: dict[str, tuple[float, float]]) -> O
 
 
 def history_for_chart(days: int = 14) -> list[tuple[date, Optional[float]]]:
+    """Composite score per day, computed from ONE windowed query (the old
+    per-day load() + baseline_stats() pair was ~2(days+1) queries on the
+    dashboard hot path)."""
     end = date.today()
     start = end - timedelta(days=days)
+    window_start = start - timedelta(days=30)  # covers the oldest day's baseline
+
+    with _conn() as con:
+        _ensure_schema(con)
+        rows = con.execute(
+            "SELECT * FROM daily_metrics WHERE date >= ? AND date <= ? ORDER BY date",
+            (window_start.isoformat(), end.isoformat()),
+        ).fetchall()
+    by_date = {r["date"]: r for r in rows}
+    known = {f.name for f in fields(DailyMetrics)}
+
     results = []
     for i in range(days + 1):
         d = start + timedelta(days=i)
-        m = load(d)
-        if m is None:
+        row = by_date.get(d.isoformat())
+        if row is None:
             results.append((d, None))
             continue
-        stats = baseline_stats(d)
-        results.append((d, composite_score(m, stats)))
+        b_start = (d - timedelta(days=30)).isoformat()
+        b_end = (d - timedelta(days=1)).isoformat()
+        stats = _stats_from_rows([r for r in rows if b_start <= r["date"] <= b_end])
+        kwargs = {k: row[k] for k in row.keys() if k in known}
+        kwargs["date"] = d
+        results.append((d, composite_score(DailyMetrics(**kwargs), stats)))
     return results
 
 
@@ -544,7 +574,7 @@ def save_blood_pressure(readings: list[dict]) -> None:
         _ensure_blood_pressure_schema(con)
         for r in readings:
             con.execute("""
-                INSERT OR IGNORE INTO blood_pressure
+                INSERT OR REPLACE INTO blood_pressure
                     (date, timestamp_local, systolic, diastolic, pulse)
                 VALUES (?,?,?,?,?)
             """, (
@@ -1128,6 +1158,12 @@ def save_fuelling_log(log_date: str, activity_id: Optional[int],
                       fluid_ok: bool, note: Optional[str] = None) -> None:
     with _conn() as con:
         _ensure_fuelling_log_schema(con)
+        if activity_id is None:
+            # UNIQUE(activity_id) doesn't dedupe NULLs — upsert by date instead
+            con.execute(
+                "DELETE FROM fuelling_logs WHERE date = ? AND activity_id IS NULL",
+                (log_date,),
+            )
         con.execute(
             """INSERT OR REPLACE INTO fuelling_logs
                (date, activity_id, planned_carbs_g_per_hr, actual_carbs_g_per_hr, fluid_ok, note)

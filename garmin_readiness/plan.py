@@ -95,7 +95,7 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("strength", "KB + MaxiClimber",     45),
         ("bike",     "Sweetspot Ride",       90),   # extended from Z2 60m, add structure
         ("tempo",    "Over-Unders",          75),   # freed from KB+MaxiClimber — threshold intervals
-        ("tempo",    "Tempo Intervals",      75),   # extended from 60m
+        ("bike",     "Z2 Endurance",         75),   # de-stacked from Tempo Intervals — avoid 3 consecutive intensity days
         ("ruck",     "Ruck  12–15 kg",      105),
         ("long",     "Long Ride",           210),   # extended from 165m
     ],
@@ -105,7 +105,7 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("strength", "KB + MaxiClimber",     45),
         ("bike",     "Low Cadence Ride",     90),   # extended from 60m
         ("tempo",    "Threshold Ride",       90),   # freed from KB+MaxiClimber — sustained threshold
-        ("tempo",    "Tempo Intervals",      90),   # extended from 60m
+        ("bike",     "Z2 Endurance",         90),   # de-stacked from Tempo Intervals — avoid 3 consecutive intensity days
         ("ruck",     "Ruck  12–15 kg",      110),
         ("long",     "Long Ride",           255),   # extended from 180m
     ],

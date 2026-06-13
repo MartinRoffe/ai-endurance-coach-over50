@@ -5,12 +5,13 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 from .history import DB_PATH, _conn, get_cached_text, set_cached_text
 from .plan import COMPOUND_SESSIONS, session_for_date, session_for_date_extended
+from .llm import MODEL_FAST, MODEL_SMART
 
 # ── DB schema ────────────────────────────────────────────────────────────────
 
@@ -357,7 +358,7 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
     name = activity.get("name") or ""
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=500,
             system=_coach_system_prompt(type_key, name),
             messages=[{"role": "user", "content": prompt}],
@@ -771,7 +772,7 @@ def generate_recovery_suggestion(
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=350,
             system=(
                 "You are an experienced endurance and strength coach advising an athlete who missed "
@@ -902,7 +903,7 @@ def prefetch_workout_descriptions(labels: list[str]) -> dict[str, str]:
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=2000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -995,7 +996,7 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dic
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=3000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -1113,7 +1114,7 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
 
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=3000,
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -1182,6 +1183,17 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     if not api_key:
         return plans
 
+    # Negative cache: after a failed generation, don't re-fire a blocking
+    # Sonnet call on every page view — back off for an hour.
+    _FAIL_KEY = "hr_stage_plan_fail_until"
+    fail_until = get_cached_text(_FAIL_KEY)
+    if fail_until:
+        try:
+            if datetime.now() < datetime.fromisoformat(fail_until):
+                return plans
+        except ValueError:
+            pass
+
     # Athlete context: LTHR from the most recent FTP test, estimated FTP watts
     lthr_note = "LTHR unknown — express HR caps as % of LTHR"
     try:
@@ -1224,7 +1236,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=3000,
             system=(
                 "You are an experienced Haute Route coach who has guided many amateur "
@@ -1249,5 +1261,124 @@ def generate_hr_stage_plans() -> dict[int, dict]:
     except Exception as exc:
         import logging
         logging.getLogger(__name__).warning("HR stage plan generation failed: %s", exc)
+        set_cached_text(_FAIL_KEY, (datetime.now() + timedelta(hours=1)).isoformat())
+
+    return plans
+
+
+def generate_charity_day_plans() -> dict[int, dict]:
+    """Return {day_num: plan_dict} for the two Ghent→Amsterdam charity-ride days.
+
+    Cached per day in text_cache (key charity_day_plan_v1_{day}, JSON string).
+    When any day is missing and an API key is set, makes ONE batched
+    claude-sonnet-4-6 call for all missing days, grounded in the athlete's
+    latest LTHR and estimated FTP. Returns whatever is cached on failure.
+    Mirrors generate_hr_stage_plans().
+    """
+    import json as _json
+    from .plan import CHARITY_DAYS
+    from .history import get_cached_text, set_cached_text, load_ftp_tests, latest_estimated_wkg
+
+    plans: dict[int, dict] = {}
+    missing: list[dict] = []
+    for cd in CHARITY_DAYS:
+        cached = get_cached_text(f"charity_day_plan_v1_{cd['day']}")
+        if cached:
+            try:
+                plans[cd["day"]] = _json.loads(cached)
+                continue
+            except Exception:
+                pass
+        missing.append(cd)
+
+    if not missing:
+        return plans
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return plans
+
+    # Negative cache: back off for an hour after a failed generation so we don't
+    # re-fire a blocking Sonnet call on every calendar page view.
+    _FAIL_KEY = "charity_day_plan_fail_until"
+    fail_until = get_cached_text(_FAIL_KEY)
+    if fail_until:
+        try:
+            if datetime.now() < datetime.fromisoformat(fail_until):
+                return plans
+        except ValueError:
+            pass
+
+    # Athlete context: LTHR from the most recent FTP test, estimated FTP watts
+    lthr_note = "LTHR unknown — express HR caps as % of LTHR"
+    try:
+        tests = load_ftp_tests()
+        if tests and tests[-1].get("ftp_hr"):
+            lthr_note = f"LTHR ≈ {tests[-1]['ftp_hr']} bpm (from FTP test {tests[-1]['date']})"
+    except Exception:
+        pass
+    ftp_note = ""
+    try:
+        wkg = latest_estimated_wkg()
+        if wkg:
+            ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only, no power meter."
+    except Exception:
+        pass
+
+    lines = [
+        "Plan pacing and in-ride fuelling for a 2-day supported charity cycling event "
+        "(Ghent → Amsterdam, ~310 km total, flat-to-rolling, group riding).",
+        f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}.{ftp_note}",
+        "Critical context: the athlete's LONGEST training ride is ~5 hours, so Day 1 "
+        "(190 km) exceeds the longest training ride by roughly 30–40%. Pacing and fuelling "
+        "— not fitness — are the levers that determine whether Day 1 succeeds.",
+        "Key principles to encode in the plan:",
+        "- 2-day carb load beforehand at 8–10 g/kg/day.",
+        "- Fuel from hour 1: 80–90 g carbs/hr the whole ride (gut already trained in the build).",
+        "- 500–750 ml fluid/hr with 500–800 mg sodium/hr.",
+        "- Day 1: ride the first 3 hours strictly below the Z2 ceiling — bank no early fatigue.",
+        "- Day 2: legs will be tired from Day 1; start very easy and let them come good.",
+        "Reply ONLY with valid JSON: a dict mapping day number (as string) -> "
+        "{\"pacing\": \"3-4 sentence pacing strategy for the day\", "
+        "\"hr_cap\": \"specific HR cap or %LTHR for the early hours\", "
+        "\"carb_load\": \"1-2 sentence pre-event carb-load note for this day\", "
+        "\"carbs_g_per_hr\": int, \"fluid_ml_per_hr\": int, \"sodium_mg_per_hr\": int, "
+        "\"brief\": \"one-sentence key reminder\"}",
+        "No extra text, no markdown fences.",
+        "",
+        "Days:",
+    ]
+    for cd in missing:
+        lines.append(f'Day {cd["day"]}: {cd["label"]} — {cd["km"]} km')
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        msg = client.messages.create(
+            model=MODEL_SMART,
+            max_tokens=2000,
+            system=(
+                "You are an experienced endurance cycling coach fuelling an amateur "
+                "through their first 2-day, 310 km charity ride. Be specific and practical."
+            ),
+            messages=[{"role": "user", "content": "\n".join(lines)}],
+        )
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]
+            raw = raw.rsplit("```", 1)[0].strip()
+        result: dict = _json.loads(raw)
+        for day_str, plan in result.items():
+            if not isinstance(plan, dict):
+                continue
+            try:
+                day = int(day_str)
+            except (TypeError, ValueError):
+                continue
+            set_cached_text(f"charity_day_plan_v1_{day}", _json.dumps(plan))
+            plans[day] = plan
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Charity day plan generation failed: %s", exc)
+        set_cached_text(_FAIL_KEY, (datetime.now() + timedelta(hours=1)).isoformat())
 
     return plans

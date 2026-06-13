@@ -13,6 +13,7 @@ from datetime import date
 from typing import Optional
 
 from .history import get_plan_override, raw_history
+from .hr_plan import hr_session_for_date
 from .metrics import DailyMetrics
 from .plan import session_for_date_extended
 
@@ -26,6 +27,19 @@ EASIER_VARIANT: dict[str, tuple[str, str]] = {
     "ruck":     ("ruck", "Easy Walk (no load)"),
 }
 
+# Haute Route plan equivalent — kept separate so swaps stay within the HR
+# plan's type/label vocabulary (hr_calendar.html colours and modals key off
+# them). recovery/gym are deliberately absent: already easy, pill only.
+HR_EASIER_VARIANT: dict[str, tuple[str, str]] = {
+    "ftp":          ("endurance", "Z2 Endurance"),
+    "tempo":        ("endurance", "Z2 Endurance"),
+    "vo2":          ("endurance", "Z2 Endurance"),
+    "sweetspot":    ("endurance", "Z2 Endurance"),
+    "endurance":    ("endurance", "Z2 Easy"),
+    "long":         ("long", "Long Ride (Easy)"),
+    "back_to_back": ("long", "Long Ride (Easy)"),
+}
+
 
 def hrv_traffic_light(m: DailyMetrics, comp_z: Optional[float]) -> dict:
     """Classify today's readiness as green / amber / red / unknown.
@@ -34,8 +48,13 @@ def hrv_traffic_light(m: DailyMetrics, comp_z: Optional[float]) -> dict:
     with the 7-day vs 30-day mean ratio as a secondary chronic-suppression
     signal, and the composite readiness z as a backstop.
     """
+    # Exclude the row for m's own date from the baseline (when present) rather
+    # than blindly dropping the last row — before the watch syncs, the last DB
+    # row is yesterday and must stay in the baseline.
+    today_iso = m.date.isoformat() if m.date else None
     rows = raw_history(31)
-    baseline = [r["hrv_last_night"] for r in rows[:-1] if r["hrv_last_night"] is not None]
+    baseline = [r["hrv_last_night"] for r in rows
+                if r.get("date") != today_iso and r["hrv_last_night"] is not None]
     hrv_today = m.hrv_last_night
 
     hrv_z = None
@@ -92,6 +111,10 @@ def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
     base = {"light": light, "date": target.isoformat()}
 
     sess = session_for_date_extended(target)
+    hr_day = False
+    if sess is None:
+        sess = hr_session_for_date(target)
+        hr_day = sess is not None
     if sess is None or sess[0] == "rest":
         return base if status in ("amber", "red") else None  # show pill, no swap
     if get_plan_override(target.isoformat()):
@@ -101,14 +124,14 @@ def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
 
     if status == "red":
         base.update({
-            "session_type": "bike",
+            "session_type": "recovery" if hr_day else "bike",
             "label": "Recovery Spin",
             "duration_min": 30,
             "headline": "Red day — swap to recovery",
         })
         return base
     if status == "amber":
-        variant = EASIER_VARIANT.get(stype)
+        variant = (HR_EASIER_VARIANT if hr_day else EASIER_VARIANT).get(stype)
         if variant is None or (variant[0] == stype and variant[1] == label):
             return base  # already easy — show pill only, no swap
         base.update({

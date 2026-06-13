@@ -27,6 +27,7 @@ from .history import (
     z_score,
 )
 from .metrics import DailyMetrics
+from .llm import MODEL_FAST, MODEL_SMART
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
 
@@ -99,7 +100,7 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
 
     try:
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=400,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
@@ -445,9 +446,16 @@ def send_email(html: str, subject: str, to_addr: str, from_addr: str, app_passwo
     msg["To"] = to_addr
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(from_addr, app_password)
-        server.sendmail(from_addr, to_addr, msg.as_string())
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(from_addr, app_password)
+            server.sendmail(from_addr, to_addr, msg.as_string())
+    except smtplib.SMTPAuthenticationError as exc:
+        raise RuntimeError(
+            "Gmail rejected the login — check GMAIL_ADDRESS/GMAIL_APP_PASSWORD"
+        ) from exc
+    except (smtplib.SMTPException, OSError) as exc:
+        raise RuntimeError(f"Failed to send email via Gmail SMTP: {exc}") from exc
 
 
 def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
@@ -641,7 +649,7 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=320,
             system=(
                 "You are an experienced endurance coach reviewing an athlete's training load and recovery data. "
@@ -690,7 +698,7 @@ def generate_pmc_explainer() -> str:
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=600,
             system=(
                 "You are a knowledgeable endurance coach writing a concise reference guide "
@@ -743,7 +751,7 @@ def generate_dashboard_explainer() -> str:
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=800,
             system=(
                 "You are a knowledgeable endurance coach writing a concise reference guide "
@@ -844,7 +852,7 @@ def generate_sleep_analysis(data: list[dict], avgs_7: dict, avgs_30: dict) -> st
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=400,
             system=(
                 "You are an experienced endurance coach reviewing an athlete's 30-night sleep data. "
@@ -1060,7 +1068,7 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=300,
             system=(
                 "You are a concise endurance coach writing a Monday morning briefing for an amateur "
@@ -1093,7 +1101,7 @@ def generate_body_analysis(body_rows: list[dict], latest: dict, pmc_today: dict,
     client = anthropic.Anthropic(api_key=api_key)
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=450,
             system=(
                 "You are an experienced endurance coach and sports nutritionist reviewing an athlete's "

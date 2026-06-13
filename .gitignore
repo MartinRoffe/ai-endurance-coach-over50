@@ -8,3 +8,6 @@ build/
 .claude/
 *.json
 .aider*
+.DS_Store
+.cursor/
+${HOME}/

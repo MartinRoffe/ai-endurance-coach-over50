@@ -95,7 +95,9 @@ def check_fatigue_alerts(today: date) -> list[dict]:
     #    stress as fallback), degraded sleep. Distinct from fatigue: the
     #    intervention is full rest, not just easier training.
     rows31 = raw_history(31)
-    if rows31:
+    # Only evaluate when the latest row really is `today` — before the watch
+    # syncs, rows31[-1] is yesterday and we'd report stale values as today's.
+    if rows31 and rows31[-1].get("date") == today.isoformat():
         hrv_z = _signal_z(rows31, "hrv_last_night")
         rhr_z = _signal_z(rows31, "resting_hr")
         if rhr_z is None:

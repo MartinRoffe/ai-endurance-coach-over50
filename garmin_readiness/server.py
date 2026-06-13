@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 import threading
@@ -15,7 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .alerts import check_fatigue_alerts
 from .analysis import generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, retrieve_relevant_analyses
@@ -80,11 +81,18 @@ from .history import (
     set_cached_text,
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS
+from .llm import MODEL_FAST, MODEL_SMART
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+# In-process AI-text caches. Routes are plain `def` (threadpool workers), so
+# guard check-and-generate with a lock — also stops two concurrent page loads
+# firing duplicate billable Claude calls for the same date.
 _advice_cache: dict[str, str] = {}
 _pmc_cache: dict[str, str] = {}
+_ai_cache_lock = threading.Lock()
 
 _BIKE_TYPE_KEYS = {"road_biking", "cycling", "virtual_ride", "indoor_cycling", "mountain_biking"}
 _HARD_LABELS = {"Tempo Intervals", "FTP Test", "FTP Re-test"}
@@ -254,11 +262,6 @@ def _activity_context_blurb(activities: list[dict]) -> str:
     if n == 1:
         return f"1 workout in last 7 days · latest: {title}{tail}"
     return f"{n} workouts in last 7 days · latest: {title}{tail}"
-    if z >= 0.5:
-        return "text-emerald-400"
-    if z <= -0.5:
-        return "text-red-400"
-    return "text-yellow-400"
 
 
 def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
@@ -353,12 +356,14 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
 
     date_key = target.isoformat()
-    if force_fetch:
-        # Pop in-process cache so advice is re-read from SQLite, but keep the
-        # SQLite row — re-generating advice on every refresh causes inconsistency.
-        _advice_cache.pop(date_key, None)
-    if date_key not in _advice_cache:
-        _advice_cache[date_key] = generate_advice(m, stats, comp_z)
+    with _ai_cache_lock:
+        if force_fetch:
+            # Pop in-process cache so advice is re-read from SQLite, but keep the
+            # SQLite row — re-generating advice on every refresh causes inconsistency.
+            _advice_cache.pop(date_key, None)
+        if date_key not in _advice_cache:
+            _advice_cache[date_key] = generate_advice(m, stats, comp_z)
+        advice_text = _advice_cache[date_key]
 
     # Today's planned session
     _SESSION_ICONS = {
@@ -506,7 +511,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "activities": activities,
         "trend_note": seven_day_composite_trend_csv(),
         "activity_blurb": _activity_context_blurb(activities),
-        "advice": _advice_cache[date_key],
+        "advice": advice_text,
         "week_summary": _ws,
         "metric_explainer": generate_dashboard_explainer(),
         "sparklines": sparklines,
@@ -524,7 +529,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] = None,
+def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] = None,
                     n: Optional[int] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     ctx = _build_context(target)
@@ -534,7 +539,7 @@ async def dashboard(request: Request, date: Optional[str] = None, msg: Optional[
 
 
 @app.get("/send-email", response_class=RedirectResponse)
-async def send_email_now():
+def send_email_now():
     from pathlib import Path
     today = _today()
     sentinel = Path.home() / ".garmin_readiness" / f"sent_{today.isoformat()}"
@@ -559,12 +564,15 @@ async def send_email_now():
     if m is None or (m.sleep_score is None and m.body_battery_morning is None):
         return RedirectResponse(url="/?msg=no_data", status_code=303)
 
+    # Sentinel before send: a crash after SMTP delivery must not allow a
+    # duplicate; on a clean failure the sentinel is removed so retry works.
+    sentinel.touch()
     try:
         from .report import run_report
         run_report(m, dry_run=False)
-        sentinel.touch()
         return RedirectResponse(url="/?msg=sent", status_code=303)
     except Exception as e:
+        sentinel.unlink(missing_ok=True)
         logger.error("send-email failed: %s", e)
         return RedirectResponse(url="/?msg=error", status_code=303)
 
@@ -646,7 +654,7 @@ def _merge_compound_activities(activities: list[dict]) -> list[dict]:
 
 
 @app.get("/analysis", response_class=HTMLResponse)
-async def analysis_view(request: Request):
+def analysis_view(request: Request):
     activities_raw = load_recent_activities(days=14)
     activities = load_analyses_for_activities(
         [enrich_activity(a) for a in activities_raw]
@@ -699,16 +707,28 @@ async def log_rpe_endpoint(request: Request, _=Depends(_require_auth)):
     return JSONResponse({"ok": True})
 
 
+class _FuellingLogRequest(BaseModel):
+    date: str
+    activity_id: Optional[int] = None
+    planned_carbs_g_per_hr: Optional[float] = Field(None, ge=0, le=300)
+    actual_carbs_g_per_hr: Optional[float] = Field(None, ge=0, le=300)
+    fluid_ok: bool = False
+    note: Optional[str] = None
+
+
 @app.post("/log-fuelling")
-async def log_fuelling_endpoint(request: Request, _=Depends(_require_auth)):
-    body = await request.json()
+async def log_fuelling_endpoint(body: _FuellingLogRequest, _=Depends(_require_auth)):
+    try:
+        date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be YYYY-MM-DD")
     save_fuelling_log(
-        body["date"],
-        body.get("activity_id"),
-        body.get("planned_carbs_g_per_hr"),
-        body.get("actual_carbs_g_per_hr"),
-        bool(body.get("fluid_ok")),
-        body.get("note"),
+        body.date,
+        body.activity_id,
+        body.planned_carbs_g_per_hr,
+        body.actual_carbs_g_per_hr,
+        body.fluid_ok,
+        body.note,
     )
     return JSONResponse({"ok": True})
 
@@ -731,7 +751,7 @@ async def btb_summary_view(_=Depends(_require_auth)):
 
 
 @app.get("/analysis-refresh", response_class=RedirectResponse)
-async def analysis_refresh():
+def analysis_refresh():
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
     if email_addr and password:
@@ -756,11 +776,13 @@ async def performance_view(request: Request):
     history = pmc_history(days=90)
     today_entry = history[-1] if history else {}
     date_key = date.today().isoformat()
-    if date_key not in _pmc_cache:
-        m_today = load(date.today()) or DailyMetrics(date=date.today())
-        stats_today = baseline_stats(date.today())
-        comp_z_today = composite_score(m_today, stats_today)
-        _pmc_cache[date_key] = generate_pmc_analysis(history, m_today, comp_z_today)
+    with _ai_cache_lock:
+        if date_key not in _pmc_cache:
+            m_today = load(date.today()) or DailyMetrics(date=date.today())
+            stats_today = baseline_stats(date.today())
+            comp_z_today = composite_score(m_today, stats_today)
+            _pmc_cache[date_key] = generate_pmc_analysis(history, m_today, comp_z_today)
+        pmc_analysis_text = _pmc_cache[date_key]
 
     plan_acts = load_activities_by_date(_PLAN_START, date.today())
     z2_points: list[dict] = []
@@ -863,7 +885,7 @@ async def performance_view(request: Request):
         context={
             "history": history,
             "today": today_entry,
-            "pmc_analysis": _pmc_cache[date_key],
+            "pmc_analysis": pmc_analysis_text,
             "pmc_explainer": generate_pmc_explainer(),
             "z2_points": z2_points,
             "z2_trend_line": z2_trend_line,
@@ -1289,6 +1311,20 @@ async def calendar_view(request: Request):
         unified.append({**w, "phase": "event_prep", "phase_start": i == 0})
     ctx["unified_weeks"] = unified
 
+    # Per-day pacing & fuelling plans for the two charity-ride days (AI, cached).
+    charity_plans: list[dict] = []
+    try:
+        from .analysis import generate_charity_day_plans
+        from .plan import CHARITY_DAYS
+        plans = generate_charity_day_plans()
+        for cd in CHARITY_DAYS:
+            plan = plans.get(cd["day"])
+            if plan:
+                charity_plans.append({**cd, "plan": plan})
+    except Exception:
+        pass
+    ctx["charity_plans"] = charity_plans
+
     return TEMPLATES.TemplateResponse(request=request, name="calendar.html", context=ctx)
 
 
@@ -1477,7 +1513,7 @@ async def tenerife_view(request: Request):
 
 
 @app.get("/haute-route", response_class=HTMLResponse)
-async def haute_route_view(request: Request):
+def haute_route_view(request: Request):
     today = date.today()
     history = pmc_history(days=1)
     today_pmc = history[-1] if history else {}
@@ -1756,7 +1792,7 @@ async def body_view(request: Request, msg: Optional[str] = None):
 
 
 @app.get("/body-refresh", response_class=RedirectResponse)
-async def body_refresh():
+def body_refresh():
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
     if email_addr and password:
@@ -1774,7 +1810,7 @@ async def body_refresh():
 
 
 @app.get("/withings-sync", response_class=RedirectResponse)
-async def withings_sync():
+def withings_sync():
     """Push Withings measurements to Garmin Connect, then refresh body data from Garmin."""
     email_addr = os.getenv("GARMIN_EMAIL", "")
     password = os.getenv("GARMIN_PASSWORD", "")
@@ -1829,7 +1865,7 @@ async def sleep_view(request: Request):
 
 
 @app.get("/nutrition-test")
-async def nutrition_test():
+def nutrition_test():
     """Debug endpoint: return raw Garmin nutrition API responses for today."""
     import json as _json
     email_addr = os.getenv("GARMIN_EMAIL", "")
@@ -1854,7 +1890,7 @@ async def nutrition_test():
 
 
 @app.get("/refresh", response_class=RedirectResponse)
-async def refresh(date: Optional[str] = None):
+def refresh(date: Optional[str] = None):
     target = date_fromisoformat_safe(date) if date else _today()
     _build_context(target, force_fetch=True)
     redirect_url = f"/?date={target.isoformat()}"
@@ -1862,7 +1898,7 @@ async def refresh(date: Optional[str] = None):
 
 
 @app.get("/recovery-suggestion")
-async def recovery_suggestion_view(date: Optional[str] = None):
+def recovery_suggestion_view(date: Optional[str] = None):
     if not date:
         raise HTTPException(status_code=400, detail="date parameter required")
     target = date_fromisoformat_safe(date)
@@ -1944,6 +1980,9 @@ def _build_coach_context() -> str:
     m = load(today) or DailyMetrics(date=today)
     stats = baseline_stats(today)
     comp_z = composite_score(m, stats)
+    from .modulation import hrv_traffic_light, session_modulation
+    traffic_light = hrv_traffic_light(m, comp_z)
+    modulation = session_modulation(today, m, comp_z, light=traffic_light)
 
     # Show all remaining sessions across the full plan + Tenerife camp + event prep.
     upcoming_lines = []
@@ -1997,6 +2036,25 @@ def _build_coach_context() -> str:
                 f"  {ep['date'].strftime('%a %d %b')} ({ep['date'].isoformat()}): "
                 f"{ep['label']} ({ep['dur_min']}min) [{ep['type']}]"
             )
+
+    # Haute Route 46-week plan (Oct 2026 – Aug 2027): show next 8 weeks of sessions
+    from .hr_plan import HR_PLAN_START as _HR_START, hr_session_for_date as _hr_sess
+    if today >= _HR_START or (_HR_START - today).days <= 56:
+        hr_upcoming: list[str] = []
+        for i in range(56):
+            d = today + timedelta(days=i)
+            sess = _hr_sess(d)
+            if sess is None:
+                continue
+            stype, label, dur = sess
+            if stype == "rest":
+                continue
+            hr_upcoming.append(
+                f"  {d.strftime('%a %d %b')} ({d.isoformat()}): {label} ({dur}min) [{stype}]"
+            )
+        if hr_upcoming:
+            upcoming_lines.append("  --- Haute Route 2027 Plan (next 8 weeks) ---")
+            upcoming_lines.extend(hr_upcoming)
 
     recent_acts = load_recent_activities(days=14)
     act_lines = []
@@ -2133,6 +2191,133 @@ def _build_coach_context() -> str:
                 f"Day 2: {pair['date2']} ({d2_parts or 'no data'})"
             )
 
+    # Sleep history (7-day pattern with stage breakdown)
+    sleep_history_rows = raw_history(8)
+    sleep_parts: list[str] = []
+    sleep_hist_lines: list[str] = []
+    for r in sleep_history_rows:
+        if r.get("sleep_score") is None:
+            continue
+        score = int(r["sleep_score"])
+        total_h = round((r.get("sleep_seconds") or 0) / 3600, 1)
+        deep_m  = int((r.get("deep_sleep_seconds")  or 0) / 60)
+        rem_m   = int((r.get("rem_sleep_seconds")   or 0) / 60)
+        light_m = int((r.get("light_sleep_seconds") or 0) / 60)
+        stage_str = f"deep {deep_m}m / REM {rem_m}m / light {light_m}m" if deep_m or rem_m else ""
+        line = f"  {r['date']}: score {score}  {total_h}h total"
+        if stage_str:
+            line += f"  ({stage_str})"
+        sleep_hist_lines.append(line)
+    if sleep_hist_lines:
+        sleep_parts = ["## Sleep History (last 7 days)", *sleep_hist_lines]
+
+    # Fatigue alerts
+    alert_parts: list[str] = []
+    try:
+        alerts = check_fatigue_alerts(today)
+        if alerts:
+            alert_parts = ["## Active Fatigue Alerts"]
+            for a in alerts:
+                alert_parts.append(f"  [{a['severity']}] {a['type']}: {a['message']}")
+    except Exception:
+        pass
+
+    # HRV traffic light + modulation
+    tl_parts: list[str] = []
+    tl_status = traffic_light.get("status", "unknown")
+    tl_reason = traffic_light.get("reason", "")
+    hrv_z_str = f"z={traffic_light['hrv_z']:+.2f}" if traffic_light.get("hrv_z") is not None else ""
+    tl_parts = [
+        "## HRV Traffic Light",
+        f"  Status: {tl_status.upper()}  {hrv_z_str}  — {tl_reason}",
+    ]
+    if modulation and modulation.get("label"):
+        tl_parts.append(
+            f"  Suggested swap: {modulation['planned_label']} → {modulation['label']} "
+            f"({modulation['duration_min']}min) — {modulation.get('headline', '')}"
+        )
+
+    # FTP test history
+    ftp_parts: list[str] = []
+    ftp_rows = load_ftp_tests()
+    if ftp_rows:
+        ftp_parts = ["## FTP Test History (LTHR)"]
+        for r in ftp_rows[-4:]:
+            ftp_parts.append(
+                f"  {r['date']}: LTHR {r['ftp_hr']}bpm"
+                + (f" (max {r['ftp_hr_max']}bpm)" if r.get("ftp_hr_max") else "")
+            )
+
+    # Durability drift (late-ride HR drift, last 5 rides ≥ 90 min)
+    dur_parts: list[str] = []
+    dur_rows = load_durability(90)
+    if dur_rows:
+        dur_parts = ["## Durability (late-ride HR drift, rides ≥ 90 min)"]
+        for r in dur_rows[-5:]:
+            dur_parts.append(
+                f"  {r['date']}: first-third HR {r['first_third_hr']:.0f}bpm "
+                f"→ final-third {r['final_third_hr']:.0f}bpm  drift {r['drift_pct']:+.1f}%"
+            )
+
+    # Foster monotony / strain (last 6 weeks)
+    monotony_parts: list[str] = []
+    try:
+        mono_rows = weekly_monotony_strain(6)
+        if mono_rows:
+            monotony_parts = ["## Training Monotony & Strain (Foster, last 6 weeks)"]
+            for r in mono_rows:
+                mono_str = f"{r['monotony']:.2f}" if r.get("monotony") is not None else "—"
+                strain_str = f"{r['strain']:.0f}" if r.get("strain") is not None else "—"
+                monotony_parts.append(
+                    f"  {r['week_label']}: load {r['weekly_load']:.0f}  monotony {mono_str}  strain {strain_str}"
+                )
+    except Exception:
+        pass
+
+    # Blood pressure (latest)
+    bp_parts: list[str] = []
+    bp_rows = load_blood_pressure(90)
+    if bp_rows:
+        bp = bp_rows[-1]
+        bp_parts = [
+            "## Blood Pressure (latest)",
+            f"  {bp['date']}: {bp.get('systolic')}/{bp.get('diastolic')} mmHg  "
+            f"pulse {bp.get('pulse')}bpm"
+        ]
+
+    # Estimated W/kg (no power meter)
+    wkg_parts: list[str] = []
+    wkg = latest_estimated_wkg()
+    if wkg:
+        wkg_parts = [
+            "## Estimated FTP / W/kg (ACSM formula, no power meter)",
+            f"  {wkg['date']}: VO2max {wkg['vo2_max']} ml/kg/min  "
+            f"est. FTP {wkg['est_ftp_w']:.0f}W  {wkg['wkg']:.2f} W/kg  "
+            f"(weight {wkg['weight_kg']:.1f} kg)"
+        ]
+
+    # Plan compliance summary (12-week plan)
+    compliance_parts: list[str] = []
+    try:
+        comp_stats = _plan_completion_stats()
+        total_p = comp_stats.get("total_plan_sessions", 0)
+        total_d = comp_stats.get("total_done_sessions", 0)
+        total_pm = comp_stats.get("total_plan_min", 0)
+        total_dm = comp_stats.get("total_done_min", 0)
+        if total_p:
+            pct = int(total_d / total_p * 100)
+            compliance_parts = [
+                "## Plan Compliance (12-week plan, elapsed weeks)",
+                f"  Sessions: {total_d}/{total_p} ({pct}%)  |  "
+                f"Volume: {total_dm//60}h{total_dm%60:02d}m of {total_pm//60}h{total_pm%60:02d}m planned",
+            ]
+    except Exception:
+        pass
+
+    # Nutrition plan — today's prescribed meals
+    from .nutrition_plan import nutrition_coach_context
+    nutrition_ctx = nutrition_coach_context(_PLAN_START, today)
+
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
         "",
@@ -2141,9 +2326,21 @@ def _build_coach_context() -> str:
         "",
         "## Today's Readiness",
         f"Composite z-score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'n/a'}",
-        f"HRV: {m.hrv_last_night}  |  Sleep score: {m.sleep_score}  |  Body battery (AM): {m.body_battery_morning}  |  Avg stress: {m.avg_stress}",
+        f"HRV: {m.hrv_last_night}  |  Sleep score: {m.sleep_score}  |  Body battery (AM): {m.body_battery_morning}  "
+        f"|  Avg stress: {m.avg_stress}  |  Resting HR: {m.resting_hr}  |  VO2max: {m.vo2_max}",
+        *tl_parts,
         "",
+        *([*alert_parts, ""] if alert_parts else []),
+        *([*sleep_parts, ""] if sleep_parts else []),
         *body_parts,
+        *([*bp_parts, ""] if bp_parts else []),
+        *([*wkg_parts, ""] if wkg_parts else []),
+        *([*ftp_parts, ""] if ftp_parts else []),
+        *([*dur_parts, ""] if dur_parts else []),
+        *([*monotony_parts, ""] if monotony_parts else []),
+        *([*compliance_parts, ""] if compliance_parts else []),
+        nutrition_ctx,
+        "",
         "## Upcoming Plan Sessions (full remaining plan)",
         *upcoming_lines,
         "",
@@ -2208,7 +2405,7 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]
 
     client = _anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model=MODEL_SMART,
         max_tokens=800,
         system=system,
         tools=[_COACH_TOOL],
@@ -2239,7 +2436,7 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]
             },
         ]
         response2 = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=300,
             system=system,
             tools=[_COACH_TOOL],
@@ -2336,7 +2533,7 @@ def _regenerate_coach_memory(api_key: str) -> None:
     try:
         client = _anthropic.Anthropic(api_key=api_key)
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODEL_FAST,
             max_tokens=400,
             system="You are maintaining a compact coaching notes file. Be specific and concise.",
             messages=[{"role": "user", "content": prompt}],
@@ -2369,7 +2566,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
 
     try:
         with client.messages.stream(
-            model="claude-sonnet-4-6",
+            model=MODEL_SMART,
             max_tokens=800,
             system=system,
             tools=[_COACH_TOOL],
@@ -2392,7 +2589,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
                 {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_call.id, "content": "Proposal ready for athlete confirmation."}]},
             ]
             with client.messages.stream(
-                model="claude-sonnet-4-6",
+                model=MODEL_SMART,
                 max_tokens=300,
                 system=system,
                 tools=[_COACH_TOOL],
@@ -2419,8 +2616,10 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
         save_coach_message("assistant", full_reply, json.dumps(proposal) if proposal else None)
         _maybe_update_memo_bg(api_key)
 
-    except Exception as exc:
-        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+    except Exception:
+        # Don't leak raw exception text (may contain key/account details)
+        logger.exception("coach-chat-stream failed")
+        yield f"data: {json.dumps({'type': 'error', 'message': 'Coach is temporarily unavailable — check the server logs.'})}\n\n"
 
     yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
@@ -2462,12 +2661,17 @@ async def delete_coach_history_endpoint():
     return JSONResponse({"ok": True})
 
 
+_VALID_SESSION_TYPES = {"bike", "ftp", "long", "rest", "ruck", "strength", "tempo",
+                        # Haute Route plan vocabulary (hr_plan.py)
+                        "endurance", "recovery", "vo2", "sweetspot", "gym", "back_to_back"}
+
+
 class _ApplyChangeRequest(BaseModel):
     date: str
-    duration_min: int
-    reason: str = ""
+    duration_min: int = Field(..., gt=0, le=600)
+    reason: str = Field("", max_length=500)
     session_type: Optional[str] = None  # if provided, overrides the plan session type
-    label: Optional[str] = None         # if provided, overrides the plan session label
+    label: Optional[str] = Field(None, max_length=100)  # overrides the plan session label
 
 
 @app.post("/apply-plan-change")
@@ -2476,8 +2680,12 @@ async def apply_plan_change(body: _ApplyChangeRequest):
         d = date.fromisoformat(body.date)
     except ValueError:
         raise HTTPException(status_code=422, detail="Invalid date format")
+    if body.session_type is not None and body.session_type not in _VALID_SESSION_TYPES:
+        raise HTTPException(status_code=422, detail=f"Unknown session_type '{body.session_type}'")
 
-    sess = session_for_date(d)
+    from .hr_plan import hr_session_for_date
+    from .plan import session_for_date_extended
+    sess = session_for_date_extended(d) or hr_session_for_date(d)
     if not sess:
         raise HTTPException(status_code=404, detail="No plan session on that date")
 
@@ -2488,7 +2696,7 @@ async def apply_plan_change(body: _ApplyChangeRequest):
 
 
 @app.post("/regenerate-advice")
-async def regenerate_advice_endpoint():
+def regenerate_advice_endpoint():
     today = _today()
     delete_advice(today)
     ctx = _build_context(today, force_fetch=True)
@@ -2496,7 +2704,7 @@ async def regenerate_advice_endpoint():
 
 
 @app.post("/regenerate-body-advice")
-async def regenerate_body_advice_endpoint():
+def regenerate_body_advice_endpoint():
     set_cached_text(f"body_analysis_v1_{_today().isoformat()}", "")
     ctx = _body_context()
     return JSONResponse({"analysis": ctx["body_analysis"]})

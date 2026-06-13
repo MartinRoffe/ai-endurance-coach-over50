@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import Any
 
 from garminconnect.workout import (
+    BaseWorkout,
     CyclingWorkout,
     FitnessEquipmentWorkout,
     HikingWorkout,
@@ -30,6 +31,7 @@ from .plan import (
 _SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
 _FE_SPORT     = {"sportTypeId": SportType.FITNESS_EQUIPMENT, "sportTypeKey": "fitness_equipment",  "displayOrder": 6}
 _HIKE_SPORT   = {"sportTypeId": SportType.HIKING,            "sportTypeKey": "hiking",             "displayOrder": 7}
+_CARDIO_SPORT = {"sportTypeId": 11,                          "sportTypeKey": "cardio",             "displayOrder": 11}
 
 _BIKE_TYPES         = {"bike", "tempo", "ftp", "long"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
@@ -109,13 +111,13 @@ def _make_fe(name: str, steps: list, dur_min: int) -> FitnessEquipmentWorkout:
     )
 
 
-def _make_cardio(name: str, steps: list, dur_min: int) -> CyclingWorkout:
-    """Use cycling sport type for MaxiClimber — Garmin's only reliably cardio type with
-    full structured-workout support (warmup/repeat-group/cooldown + HR zone targets)."""
-    return CyclingWorkout(
+def _make_cardio(name: str, steps: list, dur_min: int) -> BaseWorkout:
+    """Cardio sport type for MaxiClimber — matches stair stepper activity profile on watch."""
+    return BaseWorkout(
         workoutName=name,
         estimatedDurationInSecs=dur_min * 60,
-        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_SPORT, workoutSteps=steps)],
+        sportType=_CARDIO_SPORT,
+        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_CARDIO_SPORT, workoutSteps=steps)],
     )
 
 
@@ -289,7 +291,9 @@ def _z2_ride(dur_min: int) -> CyclingWorkout:
 
 
 def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
-    # 10m warmup + 5×(6m 60-70rpm Z3 + 3m Z1) + 25m Z2 + 10m cooldown = 90m
+    # 10m warmup + 5×(6m 60-70rpm Z3 + 3m Z1) + Z2 filler + 10m cooldown.
+    # The Z2 block absorbs the remaining time so total matches dur_min
+    # (25m at the standard 90m).
     steps: list = [create_warmup_step(600.0, step_order=1)]
     o = 2
     for _ in range(5):
@@ -297,8 +301,10 @@ def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
         o += 1
         steps.append(_recovery(o, 180, _hr_zone_target(), 1, 1))
         o += 1
-    steps.append(_interval(o, 1500, _hr_zone_target(), 2, 2))
-    o += 1
+    z2_secs = max(0, (dur_min - 65) * 60)
+    if z2_secs:
+        steps.append(_interval(o, z2_secs, _hr_zone_target(), 2, 2))
+        o += 1
     steps.append(create_cooldown_step(600.0, step_order=o))
     return _make(f"Low Cadence Ride {dur_min}m", steps, dur_min)
 
@@ -651,12 +657,28 @@ def _delete_existing_plan_workouts(api: Any, dry_run: bool = False) -> None:
         print(f"  {deleted} existing plan workout(s) removed")
 
 
+def _schedule_dates(api: Any, workout_id: Any, dates: list[str],
+                    summary: dict, failed: list[tuple[Any, str]]) -> None:
+    for date_str in dates:
+        try:
+            api.schedule_workout(workout_id, date_str)
+            summary["scheduled"] += 1
+            print(f"    scheduled {date_str}")
+        except Exception as exc:
+            failed.append((workout_id, date_str))
+            print(f"    [error] schedule {date_str}: {exc}")
+
+
 def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     """Delete stale plan workouts, upload fresh ones (override-aware), and schedule them.
 
-    Returns a summary dict: {templates, scheduled, errors}.
+    Schedule failures are retried once at the end; any dates still unscheduled
+    are returned in the summary so the caller knows a re-run is needed.
+
+    Returns a summary dict: {templates, scheduled, errors, failed_dates}.
     """
     _delete_existing_plan_workouts(api, dry_run=dry_run)
+    failed_schedules: list[tuple[Any, str]] = []
 
     # ── Cycling workouts ──────────────────────────────────────────────────────
     schedule = _workout_schedule()
@@ -693,14 +715,7 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
 
         summary["templates"] += 1
         print(f"  uploaded '{label}' {dur}m → id={workout_id}")
-        for date_str in dates:
-            try:
-                api.schedule_workout(workout_id, date_str)
-                summary["scheduled"] += 1
-                print(f"    scheduled {date_str}")
-            except Exception as exc:
-                summary["errors"] += 1
-                print(f"    [error] schedule {date_str}: {exc}")
+        _schedule_dates(api, workout_id, dates, summary, failed_schedules)
 
     # ── Strength & ruck workouts ──────────────────────────────────────────────
     sr_schedule = _workout_schedule_strength_ruck()
@@ -736,13 +751,25 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
 
         summary["templates"] += 1
         print(f"  uploaded '{wname}' → id={workout_id}")
-        for date_str in dates:
+        _schedule_dates(api, workout_id, dates, summary, failed_schedules)
+
+    # Retry failed schedules once (transient API errors are common), then
+    # surface anything still missing so the caller knows to re-run.
+    still_failed: list[str] = []
+    if failed_schedules:
+        print(f"\nRetrying {len(failed_schedules)} failed schedule(s)...")
+        for workout_id, date_str in failed_schedules:
             try:
                 api.schedule_workout(workout_id, date_str)
                 summary["scheduled"] += 1
-                print(f"    scheduled {date_str}")
+                print(f"  scheduled {date_str} (retry)")
             except Exception as exc:
                 summary["errors"] += 1
-                print(f"    [error] schedule {date_str}: {exc}")
+                still_failed.append(date_str)
+                print(f"  [error] schedule {date_str} failed again: {exc}")
+    summary["failed_dates"] = still_failed
+    if still_failed:
+        print(f"\n[warn] {len(still_failed)} date(s) left unscheduled: "
+              f"{', '.join(still_failed)} — re-run --workouts to fill the gaps")
 
     return summary
