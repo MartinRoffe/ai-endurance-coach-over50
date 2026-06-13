@@ -125,7 +125,7 @@ The streaming endpoint (`/coach-chat-stream`) uses `StreamingResponse` with a sy
 - **FTP retest** (`ftp_retest`) — fires when the last `ftp_tests` row is >42 days old (or table empty 3+ weeks into the plan, via `ftp_retest_due()`); scans the next 10 days for a tempo/ftp/bike slot and schedules an "FTP Re-test" override. Because "FTP Re-test" is in `_FTP_SESSION_LABELS`, the completed ride auto-populates `ftp_tests` and the card self-dismisses.
 - **Fatigue alerts** (existing list, now including ILLNESS_RISK and MONOTONY_HIGH).
 
-The Performance tab additionally renders: durability drift chart (`activity_durability`), estimated FTP/W-kg dual-axis chart (`estimated_wkg_history()`), Foster monotony/strain chart (`weekly_monotony_strain()`), heat/altitude acclimation tile (`acclimation_latest()`), and the taper scenario table. `/body` shows an "Est. W/kg" tile.
+The Performance tab additionally renders: durability drift chart (`activity_durability`), estimated FTP/W-kg dual-axis chart (`estimated_wkg_history()`), Foster monotony/strain chart (`weekly_monotony_strain()`), heat/altitude acclimation tile (`acclimation_latest()`), an HR-vs-power caveat note (the athlete trains on HR not power — zones drift with heat/fatigue/sleep/altitude and cardiac drift; the W/kg estimate is a coarse VO2max proxy, not measured power), and the taper scenario table. `/body` shows an "Est. W/kg" tile. The same HR caveat is in the coach system prompt (`_COACH_SYSTEM`).
 
 ## Configuration
 

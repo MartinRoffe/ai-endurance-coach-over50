@@ -196,15 +196,18 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("endurance", "Z2 Endurance",           60),
         ("long",      "Long Ride",             210),
     ],
-    # WK 16 — Build · 12 hrs (Jan 18)16
+    # WK 16 — Absorption · ~8.5 hrs (Jan 18)16
+    # Was a 3rd consecutive build week; softened to a reduced-load absorption week
+    # to give a masters-friendly 2:1 load:recovery rhythm (VO2 dropped to Z2, long
+    # ride and tempo trimmed). Lowers projected CTL here by design.
     [
         ("rest",      "Rest",                    0),
-        ("vo2",       "VO2 Intervals 5×3 min",  60),
-        ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Strength + Core",        60),
-        ("tempo",     "Tempo Intervals 3×20",  105),
         ("endurance", "Z2 Endurance",           60),
-        ("long",      "Long Ride",             240),
+        ("sweetspot", "Low Cadence Sweetspot",  60),
+        ("recovery",  "Strength + Core",        60),
+        ("tempo",     "Tempo Intervals 2×15",   75),
+        ("endurance", "Z2 Easy",                45),
+        ("long",      "Long Ride",             180),
     ],
     # WK 17 — Deload · 7 hrs (Jan 25)17
     [
@@ -236,15 +239,16 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("endurance", "Z2 Endurance",           75),
         ("long",      "Long Ride",             270),
     ],
-    # WK 20 — Build · 13 hrs (Feb 15)20
+    # WK 20 — Absorption · ~9 hrs (Feb 15)20
+    # 3rd consecutive build week softened to an absorption week (2:1 rhythm).
     [
         ("rest",      "Rest",                    0),
-        ("vo2",       "VO2 Intervals 6×3 min",  60),
-        ("sweetspot", "Low Cadence Sweetspot",  90),
+        ("endurance", "Z2 Endurance",           60),
+        ("sweetspot", "Low Cadence Sweetspot",  60),
         ("recovery",  "Strength + Core",        60),
-        ("tempo",     "Tempo Intervals 3×20",  105),
-        ("endurance", "Z2 Endurance",           75),
-        ("long",      "Long Ride",             300),
+        ("tempo",     "Tempo Intervals 2×15",   75),
+        ("endurance", "Z2 Easy",                45),
+        ("long",      "Long Ride",             210),
     ],
     # WK 21 — Deload + FTP Re-test · 8 hrs (Feb 22)21
     [
@@ -321,15 +325,18 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("back_to_back", "Back-to-Back Day 1",    240),
         ("back_to_back", "Back-to-Back Day 2",    180),
     ],
-    # WK 28 — Specific · 15 hrs (Apr 12)28
+    # WK 28 — Absorption · ~9.5 hrs (Apr 12)28
+    # 3rd consecutive specific-build week softened to an absorption week (2:1).
+    # Keeps a SHORTER back-to-back to retain multi-day specificity, drops the
+    # VO2 + under-overs to Z2, trims volume.
     [
         ("rest",         "Rest",                    0),
-        ("vo2",          "VO2 Intervals 5×4 min",  75),
-        ("sweetspot",    "Low Cadence Sweetspot",  90),
+        ("endurance",    "Z2 Endurance",           60),
+        ("sweetspot",    "Low Cadence Sweetspot",  75),
         ("recovery",     "Strength + Core",        60),
-        ("tempo",        "Under-Overs 3×10 min",  105),
-        ("back_to_back", "Back-to-Back Day 1",    270),
-        ("back_to_back", "Back-to-Back Day 2",    180),
+        ("endurance",    "Z2 Endurance",           75),
+        ("back_to_back", "Back-to-Back Day 1 (Easy)", 180),
+        ("back_to_back", "Back-to-Back Day 2 (Easy)", 120),
     ],
     # WK 29 — Deload · 9 hrs (Apr 19)29
     [
@@ -447,15 +454,19 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("back_to_back", "Simulation Day 2",      330),
         ("back_to_back", "Simulation Day 3",      240),
     ],
-    # WK 40 — Peak · 17 hrs (Jul 5)40
+    # WK 40 — Absorption · ~11 hrs (Jul 5)40
+    # Breaks up a 4-week unbroken peak stretch (wks 39–42, deloads only at 38/43):
+    # softened to an absorption week so there is real recovery BETWEEN the two
+    # 3-day simulation blocks (wk39 and wk42). Masters athletes can't absorb four
+    # consecutive peak weeks. Intensity dropped to Z2, sim block shortened.
     [
         ("rest",         "Rest",                    0),
-        ("tempo",        "Under-Overs 3×12 min",   90),
-        ("sweetspot",    "Low Cadence Sweetspot",  75),
+        ("recovery",     "Recovery Spin",          60),
+        ("endurance",    "Z2 Endurance",           75),
         ("recovery",     "Strength + Core",        60),
-        ("back_to_back", "Simulation Day 1",      360),
-        ("back_to_back", "Simulation Day 2",      330),
-        ("back_to_back", "Simulation Day 3",      240),
+        ("endurance",    "Z2 Endurance",           90),
+        ("long",         "Long Ride",             210),
+        ("long",         "Long Ride (Easy)",      150),
     ],
     # WK 41 — Peak + FTP Final Test · 13 hrs (Jul 12)41
     [
@@ -522,6 +533,33 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Travel — Nice",           0),
     ],
 ]
+
+
+def _destack_quality(weeks: list[list[tuple[str, str, int]]]) -> list[list[tuple[str, str, int]]]:
+    """Insert the mid-week recovery day BETWEEN two adjacent quality days.
+
+    The Build/Specific/Peak template runs Tue = hardest quality (VO2 or
+    under-overs), Wed = sweetspot, Thu = recovery (Strength + Core). That stacks
+    two quality days back-to-back — too much intensity density for a 50+ athlete.
+    Where that exact Tue-quality / Wed-sweetspot / Thu-recovery pattern occurs,
+    swap Wed and Thu so the hardest session (Tue) is flanked by Mon rest and Wed
+    recovery, and the two remaining quality days (Thu sweetspot, Fri tempo) are
+    the less-taxing ones.
+
+    Reordering only — weekly duration and per-type totals are unchanged, so
+    `_hr_ctl_projection` (which sums each week) is unaffected. Applied once to the
+    single source of truth so the calendar, session lookup and projection all see
+    the same order, and any future week matching the pattern is handled too.
+    """
+    QUALITY = {"vo2", "tempo"}
+    for wk in weeks:
+        if (len(wk) == 7 and wk[1][0] in QUALITY
+                and wk[2][0] == "sweetspot" and wk[3][0] == "recovery"):
+            wk[2], wk[3] = wk[3], wk[2]
+    return weeks
+
+
+HR_TRAINING_WEEKS = _destack_quality(HR_TRAINING_WEEKS)
 
 # ── Event stages ──────────────────────────────────────────────────────────────
 HR_EVENT_STAGES: list[dict] = [

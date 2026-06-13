@@ -964,10 +964,19 @@ def _load_nutrition_targets() -> dict[str, dict]:
     return {r["session_key"]: dict(r) for r in rows}
 
 
-def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dict]:
-    """Return {f"{type}_{dur}": {kcal, protein_g, carbs_g, fat_g, brief}} for every session."""
+def prefetch_nutrition_targets(sessions: list[tuple[str, int]], goal: str = "cut") -> dict[str, dict]:
+    """Return {f"{goal}_{type}_{dur}": {kcal, protein_g, carbs_g, fat_g, brief}} for every session.
+
+    `goal` switches the energy strategy and is part of the cache key so the two
+    training blocks never collide:
+      - "cut"     — Block A (12-week reset → Tenerife → charity ride): a
+                    lean-mass-sparing fat-loss deficit for a returning 50+ athlete
+                    with high body fat.
+      - "perform" — Block B (Haute Route build): energy balance, no deliberate
+                    deficit, key sessions fully fuelled.
+    """
     existing = _load_nutrition_targets()
-    missing = [(t, d) for t, d in sessions if f"{t}_{d}" not in existing]
+    missing = [(t, d) for t, d in sessions if f"{goal}_{t}_{d}" not in existing]
     if not missing:
         return existing
 
@@ -978,10 +987,32 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dic
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
 
+    from .history import latest_weight_kg
+    weight = latest_weight_kg()
+    weight_str = f"~{weight:.0f} kg body weight" if weight else "body weight unknown (assume ~90 kg)"
+
+    if goal == "perform":
+        goal_lines = [
+            "Goal: ENERGY BALANCE to support a demanding multi-day alpine build — no deliberate "
+            "deficit. Fully fuel the long and quality sessions; match intake to the day's load.",
+        ]
+    else:  # "cut"
+        goal_lines = [
+            "Goal: a MODERATE, LEAN-MASS-SPARING calorie deficit for steady fat loss (~0.5 kg/week) "
+            "in a returning 50+ athlete with high body fat — the deficit is safe here given ample fat "
+            "reserves. Keep protein high to protect muscle, concentrate carbohydrate around the long "
+            "ride and quality sessions so they are NOT under-fuelled, and take the deficit mainly from "
+            "rest/recovery days; keep the long-ride day close to energy balance.",
+        ]
+
+    from .nutrition_plan import protein_target_g
+    pt = protein_target_g()
+
     lines = [
-        "You are a sports nutritionist for a male athlete aged 50+, ~85 kg body weight.",
-        "Goal: support training performance AND maintain a small calorie deficit for ~0.5 kg/week weight loss.",
-        "Protein target: 160 g+ on every day.",
+        f"You are a sports nutritionist for a male athlete aged 50+, {weight_str}.",
+        *goal_lines,
+        f"Protein target: at least {pt['low']}–{pt['high']} g/day ({pt['basis']}) to preserve muscle; "
+        "distribute ~0.4 g/kg across 4+ meals plus a ~40 g pre-sleep casein/dairy dose.",
         "For each training session below provide TOTAL DAILY nutrition targets (all meals + snacks combined).",
         "Reply ONLY with valid JSON: a dict mapping session_key -> {\"kcal\": int, \"protein_g\": int, \"carbs_g\": int, \"fat_g\": int, \"brief\": \"one-sentence tip\"}",
         "No extra text, no markdown fences.",
@@ -990,7 +1021,7 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]]) -> dict[str, dic
     ]
     for stype, dur in missing:
         desc = _SESSION_TYPE_DESC.get(stype, stype)
-        key = f"{stype}_{dur}"
+        key = f"{goal}_{stype}_{dur}"
         dur_str = f"{dur} min" if dur > 0 else "no exercise"
         lines.append(f'"{key}": {desc}, {dur_str}')
 
@@ -1072,9 +1103,13 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
     Only generates for `_FUEL_TYPES` sessions ≥ `_FUEL_MIN_DURATION` minutes; shorter
     or non-endurance sessions don't need a structured in-ride plan. Mirrors the
     `prefetch_nutrition_targets` cache pattern (per session_key). Scales to rider
-    weight, falling back to 80 kg with a note when body-comp data is unavailable.
+    weight: uses the passed `weight_kg`, else the latest measured weight, else
+    falls back to 90 kg with a note when no body-comp data is available.
     """
-    weight = weight_kg or 80.0
+    if weight_kg is None:
+        from .history import latest_weight_kg
+        weight_kg = latest_weight_kg()
+    weight = weight_kg or 90.0
     weight_known = weight_kg is not None
 
     qualifying = [
@@ -1097,8 +1132,12 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
     lines = [
         f"You are a sports nutritionist planning IN-RIDE fuelling for a male cyclist, ~{weight_note}.",
         "These are targets for what to consume DURING the session itself (not daily meals).",
-        "Use evidence-based ranges: ~60 g carbs/hr for rides 1–2.5 h, up to ~90 g/hr for longer/harder; "
-        "500–750 ml fluid/hr; 300–700 mg sodium/hr depending on duration and intensity.",
+        "Use evidence-based ranges: ~60 g carbs/hr for rides 1–2.5 h, rising to 80–90 g/hr for "
+        "longer/harder rides (use a 1:0.8 glucose:fructose mix above ~60 g/hr to raise the "
+        "absorption ceiling); 500–750 ml fluid/hr; 300–700 mg sodium/hr depending on duration and "
+        "intensity. The gut is trainable — bias the longest sessions toward the high end so the "
+        "athlete rehearses event-day fuelling (90+ g/hr). Fuel these endurance sessions fully even "
+        "during a weight-loss block: the deficit belongs to rest days, not the key ride.",
         "For each session provide a short hour-by-hour timeline (e.g. '0–60min: 1 bottle + 1 gel; ...').",
         "Reply ONLY with valid JSON: a dict mapping session_key -> "
         "{\"carbs_g_per_hr\": int, \"total_carbs_g\": int, \"fluid_ml_per_hr\": int, "

@@ -1094,6 +1094,41 @@ def latest_estimated_wkg() -> Optional[dict]:
     return hist[-1] if hist else None
 
 
+# ── Latest bodyweight / lean mass (single source of truth for nutrition) ─────
+
+def latest_weight_kg() -> Optional[float]:
+    """Most recent measured bodyweight from body_metrics, or None if never logged."""
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        row = con.execute(
+            "SELECT weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    return float(row["weight_kg"]) if row and row["weight_kg"] is not None else None
+
+
+def latest_lean_mass_kg() -> Optional[float]:
+    """Most recent lean (fat-free) mass.
+
+    Prefers the device's `muscle_mass_kg`; otherwise derives it from the most
+    recent reading that has both weight and fat %, as weight × (1 − fat%/100).
+    Returns None when neither is available.
+    """
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        row = con.execute(
+            "SELECT muscle_mass_kg FROM body_metrics WHERE muscle_mass_kg IS NOT NULL ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if row and row["muscle_mass_kg"] is not None:
+            return float(row["muscle_mass_kg"])
+        row = con.execute(
+            "SELECT weight_kg, fat_pct FROM body_metrics "
+            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    if row and row["weight_kg"] is not None and row["fat_pct"] is not None:
+        return round(float(row["weight_kg"]) * (1.0 - float(row["fat_pct"]) / 100.0), 1)
+    return None
+
+
 # ── Heat / altitude acclimation ──────────────────────────────────────────────
 
 def acclimation_latest() -> Optional[dict]:
