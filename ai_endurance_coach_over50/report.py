@@ -1062,6 +1062,8 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
         "(b) The KEY session of this week and WHY it matters for the event block.\n"
         "(c) ONE execution focus cue for the hardest session.\n"
         "(d) A ONE sentence pacing note for any hard/tempo/FTP session.\n\n"
+        "The athlete trains and races on HEART RATE — no power meter. Cue every effort "
+        "in terms of HR zones / RPE / perceived effort, NEVER watts or power targets.\n"
         "Be specific and reference actual numbers. Under 120 words total. Plain text, no bullets."
     )
 
@@ -1072,7 +1074,8 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
             max_tokens=300,
             system=(
                 "You are a concise endurance coach writing a Monday morning briefing for an amateur "
-                "cyclist. Be specific, actionable, and direct."
+                "cyclist who trains on heart rate (no power meter). Be specific, actionable, and "
+                "direct. Express all intensity cues as HR zones / RPE, never watts."
             ),
             messages=[{"role": "user", "content": prompt}],
         )
