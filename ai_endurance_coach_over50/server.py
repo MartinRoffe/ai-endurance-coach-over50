@@ -1512,6 +1512,16 @@ async def nutrition_plan(request: Request):
     )
 
 
+@app.get("/nutrition/recipes", response_class=HTMLResponse)
+async def nutrition_recipes(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes.html", context={})
+
+
+@app.get("/nutrition/shopping-list", response_class=HTMLResponse)
+async def nutrition_shopping_list(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})
+
+
 @app.get("/tenerife", response_class=HTMLResponse)
 async def tenerife_view(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="tenerife.html", context={})
