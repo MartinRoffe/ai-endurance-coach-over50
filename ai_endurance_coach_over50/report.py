@@ -107,6 +107,7 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
             system=(
                 "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
                 "based on objective physiological data from a Garmin device. "
+                "The athlete trains on heart rate (no power meter) — cue any intensity in HR zones / RPE, never watts. "
                 "Be direct, warm, and evidence-based. Never be vague."
             ),
         )
@@ -978,9 +979,11 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
         ]
 
     lines += [
+        "The athlete trains on heart rate and has NO power meter — do not quote watts or numeric W/kg.",
         "Please provide a concise body composition analysis covering:",
         "1. Weight trajectory — at current rate, what weight will the athlete reach by Tenerife (13 Aug)?",
-        "   How significant is that for W/kg (watts per kilogram) on mountain climbs?",
+        "   Discuss qualitatively how that weight change helps climbing/power-to-weight on mountain stages "
+        "   (lighter = easier climbing at the same effort), without citing watts.",
         "2. Body composition quality — is weight change driven by fat loss, muscle loss, or both?",
         "   Flag if muscle mass is declining (suggests need for more protein / strength work).",
         "3. One encouraging finding or specific concern from the data (visceral fat, hydration, metabolic age, BP trend).",

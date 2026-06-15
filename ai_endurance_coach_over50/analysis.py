@@ -308,6 +308,7 @@ _RUCK_TYPES    = {"hiking", "walking", "load_carry", "rucking"}
 
 def _coach_system_prompt(type_key: str, activity_name: str = "") -> str:
     tail = (
+        "The athlete trains on heart rate and has no power meter — discuss intensity in HR zones / RPE, never watts. "
         "Be direct, specific, and evidence-based. Reference the numbers. "
         "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
     )
