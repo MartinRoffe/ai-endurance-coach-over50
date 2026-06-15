@@ -475,8 +475,13 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
             if sess and sess[0] != "rest":
                 day_name = d.strftime("%a")
                 week_sessions.append((day_name, sess[0], sess[1], sess[2]))
-        _pmc1 = pmc_history(days=1)
-        _pmc_today = _pmc1[-1] if _pmc1 else {}
+        # Use the most recent entry that actually has PMC numbers — today's
+        # training-load row may not have synced from the watch yet on Monday AM.
+        _pmc_recent = pmc_history(days=7)
+        _pmc_today = next(
+            (e for e in reversed(_pmc_recent) if e.get("ctl") is not None),
+            _pmc_recent[-1] if _pmc_recent else {},
+        )
         try:
             from .report import generate_weekly_briefing
             weekly_briefing = generate_weekly_briefing(week_sessions, _pmc_today, comp_z)
