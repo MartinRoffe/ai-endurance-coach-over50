@@ -172,6 +172,18 @@
               accumulated += event.chunk;
               updateBubble(bubble, accumulated, true);
               document.getElementById('chat-messages').scrollTop = 99999;
+            } else if (event.type === 'tool') {
+              if (!accumulated) {
+                const labels = {
+                  get_meal_cycle: 'the meal plan', get_activity_analysis: 'your session analysis',
+                  get_sleep_history: 'your sleep history', get_performance_detail: 'your performance data',
+                  get_hr_plan: 'the Haute Route plan', get_compliance_detail: 'your plan compliance',
+                  get_workout_description: 'the workout details', get_fuelling_plan: 'your fuelling plan',
+                  get_event_plans: 'your event plans',
+                };
+                bubble.innerHTML = '<span style="color:var(--muted)">🔍 checking ' +
+                  (labels[event.name] || 'your data') + '…</span>';
+              }
             } else if (event.type === 'proposal' && event.data && event.data.session_type) {
               renderProposal(event.data);
             } else if (event.type === 'done') {
