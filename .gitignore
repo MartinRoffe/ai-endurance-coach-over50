@@ -12,3 +12,6 @@ build/
 .cursor/
 ${HOME}/
 docs/user-guide.pdf
+# Office/LibreOffice lock & temp files
+.~lock.*#
+~$*

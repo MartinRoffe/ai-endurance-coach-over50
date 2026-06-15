@@ -182,7 +182,7 @@ body {
   <div class="gr-nav-inner">
     {% set perf_active   = active_tab in ['performance', 'analysis'] %}
     {% set plan_active   = active_tab in ['calendar', 'training', 'compliance'] %}
-    {% set health_active = active_tab in ['nutrition', 'sleep', 'body'] %}
+    {% set health_active = active_tab in ['nutrition', 'recipes', 'shopping', 'sleep', 'body'] %}
     {% set events_active = active_tab in ['tenerife', 'haute_route'] %}
 
     <a href="/" class="tab {% if active_tab == 'readiness' %}active{% endif %}">Readiness</a>
@@ -214,6 +214,8 @@ body {
       </button>
       <div class="gr-nav-dropdown">
         <a href="/nutrition" class="{% if active_tab == 'nutrition' %}active{% endif %}">Nutrition</a>
+        <a href="/nutrition/recipes"       class="{% if active_tab == 'recipes'  %}active{% endif %}">↳ Recipes</a>
+        <a href="/nutrition/shopping-list" class="{% if active_tab == 'shopping'  %}active{% endif %}">↳ Shopping List</a>
         <a href="/sleep"     class="{% if active_tab == 'sleep'     %}active{% endif %}">Sleep</a>
         <a href="/body"      class="{% if active_tab == 'body'      %}active{% endif %}">Body</a>
       </div>

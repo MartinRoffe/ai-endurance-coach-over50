@@ -1258,6 +1258,21 @@ async def calendar_view(request: Request):
                     actual = int(sum(a.get("duration_seconds", 0) or 0 for a in matched) / 60)
                     day["actual_min"] = actual if matched else None
                     done_min += actual
+
+            # Extra standalone session (e.g. the Saturday "Rucksack then Kettlebell"
+            # circuit) — display-only completion; deliberately excluded from done_min
+            # / compliance so it doesn't skew plan-adherence numbers.
+            ex = day.get("extra_session")
+            if ex:
+                if stype == "rest" or day["date"] > today:
+                    ex["completed"] = None
+                    ex["actual_min"] = None
+                else:
+                    ex_acts = [a for a in acts_by_date.get(day["date"].isoformat(), [])
+                               if a["type_key"] == ex["garmin_key"]]
+                    ex["completed"] = bool(ex_acts)
+                    ex["actual_min"] = (int(sum(a.get("duration_seconds", 0) or 0 for a in ex_acts) / 60)
+                                        if ex_acts else None)
         week["plan_min_fmt"] = _fmt_min(plan_min)
         week["done_min_fmt"] = _fmt_min(done_min) if done_min else None
         week["completion_pct"] = int(done_min / plan_min * 100) if plan_min and done_min else None
@@ -1510,6 +1525,16 @@ async def nutrition_plan(request: Request):
             "protein_target": protein_target_g(),
         },
     )
+
+
+@app.get("/nutrition/recipes", response_class=HTMLResponse)
+async def nutrition_recipes(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes.html", context={})
+
+
+@app.get("/nutrition/shopping-list", response_class=HTMLResponse)
+async def nutrition_shopping_list(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})
 
 
 @app.get("/tenerife", response_class=HTMLResponse)
@@ -1949,6 +1974,15 @@ _COACH_SYSTEM = (
     "When you recommend modifying a planned session's duration, call the propose_plan_change tool — "
     "a confirmation card will appear for the athlete to review. After the tool call, briefly explain "
     "the proposed change in your text (do not say 'above' or 'below' — just refer to 'the proposal card').\n\n"
+    "The context block below already summarises EVERY dashboard tab — readiness, training load, "
+    "sleep, body composition, nutrition (today + this week), compliance, zone distribution, "
+    "durability, monotony/strain, acclimation, FTP history, interference flags, the 12-week plan, "
+    "Tenerife camp, event prep and the Haute Route phases. For full detail behind any of these, call "
+    "a read tool: get_meal_cycle (full 4-week meals + shopping list), get_activity_analysis (a past "
+    "session's full analysis), get_sleep_history, get_performance_detail, get_hr_plan (full 46-week "
+    "plan), get_compliance_detail, get_workout_description, get_fuelling_plan, get_event_plans "
+    "(charity & Haute Route pacing). You have full visibility — never tell the athlete you can't see "
+    "their data; if you need depth, fetch it with a read tool.\n\n"
     "Training plan context: 12-week plan runs 18 May – 9 Aug 2026, followed by Tenerife cycling camp "
     "(13–27 Aug) and event prep block (Aug 31 – Sep 12). Builds from Zone 2 base to back-to-back long "
     "rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests (wks 3/7/12), hill repeats "
@@ -1981,6 +2015,234 @@ _COACH_TOOL = {
         "required": ["date", "duration_min", "reason"],
     },
 }
+
+
+# Read-only tools: the always-on context carries a summary of every tab; these let
+# the coach pull the full detail behind any of them on demand (so we don't bloat
+# every message). Each returns a plain-text string via `_dispatch_read_tool`.
+_READ_TOOLS = [
+    {
+        "name": "get_meal_cycle",
+        "description": "Full 4-week nutrition cycle (every meal + macros) plus a per-week shopping tally. Use this to build a weekly shopping list or compare meals across days/weeks.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_activity_analysis",
+        "description": "Full post-workout AI analysis (plus interval-rep HR data if present) for a past session. Identify it by date (YYYY-MM-DD) or activity_id; omit both for the most recent analysed session.",
+        "input_schema": {"type": "object", "properties": {
+            "date":        {"type": "string",  "description": "Activity date YYYY-MM-DD"},
+            "activity_id": {"type": "integer", "description": "Garmin activity id"},
+        }},
+    },
+    {
+        "name": "get_sleep_history",
+        "description": "Nightly sleep table (score, duration, stage %, HRV) for the last N days (default 30).",
+        "input_schema": {"type": "object", "properties": {
+            "days": {"type": "integer", "description": "Days back (default 30)"},
+        }},
+    },
+    {
+        "name": "get_performance_detail",
+        "description": "Performance-tab detail: durability (late-ride HR drift), Foster monotony/strain, estimated FTP/W-kg history, and weekly zone distribution.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_hr_plan",
+        "description": "Full 46-week Haute Route Alpes 2027 plan: phases and week-by-week sessions, plus the 7 event stages (km/elevation/key climb).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_compliance_detail",
+        "description": "Full per-week plan-vs-actual compliance breakdown across the 12-week plan.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_workout_description",
+        "description": "Cached coaching description for a planned session label (e.g. 'Sweetspot Ride').",
+        "input_schema": {"type": "object", "properties": {
+            "label": {"type": "string"},
+        }, "required": ["label"]},
+    },
+    {
+        "name": "get_fuelling_plan",
+        "description": "Cached in-ride fuelling plan (carbs/fluid/sodium) for a session type and duration in minutes.",
+        "input_schema": {"type": "object", "properties": {
+            "session_type": {"type": "string"},
+            "dur_min":      {"type": "integer"},
+        }, "required": ["session_type", "dur_min"]},
+    },
+    {
+        "name": "get_event_plans",
+        "description": "AI pacing & fuelling plans for the two Ghent→Amsterdam charity-ride days and the Haute Route stages. May take a moment if not yet generated.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+]
+
+_READ_TOOL_NAMES = {t["name"] for t in _READ_TOOLS}
+
+
+def _dispatch_read_tool(name: str, tool_input: dict) -> str:
+    """Run one read tool and return its result as plain text. Never raises."""
+    try:
+        if name == "get_meal_cycle":
+            from .nutrition_plan import meal_cycle_full
+            return meal_cycle_full()
+
+        if name == "get_activity_analysis":
+            from .analysis import load_analysis
+            recent = load_recent_activities(days=60)
+            act_id = tool_input.get("activity_id")
+            if act_id:
+                target_ids = [int(act_id)]
+            elif tool_input.get("date"):
+                target_ids = [a["activity_id"] for a in recent if a.get("date") == tool_input["date"]]
+            else:
+                target_ids = next(([a["activity_id"]] for a in recent if load_analysis(a["activity_id"])), [])
+            if not target_ids:
+                return "No matching activity found (try a date shown in 'Recent Activities')."
+            out: list[str] = []
+            for aid in target_ids:
+                an = load_analysis(aid)
+                if not an:
+                    out.append(f"Activity {aid}: no analysis on file yet.")
+                    continue
+                out.append(f"### {an.get('date','')} — {an.get('name') or an.get('type_key','activity')}")
+                out.append(an.get("analysis_text") or an.get("summary") or "(no analysis text)")
+                for i, rep in enumerate(an.get("interval_reps") or [], 1):
+                    out.append(f"  Rep {i}: " + ", ".join(f"{k} {v}" for k, v in rep.items()))
+            return "\n".join(out)
+
+        if name == "get_sleep_history":
+            days = int(tool_input.get("days") or 30)
+            lines = [f"Sleep — last {days} nights (most recent last):"]
+            for r in sleep_history(days):
+                if r.get("sleep_score") is None:
+                    continue
+                seg = f"  {r['date']}: score {r['sleep_score']}, {r.get('sleep_hours')}h"
+                if r.get("deep_pct") is not None:
+                    seg += f", deep {r['deep_pct']}% / REM {r['rem_pct']}%"
+                if r.get("hrv") is not None:
+                    seg += f", HRV {r['hrv']}"
+                lines.append(seg)
+            return "\n".join(lines) if len(lines) > 1 else "No sleep data recorded."
+
+        if name == "get_performance_detail":
+            today = date.today()
+            lines = ["## Performance detail"]
+            dur = load_durability(180)
+            if dur:
+                lines.append("Durability (late-ride HR drift, rides ≥90min):")
+                for r in dur[-8:]:
+                    lines.append(f"  {r['date']}: {r['first_third_hr']:.0f}→{r['final_third_hr']:.0f}bpm, drift {r['drift_pct']:+.1f}%")
+            for r in weekly_monotony_strain(8):
+                if "Foster monotony/strain (last 8 weeks):" not in lines:
+                    lines.append("Foster monotony/strain (last 8 weeks):")
+                mono_s = f"{r['monotony']:.2f}" if r.get("monotony") is not None else "—"
+                strain_s = f"{r['strain']:.0f}" if r.get("strain") is not None else "—"
+                lines.append(f"  wk {r['label']}: load {r['weekly_load']:.0f}, monotony {mono_s}, strain {strain_s}")
+            wkg = estimated_wkg_history(180)
+            if wkg:
+                lines.append("Estimated FTP / W-kg (VO2max proxy, no power meter):")
+                for r in wkg[-8:]:
+                    lines.append(f"  {r['date']}: VO2max {r['vo2_max']}, ~{r['est_ftp_w']}W, {r['wkg']} W/kg ({r['weight_kg']}kg)")
+            zd = intensity_distribution_by_week(today - timedelta(days=56), today)
+            if zd:
+                lines.append("Zone distribution by week (cycling):")
+                for w in zd:
+                    lines.append(f"  {w['week_label']}: Z1 {w['z1_pct']}% Z2 {w['z2_pct']}% Z3 {w['z3_pct']}% Z4 {w['z4_pct']}% Z5 {w['z5_pct']}% ({w['total_min']}min)")
+            return "\n".join(lines) if len(lines) > 1 else "No performance detail available yet."
+
+        if name == "get_hr_plan":
+            from .hr_plan import hr_session_for_date as _hrs, HR_PLAN_START as _HRS, HR_EVENT_STAGES
+            lines = ["## Haute Route Alpes 2027 — full plan"]
+            for ph in HR_PHASES:
+                lines.append(f"Phase {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}")
+            for wk in range(46):
+                wk_start = _HRS + timedelta(days=wk * 7)
+                day_lines = []
+                for off in range(7):
+                    d = wk_start + timedelta(days=off)
+                    sess = _hrs(d)
+                    if sess and sess[0] != "rest":
+                        day_lines.append(f"{d.strftime('%a')} {sess[1]} ({sess[2]}min)")
+                if day_lines:
+                    lines.append(f"Wk{wk+1} ({wk_start.isoformat()}): " + "; ".join(day_lines))
+            lines.append("Event stages:")
+            for s in HR_EVENT_STAGES:
+                lines.append(f"  Stage {s['day']} ({s['date'].isoformat()}) {s['label']}: "
+                             f"{s['km']}km, {s['elev_m']}m, key climb {s['key_climb']}")
+            return "\n".join(lines)
+
+        if name == "get_compliance_detail":
+            stats = _plan_completion_stats()
+            lines = [f"## Plan compliance — full breakdown (overall {stats.get('overall_pct', 0)}% by volume)"]
+            for w in stats.get("completion_weeks", []):
+                lines.append(f"  Wk{w['week_num']} ({w['date_range']}) [{w['status']}]: "
+                             f"{w['done_sessions']}/{w['plan_sessions']} sessions, {w['pct']}% volume "
+                             f"({w['done_min']}/{w['plan_min']}min)")
+            return "\n".join(lines)
+
+        if name == "get_workout_description":
+            from .analysis import _load_workout_descs
+            label = (tool_input.get("label") or "").strip()
+            desc = _load_workout_descs().get(label)
+            return f"{label}: {desc}" if desc else f"No cached description for '{label}'."
+
+        if name == "get_fuelling_plan":
+            from .analysis import _load_fuelling_plans, fuelling_session_key
+            stype = (tool_input.get("session_type") or "").strip()
+            dur_min = int(tool_input.get("dur_min") or 0)
+            plan = _load_fuelling_plans().get(fuelling_session_key(stype, dur_min))
+            if not plan:
+                return f"No cached fuelling plan for {stype} {dur_min}min (only generated for endurance sessions ≥75min)."
+            return "\n".join(f"{k}: {v}" for k, v in plan.items() if v not in (None, ""))
+
+        if name == "get_event_plans":
+            from .analysis import generate_charity_day_plans, generate_hr_stage_plans
+            lines = ["## Charity ride (Ghent→Amsterdam) — day plans"]
+            charity = generate_charity_day_plans()
+            if charity:
+                for day in sorted(charity):
+                    p = charity[day]
+                    lines.append(f"Day {day}: " + "; ".join(f"{k}: {v}" for k, v in p.items()))
+            else:
+                lines.append("  (not generated yet)")
+            lines.append("## Haute Route — stage plans")
+            stages = generate_hr_stage_plans()
+            if stages:
+                for day in sorted(stages):
+                    p = stages[day]
+                    lines.append(f"Stage {day}: " + "; ".join(f"{k}: {v}" for k, v in p.items()))
+            else:
+                lines.append("  (not generated yet)")
+            return "\n".join(lines)
+
+        return f"Unknown tool: {name}"
+    except Exception as exc:
+        logger.exception("read-tool %s failed", name)
+        return f"({name} is temporarily unavailable: {exc})"
+
+
+def _interference_flags(days: int = 14) -> list[str]:
+    """Upcoming quality-bike days with strength logged in the prior 24h.
+
+    Same condition the Calendar tab flags inline (see `calendar_view`), surfaced
+    forward-looking for the coach so it can warn before the clash happens.
+    """
+    today = date.today()
+    _STRENGTH_KEYS = {"strength_training", "stair_climbing"}
+    acts_by_date = load_activities_by_date(today - timedelta(days=1), today + timedelta(days=days))
+    flagged: list[str] = []
+    for i in range(days):
+        d = today + timedelta(days=i)
+        sess = session_for_date(d)
+        if not sess or sess[1] not in QUALITY_BIKE_LABELS:
+            continue
+        nearby = (acts_by_date.get((d - timedelta(days=1)).isoformat(), [])
+                  + acts_by_date.get(d.isoformat(), []))
+        if any(a.get("type_key") in _STRENGTH_KEYS for a in nearby):
+            flagged.append(f"  {d.strftime('%a %d %b')}: {sess[1]} — strength logged within prior 24h")
+    return [f"## Training Interference Flags (next {days} days)", *flagged] if flagged else []
 
 
 def _build_coach_context() -> str:
@@ -2279,7 +2541,7 @@ def _build_coach_context() -> str:
                 mono_str = f"{r['monotony']:.2f}" if r.get("monotony") is not None else "—"
                 strain_str = f"{r['strain']:.0f}" if r.get("strain") is not None else "—"
                 monotony_parts.append(
-                    f"  {r['week_label']}: load {r['weekly_load']:.0f}  monotony {mono_str}  strain {strain_str}"
+                    f"  wk {r['label']}: load {r['weekly_load']:.0f}  monotony {mono_str}  strain {strain_str}"
                 )
     except Exception:
         pass
@@ -2321,12 +2583,96 @@ def _build_coach_context() -> str:
                 f"  Sessions: {total_d}/{total_p} ({pct}%)  |  "
                 f"Volume: {total_dm//60}h{total_dm%60:02d}m of {total_pm//60}h{total_pm%60:02d}m planned",
             ]
+            recent_weeks = [w for w in comp_stats.get("completion_weeks", [])
+                            if w["status"] in ("past", "current")][-4:]
+            if recent_weeks:
+                compliance_parts.append("  Recent weeks:")
+                for w in recent_weeks:
+                    compliance_parts.append(
+                        f"    Wk{w['week_num']} ({w['date_range']}): "
+                        f"{w['done_sessions']}/{w['plan_sessions']} sessions, {w['pct']}% volume"
+                    )
+                missed = [f"{d['date'].isoformat()} ({d['type']})"
+                          for w in recent_weeks for d in w["days"] if d["status"] == "missed"]
+                if missed:
+                    compliance_parts.append("  Recently missed: " + ", ".join(missed[-6:]))
     except Exception:
         pass
 
-    # Nutrition plan — today's prescribed meals
-    from .nutrition_plan import nutrition_coach_context
+    # Sleep trend (30-day averages) — complements the 7-day detail above
+    sleep_trend_parts: list[str] = []
+    try:
+        sh = sleep_history(30)
+        scored = [r for r in sh if r.get("sleep_score") is not None]
+        def _savg(rows, key):
+            vals = [r[key] for r in rows if r.get(key) is not None]
+            return round(sum(vals) / len(vals), 1) if vals else None
+        if scored:
+            last7 = scored[-7:]
+            sleep_trend_parts = [
+                "## Sleep Trend (30-day)",
+                f"  Score: 7d avg {_savg(last7, 'sleep_score')}  |  30d avg {_savg(scored, 'sleep_score')}",
+                f"  Duration: 7d avg {_savg(last7, 'sleep_hours')}h  |  30d avg {_savg(scored, 'sleep_hours')}h",
+                f"  Stage mix (30d avg): deep {_savg(scored, 'deep_pct')}%  REM {_savg(scored, 'rem_pct')}%",
+            ]
+            cached_sleep = get_cached_text(f"sleep_analysis_v1_{today.isoformat()}")
+            if cached_sleep:
+                sleep_trend_parts += ["  Coach's sleep analysis (from Sleep tab):",
+                                      "  " + cached_sleep.replace("\n", "\n  ")]
+    except Exception:
+        pass
+
+    # Heat / altitude acclimation
+    accl_parts: list[str] = []
+    try:
+        accl = acclimation_latest()
+        if accl:
+            bits = []
+            if accl.get("heat_acclimation_pct") is not None:
+                bits.append(f"heat {accl['heat_acclimation_pct']}%")
+            if accl.get("altitude_acclimation") is not None:
+                bits.append(f"altitude {accl['altitude_acclimation']}")
+            if bits:
+                accl_parts = ["## Heat / Altitude Acclimation",
+                              f"  {accl.get('date')}: " + ", ".join(bits)]
+    except Exception:
+        pass
+
+    # Zone distribution (recent weeks) — polarisation check
+    zone_parts: list[str] = []
+    try:
+        zd = intensity_distribution_by_week(today - timedelta(days=28), today)
+        if zd:
+            zone_parts = ["## Zone Distribution (cycling, recent weeks)"]
+            for w in zd[-4:]:
+                zone_parts.append(
+                    f"  {w['week_label']}: Z1 {w['z1_pct']}%  Z2 {w['z2_pct']}%  "
+                    f"Z3 {w['z3_pct']}%  Z4 {w['z4_pct']}%  Z5 {w['z5_pct']}%  "
+                    f"({w['total_min']}min, {w['activity_count']} rides)"
+                )
+    except Exception:
+        pass
+
+    # Haute Route phase overview
+    hr_phase_parts: list[str] = []
+    try:
+        cur_hr_week = (today - HR_PLAN_START).days // 7 + 1 if today >= HR_PLAN_START else None
+        hr_phase_parts = [f"## Haute Route 2027 — Plan Phases (46 weeks, starts {HR_PLAN_START.isoformat()})"]
+        for ph in HR_PHASES:
+            marker = (f"  ← current (wk {cur_hr_week})"
+                      if cur_hr_week and ph["week_start"] <= cur_hr_week <= ph["week_end"] else "")
+            hr_phase_parts.append(f"  {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}{marker}")
+        hr_phase_parts.append("  Full week-by-week sessions available via the get_hr_plan tool.")
+    except Exception:
+        pass
+
+    # Training interference flags (next 14 days)
+    interference_parts = _interference_flags(14)
+
+    # Nutrition plan — today's prescribed meals + this week's overview
+    from .nutrition_plan import nutrition_coach_context, nutrition_week_context
     nutrition_ctx = nutrition_coach_context(_PLAN_START, today)
+    nutrition_week_ctx = nutrition_week_context(_PLAN_START, today)
 
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
@@ -2341,16 +2687,23 @@ def _build_coach_context() -> str:
         *tl_parts,
         "",
         *([*alert_parts, ""] if alert_parts else []),
+        *([*interference_parts, ""] if interference_parts else []),
         *([*sleep_parts, ""] if sleep_parts else []),
+        *([*sleep_trend_parts, ""] if sleep_trend_parts else []),
         *body_parts,
         *([*bp_parts, ""] if bp_parts else []),
         *([*wkg_parts, ""] if wkg_parts else []),
+        *([*accl_parts, ""] if accl_parts else []),
         *([*ftp_parts, ""] if ftp_parts else []),
         *([*dur_parts, ""] if dur_parts else []),
         *([*monotony_parts, ""] if monotony_parts else []),
+        *([*zone_parts, ""] if zone_parts else []),
         *([*compliance_parts, ""] if compliance_parts else []),
         nutrition_ctx,
         "",
+        nutrition_week_ctx,
+        "",
+        *([*hr_phase_parts, ""] if hr_phase_parts else []),
         "## Upcoming Plan Sessions (full remaining plan)",
         *upcoming_lines,
         "",
@@ -2409,52 +2762,48 @@ def _te_clean(label: Optional[str]) -> str:
     return (label or "").replace("_", " ").title()
 
 
+_COACH_MAX_TOOL_TURNS = 6
+
+
 def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]]:
     context = _build_coach_context()
     system = _COACH_SYSTEM + f"\n\n## Current Context\n{context}"
 
     client = _anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=MODEL_SMART,
-        max_tokens=800,
-        system=system,
-        tools=[_COACH_TOOL],
-        messages=messages,
-    )
+    all_tools = [_COACH_TOOL, *_READ_TOOLS]
 
+    convo = list(messages)
     text_parts: list[str] = []
     proposal: Optional[dict] = None
-    tool_call = None
 
-    for block in response.content:
-        if block.type == "text":
-            text_parts.append(block.text)
-        elif block.type == "tool_use" and block.name == "propose_plan_change":
-            tool_call = block
-            proposal = dict(block.input)
-
-    if tool_call and response.stop_reason == "tool_use":
-        followup_messages = messages + [
-            {"role": "assistant", "content": response.content},
-            {
-                "role": "user",
-                "content": [{
-                    "type": "tool_result",
-                    "tool_use_id": tool_call.id,
-                    "content": "Proposal ready for athlete confirmation.",
-                }],
-            },
-        ]
-        response2 = client.messages.create(
+    for _ in range(_COACH_MAX_TOOL_TURNS):
+        response = client.messages.create(
             model=MODEL_SMART,
-            max_tokens=300,
+            max_tokens=1000,
             system=system,
-            tools=[_COACH_TOOL],
-            messages=followup_messages,
+            tools=all_tools,
+            messages=convo,
         )
-        for block in response2.content:
+        tool_results: list[dict] = []
+        for block in response.content:
             if block.type == "text":
                 text_parts.append(block.text)
+            elif block.type == "tool_use":
+                if block.name == "propose_plan_change":
+                    proposal = dict(block.input)
+                    content = "Proposal ready for athlete confirmation."
+                elif block.name in _READ_TOOL_NAMES:
+                    content = _dispatch_read_tool(block.name, dict(block.input))
+                else:
+                    content = f"Unknown tool: {block.name}"
+                tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": content})
+
+        if response.stop_reason != "tool_use":
+            break
+        convo = convo + [
+            {"role": "assistant", "content": response.content},
+            {"role": "user", "content": tool_results},
+        ]
 
     if proposal:
         try:
@@ -2570,44 +2919,47 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     context = _build_coach_context()
     system = _COACH_SYSTEM + f"\n\n## Current Context\n{context}"
     client = _anthropic.Anthropic(api_key=api_key)
+    all_tools = [_COACH_TOOL, *_READ_TOOLS]
 
     full_text: list[str] = []
     proposal: Optional[dict] = None
+    convo = list(messages)
 
     try:
-        with client.messages.stream(
-            model=MODEL_SMART,
-            max_tokens=800,
-            system=system,
-            tools=[_COACH_TOOL],
-            messages=messages,
-        ) as stream:
-            for chunk in stream.text_stream:
-                full_text.append(chunk)
-                yield f"data: {json.dumps({'type': 'text', 'chunk': chunk})}\n\n"
-            final = stream.get_final_message()
-
-        tool_call = None
-        for block in final.content:
-            if block.type == "tool_use" and block.name == "propose_plan_change":
-                tool_call = block
-                proposal = dict(block.input)
-
-        if tool_call and final.stop_reason == "tool_use":
-            followup = messages + [
-                {"role": "assistant", "content": final.content},
-                {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_call.id, "content": "Proposal ready for athlete confirmation."}]},
-            ]
+        for _ in range(_COACH_MAX_TOOL_TURNS):
             with client.messages.stream(
                 model=MODEL_SMART,
-                max_tokens=300,
+                max_tokens=1000,
                 system=system,
-                tools=[_COACH_TOOL],
-                messages=followup,
-            ) as stream2:
-                for chunk in stream2.text_stream:
+                tools=all_tools,
+                messages=convo,
+            ) as stream:
+                for chunk in stream.text_stream:
                     full_text.append(chunk)
                     yield f"data: {json.dumps({'type': 'text', 'chunk': chunk})}\n\n"
+                final = stream.get_final_message()
+
+            if final.stop_reason != "tool_use":
+                break
+
+            tool_results: list[dict] = []
+            for block in final.content:
+                if block.type != "tool_use":
+                    continue
+                if block.name == "propose_plan_change":
+                    proposal = dict(block.input)
+                    content = "Proposal ready for athlete confirmation."
+                elif block.name in _READ_TOOL_NAMES:
+                    yield f"data: {json.dumps({'type': 'tool', 'name': block.name})}\n\n"
+                    content = _dispatch_read_tool(block.name, dict(block.input))
+                else:
+                    content = f"Unknown tool: {block.name}"
+                tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": content})
+
+            convo = convo + [
+                {"role": "assistant", "content": final.content},
+                {"role": "user", "content": tool_results},
+            ]
 
         if proposal:
             try:

@@ -236,6 +236,24 @@
               <div class="flex items-center justify-between mt-auto gap-1">
                 {% if day.dur_fmt %}<p class="text-[12px] opacity-80">{{ day.dur_fmt }}</p>{% endif %}
               </div>
+              {% if day.extra_session %}
+              <div class="clickable-session sess-strength rounded mt-1"
+                   style="padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)"
+                   data-label="{{ day.extra_session.label }}"
+                   data-dur="30"
+                   data-dur-fmt=""
+                   data-circuit-spec='{{ day.extra_session.circuit_spec | tojson }}'
+                   onclick="event.stopPropagation(); openModal(this)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:2px">
+                  <span class="text-[11px] font-semibold leading-tight">+ {{ day.extra_session.label }}</span>
+                  {% if day.extra_session.completed == true %}
+                    <span class="text-[10px] text-emerald-400 font-bold flex-shrink-0">✓</span>
+                  {% elif day.extra_session.completed == false %}
+                    <span class="text-[10px] text-red-500 font-bold flex-shrink-0">✗</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endif %}
             {% endif %}
           {% else %}
             <p class="text-[12px] opacity-65 mt-auto">Rest</p>
@@ -619,6 +637,7 @@
       "60–70 rpm":              "text-purple-400",
       "Strength":               "text-violet-400",
       "Ruck":                   "text-amber-400",
+      "Circuit":                "text-lime-400",
     };
 
     function fmtMins(m) {
@@ -686,6 +705,21 @@
       }));
     }
 
+    function buildCircuitSteps(spec) {
+      const steps = [{fmt: '', name: 'Warm-up', repeat: '10 min', zone: 'Z1'}];
+      (spec.blocks || []).forEach(block => {
+        steps.push({fmt: '', name: block.title, zone: 'Circuit'});
+        block.exercises.forEach(ex => steps.push({
+          fmt:       '',
+          name:      ex.name,
+          repeat:    ex.reps,
+          zone:      'Strength',
+          video_url: ex.video_url || null,
+        }));
+      });
+      return steps;
+    }
+
     function openModal(el) {
       const label  = el.dataset.label;
       const dur    = parseInt(el.dataset.dur, 10);
@@ -706,9 +740,10 @@
       document.getElementById('modal-coach-note').classList.toggle('hidden', !coachNote);
 
       // Description and steps — ruck/KB specs override WORKOUT_DESCS
-      const maxiRaw = el.dataset.maxiIntervals;
-      const ruckRaw = el.dataset.ruckSpec;
-      const kbRaw   = el.dataset.kbSpec;
+      const maxiRaw    = el.dataset.maxiIntervals;
+      const ruckRaw    = el.dataset.ruckSpec;
+      const kbRaw      = el.dataset.kbSpec;
+      const circuitRaw = el.dataset.circuitSpec;
       let desc, steps;
       if (maxiRaw) {
         const intervals = JSON.parse(maxiRaw);
@@ -725,6 +760,10 @@
         desc  = ruckSpec.note || '';
         steps = buildRuckSteps(dur, ruckSpec);
         if (kbRaw) steps = steps.concat(buildKBSteps(JSON.parse(kbRaw)));
+      } else if (circuitRaw) {
+        const circuitSpec = JSON.parse(circuitRaw);
+        desc  = circuitSpec.note || '';
+        steps = buildCircuitSteps(circuitSpec);
       } else if (kbRaw) {
         const kbSpec = JSON.parse(kbRaw);
         desc  = kbSpec.note || '';

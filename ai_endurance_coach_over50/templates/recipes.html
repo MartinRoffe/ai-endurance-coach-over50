@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+<title>Bulk-Staple Recipes & Prep Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+    --griddle:#9b59b6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:60px 40px 44px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,8vw,84px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:620px;margin-top:18px;}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  /* TOC */
+  .toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:32px 0 8px;}
+  .toc a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 14px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s,background .15s;}
+  .toc a:hover{border-color:var(--accent);background:var(--surface2);}
+  .toc a span{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+
+  section{padding:40px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;margin-bottom:6px;}
+  h2 .num{color:var(--muted);margin-right:10px;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  /* RECIPE CARD */
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .t-griddle{background:rgba(155,89,182,.15);color:#c39bd3;border:1px solid rgba(155,89,182,.3);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .note{margin:14px 20px 18px;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+
+  /* PREP SCHEDULE */
+  .sched{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .sched th{background:var(--surface2);text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:11px 14px;border-bottom:1px solid var(--border);}
+  .sched td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;color:#cdd0bb;}
+  .sched tr:last-child td{border-bottom:none;}
+  .sched td:first-child{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);white-space:nowrap;width:120px;}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+  .pill{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 12px;margin-top:8px;}
+
+  @media(max-width:680px){
+    .hero{padding:40px 20px 30px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+  }
+  @media print{
+    body{background:#fff;color:#111;}
+    .hero::before{display:none;}
+    .recipe,.sched,.toc a{break-inside:avoid;}
+    :root{--bg:#fff;--surface:#fafafa;--surface2:#f0f0f0;--border:#ccc;--text:#111;--muted:#555;}
+    a{color:#111;}
+  }
+</style>
+</head>
+<body>
+
+<a href="/nutrition" style="display:inline-flex;align-items:center;gap:8px;margin:18px 0 0 24px;padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--accent);text-decoration:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">← Back to Nutrition</a>
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · Bulk-Staple Plan · Standalone Recipe Guide</div>
+    <h1>COOK ONCE,<br><span>EAT ALL WEEK</span></h1>
+    <p>Every prepared item in the 4-week plan, in one place — now with the full Blackstone griddle book folded in and a complete on-bike fuelling section. The strategy is batch-and-portion: a couple of hours on Sunday builds the chicken, rice, oat bars and yogurt pots that carry breakfasts and lunches all week; weeknight dinners are quick assembly or a Gousto kit; the weekend is the griddle; and your race-day carbs are made at home. Protein and carb figures match the plan.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#chicken"><span>Batch Prep · 01</span>Roasted Chicken Thighs</a>
+    <a href="#rice"><span>Batch Prep · 02</span>Big-Batch Basmati + 3 Variations</a>
+    <a href="#oatbars"><span>Batch Prep · 03</span>Homemade Oat Bars</a>
+    <a href="#yogurt"><span>Batch Prep · 04</span>Greek-Yogurt Pots</a>
+    <a href="#porridge"><span>Breakfast · 05</span>Everyday Porridge</a>
+    <a href="#recovery"><span>Recovery · 06</span>Big Recovery Porridge</a>
+    <a href="#chickenrice"><span>Lunch · 07</span>Chicken &amp; Rice Bowl</a>
+    <a href="#tunapasta"><span>Lunch · 08</span>Tuna Pasta (Wed)</a>
+    <a href="#paella"><span>Lunch · 09</span>Paprika Rice &amp; Prawns (Thu)</a>
+    <a href="#griddle"><span>Griddle · 10</span>Blackstone Method + 6 Recipes</a>
+    <a href="#fuel"><span>Race Fuel · 11</span>On-Bike Drinks, Rice Cakes &amp; Gels</a>
+    <a href="#schedule"><span>Plan · 12</span>Sunday Prep Schedule</a>
+  </div>
+
+  <!-- 01 CHICKEN -->
+  <section id="chicken">
+    <div class="sec-label">Batch Prep — the protein engine</div>
+    <h2><span class="num">01</span>Batch-Roasted Chicken Thighs</h2>
+    <p class="lead">The single most important prep. One tray covers five lunches (Mon/Tue/Fri/Sat/Sun) and feeds into a griddle night. Thighs stay moist far better than breast and are cheaper per cooked gram.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Herb &amp; Paprika Roast Thighs</div>
+        <div class="tags">
+          <span class="tag t-batch">Batch · Sunday</span>
+          <span class="tag t-makes">~1.2kg cooked · 5 portions</span>
+          <span class="tag t-time">35 min</span>
+          <span class="tag t-prot">~58g P / 240g portion</span>
+        </div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>1.5 kg</b> boneless, skinless chicken thigh fillets</li>
+            <li><b>1.5 tbsp</b> olive oil</li>
+            <li><b>2 tsp</b> smoked paprika</li>
+            <li><b>2 tsp</b> mixed dried herbs</li>
+            <li><b>1 tsp</b> garlic granules</li>
+            <li><b>¾ tsp</b> salt + black pepper</li>
+            <li>Juice of ½ lemon (optional)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Heat oven to 200°C fan. Line two baking trays.</li>
+            <li>Toss thighs with the oil, paprika, herbs, garlic, salt and pepper until evenly coated.</li>
+            <li>Spread out in a single layer, not crowded (use both trays).</li>
+            <li>Roast 25–30 min until cooked through (no pink, juices run clear, 75°C+ internal).</li>
+            <li>Rest 5 min, squeeze over lemon, then cool completely before portioning.</li>
+            <li>Divide into <b>5 × ~240g</b> tubs. Fridge up to 4 days, or freeze portions 3–5 from the off and defrost as needed.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Tip:</b> Cook a smaller second batch Wednesday if Fri/Sat chicken is running low, or simply roast 2 kg and freeze the back half. Keep a portion aside un-tubbed for a Friday griddle night.</div>
+    </div>
+  </section>
+
+  <!-- 02 RICE -->
+  <section id="rice">
+    <div class="sec-label">Batch Prep — the carb base</div>
+    <h2><span class="num">02</span>Big-Batch Basmati + 3 Variations</h2>
+    <p class="lead">One pot of plain basmati becomes the base for every rice lunch. Season portions differently across the week so it never feels repetitive — same bag of rice, same macros.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Base Batch Basmati</div>
+        <div class="tags">
+          <span class="tag t-batch">Batch · Sunday</span>
+          <span class="tag t-makes">~1.3kg cooked · 6–7 portions</span>
+          <span class="tag t-time">25 min</span>
+        </div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>500 g</b> basmati rice (dry)</li>
+            <li><b>750 ml</b> cold water</li>
+            <li><b>½ tsp</b> salt</li>
+            <li><b>1 tsp</b> oil or butter</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method (absorption)</div>
+          <ol>
+            <li>Rinse rice in a sieve until the water runs clear (removes surface starch).</li>
+            <li>Add rice, water, salt and oil to a large pan. Bring to the boil.</li>
+            <li>Cover, drop to the lowest heat, simmer <b>10 min</b> — don't lift the lid.</li>
+            <li>Off the heat, rest covered <b>10 min</b>, then fluff with a fork.</li>
+            <li>Cool quickly (spread on a tray), then portion. Fridge ≤3 days, or freeze.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Food-safety note:</b> cool cooked rice within 1 hour and refrigerate promptly; reheat once, until piping hot. Don't leave it sitting at room temperature.</div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Three Quick Seasonings</div>
+        <div class="tags"><span class="tag t-makes">Stir through warm portions</span><span class="tag t-time">2 min each</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Per ~200g portion</div>
+          <ul>
+            <li><b>Mexican-spiced</b> — ½ tsp cumin, ½ tsp paprika, pinch chilli, 1 tsp tomato purée, 2 tbsp sweetcorn + kidney beans</li>
+            <li><b>Golden turmeric</b> — ¼ tsp turmeric, 2 tbsp peas, ½ tsp soft fried onion</li>
+            <li><b>Plain</b> — a knob of butter + black pepper</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Reheat the rice portion until piping hot.</li>
+            <li>Stir the seasoning through; for Mexican, warm the purée/spices in a dry pan 30 sec first for depth.</li>
+            <li>Pairs with the batch chicken for Mon/Tue/Fri/Sat/Sun lunches.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Weeks 2 &amp; 3</b> rotate which day gets which seasoning — that's the only thing that changes between build weeks.</div>
+    </div>
+  </section>
+
+  <!-- 03 OAT BARS -->
+  <section id="oatbars">
+    <div class="sec-label">Batch Prep — the snack</div>
+    <h2><span class="num">03</span>Homemade Oat Bars</h2>
+    <p class="lead">Replaces the shop protein bars at ~25p each. One tray is a week of AM snacks, and they double as on-bike fuel for the long ride.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Peanut Butter &amp; Whey Flapjacks</div>
+        <div class="tags">
+          <span class="tag t-batch">Batch · Sunday</span>
+          <span class="tag t-makes">12 bars</span>
+          <span class="tag t-time">20 min</span>
+          <span class="tag t-prot">~10g P / bar</span>
+        </div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> porridge oats</li>
+            <li><b>4 tbsp</b> peanut butter</li>
+            <li><b>3 tbsp</b> honey</li>
+            <li><b>2 scoops</b> whey protein (~60g)</li>
+            <li><b>1</b> ripe banana, mashed</li>
+            <li><b>150 ml</b> milk (to bind)</li>
+            <li>Optional: handful raisins / mixed seeds</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Heat oven to 180°C fan. Line a ~20cm square tin.</li>
+            <li>Gently warm the peanut butter and honey (10 sec microwave) so they mix easily.</li>
+            <li>Stir everything together into a thick, sticky mix — add a splash more milk if dry.</li>
+            <li>Press firmly into the tin (firm pressing = bars that hold together).</li>
+            <li>Bake <b>15 min</b> until just golden at the edges. Cool fully in the tin.</li>
+            <li>Cut into <b>12</b>. Airtight container 5 days, or freeze.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>On-bike use:</b> one bar is ~28g carbs — wrap a couple for the long ride and count them toward your 60–90 g/hr.</div>
+    </div>
+  </section>
+
+  <!-- 04 YOGURT -->
+  <section id="yogurt">
+    <div class="sec-label">Batch Prep — the protein top-up</div>
+    <h2><span class="num">04</span>Greek-Yogurt Pots</h2>
+    <p class="lead">Not really cooking — but portioning the tub on Sunday is what makes the grab-and-go habit work. Does the old GetPro pot's job at a third of the cost.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Portioned Yogurt Pots</div>
+        <div class="tags">
+          <span class="tag t-batch">Batch · Sunday</span>
+          <span class="tag t-makes">~12 pots</span>
+          <span class="tag t-time">5 min</span>
+          <span class="tag t-prot">~15g P / pot</span>
+        </div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>2 × 1kg</b> Greek-style yogurt tubs</li>
+            <li>Optional toppings, kept separate: berries, banana, honey, a sprinkle of the oat-bar mix</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Spoon yogurt into ~12 small lidded pots (~150g each).</li>
+            <li>Leave plain; add fruit/honey only when you eat them (keeps them fresh).</li>
+            <li>Uses: breakfast top-up daily, lunch top-up Mon–Thu, Saturday post-ruck.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Why a tub:</b> 1kg of Greek yogurt is ~£1.70 and gives ~6 pots — versus six single GetPro pots at ~£6.</div>
+    </div>
+  </section>
+
+  <!-- 05 PORRIDGE -->
+  <section id="porridge">
+    <div class="sec-label">Breakfast — every morning</div>
+    <h2><span class="num">05</span>Everyday Porridge</h2>
+    <p class="lead">The daily breakfast: ~35g protein, ~330 kcal. Make it overnight (cold) or in 3 minutes (hot) — same macros either way.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Porridge + Greek Yogurt + Whey</div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">3 min</span><span class="tag t-prot">~35g P · 330 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>50 g</b> porridge oats</li>
+            <li><b>250 ml</b> milk or water</li>
+            <li><b>½ scoop</b> whey protein</li>
+            <li><b>1</b> Greek-yogurt pot (~150g)</li>
+            <li>Banana or a handful of berries</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li><b>Hot:</b> microwave oats + milk 2–3 min, stir, let cool 1 min, then stir in the whey (add it off the heat so it stays smooth).</li>
+            <li><b>Overnight:</b> mix oats + milk + whey in a jar, fridge overnight, eat cold.</li>
+            <li>Top with the yogurt pot and fruit.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Smooth whey:</b> always stir whey into <em>warm, not boiling</em> porridge or it can clump.</div>
+    </div>
+  </section>
+
+  <!-- 06 RECOVERY -->
+  <section id="recovery">
+    <div class="sec-label">Recovery — Saturday post-ruck &amp; Sunday post-ride</div>
+    <h2><span class="num">06</span>Big Recovery Porridge</h2>
+    <p class="lead">The larger weekend recovery plate, eaten within 45 min of finishing. Chocolate milk first, then build the plate. ~55g protein.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">The Recovery Stack</div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">12 min</span><span class="tag t-prot">~55g P · ~850 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>80 g</b> porridge oats + milk</li>
+            <li><b>1 scoop</b> whey</li>
+            <li><b>2</b> eggs (scrambled)</li>
+            <li><b>1</b> banana</li>
+            <li><b>1 slice</b> toast + peanut butter</li>
+            <li><b>300 ml</b> chocolate milk (see #11)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Straight off the bike: drink the chocolate milk first — fast carbs + protein.</li>
+            <li>Microwave the 80g porridge; stir in the whey scoop once it's warm not hot.</li>
+            <li>Scramble the 2 eggs; toast and spread the PB.</li>
+            <li>Eat the lot with the banana within ~45 min of finishing.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Recovery-week version:</b> drop to 60g oats and skip the PB toast — protein holds, carbs come down.</div>
+    </div>
+  </section>
+
+  <!-- 07 CHICKEN RICE -->
+  <section id="chickenrice">
+    <div class="sec-label">Lunch — Mon / Tue / Fri / Sat / Sun</div>
+    <h2><span class="num">07</span>Chicken &amp; Rice Bowl</h2>
+    <p class="lead">Pure assembly from your Sunday batches — under two minutes. ~58g protein with the yogurt top-up on weekdays.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Batch Bowl</div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">2 min</span><span class="tag t-prot">~58–73g P</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>240 g</b> batch-roasted chicken (#01)</li>
+            <li><b>~200 g</b> batch rice (#02), seasoned</li>
+            <li>Handful of salad or frozen veg</li>
+            <li><b>1</b> Greek-yogurt pot alongside (Mon–Thu)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Combine chicken + rice in a microwave tub; reheat until piping hot.</li>
+            <li>Add salad/veg. Eat the yogurt pot alongside for the protein top-up.</li>
+            <li>Friday skips the yogurt — the chicken+rice alone hits 58g.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 TUNA PASTA -->
+  <section id="tunapasta">
+    <div class="sec-label">Lunch — Wednesday (ride day)</div>
+    <h2><span class="num">08</span>Tuna Pasta</h2>
+    <p class="lead">Higher-carb ride-day lunch from bulk pasta. ~53g protein with the yogurt alongside.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Tuna &amp; Sweetcorn Pasta</div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">12 min</span><span class="tag t-prot">~53g P · 78g C</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>90–100 g</b> dried pasta</li>
+            <li><b>1 tin</b> tuna in spring water, drained</li>
+            <li><b>2 tbsp</b> sweetcorn</li>
+            <li>Squeeze of lemon + drizzle olive oil</li>
+            <li>Black pepper; <b>1</b> Greek-yogurt pot alongside</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Boil the pasta to pack timing; drain, keeping a splash of the water.</li>
+            <li>Stir through tuna, sweetcorn, lemon, oil and the reserved water for a light sauce.</li>
+            <li>Cook a double batch the night before and eat cold as a pasta salad if easier.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Cheaper tuna:</b> buy the 4-tin multipack — works out well under £1 a tin.</div>
+    </div>
+  </section>
+
+  <!-- 09 PAELLA -->
+  <section id="paella">
+    <div class="sec-label">Lunch — Thursday (pre-kettlebell)</div>
+    <h2><span class="num">09</span>Paprika Rice &amp; Prawns</h2>
+    <p class="lead">The homemade "paella" that replaced the Ben's pouch — same carb base for the evening kettlebell session. ~47g protein.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Smoky Prawn Rice</div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">5 min</span><span class="tag t-prot">~47g P · 62g C</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>~200 g</b> batch rice (#02)</li>
+            <li><b>½ tsp</b> smoked paprika + pinch turmeric</li>
+            <li><b>2 tbsp</b> peas + diced pepper</li>
+            <li><b>150 g</b> cooked &amp; peeled prawns</li>
+            <li>Squeeze of lemon; <b>1</b> Greek-yogurt pot alongside</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Reheat rice with the paprika, turmeric, peas and pepper until piping hot.</li>
+            <li>Stir the prawns through at the end (they're already cooked — just warm, don't rubberise).</li>
+            <li>Finish with lemon. Yogurt pot alongside for the protein top-up.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 GRIDDLE -->
+  <section id="griddle">
+    <div class="sec-label">Dinner &amp; weekend — the Blackstone flat top</div>
+    <h2><span class="num">10</span>Blackstone Griddle — Method + 6 Recipes</h2>
+    <p class="lead">Your full griddle book, folded in and tagged for training. Each recipe serves 4 (2 adults, 2 kids) — for a hungry training day, scale up your own rice/protein portion. The "Where it fits" note on each tells you which day of the week it belongs to and how to make it work for the riding.</p>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Griddle Primer</div>
+        <div class="tags"><span class="tag t-griddle">Read first</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Set-up</div>
+          <ul>
+            <li>Preheat 8–10 min; run a hotter zone and a cooler zone</li>
+            <li>Thin film of high-smoke-point oil (rapeseed/veg)</li>
+            <li>Scraper, melting dome, and a squirt bottle of water for steam</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Principles</div>
+          <ol>
+            <li>Protein on the hot zone for the sear; finish on the cooler zone so it cooks through without burning.</li>
+            <li>Veg, tortillas and flatbreads on the cooler zone alongside.</li>
+            <li>Rest meat 3–5 min before slicing. Scrape down while the surface is still hot.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- R1 Full English -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">01 · Griddle Full English</div>
+        <div class="tags"><span class="tag t-griddle">Breakfast</span><span class="tag t-time">30 min · Med-High</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~35g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>8</b> pork sausages</li>
+            <li><b>8</b> back bacon rashers</li>
+            <li><b>4</b> large eggs</li>
+            <li><b>4</b> thick bread slices</li>
+            <li><b>4</b> vine tomatoes, halved</li>
+            <li><b>200 g</b> chestnut mushrooms, sliced</li>
+            <li><b>2 tbsp</b> veg oil + <b>2 tbsp</b> butter</li>
+            <li>Salt &amp; black pepper</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Sausages first on a medium-high zone with the oil — they need the most time, ~8 min, turning.</li>
+            <li>Add bacon and tomatoes (cut-side down); melt butter on the second zone for the mushrooms.</li>
+            <li>Flip bacon, push sausages to the cool zone, butter and toast the bread directly on the griddle.</li>
+            <li>Drop a zone to low, crack the eggs straight on, season, cover with the dome 2–3 min for set whites/runny yolks.</li>
+            <li>Everything lands together — plate and eat fast, a flat-top fry-up cools quickly.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> a weekend treat or a <b>post-long-ride brunch</b> — high protein and fat, so it's recovery/rest-day food, not a pre-ride meal (the fat and fibre sit heavy before riding).</div>
+      <div class="note protein"><b>Coach tweak:</b> to make it a proper recovery plate, add the toast (and beans, heated on the hob) for carbs, go an extra egg, and lean on the bacon over the sausage for cleaner protein. Black pudding griddles well — 2 min a side.</div>
+    </div>
+
+    <!-- R2 Pancakes -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">02 · American Pancakes &amp; Crispy Bacon</div>
+        <div class="tags"><span class="tag t-griddle">Breakfast</span><span class="tag t-time">25 min · Medium</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">carb-rich</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Batter</li>
+            <li><b>300 g</b> plain flour</li>
+            <li><b>2 tsp</b> baking powder · <b>2 tbsp</b> caster sugar · <b>½ tsp</b> salt</li>
+            <li><b>300 ml</b> whole milk · <b>2</b> eggs</li>
+            <li><b>3 tbsp</b> melted butter · <b>1 tsp</b> vanilla</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">To cook</li>
+            <li><b>12</b> back bacon rashers</li>
+            <li><b>1 tbsp</b> butter · maple syrup to serve</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix dry; whisk eggs into milk with vanilla + melted butter; combine — lumps are fine, don't overmix.</li>
+            <li>One zone medium for pancakes, one medium-high for bacon. Butter the pancake zone (it should foam, not brown).</li>
+            <li>Cook bacon 3–4 min a side until crisp; move to the cool edge.</li>
+            <li>Pour digestive-sized rounds; flip <b>once</b> when bubbles break across the surface and edges look dry.</li>
+            <li>Stack 3–4 per person with bacon and maple syrup. Serve hot.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> a brilliant <b>carb-load</b> — eat the night before or ~3 h before a long ride, or turn it into a recovery breakfast. Maple syrup is fast carbs that do a real job around training.</div>
+      <div class="note protein"><b>Coach tweak (recovery stack):</b> beat <b>2 scoops whey</b> into the batter and top with a Greek-yogurt pot + sliced banana — that turns a ~10g-protein breakfast into a 40g+ recovery meal. Blueberries/banana straight onto the batter for the kids.</div>
+    </div>
+
+    <!-- R3 Smash Burgers -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">03 · Double Smash Burgers</div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">15 min · Max heat</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~40g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>600 g</b> beef mince, 20% fat</li>
+            <li><b>4</b> brioche buns · <b>8</b> slices American cheese</li>
+            <li><b>2 tbsp</b> butter · salt &amp; pepper</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Sauce</li>
+            <li><b>4 tbsp</b> mayo · <b>2 tbsp</b> ketchup · <b>1 tbsp</b> mustard · <b>1 tbsp</b> gherkin relish</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Topping</li>
+            <li>Iceberg lettuce · <b>2</b> tomatoes, sliced</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix the sauce; chill. Roll mince into 8 loose ~75g balls, keep cold.</li>
+            <li>Toast buttered buns on medium-high; set aside.</li>
+            <li>Crank to max. Place balls with space, smash flat within 5 seconds, season — then don't touch.</li>
+            <li>Flip once at a dark crust, cheese on, dome to melt ~45 sec.</li>
+            <li>Sauce both buns, build with lettuce/tomato, two patties per adult. Serve immediately.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> an indulgence — best on a <b>rest day</b> or as a post-event reward. The 20% fat that makes it great also makes it heavy fuel mid-training-block.</div>
+      <div class="note protein"><b>Coach tweak (training-week version):</b> use 15% mince (5% won't smash as well but works pressed thicker), a wholemeal/seeded bun, and pile the salad. Still ~40g protein, far less saturated fat.</div>
+    </div>
+
+    <!-- R4 Fajitas -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">04 · Chicken &amp; Pepper Fajitas <span style="font-size:11px;color:var(--griddle)">★ Friday</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">25 min · High</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~40g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>4</b> chicken breasts (or thighs from batch), in strips</li>
+            <li><b>3</b> mixed peppers · <b>2</b> red onions, sliced</li>
+            <li><b>3 tbsp</b> fajita seasoning · <b>4 tbsp</b> oil</li>
+            <li><b>8</b> flour tortillas</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">To serve</li>
+            <li>Sour cream · salsa · <b>100 g</b> cheddar · lime</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Toss chicken with 2 tbsp oil + the seasoning; marinate 15 min if you can.</li>
+            <li>Both zones high. Lay chicken in a single layer, leave 3–4 min for sizzle not steam.</li>
+            <li>Flip chicken; on the other zone char the peppers and onions until soft with colour.</li>
+            <li>Clear a space, char the tortillas 30 sec a side, wrap to keep warm.</li>
+            <li>Build at the table — chicken, veg, sour cream, salsa, cheddar, lime.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> this is your <b>Friday griddle night</b> — the ideal training dinner: lean protein, a pile of veg, and tortilla carbs you can dial up or down. Batch chicken thighs slot straight in.</div>
+      <div class="note protein"><b>Coach tweak:</b> on a weeknight go easy on the cheese/sour cream and add an extra tortilla for carbs; full-fat the toppings at the weekend. DIY seasoning: 2 tsp smoked paprika, 1 tsp cumin, 1 tsp garlic powder, ½ tsp chilli, ½ tsp oregano, ½ tsp salt.</div>
+    </div>
+
+    <!-- R5 Paella -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">05 · Chicken &amp; Chorizo Paella <span style="font-size:11px;color:var(--accent2)">★ Saturday pre-ride</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">45 min · Med→Low</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">high carb</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>4</b> bone-in chicken thighs · <b>150 g</b> cooking chorizo</li>
+            <li><b>300 g</b> paella rice (Bomba/Calasparra)</li>
+            <li><b>900 ml</b> hot chicken stock · <b>1</b> pinch saffron</li>
+            <li><b>1</b> onion · <b>4</b> garlic cloves · <b>2</b> tomatoes, grated</li>
+            <li><b>2 tsp</b> smoked paprika · <b>100 g</b> peas</li>
+            <li><b>3 tbsp</b> olive oil · lemon · parsley</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Steep saffron in the hot stock ~10 min until deep gold.</li>
+            <li>Brown seasoned thighs skin-down ~6 min; add chorizo until the fat runs; move to the edges.</li>
+            <li>Sofrito in the centre: onion 3 min, garlic + paprika 1 min, grated tomato until darkened.</li>
+            <li>Stir rice through to coat, toast 1–2 min, spread everything out with the chicken/chorizo.</li>
+            <li>Pour the saffron stock evenly — <b>now do not stir</b>. Medium-low ~18–20 min; listen for the crackle of the socarrat.</li>
+            <li>Peas in for the last 3 min; rest 5 min under the hood. Parsley + lemon, scrape up the crust.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> this is your <b>carb-rich Saturday dinner</b> — the real pre-ride fuel for Sunday's long ride. Big bowl of rice = a topped-up glycogen tank before an early start.</div>
+      <div class="note protein"><b>Coach tweak:</b> go generous on the rice and easy on the chorizo to keep the fat down the night before a big effort; add prawns in the last 4 min for extra lean protein. Don't swap the Bomba rice — basmati/risotto rice won't behave.</div>
+    </div>
+
+    <!-- R6 Stir Fry -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">06 · Chinese-Style Beef Stir Fry <span style="font-size:11px;color:var(--protein)">★ Sunday recovery</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">20 min · Max heat</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~38g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>500 g</b> sirloin/rump, thin sliced + <b>2 tbsp</b> soy, <b>1 tbsp</b> cornflour, <b>1 tsp</b> sesame oil</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Sauce</li>
+            <li><b>3 tbsp</b> oyster · <b>2 tbsp</b> soy · <b>1 tbsp</b> rice vinegar · <b>1 tsp</b> sugar · <b>1 tsp</b> cornflour + 2 tbsp water</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Stir fry</li>
+            <li><b>200 g</b> tenderstem · <b>2</b> pak choi · <b>150 g</b> mushrooms</li>
+            <li><b>4</b> garlic · <b>30 g</b> ginger · <b>4</b> spring onions · <b>3 tbsp</b> oil</li>
+            <li>Steamed rice + sesame seeds to serve</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Velvet the beef in soy/cornflour/sesame, 15 min. Mix the sauce.</li>
+            <li>Max heat + oil. Sear beef in a single layer, 90 sec, in 2–3 batches; move to the edge.</li>
+            <li>Garlic + ginger 30 sec until fragrant.</li>
+            <li>Broccoli + mushrooms first; pak choi stems, then leaves; a splash of water to steam through.</li>
+            <li>Beef back in, sauce over, toss ~30 sec until glossy. Spring onions, sesame, over rice.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> an excellent <b>Sunday post-long-ride recovery dinner</b> — lean protein, a load of vegetables, and rice to refill glycogen. Quick enough after a big day out.</div>
+      <div class="note protein"><b>Coach tweak:</b> pile the rice high for recovery, and chicken-thigh strips work identically if you'd rather go leaner than beef. Velveting (the cornflour coat) is what keeps the meat tender — don't skip it.</div>
+    </div>
+  </section>
+
+  <!-- 11 DURING-EXERCISE FUEL -->
+  <section id="fuel">
+    <div class="sec-label">Carbs during exercise — race-day fuel you can make at home</div>
+    <h2><span class="num">11</span>On-Bike &amp; During-Exercise Fuel</h2>
+    <p class="lead">Shop gels and drink mixes are expensive and you go through a lot of them. These DIY versions cost pennies, taste better, and — critically — let you <em>train your gut</em> on exactly what you'll race on. Start fuelling in the first 15 minutes of any ride over ~75 minutes and keep it steady.</p>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Fuelling Primer — how much, how often</div>
+        <div class="tags"><span class="tag t-griddle">Read first</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Targets</div>
+          <ul>
+            <li><b>Carbs:</b> ~60 g/hr for rides 1–2.5 h; <b>75–90 g/hr</b> beyond 2.5 h and on event day</li>
+            <li><b>Fluid:</b> 500–750 ml/hr (more in heat)</li>
+            <li><b>Sodium:</b> ~300–700 mg/hr; more if you're a salty/heavy sweater</li>
+            <li><b>Ratio:</b> above ~60 g/hr use ~<b>1 : 0.8 glucose : fructose</b> to raise the absorption ceiling</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">How to apply it</div>
+          <ol>
+            <li>Start within 15 min, then take something every 20–30 min — don't wait until you feel empty.</li>
+            <li>Mix sources: some drink, some solid (rice cake/bar), the odd gel for a hard effort. Variety beats flavour fatigue over 4+ hours.</li>
+            <li><b>Gut training:</b> rehearse the full race-day rate on your long rides now (weeks 9+ to 90 g/hr) — the gut adapts. Nothing new on event day.</li>
+            <li>In heat, lean harder on the electrolyte drink and keep carbs in solids/gel.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standard drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Energy Drink — Standard (~60 g/hr)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-prot">~60g carbs</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>40 g</b> maltodextrin</li>
+            <li><b>20 g</b> fructose</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li>Squash/cordial for flavour</li>
+            <li><b>500 ml</b> water</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Add everything to the bottle and shake hard until dissolved.</li>
+            <li>One bottle per hour ≈ 60 g carbs + sodium covered.</li>
+            <li><b>No-scales version:</b> 3 tbsp white sugar + a pinch of salt + squash per 500 ml is a rough 60 g equivalent (single-source, fine up to ~60 g/hr).</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- High carb drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Energy Drink — High-Carb Dual Source (~90 g/hr)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-prot">~90g carbs</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>55 g</b> maltodextrin</li>
+            <li><b>35 g</b> fructose</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li>Squash + a squeeze of lemon</li>
+            <li><b>500 ml</b> water</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Shake until fully dissolved — it's a denser mix, give it a minute.</li>
+            <li>The ~1 : 0.8 malto:fructose ratio is what lets you push past 60 g/hr without gut trouble.</li>
+            <li>For long alpine days, run this <em>plus</em> a rice cake or banana each hour rather than forcing all 90 g into liquid — easier on the stomach.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Tenerife &amp; the alpine event:</b> this is the bottle to rehearse on every long ride from week 9. Dial flavour now so it's familiar when it matters.</div>
+    </div>
+
+    <!-- Electrolyte drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Hot-Weather Electrolyte Drink (low carb)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-time">heat / hydration</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>500 ml</b> water</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li><b>1 tsp</b> sugar or honey (helps sodium uptake)</li>
+            <li>Juice of ½ lemon or orange</li>
+            <li>Pinch of "lite" salt (adds potassium) if you have it</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Shake to dissolve. This is a <em>hydration</em> bottle, not a fuel bottle.</li>
+            <li>On hot days run one electrolyte bottle alongside your carb bottle, and get the carbs from solids/gel.</li>
+            <li>Heat acclimation block (final 10 days before the event): useful for the indoor Z2 heat sessions too.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Homemade gel -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Homemade Energy Gel (flask)</div>
+        <div class="tags"><span class="tag t-makes">~5 × 30g servings</span><span class="tag t-time">5 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>100 g</b> maltodextrin</li>
+            <li><b>3 tbsp</b> honey</li>
+            <li><b>~80 ml</b> warm water</li>
+            <li>Pinch of salt</li>
+            <li>Squeeze of lemon (cuts the sweetness)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Whisk everything warm until smooth; thin with a little more water to a gel consistency.</li>
+            <li>Decant into a small soft flask (refillable gel flask). ~25–30 g carbs per good swig.</li>
+            <li>Chase with a mouthful of water/electrolyte — concentrated carbs need fluid to absorb well.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Savoury rice cakes -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Savoury Rice Cakes (the long-ride staple)</div>
+        <div class="tags"><span class="tag t-makes">~8 cakes</span><span class="tag t-time">25 min</span><span class="tag t-prot">~30–40g C/cake</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> short-grain / sushi rice (uncooked)</li>
+            <li><b>2</b> eggs, scrambled</li>
+            <li><b>4</b> rashers bacon (or 100 g pancetta), chopped &amp; crisped</li>
+            <li><b>1 tbsp</b> soy sauce + pinch salt</li>
+            <li><b>30 g</b> grated parmesan (optional)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook the rice slightly past done so it's sticky; keep it warm.</li>
+            <li>Scramble the eggs and crisp the bacon (do both on the griddle).</li>
+            <li>Fold eggs, bacon, soy, salt and parmesan through the warm rice.</li>
+            <li>Press ~2 cm thick into a lined tray, cool, cut into ~8 squares, wrap each in foil.</li>
+            <li>Real food that goes down easily after 2+ hours when sweet gels start to repel — a long-ride saviour.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> the workhorse for rides over ~2.5 h and for the charity day / alpine stages. Two cakes ≈ one bottle's worth of carbs in solid form. Eat early, before you're hungry.</div>
+    </div>
+
+    <!-- Sweet rice cakes -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Sweet Rice Cakes (banana &amp; nut butter)</div>
+        <div class="tags"><span class="tag t-makes">~8 cakes</span><span class="tag t-time">25 min</span><span class="tag t-prot">~35g C/cake</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> short-grain / sushi rice (uncooked)</li>
+            <li><b>2</b> ripe bananas, mashed</li>
+            <li><b>3 tbsp</b> peanut butter</li>
+            <li><b>2 tbsp</b> honey or maple</li>
+            <li>Pinch salt + cinnamon</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook the rice sticky and warm.</li>
+            <li>Fold the banana, peanut butter, honey, salt and cinnamon through it.</li>
+            <li>Press, cool, cut into ~8, wrap in foil.</li>
+            <li>A sweeter option for the first half of a long ride; alternate with the savoury cakes to dodge flavour fatigue.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Energy balls -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Date &amp; Oat Energy Balls</div>
+        <div class="tags"><span class="tag t-makes">~12 balls</span><span class="tag t-time">10 min · no bake</span><span class="tag t-prot">~18g C/ball</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>200 g</b> soft pitted dates</li>
+            <li><b>100 g</b> porridge oats</li>
+            <li><b>2 tbsp</b> honey or rice syrup</li>
+            <li>Pinch of salt</li>
+            <li>Optional: 1 tbsp cocoa or a scoop of whey</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Blitz the dates to a paste (a splash of water helps).</li>
+            <li>Mix in oats, honey, salt (and cocoa/whey if using) to a stiff dough.</li>
+            <li>Roll into ~12 balls; fridge to firm. Pocket-sized, foil-wrapped pick-me-ups.</li>
+            <li>Great for the back end of a long ride or in the jersey for a quick chew on a climb.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Don't forget:</b> the <b>homemade oat bars (#03)</b> double as on-bike fuel (~28 g carbs each), and a plain banana is ~25 g — count them all toward your hourly target.</div>
+    </div>
+
+    <!-- Recovery (after, not during) -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Recovery Chocolate Milk <span style="font-size:11px;color:var(--protein)">after, not during</span></div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">2 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>300 ml</b> semi-skimmed milk</li>
+            <li><b>1–2 tsp</b> cocoa powder</li>
+            <li><b>1 tsp</b> sugar or honey</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Whisk cocoa + sugar with a splash of warm milk to a paste (stops lumps), top with cold milk, shake.</li>
+            <li>Drink within 45 min of finishing — the carb-to-protein ratio is near-ideal for recovery, then eat the big recovery porridge (#06).</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 SCHEDULE -->
+  <section id="schedule">
+    <div class="sec-label">Plan — the two-hour Sunday</div>
+    <h2><span class="num">12</span>Sunday Batch-Prep Schedule</h2>
+    <p class="lead">Do these in parallel and the week's breakfasts, lunches and snacks are done in about two hours of mostly hands-off time.</p>
+    <table class="sched">
+      <thead><tr><th>Order</th><th>Task</th><th>Why now</th></tr></thead>
+      <tbody>
+        <tr><td>1 · 0:00</td><td>Oven on (200°C). Season &amp; tray the <b>chicken thighs</b> (#01); roast 25–30 min.</td><td>Longest cook — start it first and it runs while you do everything else.</td></tr>
+        <tr><td>2 · 0:05</td><td>Rinse and start the <b>batch basmati</b> (#02) — 10 min simmer, 10 min rest.</td><td>Mostly passive; frees the hob fast.</td></tr>
+        <tr><td>3 · 0:15</td><td>Mix and bake the <b>oat bars</b> (#03) once the chicken's out (or on a second shelf at 180°C).</td><td>15 min bake; share the oven.</td></tr>
+        <tr><td>4 · 0:25</td><td>Portion <b>Greek-yogurt pots</b> (#04) — ~12 tubs.</td><td>5-min job while things cook.</td></tr>
+        <tr><td>5 · 0:40</td><td>Cool, then portion: <b>5 chicken tubs</b>, <b>6–7 rice tubs</b>, cut <b>12 oat bars</b>.</td><td>Cool before sealing to keep them fresh and safe.</td></tr>
+        <tr><td>6 · 1:00</td><td>Fridge what you'll eat in 3–4 days; <b>freeze</b> the rest (later chicken/rice portions, spare bars).</td><td>Stops day-4 food sitting too long.</td></tr>
+        <tr><td>Weeknights</td><td>Assemble lunches in 2 min. Gousto kit for dinner Mon–Thu.</td><td>All the work's already done.</td></tr>
+        <tr><td>Weekend</td><td>Fire up the <b>griddle</b> (#10) Fri/Sat/Sun. Make recovery porridge (#06) after Sat ruck &amp; Sun ride.</td><td>Fresh-cooked when you've got the time.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+<div class="footer">
+  Bulk-Staple Recipe &amp; Prep Guide · companion to the 4-week endurance nutrition plan · protein/calorie figures match the plan.
+  <div class="pill">Print or save to PDF for the kitchen — File ▸ Print ▸ Save as PDF</div>
+</div>
+
+</body>
+</html>

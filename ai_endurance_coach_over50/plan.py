@@ -191,6 +191,70 @@ KB_VIDEO_URLS: dict[str, str] = {
     "Single-Arm Swing":       "https://www.youtube.com/watch?v=ANjKto7aSH0",
 }
 
+# ── "Rucksack then Kettlebell" — standalone Saturday strength session ──────────
+# A separate workout the athlete scheduled directly on Garmin Connect. Shown on the
+# app calendar as its own tile under the Saturday ruck (display-only — no plan tuple
+# or Garmin-push involvement; it lives in the athlete's Garmin library, not here).
+# Add ISO dates here as more Saturdays are scheduled on Garmin.
+RUCK_CIRCUIT_LABEL = "Rucksack then Kettlebell"
+RUCK_CIRCUIT_DATES: set[str] = {
+    "2026-06-20", "2026-06-27", "2026-07-04",
+}
+
+RUCK_CIRCUIT_SPEC: dict = {
+    "note": ("Separate strength session done after the Saturday ruck (mirrors the "
+             "'Rucksack then Kettlebell' Garmin workout). 10-min warm-up, then two blocks "
+             "of 3 rounds, 2m30s rest between rounds. The suitcase carries are the key "
+             "work — direct carryover to rucking; flat back on the deadlift when fatigued."),
+    "blocks": [
+        {"title": "Block 1 — Rucksack On (×3 rounds)", "exercises": [
+            {"name": "Air Squat",                              "reps": "×15"},
+            {"name": "Push-Up",                                "reps": "×10"},
+            {"name": "Reverse Lunge",                          "reps": "×10 each leg"},
+            {"name": "Suitcase Carry — rucksack, one hand",    "reps": "1m30s, switch halfway"},
+        ]},
+        {"title": "Block 2 — 16 kg Kettlebell (×3 rounds)", "exercises": [
+            {"name": "Kettlebell Goblet Squat",   "reps": "×12"},
+            {"name": "Kettlebell Deadlift",       "reps": "×10"},
+            {"name": "Kettlebell Swing",          "reps": "×15"},
+            {"name": "Kettlebell Suitcase Carry", "reps": "2m00s, switch halfway"},
+        ]},
+    ],
+}
+
+_RUCK_CIRCUIT_VIDEO_URLS: dict[str, str] = {
+    "Kettlebell Goblet Squat":   KB_VIDEO_URLS["KB Goblet Squat"],
+    "Kettlebell Swing":          KB_VIDEO_URLS["KB Swing (Two-Hand)"],
+    "Kettlebell Suitcase Carry": KB_VIDEO_URLS["KB Suitcase Carry"],
+}
+
+
+def _enrich_ruck_circuit(spec: dict) -> dict:
+    """Attach demo-video URLs to the circuit's KB exercises where one is known."""
+    return {
+        **spec,
+        "blocks": [
+            {**block, "exercises": [
+                {**ex, "video_url": _RUCK_CIRCUIT_VIDEO_URLS.get(ex["name"])}
+                for ex in block["exercises"]
+            ]}
+            for block in spec["blocks"]
+        ],
+    }
+
+
+def ruck_circuit_for_date(d: date) -> dict | None:
+    """Return the extra-session tile dict for `d`, or None if not scheduled that day."""
+    if d.isoformat() not in RUCK_CIRCUIT_DATES:
+        return None
+    return {
+        "label": RUCK_CIRCUIT_LABEL,
+        "garmin_key": "strength_training",
+        "circuit_spec": _enrich_ruck_circuit(RUCK_CIRCUIT_SPEC),
+        "completed": None,
+        "actual_min": None,
+    }
+
 # Full KB circuit for KB+MaxiClimber sessions (done before the MaxiClimber block).
 # Progression: add 1 rep per set each week; at the top end, increase weight and reset.
 KB_FULL_SPECS: dict[int, dict] = {
@@ -484,6 +548,7 @@ def build_calendar_weeks() -> list[dict]:
                 "maxi_intervals": maxi_intervals,
                 "ruck_spec": ruck_spec,
                 "kb_spec": kb_spec,
+                "extra_session": ruck_circuit_for_date(d),
                 "mersea_build": bool(ruck_spec and ruck_spec.get("mersea_build")),
             })
         weeks.append({"week_num": wk_idx + 1, "start": wk_start, "days": days})
