@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Coach Memory · AI Endurance Coach</title>
+</head>
+<body>
+{% include 'nav.html' %}
+
+<div style="max-width:800px;margin:0 auto;padding:24px 16px">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+    <div>
+      <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.08em;color:var(--text);margin-bottom:2px">COACH MEMORY</p>
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">The durable memo the AI coach carries between chats — goals, tendencies, and decisions</p>
+    </div>
+    <button id="regen-btn" onclick="regenMemo()"
+      style="font-family:var(--font-b);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;
+             color:var(--bg);background:var(--accent);border:none;border-radius:4px;
+             padding:9px 16px;cursor:pointer;white-space:nowrap;transition:opacity 0.15s">
+      Regenerate now
+    </button>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px 22px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-family:var(--font-m);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted)">Durable memo</span>
+      <span id="updated-at" style="font-family:var(--font-m);font-size:10px;color:#71717a">
+        {% if updated_at %}· updated {{ updated_at }}{% endif %}
+      </span>
+    </div>
+    <div id="memo-body" style="font-family:var(--font-b);font-weight:300;font-size:15px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap">{% if memo %}{{ memo }}{% else %}No memo yet. The coach builds this automatically once you've exchanged a few messages in the Coach tab, or you can hit “Regenerate now”.{% endif %}</div>
+  </div>
+
+  <p style="font-family:var(--font-m);font-size:10px;color:#71717a;margin-top:14px;line-height:1.6">
+    Refreshes automatically in the background once a conversation reaches a few new messages or the memo goes stale.
+    Stored in the <code style="color:var(--muted)">coach_memory</code> table; the last 20 chat messages stay in-context separately.
+  </p>
+
+</div>
+
+<script>
+async function regenMemo() {
+  const btn = document.getElementById('regen-btn');
+  const body = document.getElementById('memo-body');
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.textContent = 'Regenerating…';
+  try {
+    const res = await fetch('/coach-memory/update', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || ('HTTP ' + res.status));
+    }
+    const data = await res.json();
+    body.textContent = data.memo || 'No memo generated.';
+    const ts = document.getElementById('updated-at');
+    ts.textContent = '· updated just now';
+  } catch (e) {
+    btn.textContent = 'Failed — ' + e.message;
+    setTimeout(() => { btn.textContent = 'Regenerate now'; btn.disabled = false; btn.style.opacity = '1'; }, 2500);
+    return;
+  }
+  btn.textContent = 'Regenerate now';
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+</script>
+</body>
+</html>

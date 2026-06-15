@@ -3099,6 +3099,16 @@ def regenerate_body_advice_endpoint():
     return JSONResponse({"analysis": ctx["body_analysis"]})
 
 
+@app.get("/memory", response_class=HTMLResponse)
+async def coach_memory_tab(request: Request):
+    memo = get_coach_memory()
+    return TEMPLATES.TemplateResponse(request=request, name="memory.html", context={
+        "active_tab": "memory",
+        "memo": memo["memo"] if memo else "",
+        "updated_at": memo.get("updated_at") if memo else None,
+    })
+
+
 @app.get("/coach-memory")
 async def coach_memory_get():
     memo = get_coach_memory()
