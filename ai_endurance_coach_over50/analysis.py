@@ -59,6 +59,13 @@ _INTERVAL_CONFIG: dict[str, dict] = {
     "KB + MaxiClimber":    {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
 }
 
+# Interval sessions are discipline-specific. On a compound day (e.g.
+# "KB + MaxiClimber") two activities share the same plan label — only the
+# climbing one carries climbing intervals, so the kettlebell strength activity
+# must be skipped rather than mined for reps. Labels not listed here are cycling.
+_CLIMBING_INTERVAL_LABELS = {"MaxiClimber", "Easy MaxiClimber", "KB + MaxiClimber"}
+_CLIMBING_TYPES = {"stair_climbing", "indoor_cardio"}
+
 
 def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
     """Pick out only the work-interval laps using structured-workout step tags.
@@ -98,16 +105,23 @@ def _lap_dur(l: dict) -> float:
     return l.get("duration") or l.get("elapsedDuration") or 0
 
 
-def _extract_interval_data(api: Any, activity_id: int, session_label: str) -> dict:
+def _extract_interval_data(api: Any, activity_id: int, session_label: str,
+                           activity_type: Optional[str] = None) -> dict:
     """Return per-rep HR data for structured interval sessions using lap splits.
 
     Prefers structured-workout step tags so warm-up and recovery laps are not
     mislabelled as work reps; falls back to a duration band when no step tags
-    are present (e.g. a manually lapped session).
+    are present (e.g. a manually lapped session). On compound days the activity
+    whose discipline doesn't match the session (e.g. a kettlebell strength
+    activity under a "KB + MaxiClimber" label) is skipped.
     """
     config = _INTERVAL_CONFIG.get(session_label)
     if not config:
         return {}
+    if activity_type:
+        allowed = _CLIMBING_TYPES if session_label in _CLIMBING_INTERVAL_LABELS else _CYCLING_TYPES
+        if activity_type not in allowed:
+            return {}
     try:
         splits = api.get_activity_splits(activity_id)
         laps = splits.get("lapDTOs") or splits.get("laps") or []
@@ -257,7 +271,8 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
         if session_label in _FTP_SESSION_LABELS:
             result.update(_extract_ftp_effort(api, activity_id))
         elif session_label in _INTERVAL_CONFIG:
-            result.update(_extract_interval_data(api, activity_id, session_label))
+            result.update(_extract_interval_data(api, activity_id, session_label,
+                                                 activity.get("type_key") if activity else None))
         return result
 
     summary_raw = api.get_activity(activity_id)
@@ -287,7 +302,8 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
     if session_label in _FTP_SESSION_LABELS:
         result.update(_extract_ftp_effort(api, activity_id))
     elif session_label in _INTERVAL_CONFIG:
-        result.update(_extract_interval_data(api, activity_id, session_label))
+        result.update(_extract_interval_data(api, activity_id, session_label,
+                                                 activity.get("type_key") if activity else None))
     return result
 
 
