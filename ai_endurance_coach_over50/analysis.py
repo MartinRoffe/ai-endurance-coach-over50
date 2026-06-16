@@ -60,31 +60,77 @@ _INTERVAL_CONFIG: dict[str, dict] = {
 }
 
 
+def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
+    """Pick out only the work-interval laps using structured-workout step tags.
+
+    Plan workouts uploaded to Garmin mark warm-up / work / recovery as distinct
+    repeating steps (``wktStepIndex``). The work step is the repeated step with
+    the highest mean HR — distinguishing it from recovery (repeated, lower HR)
+    and warm-up/cool-down (typically single occurrence). Returns None when laps
+    carry no usable step tags so the caller can fall back to a duration band.
+    """
+    from collections import defaultdict
+    import statistics
+
+    step_vals = {l.get("wktStepIndex") for l in hr_laps if l.get("wktStepIndex") is not None}
+    if len(step_vals) < 2:
+        return None
+
+    groups: dict = defaultdict(list)
+    for l in hr_laps:
+        si = l.get("wktStepIndex")
+        if si is not None:
+            groups[si].append(l)
+
+    repeated = {si: ls for si, ls in groups.items() if len(ls) >= 2}
+    pool = repeated or groups
+    work_step = max(pool, key=lambda si: sum(l["averageHR"] for l in pool[si]) / len(pool[si]))
+    work_laps = [l for l in hr_laps if l.get("wktStepIndex") == work_step]
+
+    # Drop truncated stubs (e.g. a 7 s tail lap that shares the work step index).
+    if work_laps:
+        med = statistics.median([_lap_dur(l) for l in work_laps])
+        work_laps = [l for l in work_laps if _lap_dur(l) >= 0.5 * med]
+    return work_laps or None
+
+
+def _lap_dur(l: dict) -> float:
+    return l.get("duration") or l.get("elapsedDuration") or 0
+
+
 def _extract_interval_data(api: Any, activity_id: int, session_label: str) -> dict:
-    """Return per-rep HR data for structured interval sessions using lap splits."""
+    """Return per-rep HR data for structured interval sessions using lap splits.
+
+    Prefers structured-workout step tags so warm-up and recovery laps are not
+    mislabelled as work reps; falls back to a duration band when no step tags
+    are present (e.g. a manually lapped session).
+    """
     config = _INTERVAL_CONFIG.get(session_label)
     if not config:
         return {}
     try:
         splits = api.get_activity_splits(activity_id)
         laps = splits.get("lapDTOs") or splits.get("laps") or []
-        lo, hi = config["effort_min"], config["effort_max"]
-        effort_laps = [
-            l for l in laps
-            if lo <= (l.get("duration") or l.get("elapsedDuration") or 0) <= hi
-            and (l.get("averageHR") or 0) > 0
-        ]
+        hr_laps = [l for l in laps if (l.get("averageHR") or 0) > 0 and _lap_dur(l) > 0]
+        if not hr_laps:
+            return {}
+
+        effort_laps = _work_laps_from_steps(hr_laps)
+        if not effort_laps:
+            # Fallback: no step tags — identify efforts by their duration band.
+            lo, hi = config["effort_min"], config["effort_max"]
+            effort_laps = [l for l in hr_laps if lo <= _lap_dur(l) <= hi]
         if not effort_laps:
             return {}
+
         reps = []
         for i, l in enumerate(effort_laps, 1):
-            dur = round(l.get("duration") or l.get("elapsedDuration") or 0)
             reps.append({
                 "rep":          i,
                 "name":         config["name"],
                 "avg_hr":       round(l["averageHR"]) if l.get("averageHR") else None,
                 "max_hr":       round(l["maxHR"])     if l.get("maxHR")     else None,
-                "duration_secs": dur,
+                "duration_secs": round(_lap_dur(l)),
             })
         return {"interval_reps": reps} if reps else {}
     except Exception:
