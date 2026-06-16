@@ -165,6 +165,26 @@ MAXI_INTERVALS: dict[int, dict] = {
     8:  {"sets": 5, "work_s": 120, "rest_s": 60, "kb": False, "easy": True},   # 20m
 }
 
+
+def maxi_target_zone(d: date) -> str | None:
+    """Prescribed HR-zone target for the MaxiClimber session on date `d`.
+
+    Single source of truth mirroring the calendar modal (calendar.html): the
+    `norwegian`/`easy` flags on the week's MAXI_INTERVALS spec decide the zone.
+    Returns None when `d` has no MaxiClimber spec (outside the 12-week plan).
+    """
+    delta = (d - PLAN_START).days
+    if delta < 0 or delta >= _PLAN_DAYS:
+        return None
+    spec = MAXI_INTERVALS.get(delta // 7 + 1)
+    if not spec:
+        return None
+    if spec.get("norwegian"):
+        return "Z4–5 (85–95% max HR) — Norwegian 4×4 protocol"
+    if spec.get("easy"):
+        return "Z1–2 (easy aerobic / deload)"
+    return "Z2–3 (60–80% max HR)"
+
 RUCK_SPECS: dict[int, dict] = {
     1:  {"weight_lo": 8,  "weight_hi": None, "ruck_min": 75, "note": "Compound — ruck first (~75m at 8 kg), then KB block at home"},
     2:  {"weight_lo": 8,  "weight_hi": 10,   "note": "Start at 8 kg; increase to 10 if the first half feels easy"},

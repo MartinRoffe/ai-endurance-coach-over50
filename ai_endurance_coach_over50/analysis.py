@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .history import DB_PATH, _conn, get_cached_text, set_cached_text
-from .plan import COMPOUND_SESSIONS, session_for_date, session_for_date_extended
+from .plan import COMPOUND_SESSIONS, maxi_target_zone, session_for_date, session_for_date_extended
 from .llm import MODEL_FAST, MODEL_SMART
 
 # ── DB schema ────────────────────────────────────────────────────────────────
@@ -530,8 +530,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
     equipment_note = (
         "Equipment note: this 'stair_climbing' activity was performed on a MaxiClimber — "
         "a vertical climbing machine that works arms AND legs simultaneously (not legs-only). "
-        "It is used here as a structured cardio interval tool with timed work/rest sets at prescribed HR zones "
-        "(Z2–Z3 in standard weeks, Z4 for Norwegian 4×4 protocol in the peak block). "
+        "It is used here as a structured cardio interval tool with timed work/rest sets at the prescribed HR "
+        "zone stated below. "
         "Analyse it as a cardio interval session: focus on HR zone adherence during work intervals, "
         "recovery completeness during rest intervals, and overall aerobic training effect. "
         "Do NOT treat it as a strength or resistance session."
@@ -540,6 +540,20 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         "Do not treat them as different session types. A planned ruck and a logged load carry are equivalent."
         if "load carry" in name.lower() else ""
     )
+
+    # Prescribed HR-zone target for MaxiClimber sessions, so the coach evaluates
+    # execution against the actual plan target (e.g. Z2–3 in a standard week) and
+    # does not assume a harder protocol such as Norwegian 4×4.
+    target_zone_line = ""
+    if d_obj and type_key in ("stair_climbing", "indoor_cardio"):
+        tz = maxi_target_zone(d_obj)
+        if tz:
+            target_zone_line = (
+                f"Prescribed target zone for THIS session: {tz}. "
+                "Judge execution against THIS target only — do NOT assume a higher-intensity "
+                "protocol (e.g. Norwegian 4×4 / Z4) unless the prescribed zone above says so. "
+                "Reaching Z2–Z3 on a Z2–Z3 day is a success, not a shortfall."
+            )
 
     _ftp_labels = {"FTP Test", "FTP Re-test", "Final FTP Test"}
     _is_ftp = bool(d_obj and session_for_date_extended(d_obj) and session_for_date_extended(d_obj)[1] in _ftp_labels)
@@ -595,6 +609,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         f"Training load: {tl}",
         f"Avg respiration: {resp} breaths/min" if resp else "",
         equipment_note,
+        target_zone_line,
         ftp_note,
         ftp_effort_line,
         *interval_lines,
