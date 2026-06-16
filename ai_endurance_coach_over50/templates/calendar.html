@@ -656,6 +656,9 @@
       const easy    = !!intervals.easy;
       const workFmt = fmtSecs(intervals.work_s);
       const restFmt = intervals.rest_s >= 60 ? fmtSecs(intervals.rest_s) : intervals.rest_s + 's';
+      // NOTE: this norwegian/easy/standard → zone mapping is duplicated in
+      // Python as plan.maxi_target_zone() (used by the post-workout analysis
+      // prompt). Keep the two in sync — if you change a zone here, change it there.
       const zone    = intervals.norwegian ? 'Z4–5 · 85–95% max HR'
                     : easy               ? 'Z1–2'
                     :                      'Z2–3 · 60–80% max HR';

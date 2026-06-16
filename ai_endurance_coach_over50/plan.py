@@ -169,8 +169,9 @@ MAXI_INTERVALS: dict[int, dict] = {
 def maxi_target_zone(d: date) -> str | None:
     """Prescribed HR-zone target for the MaxiClimber session on date `d`.
 
-    Single source of truth mirroring the calendar modal (calendar.html): the
-    `norwegian`/`easy` flags on the week's MAXI_INTERVALS spec decide the zone.
+    The `norwegian`/`easy` flags on the week's MAXI_INTERVALS spec decide the
+    zone. This mapping is duplicated in JS in the calendar modal (calendar.html)
+    — keep the two in sync if you change a zone here.
     Returns None when `d` has no MaxiClimber spec (outside the 12-week plan).
     """
     delta = (d - PLAN_START).days
