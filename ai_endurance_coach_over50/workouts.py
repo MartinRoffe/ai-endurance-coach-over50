@@ -60,6 +60,31 @@ def _no_target() -> dict[str, Any]:
 def _open_target() -> dict[str, Any]:
     return {"workoutTargetTypeId": getattr(TargetType, "OPEN", 6), "workoutTargetTypeKey": "open", "displayOrder": 6}
 
+def _power_lap_target() -> dict[str, Any]:
+    return {"workoutTargetTypeId": TargetType.POWER_LAP, "workoutTargetTypeKey": "power.lap", "displayOrder": 9}
+
+
+def _latest_ftp_w() -> int | None:
+    """Measured FTP watts when power meter is active; None otherwise."""
+    from .history import load_ftp_tests, power_meter_active
+    if not power_meter_active():
+        return None
+    for t in reversed(load_ftp_tests()):
+        if t.get("ftp_w"):
+            return int(t["ftp_w"])
+    return None
+
+
+def _quality_interval(
+    order: int, secs: float, ftp_w: int | None,
+    pct_lo: float, pct_hi: float, hr_lo: int, hr_hi: int,
+) -> ExecutableStep:
+    """Quality interval: %FTP watts when FTP known, else HR zone (endurance stays HR-only)."""
+    if ftp_w:
+        return _interval(order, secs, _power_lap_target(),
+                         round(ftp_w * pct_lo), round(ftp_w * pct_hi))
+    return _interval(order, secs, _hr_zone_target(), hr_lo, hr_hi)
+
 
 # ── Step builders ────────────────────────────────────────────────────────────
 
@@ -261,13 +286,14 @@ def _ftp_test(name: str, dur_min: int) -> CyclingWorkout:
 
 def _tempo_intervals(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 3×(10m Z4 + 5m Z1) + 5m cooldown = 60m
+    ftp_w = _latest_ftp_w()
     return _make(f"Tempo Intervals {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _interval(2, 600, _hr_zone_target(), 4, 4),
+        _quality_interval(2, 600, ftp_w, 0.91, 1.05, 4, 4),
         _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _interval(4, 600, _hr_zone_target(), 4, 4),
+        _quality_interval(4, 600, ftp_w, 0.91, 1.05, 4, 4),
         _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _interval(6, 600, _hr_zone_target(), 4, 4),
+        _quality_interval(6, 600, ftp_w, 0.91, 1.05, 4, 4),
         create_cooldown_step(300.0, step_order=7),
     ], dur_min)
 
@@ -320,13 +346,14 @@ def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
 
 def _sweetspot_ride(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 3×(15m Z3-4 sweetspot + 5m Z1) + 15m cooldown = 90m
+    ftp_w = _latest_ftp_w()
     return _make(f"Sweetspot Ride {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _interval(2, 900, _hr_zone_target(), 3, 4),
+        _quality_interval(2, 900, ftp_w, 0.88, 0.94, 3, 4),
         _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _interval(4, 900, _hr_zone_target(), 3, 4),
+        _quality_interval(4, 900, ftp_w, 0.88, 0.94, 3, 4),
         _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _interval(6, 900, _hr_zone_target(), 3, 4),
+        _quality_interval(6, 900, ftp_w, 0.88, 0.94, 3, 4),
         create_cooldown_step(900.0, step_order=7),
     ], dur_min)
 

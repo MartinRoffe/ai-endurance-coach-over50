@@ -2063,38 +2063,50 @@ def date_fromisoformat_safe(s: str) -> date:
 
 # ── AI Coach chat ─────────────────────────────────────────────────────────────
 
-_COACH_SYSTEM = (
-    "You are an experienced endurance coach working with an amateur athlete preparing for "
-    "a 2-day charity cycling event (Ghent to Amsterdam, ~310 km total, 13–14 Sep 2026). "
-    "The athlete is 50+, training 6+ hours/week mixing cycling, kettlebells, rucking, and MaxiClimber. "
-    "They also have a longer-term goal: Haute Route Alpes 2027 (7 stages, ~900 km, ~25,000 m elevation).\n\n"
-    "You have access to their live Garmin data in the context block below. "
-    "Use it to give specific, evidence-based advice referencing actual numbers.\n\n"
-    "Response style: direct and concise (2–4 short paragraphs). Use **bold** for key numbers/points.\n\n"
-    "When you recommend modifying a planned session's duration, call the propose_plan_change tool — "
-    "a confirmation card will appear for the athlete to review. After the tool call, briefly explain "
-    "the proposed change in your text (do not say 'above' or 'below' — just refer to 'the proposal card').\n\n"
-    "The context block below already summarises EVERY dashboard tab — readiness, training load, "
-    "sleep, body composition, nutrition (today + this week), compliance, zone distribution, "
-    "durability, monotony/strain, acclimation, FTP history, interference flags, the 12-week plan, "
-    "Tenerife camp, event prep and the Haute Route phases. For full detail behind any of these, call "
-    "a read tool: get_meal_cycle (full 4-week meals + shopping list), get_activity_analysis (a past "
-    "session's full analysis), get_sleep_history, get_performance_detail, get_hr_plan (full 46-week "
-    "plan), get_compliance_detail, get_workout_description, get_fuelling_plan, get_event_plans "
-    "(charity & Haute Route pacing). You have full visibility — never tell the athlete you can't see "
-    "their data; if you need depth, fetch it with a read tool.\n\n"
-    "Training plan context: 12-week plan runs 18 May – 9 Aug 2026, followed by Tenerife cycling camp "
-    "(13–27 Aug) and event prep block (Aug 31 – Sep 12). Builds from Zone 2 base to back-to-back long "
-    "rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests (wks 3/7/12), hill repeats "
-    "and tempo from wk 5, progressive rucking (Mersea Coastal Spur build in wks 9–10), KB + MaxiClimber strength.\n\n"
-    "PMC note: Garmin TSB units differ from Coggan TSS. Rough bands: "
-    "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250.\n\n"
-    "HR-vs-power note: this athlete trains and races on HEART RATE, not power. HR drifts with heat, "
-    "dehydration, fatigue, sleep, caffeine and altitude, and rises late in long climbs (cardiac drift) "
-    "at steady effort — so treat HR zones as a guide, not a hard ceiling, and cross-check with perceived "
-    "effort, especially on hot days and mountain stages. The estimated W/kg is a coarse VO2max-derived "
-    "proxy (no power meter) — discuss it as a trend, never as a measured number."
-)
+def _coach_system() -> str:
+    base = (
+        "You are an experienced endurance coach working with an amateur athlete preparing for "
+        "a 2-day charity cycling event (Ghent to Amsterdam, ~310 km total, 13–14 Sep 2026). "
+        "The athlete is 50+, training 6+ hours/week mixing cycling, kettlebells, rucking, and MaxiClimber. "
+        "They also have a longer-term goal: Haute Route Alpes 2027 (7 stages, ~900 km, ~25,000 m elevation).\n\n"
+        "You have access to their live Garmin data in the context block below. "
+        "Use it to give specific, evidence-based advice referencing actual numbers.\n\n"
+        "Response style: direct and concise (2–4 short paragraphs). Use **bold** for key numbers/points.\n\n"
+        "When you recommend modifying a planned session's duration, call the propose_plan_change tool — "
+        "a confirmation card will appear for the athlete to review. After the tool call, briefly explain "
+        "the proposed change in your text (do not say 'above' or 'below' — just refer to 'the proposal card').\n\n"
+        "The context block below already summarises EVERY dashboard tab — readiness, training load, "
+        "sleep, body composition, nutrition (today + this week), compliance, zone distribution, "
+        "durability, monotony/strain, acclimation, FTP history, interference flags, the 12-week plan, "
+        "Tenerife camp, event prep and the Haute Route phases. For full detail behind any of these, call "
+        "a read tool: get_meal_cycle (full 4-week meals + shopping list), get_activity_analysis (a past "
+        "session's full analysis), get_sleep_history, get_performance_detail, get_hr_plan (full 46-week "
+        "plan), get_compliance_detail, get_workout_description, get_fuelling_plan, get_event_plans "
+        "(charity & Haute Route pacing). You have full visibility — never tell the athlete you can't see "
+        "their data; if you need depth, fetch it with a read tool.\n\n"
+        "Training plan context: 12-week plan runs 18 May – 9 Aug 2026, followed by Tenerife cycling camp "
+        "(13–27 Aug) and event prep block (Aug 31 – Sep 12). Builds from Zone 2 base to back-to-back long "
+        "rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests (wks 3/7/12), hill repeats "
+        "and tempo from wk 5, progressive rucking (Mersea Coastal Spur build in wks 9–10), KB + MaxiClimber strength.\n\n"
+        "PMC note: Garmin TSB units differ from Coggan TSS. Rough bands: "
+        "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250.\n\n"
+    )
+    if power_meter_active():
+        return base + (
+            "HR-vs-power note: the athlete has a power meter and trains on BOTH channels. "
+            "Use watts for climb and interval execution feedback; keep HR primary for readiness, "
+            "fatigue, heat, altitude and variable conditions. HR drifts with heat, dehydration, sleep "
+            "and altitude — on hot days or above 2000 m, defer to the HR cap when HR exceeds "
+            "power-predicted effort. The measured FTP/W/kg in context is the primary number; "
+            "the VO2max-derived estimate is a secondary cross-check only."
+        )
+    return base + (
+        "HR-vs-power note: this athlete trains and races on HEART RATE, not power. HR drifts with heat, "
+        "dehydration, fatigue, sleep, caffeine and altitude, and rises late in long climbs (cardiac drift) "
+        "at steady effort — so treat HR zones as a guide, not a hard ceiling, and cross-check with perceived "
+        "effort, especially on hot days and mountain stages. The estimated W/kg is a coarse VO2max-derived "
+        "proxy (no power meter) — discuss it as a trend, never as a measured number."
+    )
 
 _COACH_TOOL = {
     "name": "propose_plan_change",
@@ -2240,9 +2252,33 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
                 mono_s = f"{r['monotony']:.2f}" if r.get("monotony") is not None else "—"
                 strain_s = f"{r['strain']:.0f}" if r.get("strain") is not None else "—"
                 lines.append(f"  wk {r['label']}: load {r['weekly_load']:.0f}, monotony {mono_s}, strain {strain_s}")
+            if power_meter_active():
+                mwkg = measured_wkg_history(180)
+                if mwkg:
+                    lines.append("Measured FTP / W-kg (from FTP tests):")
+                    for r in mwkg[-8:]:
+                        lines.append(f"  {r['date']}: {r['ftp_w']}W, {r['wkg']} W/kg ({r['weight_kg']}kg)")
+                pdec = load_power_durability(180)
+                if pdec:
+                    lines.append("Pw:HR decoupling (rides ≥90min):")
+                    for r in pdec[-5:]:
+                        lines.append(
+                            f"  {r['date']}: decoupling {r['decoupling_pct']:+.1f}%  "
+                            f"(HR drift {r['hr_drift_pct']:+.1f}%, power drift {r['power_drift_pct']:+.1f}%)"
+                        )
+                pzd = intensity_distribution_by_week_power(today - timedelta(days=56), today)
+                if pzd:
+                    lines.append("Power zone distribution by week:")
+                    for w in pzd:
+                        lines.append(
+                            f"  {w['week_label']}: Z1 {w['z1_pct']}% Z2 {w['z2_pct']}% "
+                            f"Z3 {w['z3_pct']}% Z4 {w['z4_pct']}% Z5 {w['z5_pct']}% ({w['total_min']}min)"
+                        )
             wkg = estimated_wkg_history(180)
             if wkg:
-                lines.append("Estimated FTP / W-kg (VO2max proxy, no power meter):")
+                est_label = "Estimated FTP / W-kg (VO2max proxy"
+                est_label += ", secondary)" if power_meter_active() else ", no power meter)"
+                lines.append(est_label + ":")
                 for r in wkg[-8:]:
                     lines.append(f"  {r['date']}: VO2max {r['vo2_max']}, ~{r['est_ftp_w']}W, {r['wkg']} W/kg ({r['weight_kg']}kg)")
             zd = intensity_distribution_by_week(today - timedelta(days=56), today)
@@ -2615,12 +2651,17 @@ def _build_coach_context() -> str:
     ftp_parts: list[str] = []
     ftp_rows = load_ftp_tests()
     if ftp_rows:
-        ftp_parts = ["## FTP Test History (LTHR)"]
+        ftp_title = "## FTP Test History"
+        if not power_meter_active():
+            ftp_title += " (LTHR)"
+        ftp_parts = [ftp_title]
         for r in ftp_rows[-4:]:
-            ftp_parts.append(
-                f"  {r['date']}: LTHR {r['ftp_hr']}bpm"
-                + (f" (max {r['ftp_hr_max']}bpm)" if r.get("ftp_hr_max") else "")
-            )
+            line = f"  {r['date']}: LTHR {r['ftp_hr']}bpm"
+            if r.get("ftp_hr_max"):
+                line += f" (max {r['ftp_hr_max']}bpm)"
+            if r.get("ftp_w"):
+                line += f"  |  FTP {r['ftp_w']}W"
+            ftp_parts.append(line)
 
     # Durability drift (late-ride HR drift, last 5 rides ≥ 90 min)
     dur_parts: list[str] = []
@@ -2659,16 +2700,52 @@ def _build_coach_context() -> str:
             f"pulse {bp.get('pulse')}bpm"
         ]
 
-    # Estimated W/kg (no power meter)
+    # Measured / estimated W/kg
     wkg_parts: list[str] = []
+    measured = latest_measured_wkg() if power_meter_active() else None
+    if measured:
+        wkg_parts = [
+            "## Measured FTP / W/kg (from FTP test)",
+            f"  {measured['date']}: FTP {measured['ftp_w']}W  {measured['wkg']:.2f} W/kg  "
+            f"(weight {measured['weight_kg']:.1f} kg)",
+        ]
     wkg = latest_estimated_wkg()
     if wkg:
-        wkg_parts = [
-            "## Estimated FTP / W/kg (ACSM formula, no power meter)",
+        est_title = "## Estimated FTP / W/kg (ACSM formula"
+        est_title += ", secondary cross-check)" if measured else ", no power meter)"
+        wkg_parts += [
+            est_title,
             f"  {wkg['date']}: VO2max {wkg['vo2_max']} ml/kg/min  "
             f"est. FTP {wkg['est_ftp_w']:.0f}W  {wkg['wkg']:.2f} W/kg  "
-            f"(weight {wkg['weight_kg']:.1f} kg)"
+            f"(weight {wkg['weight_kg']:.1f} kg)",
         ]
+
+    # Power meter summary (polarisation + decoupling)
+    power_parts: list[str] = []
+    if power_meter_active():
+        try:
+            pzd = intensity_distribution_by_week_power(today - timedelta(days=28), today)
+            if pzd:
+                power_parts = ["## Power Zone Distribution (cycling, recent weeks)"]
+                for w in pzd[-4:]:
+                    power_parts.append(
+                        f"  {w['week_label']}: Z1 {w['z1_pct']}%  Z2 {w['z2_pct']}%  "
+                        f"Z3 {w['z3_pct']}%  Z4 {w['z4_pct']}%  Z5 {w['z5_pct']}%  "
+                        f"({w['total_min']}min, {w['activity_count']} rides)"
+                    )
+        except Exception:
+            pass
+        try:
+            pdec_rows = load_power_durability(90)
+            if pdec_rows:
+                power_parts += ["## Pw:HR Decoupling (last 3 rides ≥ 90 min)"]
+                for r in pdec_rows[-3:]:
+                    power_parts.append(
+                        f"  {r['date']}: decoupling {r['decoupling_pct']:+.1f}%  "
+                        f"(HR drift {r['hr_drift_pct']:+.1f}%, power drift {r['power_drift_pct']:+.1f}%)"
+                    )
+        except Exception:
+            pass
 
     # Plan compliance summary (12-week plan)
     compliance_parts: list[str] = []
@@ -2795,6 +2872,7 @@ def _build_coach_context() -> str:
         *body_parts,
         *([*bp_parts, ""] if bp_parts else []),
         *([*wkg_parts, ""] if wkg_parts else []),
+        *([*power_parts, ""] if power_parts else []),
         *([*accl_parts, ""] if accl_parts else []),
         *([*ftp_parts, ""] if ftp_parts else []),
         *([*dur_parts, ""] if dur_parts else []),
@@ -2869,7 +2947,7 @@ _COACH_MAX_TOOL_TURNS = 6
 
 def _call_coach(messages: list[dict], api_key: str) -> tuple[str, Optional[dict]]:
     context = _build_coach_context()
-    system = _COACH_SYSTEM + f"\n\n## Current Context\n{context}"
+    system = _coach_system() + f"\n\n## Current Context\n{context}"
 
     client = _anthropic.Anthropic(api_key=api_key)
     all_tools = [_COACH_TOOL, *_READ_TOOLS]
@@ -3019,7 +3097,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     save_coach_message("user", user_message)
 
     context = _build_coach_context()
-    system = _COACH_SYSTEM + f"\n\n## Current Context\n{context}"
+    system = _coach_system() + f"\n\n## Current Context\n{context}"
     client = _anthropic.Anthropic(api_key=api_key)
     all_tools = [_COACH_TOOL, *_READ_TOOLS]
 

@@ -514,11 +514,21 @@ _RUCK_TYPES    = {"hiking", "walking", "load_carry", "rucking"}
 
 
 def _coach_system_prompt(type_key: str, activity_name: str = "") -> str:
-    tail = (
-        "The athlete trains on heart rate and has no power meter — discuss intensity in HR zones / RPE, never watts. "
-        "Be direct, specific, and evidence-based. Reference the numbers. "
-        "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
-    )
+    from .history import power_meter_active
+    has_power = power_meter_active()
+    if has_power and type_key in _CYCLING_TYPES:
+        tail = (
+            "The athlete has a power meter — discuss interval and climb intensity with watts when "
+            "power data is present; keep HR primary for aerobic base, readiness and variable conditions. "
+            "Be direct, specific, and evidence-based. Reference the numbers. "
+            "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
+        )
+    else:
+        tail = (
+            "The athlete trains on heart rate and has no power meter — discuss intensity in HR zones / RPE, never watts. "
+            "Be direct, specific, and evidence-based. Reference the numbers. "
+            "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
+        )
     is_ruck = type_key in _RUCK_TYPES or "load carry" in activity_name.lower()
     if type_key in _CYCLING_TYPES:
         return (
@@ -1628,7 +1638,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
     """
     import json as _json
     from .plan import CHARITY_DAYS
-    from .history import get_cached_text, set_cached_text, load_ftp_tests, latest_estimated_wkg
+    from .history import get_cached_text, set_cached_text, load_ftp_tests, latest_estimated_wkg, latest_measured_wkg, power_meter_active
 
     plans: dict[int, dict] = {}
     missing: list[dict] = []
@@ -1659,7 +1669,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
         except ValueError:
             pass
 
-    # Athlete context: LTHR from the most recent FTP test, estimated FTP watts
+    # Athlete context: LTHR from the most recent FTP test, measured/estimated FTP watts
     lthr_note = "LTHR unknown — express HR caps as % of LTHR"
     try:
         tests = load_ftp_tests()
@@ -1667,18 +1677,49 @@ def generate_charity_day_plans() -> dict[int, dict]:
             lthr_note = f"LTHR ≈ {tests[-1]['ftp_hr']} bpm (from FTP test {tests[-1]['date']})"
     except Exception:
         pass
-    ftp_note = ""
-    try:
-        wkg = latest_estimated_wkg()
-        if wkg:
-            ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only, no power meter."
-    except Exception:
-        pass
+
+    has_power = power_meter_active()
+    if has_power:
+        measured = latest_measured_wkg()
+        ftp_w = measured["ftp_w"] if measured else None
+        if not ftp_w:
+            tests = load_ftp_tests()
+            if tests and tests[-1].get("ftp_w"):
+                ftp_w = tests[-1]["ftp_w"]
+        wkg_str = f"{measured['wkg']} W/kg" if measured else "unknown"
+        athlete_line = (
+            f"Athlete: male, 50+, power meter active. Measured FTP = {ftp_w or 'unknown'} W ({wkg_str}). "
+            f"{lthr_note}. Dual-channel: watts for steady-state pacing, HR for readiness and heat."
+        )
+        json_schema = (
+            '{"pacing": "3-4 sentence pacing strategy for the day", '
+            '"hr_cap": "specific HR cap or %LTHR for the early hours", '
+            '"steady_state_w": "target watts for flat/rolling sections", '
+            '"carb_load": "1-2 sentence pre-event carb-load note for this day", '
+            '"carbs_g_per_hr": int, "fluid_ml_per_hr": int, "sodium_mg_per_hr": int, '
+            '"brief": "one-sentence key reminder"}'
+        )
+    else:
+        ftp_note = ""
+        try:
+            wkg = latest_estimated_wkg()
+            if wkg:
+                ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only, no power meter."
+        except Exception:
+            pass
+        athlete_line = f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}.{ftp_note}"
+        json_schema = (
+            '{"pacing": "3-4 sentence pacing strategy for the day", '
+            '"hr_cap": "specific HR cap or %LTHR for the early hours", '
+            '"carb_load": "1-2 sentence pre-event carb-load note for this day", '
+            '"carbs_g_per_hr": int, "fluid_ml_per_hr": int, "sodium_mg_per_hr": int, '
+            '"brief": "one-sentence key reminder"}'
+        )
 
     lines = [
         "Plan pacing and in-ride fuelling for a 2-day supported charity cycling event "
         "(Ghent → Amsterdam, ~310 km total, flat-to-rolling, group riding).",
-        f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}.{ftp_note}",
+        athlete_line,
         "Critical context: the athlete's LONGEST training ride is ~5 hours, so Day 1 "
         "(190 km) exceeds the longest training ride by roughly 30–40%. Pacing and fuelling "
         "— not fitness — are the levers that determine whether Day 1 succeeds.",
@@ -1688,12 +1729,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
         "- 500–750 ml fluid/hr with 500–800 mg sodium/hr.",
         "- Day 1: ride the first 3 hours strictly below the Z2 ceiling — bank no early fatigue.",
         "- Day 2: legs will be tired from Day 1; start very easy and let them come good.",
-        "Reply ONLY with valid JSON: a dict mapping day number (as string) -> "
-        "{\"pacing\": \"3-4 sentence pacing strategy for the day\", "
-        "\"hr_cap\": \"specific HR cap or %LTHR for the early hours\", "
-        "\"carb_load\": \"1-2 sentence pre-event carb-load note for this day\", "
-        "\"carbs_g_per_hr\": int, \"fluid_ml_per_hr\": int, \"sodium_mg_per_hr\": int, "
-        "\"brief\": \"one-sentence key reminder\"}",
+        "Reply ONLY with valid JSON: a dict mapping day number (as string) -> " + json_schema,
         "No extra text, no markdown fences.",
         "",
         "Days:",

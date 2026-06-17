@@ -95,6 +95,24 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
     if not api_key:
         return _rule_based_advice(m, stats, comp_z)
 
+    from .history import power_meter_active
+    has_power = power_meter_active()
+    if has_power:
+        system = (
+            "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
+            "based on objective physiological data from a Garmin device. "
+            "The athlete has a power meter — use watts for interval/climb cues when relevant, "
+            "but keep HR primary for readiness and variable conditions. "
+            "Be direct, warm, and evidence-based. Never be vague."
+        )
+    else:
+        system = (
+            "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
+            "based on objective physiological data from a Garmin device. "
+            "The athlete trains on heart rate (no power meter) — cue any intensity in HR zones / RPE, never watts. "
+            "Be direct, warm, and evidence-based. Never be vague."
+        )
+
     client = anthropic.Anthropic(api_key=api_key)
     prompt = _build_prompt(m, stats, comp_z)
 
@@ -104,12 +122,7 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
             max_tokens=400,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
-            system=(
-                "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
-                "based on objective physiological data from a Garmin device. "
-                "The athlete trains on heart rate (no power meter) — cue any intensity in HR zones / RPE, never watts. "
-                "Be direct, warm, and evidence-based. Never be vague."
-            ),
+            system=system,
         )
         text = message.content[0].text
         save_advice(m.date, text)
@@ -1015,12 +1028,25 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
             "",
         ]
 
+    from .history import power_meter_active, latest_measured_wkg
+    has_power = power_meter_active()
+    if has_power:
+        measured = latest_measured_wkg()
+        power_line = "The athlete has a power meter — cite measured W/kg when relevant; HR remains primary for readiness."
+        if measured:
+            power_line += f" Latest measured FTP: {measured['ftp_w']}W ({measured['wkg']:.2f} W/kg)."
+    else:
+        power_line = (
+            "The athlete trains on heart rate and has NO power meter — do not quote watts or numeric W/kg."
+        )
+
     lines += [
-        "The athlete trains on heart rate and has NO power meter — do not quote watts or numeric W/kg.",
+        power_line,
         "Please provide a concise body composition analysis covering:",
         "1. Weight trajectory — at current rate, what weight will the athlete reach by Tenerife (13 Aug)?",
         "   Discuss qualitatively how that weight change helps climbing/power-to-weight on mountain stages "
-        "   (lighter = easier climbing at the same effort), without citing watts.",
+        + ("(lighter = easier climbing at the same watts)." if has_power else
+           "(lighter = easier climbing at the same effort), without citing watts."),
         "2. Body composition quality — is weight change driven by fat loss, muscle loss, or both?",
         "   Flag if muscle mass is declining (suggests need for more protein / strength work).",
         "3. One encouraging finding or specific concern from the data (visceral fat, hydration, metabolic age, BP trend).",
@@ -1055,9 +1081,11 @@ def _rule_based_body(latest: dict) -> str:
 def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z: Optional[float]) -> Optional[str]:
     """Generate a Monday coach briefing for the coming week. Cached per ISO week."""
     from .plan import PLAN_START
+    from .history import power_meter_active, measured_wkg_history, load_ftp_tests
+    from .hr_plan import HR_PLAN_START
     today = date.today()
     mon = today - timedelta(days=today.weekday())
-    cache_key = f"weekly_briefing_v2_{mon.isoformat()}"
+    cache_key = f"weekly_briefing_v3_{mon.isoformat()}"
     cached = get_cached_text(cache_key)
     if cached:
         return cached
@@ -1066,8 +1094,10 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
     if not api_key:
         return None
 
+    has_power = power_meter_active()
     days_into = (today - PLAN_START).days
     week_num = max(1, days_into // 7 + 1) if today >= PLAN_START else 1
+    hr_week = (today - HR_PLAN_START).days // 7 + 1 if today >= HR_PLAN_START else 0
 
     sess_lines = []
     for day_name, stype, label, dur_min in week_sessions:
@@ -1099,19 +1129,59 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
     except Exception:
         pass
 
+    # Haute Route Build/Specific: flag stale measured FTP with W/kg trend
+    if has_power and 14 <= hr_week <= 35:
+        tests = load_ftp_tests()
+        last_w = next((t for t in reversed(tests) if t.get("ftp_w")), None)
+        if last_w:
+            age = (today - date.fromisoformat(last_w["date"])).days
+            if age > 42:
+                mwkg = measured_wkg_history(120)
+                if len(mwkg) >= 2:
+                    latest_wkg = mwkg[-1]["wkg"]
+                    older = mwkg[max(0, len(mwkg) - 5)]["wkg"]
+                    delta = latest_wkg - older
+                    trend = "up" if delta > 0.05 else ("down" if delta < -0.05 else "flat")
+                    retest_note += (
+                        f"\nNOTE: measured FTP is {age} days stale (last {last_w['date']}, "
+                        f"{last_w['ftp_w']}W). W/kg trend is {trend} "
+                        f"({older:.2f} → {latest_wkg:.2f} W/kg) — include one sentence on "
+                        "whether to re-test FTP watts this week.\n"
+                    )
+
+    if has_power:
+        intensity_cue = (
+            "The athlete has a power meter. Cue hard/tempo/FTP efforts with watts where helpful; "
+            "keep HR/RPE primary for readiness and variable conditions.\n"
+        )
+        coach_system = (
+            "You are a concise endurance coach writing a Monday morning briefing for an amateur "
+            "cyclist with a power meter. Be specific, actionable, and direct. "
+            "Use watts for interval/climb cues; HR/RPE for aerobic base and readiness."
+        )
+    else:
+        intensity_cue = (
+            "The athlete trains and races on HEART RATE — no power meter. Cue every effort "
+            "in terms of HR zones / RPE / perceived effort, NEVER watts or power targets.\n"
+        )
+        coach_system = (
+            "You are a concise endurance coach writing a Monday morning briefing for an amateur "
+            "cyclist who trains on heart rate (no power meter). Be specific, actionable, and "
+            "direct. Express all intensity cues as HR zones / RPE, never watts."
+        )
+
     prompt = (
         f"Week {week_num} of the training block is starting. Here are the planned sessions:\n"
         + "\n".join(sess_lines) + "\n\n"
-        f"Current PMC: CTL={ctl}, ATL={atl}, TSB={tsb}. Readiness: {z_str}.\n"
+        + f"Current PMC: CTL={ctl}, ATL={atl}, TSB={tsb}. Readiness: {z_str}.\n"
         + retest_note + "\n"
-        "Provide a structured Monday briefing with exactly these four parts:\n"
-        "(a) ONE sentence on current form (use the TSB/readiness data).\n"
-        "(b) The KEY session of this week and WHY it matters for the event block.\n"
-        "(c) ONE execution focus cue for the hardest session.\n"
-        "(d) A ONE sentence pacing note for any hard/tempo/FTP session.\n\n"
-        "The athlete trains and races on HEART RATE — no power meter. Cue every effort "
-        "in terms of HR zones / RPE / perceived effort, NEVER watts or power targets.\n"
-        "Be specific and reference actual numbers. Under 120 words total. Plain text, no bullets."
+        + "Provide a structured Monday briefing with exactly these four parts:\n"
+        + "(a) ONE sentence on current form (use the TSB/readiness data).\n"
+        + "(b) The KEY session of this week and WHY it matters for the event block.\n"
+        + "(c) ONE execution focus cue for the hardest session.\n"
+        + "(d) A ONE sentence pacing note for any hard/tempo/FTP session.\n\n"
+        + intensity_cue
+        + "Be specific and reference actual numbers. Under 120 words total. Plain text, no bullets."
     )
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -1119,11 +1189,7 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
         msg = client.messages.create(
             model=MODEL_FAST,
             max_tokens=300,
-            system=(
-                "You are a concise endurance coach writing a Monday morning briefing for an amateur "
-                "cyclist who trains on heart rate (no power meter). Be specific, actionable, and "
-                "direct. Express all intensity cues as HR zones / RPE, never watts."
-            ),
+            system=coach_system,
             messages=[{"role": "user", "content": prompt}],
         )
         text = msg.content[0].text
