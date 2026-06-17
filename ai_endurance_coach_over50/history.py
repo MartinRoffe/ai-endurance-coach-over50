@@ -879,6 +879,56 @@ def intensity_distribution_by_week(start: date, end: date) -> list[dict]:
     return result
 
 
+def intensity_distribution_by_week_power(start: date, end: date) -> list[dict]:
+    """Aggregate power zone distribution per ISO week from analysed rides with power."""
+    import json
+    placeholders = ",".join("?" * len(_ZONE_BIKE_KEYS))
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            f"""SELECT strftime('%Y-W%W', a.date) AS week_label,
+                       an.power_zones_json
+                FROM activities a
+                JOIN activity_analyses an ON a.activity_id = an.activity_id
+                WHERE a.date >= ? AND a.date <= ? AND a.type_key IN ({placeholders})
+                  AND a.has_power_meter = 1 AND an.power_zones_json IS NOT NULL""",
+            (start.isoformat(), end.isoformat(), *_ZONE_BIKE_KEYS),
+        ).fetchall()
+
+    weekly: dict[str, list[float]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        label = row["week_label"]
+        zones = json.loads(row["power_zones_json"])
+        if label not in weekly:
+            weekly[label] = [0.0] * 5
+            counts[label] = 0
+        for z in zones:
+            zn = int(z.get("zone") or 0)
+            if 1 <= zn <= 5:
+                weekly[label][zn - 1] += z.get("secs") or 0
+        counts[label] += 1
+
+    result = []
+    for week_label in sorted(weekly):
+        z = weekly[week_label]
+        total = sum(z)
+        if total == 0:
+            continue
+        result.append({
+            "week_label": week_label,
+            "z1_pct": round(z[0] / total * 100, 1),
+            "z2_pct": round(z[1] / total * 100, 1),
+            "z3_pct": round(z[2] / total * 100, 1),
+            "z4_pct": round(z[3] / total * 100, 1),
+            "z5_pct": round(z[4] / total * 100, 1),
+            "total_min": round(total / 60),
+            "activity_count": counts[week_label],
+            "z1_sec": z[0], "z2_sec": z[1], "z3_sec": z[2], "z4_sec": z[3], "z5_sec": z[4],
+        })
+    return result
+
+
 def _ensure_btb_schema(con: sqlite3.Connection) -> None:
     con.execute("""
         CREATE TABLE IF NOT EXISTS btb_notes (
@@ -1061,6 +1111,64 @@ def durability_exists(activity_id: int) -> bool:
         _ensure_durability_schema(con)
         row = con.execute(
             "SELECT 1 FROM activity_durability WHERE activity_id = ?", (activity_id,)
+        ).fetchone()
+    return row is not None
+
+
+# ── Power durability (Pw:HR decoupling on long rides) ────────────────────────
+
+def _ensure_power_durability_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS activity_power_durability (
+            activity_id INTEGER PRIMARY KEY,
+            date TEXT NOT NULL,
+            duration_min INTEGER,
+            first_third_hr REAL,
+            final_third_hr REAL,
+            first_third_power REAL,
+            final_third_power REAL,
+            hr_drift_pct REAL,
+            power_drift_pct REAL,
+            decoupling_pct REAL,
+            n_laps INTEGER,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def save_power_durability(activity_id: int, row: dict) -> None:
+    with _conn() as con:
+        _ensure_power_durability_schema(con)
+        con.execute(
+            """INSERT OR REPLACE INTO activity_power_durability
+               (activity_id, date, duration_min, first_third_hr, final_third_hr,
+                first_third_power, final_third_power, hr_drift_pct, power_drift_pct,
+                decoupling_pct, n_laps)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (activity_id, row["date"], row.get("duration_min"),
+             row.get("first_third_hr"), row.get("final_third_hr"),
+             row.get("first_third_power"), row.get("final_third_power"),
+             row.get("hr_drift_pct"), row.get("power_drift_pct"),
+             row.get("decoupling_pct"), row.get("n_laps")),
+        )
+
+
+def load_power_durability(days: int = 180) -> list[dict]:
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    with _conn() as con:
+        _ensure_power_durability_schema(con)
+        rows = con.execute(
+            "SELECT * FROM activity_power_durability WHERE date >= ? ORDER BY date ASC",
+            (start,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def power_durability_exists(activity_id: int) -> bool:
+    with _conn() as con:
+        _ensure_power_durability_schema(con)
+        row = con.execute(
+            "SELECT 1 FROM activity_power_durability WHERE activity_id = ?", (activity_id,)
         ).fetchone()
     return row is not None
 

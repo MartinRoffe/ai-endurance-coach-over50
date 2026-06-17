@@ -33,6 +33,7 @@ def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
     for col, typ in [
         ("ftp_effort_avg_hr",  "REAL"),
         ("ftp_effort_max_hr",  "REAL"),
+        ("ftp_effort_avg_w",   "REAL"),
         ("interval_data_json", "TEXT"),
         ("power_zones_json",   "TEXT"),
     ]:
@@ -140,13 +141,16 @@ def _extract_interval_data(api: Any, activity_id: int, session_label: str,
 
         reps = []
         for i, l in enumerate(effort_laps, 1):
-            reps.append({
+            rep = {
                 "rep":          i,
                 "name":         config["name"],
                 "avg_hr":       round(l["averageHR"]) if l.get("averageHR") else None,
                 "max_hr":       round(l["maxHR"])     if l.get("maxHR")     else None,
                 "duration_secs": round(_lap_dur(l)),
-            })
+            }
+            if l.get("averagePower"):
+                rep["avg_power_w"] = round(l["averagePower"])
+            reps.append(rep)
         return {"interval_reps": reps} if reps else {}
     except Exception:
         return {}
@@ -171,10 +175,15 @@ def _extract_ftp_effort(api: Any, activity_id: int) -> dict:
         avg_hr = best.get("averageHR")
         if not avg_hr:
             return {}
-        return {
+        result = {
             "ftp_effort_avg_hr": round(avg_hr),
             "ftp_effort_max_hr": round(best["maxHR"]) if best.get("maxHR") else None,
         }
+        avg_w = best.get("averagePower")
+        if avg_w:
+            result["ftp_effort_avg_w"] = round(avg_w)
+            result["ftp_w"] = round(avg_w * 0.95)
+        return result
     except Exception:
         return {}
 
@@ -235,6 +244,74 @@ def _extract_durability(api: Any, activity: dict) -> Optional[dict]:
             "final_third_hr": round(final_hr, 1),
             "drift_pct": round((final_hr - first_hr) / first_hr * 100, 2),
             "n_laps": len(hr_laps),
+        }
+    except Exception:
+        return None
+
+
+def _extract_power_durability(api: Any, activity: dict) -> Optional[dict]:
+    """Pw:HR decoupling on long rides: first-third vs final-third power and HR.
+
+    decoupling_pct = HR drift % − power drift %. Positive = HR rising faster
+    than power (cardiac drift at constant-ish effort).
+    """
+    try:
+        splits = api.get_activity_splits(activity["activity_id"])
+        laps = splits.get("lapDTOs") or splits.get("laps") or []
+        power_laps = [
+            l for l in laps
+            if (l.get("averageHR") or 0) > 0
+            and (l.get("averagePower") or 0) > 0
+            and (l.get("duration") or l.get("elapsedDuration") or 0) > 0
+        ]
+        if len(power_laps) < 3:
+            return None
+
+        def _dur(l: dict) -> float:
+            return float(l.get("duration") or l.get("elapsedDuration") or 0)
+
+        def _lap_power(l: dict) -> float:
+            return float(l.get("normativePower") or l.get("normalizedPower") or l["averagePower"])
+
+        total = sum(_dur(l) for l in power_laps)
+        third = total / 3.0
+
+        def _weighted(lap_subset: list[dict], field: str) -> Optional[float]:
+            secs = sum(_dur(l) for l in lap_subset)
+            if secs <= 0:
+                return None
+            if field == "hr":
+                return sum(float(l["averageHR"]) * _dur(l) for l in lap_subset) / secs
+            return sum(_lap_power(l) * _dur(l) for l in lap_subset) / secs
+
+        first_laps, final_laps = [], []
+        elapsed = 0.0
+        for l in power_laps:
+            mid = elapsed + _dur(l) / 2.0
+            if mid < third:
+                first_laps.append(l)
+            elif mid >= 2 * third:
+                final_laps.append(l)
+            elapsed += _dur(l)
+        first_hr = _weighted(first_laps, "hr")
+        final_hr = _weighted(final_laps, "hr")
+        first_pwr = _weighted(first_laps, "power")
+        final_pwr = _weighted(final_laps, "power")
+        if not all((first_hr, final_hr, first_pwr, final_pwr)):
+            return None
+        hr_drift = (final_hr - first_hr) / first_hr * 100
+        pwr_drift = (final_pwr - first_pwr) / first_pwr * 100
+        return {
+            "date": activity["date"],
+            "duration_min": round((activity.get("duration_seconds") or total) / 60),
+            "first_third_hr": round(first_hr, 1),
+            "final_third_hr": round(final_hr, 1),
+            "first_third_power": round(first_pwr, 1),
+            "final_third_power": round(final_pwr, 1),
+            "hr_drift_pct": round(hr_drift, 2),
+            "power_drift_pct": round(pwr_drift, 2),
+            "decoupling_pct": round(hr_drift - pwr_drift, 2),
+            "n_laps": len(power_laps),
         }
     except Exception:
         return None
@@ -379,9 +456,9 @@ def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
             """INSERT OR REPLACE INTO activity_analyses
                (activity_id, hr_zones_json, training_effect, training_effect_label,
                 aerobic_te_message, anaerobic_te, training_load, avg_respiration,
-                analysis_text, ftp_effort_avg_hr, ftp_effort_max_hr, interval_data_json,
-                power_zones_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                analysis_text, ftp_effort_avg_hr, ftp_effort_max_hr, ftp_effort_avg_w,
+                interval_data_json, power_zones_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 activity_id,
                 json.dumps(detail["hr_zones"]),
@@ -394,6 +471,7 @@ def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
                 analysis_text,
                 detail.get("ftp_effort_avg_hr"),
                 detail.get("ftp_effort_max_hr"),
+                detail.get("ftp_effort_avg_w"),
                 json.dumps(interval_reps) if interval_reps else None,
                 json.dumps(detail["power_zones"]) if detail.get("power_zones") else None,
             ),
@@ -744,6 +822,17 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                     save_durability(act_id, dur_row)
         except Exception:
             pass
+        try:
+            from .history import power_durability_exists, save_power_durability
+            if (act.get("type_key") in _CYCLING_TYPES
+                    and act.get("has_power_meter")
+                    and (act.get("duration_seconds") or 0) >= 90 * 60
+                    and not power_durability_exists(act_id)):
+                pd_row = _extract_power_durability(api, act)
+                if pd_row:
+                    save_power_durability(act_id, pd_row)
+        except Exception:
+            pass
         # Backfill ftp_tests for already-analysed FTP sessions that pre-date the auto-population logic
         existing = load_analysis(act_id)
         if existing is not None:
@@ -756,11 +845,15 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                         from .history import save_ftp_test, load_ftp_tests
                         d_obj = date.fromisoformat(act_date)
                         if not any(t["date"] == d_obj.isoformat() for t in load_ftp_tests()):
+                            ftp_w = None
+                            if existing.get("ftp_effort_avg_w"):
+                                ftp_w = round(existing["ftp_effort_avg_w"] * 0.95)
                             save_ftp_test(
                                 d_obj.isoformat(), act_id,
                                 int(existing["ftp_effort_avg_hr"]),
                                 int(existing["ftp_effort_max_hr"]) if existing.get("ftp_effort_max_hr") else None,
                                 None,
+                                ftp_w=ftp_w,
                             )
             except Exception:
                 pass
@@ -787,6 +880,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                             int(detail["ftp_effort_avg_hr"]),
                             int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
                             None,
+                            ftp_w=detail.get("ftp_w"),
                         )
                 except Exception:
                     pass
