@@ -326,6 +326,22 @@ _TYPE_ICONS: dict[str, str] = {
 }
 
 
+def map_activity_power(raw: dict) -> dict:
+    """Extract power fields from a Garmin activity list entry."""
+    avg = raw.get("averagePower")
+    max_p = raw.get("maxPower")
+    np = raw.get("normativePower") or raw.get("normalizedPower")
+    has_pm = raw.get("hasPowerMeter")
+    if has_pm is None and avg is not None:
+        has_pm = float(avg) > 0
+    return {
+        "avg_power_w":     float(avg) if avg is not None else None,
+        "max_power_w":     float(max_p) if max_p is not None else None,
+        "norm_power_w":    float(np) if np is not None else None,
+        "has_power_meter": 1 if has_pm else 0,
+    }
+
+
 def fetch_activities(api, days: int = 7) -> list[dict]:
     """Return raw activity dicts for the last `days` days."""
     from datetime import date, timedelta
@@ -375,6 +391,7 @@ def fetch_activities(api, days: int = 7) -> list[dict]:
             "hr_zone_3_sec":          a.get("hrTimeInZone_3"),
             "hr_zone_4_sec":          a.get("hrTimeInZone_4"),
             "hr_zone_5_sec":          a.get("hrTimeInZone_5"),
+            **map_activity_power(a),
         })
     return results
 

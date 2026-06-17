@@ -125,6 +125,10 @@ _ACTIVITY_COLS: list[tuple[str, str]] = [
     ("hr_zone_3_sec",          "REAL"),
     ("hr_zone_4_sec",          "REAL"),
     ("hr_zone_5_sec",          "REAL"),
+    ("avg_power_w",            "REAL"),
+    ("max_power_w",            "REAL"),
+    ("norm_power_w",           "REAL"),
+    ("has_power_meter",        "INTEGER"),
 ]
 
 
@@ -795,19 +799,24 @@ def _ensure_ftp_schema(con: sqlite3.Connection) -> None:
             activity_id INTEGER,
             ftp_hr INTEGER,
             ftp_hr_max INTEGER,
+            ftp_w INTEGER,
             note TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    existing = {row[1] for row in con.execute("PRAGMA table_info(ftp_tests)")}
+    if "ftp_w" not in existing:
+        con.execute("ALTER TABLE ftp_tests ADD COLUMN ftp_w INTEGER")
 
 
 def save_ftp_test(test_date: str, activity_id: Optional[int], ftp_hr: Optional[int],
-                  ftp_hr_max: Optional[int], note: Optional[str] = None) -> None:
+                  ftp_hr_max: Optional[int], note: Optional[str] = None,
+                  ftp_w: Optional[int] = None) -> None:
     with _conn() as con:
         _ensure_ftp_schema(con)
         con.execute(
-            "INSERT OR IGNORE INTO ftp_tests (date, activity_id, ftp_hr, ftp_hr_max, note) VALUES (?,?,?,?,?)",
-            (test_date, activity_id, ftp_hr, ftp_hr_max, note),
+            "INSERT OR IGNORE INTO ftp_tests (date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note) VALUES (?,?,?,?,?,?)",
+            (test_date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note),
         )
 
 
@@ -816,6 +825,21 @@ def load_ftp_tests() -> list[dict]:
         _ensure_ftp_schema(con)
         rows = con.execute("SELECT * FROM ftp_tests ORDER BY date ASC").fetchall()
     return [dict(r) for r in rows]
+
+
+def power_meter_active() -> bool:
+    """True when ≥3 cycling activities in the last 60 days recorded power."""
+    start = (date.today() - timedelta(days=60)).isoformat()
+    placeholders = ",".join("?" * len(_ZONE_BIKE_KEYS))
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        row = con.execute(
+            f"""SELECT COUNT(*) AS n FROM activities
+                WHERE date >= ? AND type_key IN ({placeholders})
+                  AND has_power_meter = 1""",
+            (start, *_ZONE_BIKE_KEYS),
+        ).fetchone()
+    return (row["n"] or 0) >= 3
 
 
 def intensity_distribution_by_week(start: date, end: date) -> list[dict]:

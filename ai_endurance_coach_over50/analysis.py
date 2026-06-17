@@ -34,6 +34,7 @@ def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
         ("ftp_effort_avg_hr",  "REAL"),
         ("ftp_effort_max_hr",  "REAL"),
         ("interval_data_json", "TEXT"),
+        ("power_zones_json",   "TEXT"),
     ]:
         try:
             con.execute(f"ALTER TABLE activity_analyses ADD COLUMN {col} {typ}")
@@ -239,6 +240,63 @@ def _extract_durability(api: Any, activity: dict) -> Optional[dict]:
         return None
 
 
+def _power_summary_from_activity(activity: dict) -> dict:
+    return {
+        "avg_power_w":     activity.get("avg_power_w"),
+        "max_power_w":     activity.get("max_power_w"),
+        "norm_power_w":    activity.get("norm_power_w"),
+        "has_power_meter": bool(activity.get("has_power_meter")),
+    }
+
+
+def _power_summary_from_dto(s: dict) -> dict:
+    avg = s.get("averagePower")
+    max_p = s.get("maxPower")
+    np = s.get("normativePower") or s.get("normalizedPower")
+    has_pm = s.get("hasPowerMeter")
+    if has_pm is None and avg is not None:
+        has_pm = float(avg) > 0
+    return {
+        "avg_power_w":     round(float(avg)) if avg is not None else None,
+        "max_power_w":     round(float(max_p)) if max_p is not None else None,
+        "norm_power_w":    round(float(np)) if np is not None else None,
+        "has_power_meter": bool(has_pm),
+    }
+
+
+def _fetch_power_zones(api: Any, activity_id: int) -> list[dict]:
+    """Return per-zone seconds from Garmin power time-in-zones endpoint."""
+    import logging
+    _log = logging.getLogger(__name__)
+    try:
+        raw = api.get_activity_power_in_timezones(activity_id)
+    except Exception as e:
+        _log.debug("Power zones fetch failed: %s", e)
+        return []
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        zones_list = raw
+    elif isinstance(raw, dict):
+        zones_list = raw.get("timeInZoneDTOList") or raw.get("zones") or []
+        if not zones_list and raw.get("secsInZone") is not None:
+            zones_list = [raw]
+    else:
+        return []
+    if not zones_list:
+        return []
+    total_secs = sum(z.get("secsInZone", 0) for z in zones_list) or 1
+    return [
+        {
+            "zone":  z.get("zoneNumber") or z.get("zone"),
+            "secs":  round(z.get("secsInZone", 0)),
+            "pct":   round(z.get("secsInZone", 0) / total_secs * 100),
+            "low_w": z.get("zoneLowBoundary"),
+        }
+        for z in sorted(zones_list, key=lambda x: x.get("zoneNumber") or x.get("zone") or 0)
+    ]
+
+
 def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] = None,
                           session_label: Optional[str] = None) -> dict:
     """Return a merged dict of activity summary + HR zones.
@@ -268,6 +326,9 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
             "avg_respiration":       activity.get("avg_respiration"),
             "hr_zones":              hr_zones,
         }
+        result.update(_power_summary_from_activity(activity))
+        if result.get("has_power_meter"):
+            result["power_zones"] = _fetch_power_zones(api, activity_id)
         if session_label in _FTP_SESSION_LABELS:
             result.update(_extract_ftp_effort(api, activity_id))
         elif session_label in _INTERVAL_CONFIG:
@@ -299,6 +360,9 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
         "avg_respiration":       s.get("avgRespirationRate"),
         "hr_zones":              hr_zones,
     }
+    result.update(_power_summary_from_dto(s))
+    if result.get("has_power_meter"):
+        result["power_zones"] = _fetch_power_zones(api, activity_id)
     if session_label in _FTP_SESSION_LABELS:
         result.update(_extract_ftp_effort(api, activity_id))
     elif session_label in _INTERVAL_CONFIG:
@@ -315,8 +379,9 @@ def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
             """INSERT OR REPLACE INTO activity_analyses
                (activity_id, hr_zones_json, training_effect, training_effect_label,
                 aerobic_te_message, anaerobic_te, training_load, avg_respiration,
-                analysis_text, ftp_effort_avg_hr, ftp_effort_max_hr, interval_data_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                analysis_text, ftp_effort_avg_hr, ftp_effort_max_hr, interval_data_json,
+                power_zones_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 activity_id,
                 json.dumps(detail["hr_zones"]),
@@ -330,6 +395,7 @@ def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
                 detail.get("ftp_effort_avg_hr"),
                 detail.get("ftp_effort_max_hr"),
                 json.dumps(interval_reps) if interval_reps else None,
+                json.dumps(detail["power_zones"]) if detail.get("power_zones") else None,
             ),
         )
 
@@ -346,6 +412,7 @@ def load_analysis(activity_id: int) -> Optional[dict]:
     d = dict(row)
     d["hr_zones"] = json.loads(d["hr_zones_json"]) if d.get("hr_zones_json") else []
     d["interval_reps"] = json.loads(d["interval_data_json"]) if d.get("interval_data_json") else []
+    d["power_zones"] = json.loads(d["power_zones_json"]) if d.get("power_zones_json") else []
     return d
 
 
