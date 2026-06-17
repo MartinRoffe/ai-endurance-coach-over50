@@ -5,25 +5,39 @@ import pytest
 
 import ai_endurance_coach_over50.modulation as modulation
 from ai_endurance_coach_over50.metrics import DailyMetrics
-from ai_endurance_coach_over50.modulation import hrv_traffic_light, session_modulation
+from ai_endurance_coach_over50.modulation import (
+    durability_gate,
+    hrv_traffic_light,
+    recovery_gate,
+    resolve_modulation,
+    session_modulation,
+)
 
 TODAY = date(2026, 6, 10)
 
 
-def _baseline_rows(end=TODAY, include_today=False):
+def _baseline_rows(end=TODAY, include_today=False, **today_overrides):
     """30 days alternating 58/62 ms → mean 60, pstdev 2."""
     rows = []
     start = end - timedelta(days=30)
     for i in range(30):
-        rows.append({"date": (start + timedelta(days=i)).isoformat(),
-                     "hrv_last_night": 58.0 if i % 2 else 62.0})
+        rows.append({
+            "date": (start + timedelta(days=i)).isoformat(),
+            "hrv_last_night": 58.0 if i % 2 else 62.0,
+            "resting_hr": 52.0 if i % 2 else 50.0,
+            "sleep_score": 80.0 if i % 2 else 82.0,
+            "rest_stress": 20.0 if i % 2 else 18.0,
+        })
     if include_today:
-        rows.append({"date": end.isoformat(), "hrv_last_night": 999.0})
+        row = {"date": end.isoformat(), "hrv_last_night": 999.0,
+               "resting_hr": 50.0, "sleep_score": 80.0, "rest_stress": 18.0}
+        row.update(today_overrides)
+        rows.append(row)
     return rows
 
 
-def _metrics(hrv):
-    return DailyMetrics(date=TODAY, hrv_last_night=hrv)
+def _metrics(hrv, **kwargs):
+    return DailyMetrics(date=TODAY, hrv_last_night=hrv, **kwargs)
 
 
 @pytest.fixture(autouse=True)
@@ -31,6 +45,9 @@ def patched_history(monkeypatch):
     monkeypatch.setattr(modulation, "raw_history", lambda days=31: _baseline_rows())
     monkeypatch.setattr(modulation, "get_plan_override", lambda d: None)
     monkeypatch.setattr(modulation, "session_for_date_extended", lambda d: None)
+    monkeypatch.setattr(modulation, "load_session_rpe", lambda days=14: [])
+    monkeypatch.setattr(modulation, "load_durability", lambda days=180: [])
+    monkeypatch.setattr(modulation, "load_btb_summary", lambda: [])
 
 
 # ── hrv_traffic_light ────────────────────────────────────────────────────────
@@ -151,3 +168,112 @@ def test_hr_amber_already_easy_shows_pill_only(monkeypatch):
     mod = session_modulation(TODAY, _metrics(58.0), None, light=_light("amber"))
     assert mod is not None
     assert "label" not in mod
+
+
+# ── recovery_gate ────────────────────────────────────────────────────────────
+
+def _illness_rows():
+    """Today's row included with 2-of-3 illness triggers."""
+    rows = _baseline_rows()
+    rows.append({
+        "date": TODAY.isoformat(),
+        "hrv_last_night": 40.0,
+        "resting_hr": 65.0,
+        "sleep_score": 80.0,
+        "rest_stress": 18.0,
+    })
+    return rows
+
+
+def test_illness_gate_prescribes_rest(monkeypatch):
+    monkeypatch.setattr(modulation, "raw_history", lambda days=31: _illness_rows())
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    gate = recovery_gate(TODAY, _metrics(40.0), None, light=_light("green"))
+    assert gate["gate_type"] == "illness"
+    assert gate["session_type"] == "rest"
+    assert gate["label"] == "Rest (illness signals)"
+
+
+def test_illness_gate_wins_over_green_hrv(monkeypatch):
+    monkeypatch.setattr(modulation, "raw_history", lambda days=31: _illness_rows())
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    light, mod = resolve_modulation(TODAY, _metrics(60.0), None)
+    assert mod["gate_type"] == "illness"
+    assert mod["session_type"] == "rest"
+
+
+def test_illness_gate_suppresses_hrv_red_spin(monkeypatch):
+    monkeypatch.setattr(modulation, "raw_history", lambda days=31: _illness_rows())
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    light, mod = resolve_modulation(TODAY, _metrics(40.0), None)
+    assert mod["gate_type"] == "illness"
+    assert mod["label"] != "Recovery Spin"
+
+
+def test_rhr_early_amber_when_hrv_green(monkeypatch):
+    rows = _baseline_rows()
+    rows.append({
+        "date": TODAY.isoformat(),
+        "hrv_last_night": 60.0,
+        "resting_hr": 70.0,
+        "sleep_score": 80.0,
+        "rest_stress": 18.0,
+    })
+    monkeypatch.setattr(modulation, "raw_history", lambda days=31: rows)
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    gate = recovery_gate(TODAY, _metrics(60.0), None, light=_light("green"))
+    assert gate["gate_type"] == "rhr_early"
+    assert gate["label"] == "Zone 2 Steady"
+
+
+def test_hrv_trend_drops_quality_session(monkeypatch):
+    rows = []
+    start = TODAY - timedelta(days=4)
+    for i, hrv in enumerate([70.0, 65.0, 60.0, 55.0, 50.0]):
+        rows.append({
+            "date": (start + timedelta(days=i)).isoformat(),
+            "hrv_last_night": hrv,
+            "resting_hr": 50.0,
+            "sleep_score": 80.0,
+            "rest_stress": 18.0,
+        })
+    monkeypatch.setattr(modulation, "raw_history", lambda days=31: rows)
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    gate = recovery_gate(TODAY, _metrics(50.0), None, light=_light("green"))
+    assert gate["gate_type"] == "hrv_trend"
+    assert gate["label"] == "Zone 2 Steady"
+
+
+def test_rpe_amber_eases_intensity(monkeypatch):
+    monkeypatch.setattr(modulation, "load_session_rpe", lambda days=7: [{"rpe": 5}])
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("tempo", "Tempo Intervals", 75))
+    gate = recovery_gate(TODAY, _metrics(58.0), None, light=_light("amber"))
+    assert gate["gate_type"] == "rpe_amber"
+    assert gate["label"] == "Zone 2 Steady"
+
+
+# ── durability_gate ──────────────────────────────────────────────────────────
+
+def test_durability_gate_before_week_9_returns_none(monkeypatch):
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("long", "Long Ride", 240))
+    gate = durability_gate(date(2026, 7, 10), _metrics(60.0), None, light=_light("green"))
+    assert gate is None
+
+
+def test_durability_gate_eases_long_ride(monkeypatch):
+    monkeypatch.setattr(modulation, "session_for_date_extended",
+                        lambda d: ("long", "Long Ride", 240))
+    monkeypatch.setattr(modulation, "load_durability", lambda days=180: [{
+        "date": "2026-07-10", "drift_pct": 12.0,
+        "first_third_hr": 130.0, "final_third_hr": 145.0,
+    }])
+    gate = durability_gate(date(2026, 7, 28), _metrics(60.0), None, light=_light("green"))
+    assert gate["gate_type"] == "durability"
+    assert gate["label"] == "Long Ride (Easy)"

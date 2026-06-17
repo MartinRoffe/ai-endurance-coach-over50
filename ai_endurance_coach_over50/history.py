@@ -1219,6 +1219,53 @@ def load_fuelling_logs(days: int = 90) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def gut_training_summary(target: Optional[date] = None, days: int = 90) -> Optional[dict]:
+    """Aggregate in-ride fuelling compliance for charity-prep gut training."""
+    from .plan import CHARITY_DAYS, PLAN_START
+
+    today = target or date.today()
+    charity_date = CHARITY_DAYS[0]["date"]
+    days_to_charity = (charity_date - today).days
+    days_into = (today - PLAN_START).days
+    week_num = days_into // 7 + 1 if days_into >= 0 else 0
+
+    if week_num < 7 and days_to_charity > 90:
+        return None
+
+    logs = load_fuelling_logs(days)
+    sessions: list[dict] = []
+    for log in logs:
+        planned = log.get("planned_carbs_g_per_hr")
+        actual = log.get("actual_carbs_g_per_hr")
+        if planned and actual and planned > 0:
+            adherence = round(actual / planned * 100, 1)
+            sessions.append({
+                "date": log["date"],
+                "adherence_pct": adherence,
+                "hit_80": adherence >= 80,
+            })
+
+    week_start = (today - timedelta(days=today.weekday())).isoformat()
+    week_sessions = [s for s in sessions if s["date"] >= week_start]
+    weekly_pct = None
+    if week_sessions:
+        weekly_pct = round(sum(s["adherence_pct"] for s in week_sessions) / len(week_sessions))
+
+    sparkline = [
+        round(s["adherence_pct"])
+        for s in sorted(sessions, key=lambda x: x["date"])[-6:]
+    ]
+
+    return {
+        "weekly_adherence_pct": weekly_pct,
+        "sessions_rehearsed": sum(1 for s in sessions if s["hit_80"]),
+        "total_logged": len(sessions),
+        "sparkline": sparkline,
+        "days_to_charity": days_to_charity,
+        "week_num": week_num,
+    }
+
+
 def get_coach_memory() -> Optional[dict]:
     with _conn() as con:
         _ensure_coach_memory_schema(con)

@@ -160,10 +160,44 @@
   {% endfor %}
   {% endif %}
 
-  <!-- ── HRV traffic light + session modulation ───────────────────── -->
-  {% if traffic_light and traffic_light.status != 'unknown' %}
+  <!-- ── Recovery gate + HRV session modulation ───────────────────── -->
+  {% if modulation and modulation.gate and modulation.label is defined %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left-width:3px;border-left-style:solid;
+    {% if modulation.gate_type == 'illness' %}border-left-color:#ef4444;background:rgba(239,68,68,0.08)
+    {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:18px">{% if modulation.gate_type == 'illness' %}🛑{% else %}🟠{% endif %}</span>
+      <div style="flex:1">
+        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
+          {% if modulation.gate_type == 'illness' %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
+          {{ modulation.headline }} <button type="button" class="gr-tip-trigger" data-tip="Masters athletes: elevated resting HR and poor sleep often precede HRV drops. When illness signals fire, full rest protects weeks of training — not just today's session." aria-label="More info" aria-expanded="false">?</button>
+        </p>
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
+          {{ modulation.reason }}.
+          {% if modulation.planned_label is defined %}
+          Suggested: <strong style="color:var(--text)">{{ modulation.label }}{% if modulation.duration_min > 1 %} ({{ modulation.duration_min }} min){% endif %}</strong>
+          instead of {{ modulation.planned_label }}.
+          {% endif %}
+        </p>
+        <button onclick="applyModulation(this)" data-date="{{ modulation.date }}"
+                data-dur="{{ modulation.duration_min }}" data-type="{{ modulation.session_type }}"
+                data-label="{{ modulation.label }}" data-reason="Recovery gate: {{ modulation.reason }}"
+                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
+          Apply to plan ✓
+        </button>
+      </div>
+    </div>
+  </div>
+  {% elif modulation and modulation.gate and modulation.headline is defined %}
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:6px 12px;border-left:3px solid #ef4444;background:rgba(239,68,68,0.06);border-radius:0 4px 4px 0">
+    <span style="font-size:12px">🛑</span>
+    <span style="font-family:var(--font-m);font-size:11px;color:#f87171;letter-spacing:0.08em">
+      {{ modulation.reason }}
+    </span>
+  </div>
+  {% elif traffic_light and traffic_light.status != 'unknown' %}
   {% set tl = traffic_light %}
-  {% if modulation and modulation.label is defined %}
+  {% if modulation and modulation.label is defined and not modulation.gate %}
   <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left-width:3px;border-left-style:solid;
     {% if tl.status == 'red' %}border-left-color:#f87171;background:rgba(248,113,113,0.05)
     {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
@@ -450,6 +484,45 @@
       <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:5px">📋 Coach Note</p>
       <p style="font-size:12px;color:var(--text-dim);line-height:1.6">{{ today_plan.note }}</p>
     </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── Gut training compliance (charity prep) ───────────────────── -->
+  {% if gut_training %}
+  {% set gt = gut_training %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #a78bfa;background:rgba(167,139,250,0.06)">
+    <p class="eyebrow" style="margin-bottom:10px;color:#a78bfa">Gut Training <button type="button" class="gr-tip-trigger" data-tip="Rehearse 80–90 g carbs/hr on long rides now so your gut is ready for the two charity days. Log actual intake on the Analysis tab after each qualifying ride." aria-label="More info" aria-expanded="false">?</button></p>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
+      <div>
+        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">
+          {% if gt.weekly_adherence_pct is not none %}{{ gt.weekly_adherence_pct }}%{% else %}—{% endif %}
+        </p>
+        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">This week adherence</p>
+      </div>
+      <div>
+        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">{{ gt.sessions_rehearsed }}</p>
+        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Sessions ≥80% target</p>
+      </div>
+      <div>
+        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">{{ gt.days_to_charity }}d</p>
+        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">To charity ride</p>
+      </div>
+      {% if gt.sparkline %}
+      <div style="flex:1;min-width:120px">
+        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Last {{ gt.sparkline|length }} sessions</p>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:32px">
+          {% for pct in gt.sparkline %}
+          <div style="flex:1;background:{% if pct >= 80 %}#34d399{% elif pct >= 60 %}#fbbf24{% else %}#f87171{% endif %};height:{{ [pct, 100]|min * 0.28 + 4 }}px;border-radius:1px" title="{{ pct }}%"></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if gt.total_logged == 0 %}
+    <p style="font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5">No fuelling logs yet — log actual carbs g/h on the Analysis tab after long rides.</p>
+    {% elif gt.weekly_adherence_pct is not none and gt.weekly_adherence_pct < 70 %}
+    <p style="font-size:12px;color:#fbbf24;margin-top:10px;line-height:1.5">Below 70% this week — prioritise hitting planned carbs on your next long ride.</p>
     {% endif %}
   </div>
   {% endif %}

@@ -5,6 +5,9 @@ today's planned session. Green = train as planned; amber = keep duration but
 drop intensity; red = swap to short recovery. Applied via the existing
 plan-override machinery (/apply-plan-change), so the calendar, email, and
 Garmin workout sync all respect an accepted modulation automatically.
+
+recovery_gate() runs first and handles masters-specific illness/rest signals
+before HRV traffic-light modulation.
 """
 from __future__ import annotations
 
@@ -12,10 +15,12 @@ import statistics
 from datetime import date
 from typing import Optional
 
-from .history import get_plan_override, raw_history
+from .history import get_plan_override, load_btb_summary, load_durability, load_session_rpe, raw_history
 from .hr_plan import hr_session_for_date
 from .metrics import DailyMetrics
-from .plan import session_for_date_extended
+from .plan import PLAN_START, session_for_date_extended
+
+QUALITY_BIKE_TYPES = frozenset({"ftp", "tempo", "sweetspot", "vo2"})
 
 # Map a planned session type to its easier amber-day variant (duration kept).
 EASIER_VARIANT: dict[str, tuple[str, str]] = {
@@ -142,3 +147,259 @@ def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
         })
         return base
     return None
+
+
+def _signal_z(rows: list[dict], field: str) -> Optional[float]:
+    """Z-score of today's value for `field` vs its own baseline (all prior rows)."""
+    today_val = rows[-1].get(field) if rows else None
+    if today_val is None:
+        return None
+    baseline = [r.get(field) for r in rows[:-1] if r.get(field) is not None]
+    if len(baseline) < 7:
+        return None
+    stdev = statistics.pstdev(baseline)
+    if stdev == 0:
+        return None
+    return (today_val - statistics.mean(baseline)) / stdev
+
+
+def _illness_triggers(today: date) -> tuple[list[str], bool]:
+    """Return trigger descriptions and whether illness-risk (2-of-3) is active."""
+    rows31 = raw_history(31)
+    if not rows31 or rows31[-1].get("date") != today.isoformat():
+        return [], False
+
+    hrv_z = _signal_z(rows31, "hrv_last_night")
+    rhr_z = _signal_z(rows31, "resting_hr")
+    if rhr_z is None:
+        rhr_z = _signal_z(rows31, "rest_stress")
+    sleep_z = _signal_z(rows31, "sleep_score")
+
+    triggers = []
+    today_row = rows31[-1]
+    if hrv_z is not None and hrv_z < -1.5:
+        triggers.append(f"HRV {today_row['hrv_last_night']:.0f} ms ({hrv_z:+.1f}σ)")
+    if rhr_z is not None and rhr_z > 1.5:
+        if today_row.get("resting_hr") is not None:
+            triggers.append(f"resting HR {today_row['resting_hr']:.0f} bpm ({rhr_z:+.1f}σ)")
+        else:
+            triggers.append(f"resting stress elevated ({rhr_z:+.1f}σ)")
+    if sleep_z is not None and sleep_z < -1.5:
+        triggers.append(f"sleep score {today_row['sleep_score']:.0f} ({sleep_z:+.1f}σ)")
+
+    return triggers, len(triggers) >= 2
+
+
+def _hrv_declining_trend() -> tuple[bool, Optional[str]]:
+    rows = raw_history(5)
+    hrv_vals = [r["hrv_last_night"] for r in rows if r.get("hrv_last_night") is not None]
+    if len(hrv_vals) >= 4:
+        last4 = hrv_vals[-4:]
+        if all(last4[i] < last4[i - 1] for i in range(1, 4)):
+            return True, f"HRV has declined 4 consecutive mornings ({last4[0]:.0f} → {last4[-1]:.0f} ms)"
+    return False, None
+
+
+def _planned_session(target: date) -> tuple[Optional[tuple], bool]:
+    sess = session_for_date_extended(target)
+    hr_day = False
+    if sess is None:
+        sess = hr_session_for_date(target)
+        hr_day = sess is not None
+    return sess, hr_day
+
+
+def _amber_variant(stype: str, label: str, dur: int, hr_day: bool) -> Optional[dict]:
+    variant = (HR_EASIER_VARIANT if hr_day else EASIER_VARIANT).get(stype)
+    if variant is None or (variant[0] == stype and variant[1] == label):
+        return None
+    return {
+        "session_type": variant[0],
+        "label": variant[1],
+        "duration_min": dur,
+    }
+
+
+def recovery_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
+                  light: Optional[dict] = None) -> Optional[dict]:
+    """Masters recovery gate — illness/rest signals before HRV modulation."""
+    if get_plan_override(target.isoformat()):
+        return None
+    if light is None:
+        light = hrv_traffic_light(m, comp_z)
+
+    sess, hr_day = _planned_session(target)
+    if sess is None:
+        return None
+
+    stype, label, dur = sess
+    base: dict = {"light": light, "date": target.isoformat(), "gate": True}
+    if stype != "rest":
+        base.update({"planned_type": stype, "planned_label": label, "planned_dur": dur})
+
+    triggers, illness = _illness_triggers(target)
+    if illness:
+        reason = "Possible illness onset: " + ", ".join(triggers) + ". Rest today, not an easy spin."
+        if stype == "rest":
+            return {**base, "headline": "Illness signals — stay off the bike", "reason": reason,
+                    "gate_type": "illness"}
+        return {
+            **base,
+            "session_type": "rest",
+            "label": "Rest (illness signals)",
+            "duration_min": 1,
+            "headline": "Illness signals — rest today",
+            "reason": reason,
+            "gate_type": "illness",
+        }
+
+    if stype == "rest":
+        return None
+
+    if light["status"] == "green":
+        rows31 = raw_history(31)
+        if rows31 and rows31[-1].get("date") == target.isoformat():
+            rhr_z = _signal_z(rows31, "resting_hr")
+            if rhr_z is None:
+                rhr_z = _signal_z(rows31, "rest_stress")
+            if rhr_z is not None and rhr_z > 1.25:
+                swap = _amber_variant(stype, label, dur, hr_day)
+                if swap:
+                    today_row = rows31[-1]
+                    if today_row.get("resting_hr") is not None:
+                        detail = f"Resting HR {today_row['resting_hr']:.0f} bpm is {rhr_z:.1f}σ above baseline"
+                    else:
+                        detail = f"Resting stress is {rhr_z:.1f}σ above baseline"
+                    return {
+                        **base,
+                        **swap,
+                        "headline": "Elevated resting HR — ease off intensity",
+                        "reason": f"{detail} (early illness warning while HRV still normal)",
+                        "gate_type": "rhr_early",
+                    }
+
+    declining, trend_reason = _hrv_declining_trend()
+    if declining and stype in QUALITY_BIKE_TYPES:
+        swap = _amber_variant(stype, label, dur, hr_day)
+        if swap:
+            return {
+                **base,
+                **swap,
+                "headline": "HRV declining — protect the trend",
+                "reason": trend_reason,
+                "gate_type": "hrv_trend",
+            }
+
+    if light["status"] == "amber":
+        rpe_rows = load_session_rpe(7)
+        if any((r.get("rpe") or 0) >= 4 for r in rpe_rows):
+            swap = _amber_variant(stype, label, dur, hr_day)
+            if swap:
+                return {
+                    **base,
+                    **swap,
+                    "headline": "High perceived effort — ease off intensity",
+                    "reason": "Recent session RPE ≥4 with amber HRV — drop intensity today",
+                    "gate_type": "rpe_amber",
+                }
+            shortened = max(15, int(dur * 0.8))
+            if shortened < dur:
+                return {
+                    **base,
+                    "session_type": stype,
+                    "label": label,
+                    "duration_min": shortened,
+                    "headline": "High perceived effort — shorten today",
+                    "reason": "Recent session RPE ≥4 with amber HRV — reduce volume 20%",
+                    "gate_type": "rpe_amber",
+                }
+
+    return None
+
+
+def durability_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
+                    light: Optional[dict] = None) -> Optional[dict]:
+    """Gate long rides in plan weeks 9+ when durability or BTB fatigue is poor."""
+    if get_plan_override(target.isoformat()):
+        return None
+    days_into = (target - PLAN_START).days
+    if days_into < 0:
+        return None
+    week_num = days_into // 7 + 1
+    if week_num < 9:
+        return None
+
+    if light is None:
+        light = hrv_traffic_light(m, comp_z)
+
+    sess, hr_day = _planned_session(target)
+    if sess is None or sess[0] not in ("long", "back_to_back"):
+        return None
+
+    stype, label, dur = sess
+    base: dict = {
+        "light": light,
+        "date": target.isoformat(),
+        "gate": True,
+        "planned_type": stype,
+        "planned_label": label,
+        "planned_dur": dur,
+    }
+
+    dur_rows = load_durability(90)
+    if dur_rows:
+        last = dur_rows[-1]
+        drift = last.get("drift_pct")
+        if drift is not None and drift > 8:
+            swap = _amber_variant(stype, label, dur, hr_day)
+            if swap:
+                return {
+                    **base,
+                    **swap,
+                    "headline": "Durability drift — ease the long ride",
+                    "reason": (
+                        f"Last long ride drift was {drift:+.1f}% "
+                        f"({last['first_third_hr']:.0f} → {last['final_third_hr']:.0f} bpm)"
+                    ),
+                    "gate_type": "durability",
+                }
+            shortened = max(30, int(dur * 0.75))
+            if shortened < dur:
+                return {
+                    **base,
+                    "session_type": stype,
+                    "label": label,
+                    "duration_min": shortened,
+                    "headline": "Durability drift — shorten the long ride",
+                    "reason": f"Last long ride cardiac drift was {drift:+.1f}% — cut duration 25%",
+                    "gate_type": "durability",
+                }
+
+    for pair in load_btb_summary():
+        rating = pair.get("fatigue_rating_2")
+        if rating is not None and rating >= 4:
+            swap = _amber_variant(stype, label, dur, hr_day)
+            if swap:
+                return {
+                    **base,
+                    **swap,
+                    "headline": "Back-to-back fatigue — ease today's ride",
+                    "reason": (
+                        f"Last back-to-back day 2 fatigue was {rating}/5 "
+                        f"({pair['date1']} → {pair['date2']})"
+                    ),
+                    "gate_type": "btb_fatigue",
+                }
+            break
+
+    return None
+
+
+def resolve_modulation(target: date, m: DailyMetrics, comp_z: Optional[float]) -> tuple[dict, Optional[dict]]:
+    """Compute traffic light then pick the highest-priority prescription."""
+    light = hrv_traffic_light(m, comp_z)
+    for gate_fn in (recovery_gate, durability_gate):
+        gate = gate_fn(target, m, comp_z, light=light)
+        if gate and gate.get("label"):
+            return light, gate
+    return light, session_modulation(target, m, comp_z, light=light)

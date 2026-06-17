@@ -57,6 +57,7 @@ from .history import (
     load_durability,
     load_ftp_tests,
     load_fuelling_logs,
+    gut_training_summary,
     load_recent_activities,
     load_session_rpe,
     pmc_history,
@@ -436,13 +437,12 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     # Fatigue alerts
     fatigue_alerts = check_fatigue_alerts(target)
 
-    # HRV traffic light + session modulation suggestion
+    # HRV traffic light + session modulation suggestion (recovery gate first)
     traffic_light = None
     modulation = None
     try:
-        from .modulation import hrv_traffic_light, session_modulation
-        traffic_light = hrv_traffic_light(m, comp_z)
-        modulation = session_modulation(target, m, comp_z, light=traffic_light)
+        from .modulation import resolve_modulation
+        traffic_light, modulation = resolve_modulation(target, m, comp_z)
     except Exception:
         pass
 
@@ -501,6 +501,12 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         if nutrition_today["tdee"] and nutrition_today["calories"]:
             nutrition_today["balance"] = nutrition_today["tdee"] - nutrition_today["calories"]
 
+    gut_training = None
+    try:
+        gut_training = gut_training_summary(target)
+    except Exception:
+        pass
+
     return {
         "date": date_key,
         "date_long": target.strftime("%A, %-d %B %Y"),
@@ -530,6 +536,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "weekly_briefing": weekly_briefing,
         "is_monday": is_monday,
         "nutrition_today": nutrition_today,
+        "gut_training": gut_training,
     }
 
 
@@ -2257,9 +2264,8 @@ def _build_coach_context() -> str:
     m = load(today) or DailyMetrics(date=today)
     stats = baseline_stats(today)
     comp_z = composite_score(m, stats)
-    from .modulation import hrv_traffic_light, session_modulation
-    traffic_light = hrv_traffic_light(m, comp_z)
-    modulation = session_modulation(today, m, comp_z, light=traffic_light)
+    from .modulation import resolve_modulation
+    traffic_light, modulation = resolve_modulation(today, m, comp_z)
 
     # Show all remaining sessions across the full plan + Tenerife camp + event prep.
     upcoming_lines = []
@@ -2509,10 +2515,13 @@ def _build_coach_context() -> str:
         f"  Status: {tl_status.upper()}  {hrv_z_str}  — {tl_reason}",
     ]
     if modulation and modulation.get("label"):
+        gate_tag = "Recovery gate" if modulation.get("gate") else "HRV modulation"
         tl_parts.append(
-            f"  Suggested swap: {modulation['planned_label']} → {modulation['label']} "
+            f"  Suggested swap ({gate_tag}): {modulation['planned_label']} → {modulation['label']} "
             f"({modulation['duration_min']}min) — {modulation.get('headline', '')}"
         )
+    elif modulation and modulation.get("gate"):
+        tl_parts.append(f"  Recovery gate: {modulation.get('reason', modulation.get('headline', ''))}")
 
     # FTP test history
     ftp_parts: list[str] = []

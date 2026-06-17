@@ -487,14 +487,51 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
         )
         html = html.replace("<!-- Advice -->", f"<!-- Alerts -->\n        <tr><td style='padding:16px 32px 0;'>{alert_block}</td></tr>\n\n        <!-- Advice -->")
 
-    # HRV traffic-light callout (amber/red days) — rule-based, no Claude call
+    # HRV traffic-light / recovery-gate callout (amber/red/illness days)
     modulation = None
+    traffic_light = None
     try:
-        from .modulation import session_modulation
-        modulation = session_modulation(m.date, m, comp_z)
+        from .modulation import resolve_modulation
+        traffic_light, modulation = resolve_modulation(m.date, m, comp_z)
     except Exception:
         modulation = None
-    if modulation and modulation.get("light", {}).get("status") in ("amber", "red"):
+        traffic_light = None
+
+    if modulation and modulation.get("gate") and modulation.get("gate_type") == "illness":
+        if modulation.get("label"):
+            gate_text = (
+                f"{modulation.get('headline', 'Illness signals')}: {modulation.get('reason', '')}. "
+                f"Suggested: <strong>{modulation['label']}</strong> "
+                f"instead of {modulation.get('planned_label', 'the planned session')}. "
+                "Open the dashboard to apply."
+            )
+        else:
+            gate_text = modulation.get("reason", "Illness signals detected — stay off the bike today.")
+        gate_block = (
+            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;'
+            'border-left:4px solid #ef4444;margin-bottom:16px;border-radius:0 4px 4px 0;">'
+            '<tr><td style="padding:10px 16px;font-size:13px;color:#7f1d1d;">'
+            f'<strong>🛑 ILLNESS SIGNALS</strong>: {gate_text}'
+            '</td></tr></table>'
+        )
+        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:16px 32px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
+    elif modulation and modulation.get("gate") and modulation.get("label"):
+        light = modulation.get("light", {})
+        gate_text = (
+            f"{modulation.get('headline', 'Adjust today')}: {modulation.get('reason', '')}. "
+            f"Suggested: <strong>{modulation['label']} ({modulation['duration_min']} min)</strong> "
+            f"instead of {modulation.get('planned_label', 'the planned session')}. "
+            "Open the dashboard to apply."
+        )
+        gate_block = (
+            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;'
+            'border-left:4px solid #f59e0b;margin-bottom:16px;border-radius:0 4px 4px 0;">'
+            '<tr><td style="padding:10px 16px;font-size:13px;color:#78350f;">'
+            f'<strong>🟠 RECOVERY GATE</strong>: {gate_text}'
+            '</td></tr></table>'
+        )
+        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:16px 32px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
+    elif modulation and modulation.get("light", {}).get("status") in ("amber", "red"):
         light = modulation["light"]
         is_red = light["status"] == "red"
         bg, border, fg = (("#fef2f2", "#ef4444", "#7f1d1d") if is_red
@@ -1044,7 +1081,7 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
 
     retest_note = ""
     try:
-        from .history import ftp_retest_due
+        from .history import ftp_retest_due, gut_training_summary
         due = ftp_retest_due(today, plan_start=PLAN_START)
         if due:
             if due.get("age_days"):
@@ -1052,6 +1089,13 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
                                "recommend slotting a re-test this week.\n")
             else:
                 retest_note = "\nNOTE: no FTP test logged yet; recommend slotting one this week.\n"
+        gut = gut_training_summary(today)
+        if gut and gut.get("weekly_adherence_pct") is not None and gut["weekly_adherence_pct"] < 70:
+            retest_note += (
+                f"\nNOTE: gut-training adherence is {gut['weekly_adherence_pct']}% this week "
+                f"({gut['days_to_charity']} days to charity ride) — rehearse planned carbs g/h "
+                "on the next long ride.\n"
+            )
     except Exception:
         pass
 
