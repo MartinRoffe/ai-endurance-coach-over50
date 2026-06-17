@@ -34,6 +34,8 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 
 ## Architecture
 
+**Visual diagram:** open [architecture.html](../architecture.html) in the repo root, or visit `/architecture` on the running dashboard. Covers system overview, module map, data flow, SQLite schema, dashboard tabs, power-meter pipeline, and coach chat.
+
 The app has two interfaces sharing the same data layer:
 
 **CLI** (`cli.py`) — terminal dashboard using `rich`, with flags for fetching, backfilling, emailing, and workout upload.
@@ -47,7 +49,9 @@ The app has two interfaces sharing the same data layer:
 - `/performance` — PMC (CTL/ATL/TSB), Z2 HR drift, CTL/TSB projection to event, zone polarisation charts, FTP trend, Z2 cardiac drift trend
 - `/calendar` — unified plan/camp/event-prep calendar with completion tracking, interference flags, BTB log
 - `/training`, `/compliance` — plan completion stats and per-discipline adherence
-- `/nutrition` — 4-week meal plan cycle
+- `/nutrition` — nutrition hub (principles, calorie tiers, supplements)
+- `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/shopping-list` — nutrition sub-pages
+- `/architecture` — bundled architecture.html diagram (Mermaid system map)
 - `/sleep` — 30-day sleep quality history with stage breakdown
 - `/body`, `/body-refresh` — body composition and blood pressure tracking
 - `/withings-sync` — push Withings measurements to Garmin, then refresh body data

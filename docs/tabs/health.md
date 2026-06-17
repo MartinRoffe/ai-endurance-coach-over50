@@ -1,36 +1,11 @@
-# Health: Nutrition, Sleep & Body
+# Health: Sleep & Body
 
-**Nav:** the **Health ▾** group → **Nutrition**, **Sleep**, and **Body**.
+**Nav:** the **Health ▾** group → **Sleep** and **Body**.
 
-This group covers the things around training that make it stick: what you eat,
-how you sleep, and how your body is changing.
+Nutrition is a separate top-level tab — see **[Nutrition](nutrition.md)**.
 
----
-
-## Nutrition tab
-
-**Route:** `/nutrition`
-
-### What it's for
-
-Your repeatable meal plan, plus what you've actually logged today.
-
-> 📸 *Screenshot: the Nutrition tab showing the weekly meal plan and the summary banner.*
-
-### What you'll see
-
-- **A 4-week meal-plan cycle** with nine day types (rest, training, bike, the
-  Thursday session, ruck, long ride, and three recovery-week variants), each with
-  meals, macros, and calorie tiers tuned to the day's training load.
-- **A summary banner** showing the carbs and protein you've logged today, pulled
-  from your Garmin food diary.
-- **Shopping lists** per week to make the plan actionable.
-
-### How to use it
-
-Use it as a reference — pick today's day type and follow the meals. The protein
-targets are built around roughly 2.0–2.2 g per kg of body weight, with protein-
-first guidance throughout.
+This group covers recovery signals outside the training plan itself: sleep
+quality and body composition.
 
 ---
 
@@ -68,6 +43,7 @@ Tracking body composition and blood pressure over time.
 - **Macro tiles** — today's carbs and protein plus their 14-day rolling averages.
 - **An estimated W/kg tile** — your watts-per-kilo estimate, a coarse fitness
   proxy (see [why it's an estimate](../concepts.md#why-heart-rate-not-power)).
+- **Measured power trends** when power data is available from your meter.
 
 ### How to use it
 

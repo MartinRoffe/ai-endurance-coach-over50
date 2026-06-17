@@ -1662,6 +1662,16 @@ async def nutrition_shopping_list(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})
 
 
+_ARCHITECTURE_HTML = Path(__file__).resolve().parent / "architecture.html"
+
+
+@app.get("/architecture", response_class=HTMLResponse)
+async def architecture_diagram(_=Depends(_require_auth)):
+    if not _ARCHITECTURE_HTML.is_file():
+        raise HTTPException(status_code=404, detail="architecture.html not found")
+    return HTMLResponse(content=_ARCHITECTURE_HTML.read_text(encoding="utf-8"))
+
+
 @app.get("/tenerife", response_class=HTMLResponse)
 async def tenerife_view(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="tenerife.html", context={})

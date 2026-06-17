@@ -19,23 +19,31 @@ bottom or jump straight to the tab you're looking at.
 | **[Readiness](tabs/readiness.md)** | The home page — your daily readiness score, metric tiles, nutrition card, fatigue alerts, and session modulation |
 | **[Performance](tabs/performance.md)** | The **Performance ▾** group: the Performance tab (training-load and trend charts) and the Analysis tab (per-workout AI review) |
 | **[Plan](tabs/plan.md)** | The **Plan ▾** group: Calendar, Training, and Compliance |
-| **[Health](tabs/health.md)** | The **Health ▾** group: Nutrition, Sleep, and Body |
+| **[Health](tabs/health.md)** | The **Health ▾** group: Sleep and Body |
+| **[Nutrition](tabs/nutrition.md)** | Top-level **Nutrition** tab — meal plan, ride fuelling, recipes, shopping |
 | **[Events](tabs/events.md)** | The **Events ▾** group: the Tenerife camp and the Haute Route Alpes 2027 plan |
 | **[Coach](tabs/coach.md)** | The AI coach chat — context, plan-change proposals, and memory |
+| **[Architecture](architecture.md)** | Visual system diagram — modules, data flow, database, tabs, power pipeline |
 | **[Email & Automation](email-and-automation.md)** | The daily email, the Monday briefing, scheduling, and the command-line flags |
 | **[FAQ & Troubleshooting](faq.md)** | Missing data, sign-in problems, clearing stale AI text, and protecting the dashboard |
 
 ## The navigation bar at a glance
 
-The bar across the top of every page has six items. Four of them are dropdown
+The bar across the top of every page has these items. Four are dropdown
 groups — hover or tap to reveal the pages inside:
 
 - **Readiness** — the home page (your single-page morning check-in).
 - **Performance ▾** → Performance · Analysis
 - **Plan ▾** → Calendar · Training · Compliance
-- **Health ▾** → Nutrition · Sleep · Body
+- **Nutrition** — meal plan hub with sub-pages (Daily Menus · Ride Fuelling · Recipes · Shopping)
+- **Health ▾** → Sleep · Body
 - **Events ▾** → Tenerife · Haute Route
 - **Coach** — chat with your AI coach.
+- **Memory** — durable coach memo across sessions.
+
+For a **system architecture diagram** (modules, data flow, database schema),
+see **[Architecture](architecture.md)** or open `/architecture` in the running
+dashboard.
 
 Wherever you see a small **ⓘ** next to a label, hover or tap it for a short
 plain-language explanation of that metric.

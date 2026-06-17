@@ -18,9 +18,11 @@ FILES=(
   README.md
   getting-started.md
   concepts.md
+  architecture.md
   tabs/readiness.md
   tabs/performance.md
   tabs/plan.md
+  tabs/nutrition.md
   tabs/health.md
   tabs/events.md
   tabs/coach.md

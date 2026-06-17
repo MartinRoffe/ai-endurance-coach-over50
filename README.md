@@ -6,6 +6,8 @@ rolling baseline, and delivers a daily email briefing and live web dashboard.
 
 **📖 [User Guide](docs/README.md)** — full walkthrough of every tab and feature.
 
+**🏗 [Architecture diagram](docs/architecture.md)** — interactive Mermaid map of modules, data flow, and database schema (`/architecture` in the dashboard, or `architecture.html` in the repo root).
+
 ## Features
 
 **Readiness & alerts**
@@ -104,6 +106,8 @@ endurance-coach --setup-schedule
 
 ## Architecture
 
+**Visual diagram:** [architecture.html](architecture.html) in the repo root (or `http://127.0.0.1:8743/architecture` when the server is running). See [docs/architecture.md](docs/architecture.md) for a short guide to what's covered.
+
 ```
 ai_endurance_coach_over50/
 ├── cli.py           Entry point; argument dispatch
@@ -113,11 +117,12 @@ ai_endurance_coach_over50/
 │                    Tables: daily_metrics, activities, body_metrics,
 │                    blood_pressure, daily_advice, text_cache,
 │                    coach_conversations, plan_overrides, coach_memory,
-│                    session_rpe, ftp_tests, btb_notes
+│                    session_rpe, ftp_tests, btb_notes, activity_durability,
+│                    fuelling_logs
 ├── display.py       Value formatting, activity enrichment
 ├── alerts.py        Fatigue alert checks (HRV trend, TSB deep, volume spike)
 ├── report.py        HTML email builder, Claude advice, weekly briefing, Gmail sender
-├── analysis.py      Post-workout HR zone analysis via Claude; FTP test
+├── analysis.py      Post-workout HR/power zone analysis via Claude; FTP test
 │                    auto-population; workout descriptions, nutrition
 │                    targets, fuelling plans
 ├── plan.py          12-week training plan + COMPOUND_SESSIONS registry
@@ -126,7 +131,8 @@ ai_endurance_coach_over50/
 ├── body.py          Body composition and blood pressure helpers
 ├── withings.py      Withings → Garmin Connect measurement sync
 ├── workouts.py      Structured workout upload to Garmin Connect
-├── server.py        FastAPI web dashboard (11 tabs, Jinja2 templates)
+├── server.py        FastAPI web dashboard (Jinja2 templates)
+├── architecture.html Bundled system diagram (also at /architecture)
 └── templates/       HTML templates for each dashboard tab
 ```
 

@@ -100,3 +100,4 @@ auto-migrates, so upgrades won't lose your history.
 - Understand what the numbers mean → **[Key Concepts](concepts.md)**
 - Tour the home page → **[Readiness](tabs/readiness.md)**
 - Set up the morning email and background server → **[Email & Automation](email-and-automation.md)**
+- Explore the system design → **[Architecture](architecture.md)** (`/architecture` in the dashboard)
