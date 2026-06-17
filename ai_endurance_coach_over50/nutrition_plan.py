@@ -99,7 +99,8 @@ PRINCIPLES = [
     "flatbreads). Hit the same protein/carb targets the old Gousto picks did — the griddle just "
     "does it more cheaply and is the carb-rich pre-ride fuel on Saturday.",
     "Sunday fuelling: 100–150 kcal fast carbs on waking only. On-bike from minute 0: "
-    "60 g carbs/hr for rides 1–2.5 h, 75–90 g/hr beyond 2.5 h. Recovery meal within 45 min "
+    "45–60 g carbs/hr for rides 75 min–2 h (lower for easy Z2, upper for quality), ~60 g/hr for "
+    "2–2.5 h, 75–90 g/hr beyond 2.5 h. Recovery meal within 45 min "
     "(chocolate milk first, then big porridge + whey + eggs + banana + PB toast).",
     "Gut training (start early — the gut is trainable and Block B / the alpine event will demand "
     "90+ g/hr): weeks 1–4 practise 60 g/hr on every ride ≥75 min; weeks 5–8 push long rides to "
@@ -283,9 +284,9 @@ DAY_TYPES: dict[str, dict] = {
              "100–150 kcal fast carbs only, 10–20 min before rolling. Last night's carb-rich "
              "griddle dinner was the real pre-ride meal.", 160, 3, 32),
             ("On-Bike", "Carb drink mix + banana + oat bar (from minute 0)",
-             "60 g carbs/hr for 1–2.5 h, 75–90 g/hr beyond 2.5 h. Start in first 15 min, "
-             "something every 20–30 min. 500 ml bottle with 40–60 g carb drink, banana (~25 g), "
-             "homemade oat bar (~28 g). 500–750 ml fluid/hr.", 450, 6, 104),
+             "45–60 g carbs/hr for 75 min–2 h, ~60 g/hr for 2–2.5 h, 75–90 g/hr beyond 2.5 h. "
+             "Start in first 15 min, something every 20–30 min. 500 ml bottle with 40–60 g carb drink, "
+             "banana (~25 g), homemade oat bar (~28 g). 500–750 ml fluid/hr.", 450, 6, 104),
             ("Recovery", "Big Porridge + Whey + 2 Eggs + Banana + PB Toast + Chocolate Milk",
              "Within 45 min of finishing. Chocolate milk first, then 80g oats + whey scoop + "
              "2 eggs + banana + PB toast. Whey is the protein anchor here — Sunday recovery meal "
