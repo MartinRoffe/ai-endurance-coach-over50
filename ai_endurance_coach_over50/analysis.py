@@ -1512,7 +1512,10 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
         "absorption ceiling); 500–750 ml fluid/hr; 300–700 mg sodium/hr depending on duration and "
         "intensity. The gut is trainable — bias the longest sessions toward the high end so the "
         "athlete rehearses event-day fuelling (90+ g/hr). Fuel these endurance sessions fully even "
-        "during a weight-loss block: the deficit belongs to rest days, not the key ride.",
+        "during a weight-loss block: the deficit belongs to rest days, not the key ride. "
+        "Schedule context: weekend long rides (2–6 h) start very early with minimal pre-ride breakfast "
+        "(carbs from minute 0 on the bike); weekday evening rides are shorter, post-lunch, and usually "
+        "need lighter during-ride fuelling unless duration ≥75 min.",
         "For each session provide a short hour-by-hour timeline (e.g. '0–60min: 1 bottle + 1 gel; ...').",
         "Reply ONLY with valid JSON: a dict mapping session_key -> "
         "{\"carbs_g_per_hr\": int, \"total_carbs_g\": int, \"fluid_ml_per_hr\": int, "

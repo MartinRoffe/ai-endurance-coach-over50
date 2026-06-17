@@ -63,9 +63,12 @@
 </style>
 </head>
 <body>
+{% set active_tab = 'shopping' %}
+{% set nutrition_section = 'shopping' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
 <header>
   <div class="wrap" style="padding:0;">
-    <a href="/nutrition" class="back-link">← Back to Nutrition</a>
     <h1>🛒 Asda Click-to-Add Shopping List</h1>
     <p>Tap <b>Add&nbsp;▸</b> to open that item on Asda groceries, then add it to your trolley. Tap the box to tick it off — the bar at the bottom keeps a running total of what you've ticked. Prices are targets; check the real price as you go.</p>
   </div>

@@ -93,7 +93,10 @@
 </head>
 <body>
 
-<a href="/nutrition" style="display:inline-flex;align-items:center;gap:8px;margin:18px 0 0 24px;padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--accent);text-decoration:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">← Back to Nutrition</a>
+{% set active_tab = 'recipes' %}
+{% set nutrition_section = 'recipes' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
 
 <div class="hero">
   <div class="container">
@@ -117,6 +120,7 @@
     <a href="#paella"><span>Lunch · 09</span>Paprika Rice &amp; Prawns (Thu)</a>
     <a href="#griddle"><span>Griddle · 10</span>Blackstone Method + 6 Recipes</a>
     <a href="#fuel"><span>Race Fuel · 11</span>On-Bike Drinks, Rice Cakes &amp; Gels</a>
+    <a href="/nutrition/fuelling"><span>Protocols · 11b</span>Weekend &amp; Evening Ride Fuelling Guide</a>
     <a href="#schedule"><span>Plan · 12</span>Sunday Prep Schedule</a>
   </div>
 
@@ -719,7 +723,7 @@
   <section id="fuel">
     <div class="sec-label">Carbs during exercise — race-day fuel you can make at home</div>
     <h2><span class="num">11</span>On-Bike &amp; During-Exercise Fuel</h2>
-    <p class="lead">Shop gels and drink mixes are expensive and you go through a lot of them. These DIY versions cost pennies, taste better, and — critically — let you <em>train your gut</em> on exactly what you'll race on. Start fuelling in the first 15 minutes of any ride over ~75 minutes and keep it steady.</p>
+    <p class="lead">Shop gels and drink mixes are expensive and you go through a lot of them. These DIY versions cost pennies, taste better, and — critically — let you <em>train your gut</em> on exactly what you'll race on. Start fuelling in the first 15 minutes of any ride over ~75 minutes and keep it steady. For <strong>when to eat what</strong> on early weekend long rides vs evening sessions, see the dedicated <a href="/nutrition/fuelling">Ride Fuelling guide</a>.</p>
 
     <div class="recipe">
       <div class="recipe-head">

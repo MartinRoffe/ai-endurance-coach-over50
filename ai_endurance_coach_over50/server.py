@@ -1635,6 +1635,23 @@ async def nutrition_plan(request: Request):
     )
 
 
+@app.get("/nutrition/meals", response_class=HTMLResponse)
+async def nutrition_meals(request: Request):
+    today = _today()
+    days_since_start = (today - _PLAN_START).days
+    cycle_week = max(0, days_since_start // 7) % 4
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="meals.html",
+        context={"cycle_week": cycle_week},
+    )
+
+
+@app.get("/nutrition/fuelling", response_class=HTMLResponse)
+async def nutrition_fuelling(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="fuelling.html", context={})
+
+
 @app.get("/nutrition/recipes", response_class=HTMLResponse)
 async def nutrition_recipes(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes.html", context={})

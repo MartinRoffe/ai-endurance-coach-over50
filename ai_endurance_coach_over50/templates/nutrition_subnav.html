@@ -1,0 +1,52 @@
+{# nutrition_section: overview | meals | fuelling | recipes | shopping #}
+<style>
+  .nut-subnav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .nut-subnav-inner {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nut-subnav-inner::-webkit-scrollbar { display: none; }
+  .nut-subnav a {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .nut-subnav a:hover { color: var(--text); }
+  .nut-subnav a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  @media (max-width: 640px) {
+    .nut-subnav-inner { padding: 0 14px; }
+    .nut-subnav a { padding: 10px 12px; font-size: 10px; }
+  }
+</style>
+<nav class="nut-subnav" aria-label="Nutrition sections">
+  <div class="nut-subnav-inner">
+    <a href="/nutrition" class="{% if nutrition_section == 'overview' %}active{% endif %}">Overview</a>
+    <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">Daily Menus</a>
+    <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Ride Fuelling</a>
+    <a href="/nutrition/recipes" class="{% if nutrition_section == 'recipes' %}active{% endif %}">Recipes</a>
+    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' %}active{% endif %}">Shopping</a>
+  </div>
+</nav>

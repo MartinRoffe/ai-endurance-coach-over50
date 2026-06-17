@@ -183,6 +183,17 @@
   .footer-note p { margin:0; font-size:12px; color:var(--muted); }
   .footer-note strong { color:var(--accent2); font-weight:500; }
 
+  /* HUB CARDS */
+  .hub-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:20px; }
+  .hub-card { display:block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:20px; text-decoration:none; color:var(--text); transition:border-color 0.15s, transform 0.15s; position:relative; overflow:hidden; }
+  .hub-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+  .hub-card.featured { border-color:rgba(241,160,53,0.4); background:linear-gradient(135deg,var(--surface) 0%,rgba(241,160,53,0.06) 100%); }
+  .hub-card.featured::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--accent2); }
+  .hub-icon { font-size:24px; margin-bottom:10px; }
+  .hub-title { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.03em; margin-bottom:6px; }
+  .hub-desc { font-size:12px; color:var(--muted); line-height:1.55; margin:0; }
+  .hub-arrow { font-family:'DM Mono',monospace; font-size:10px; color:var(--accent); margin-top:12px; letter-spacing:0.06em; }
+
   @media(max-width:640px){
     .hero{padding:40px 20px 32px;}
     .container{padding:0 14px;}
@@ -198,22 +209,20 @@
 <body>
 
 {% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'overview' %}
 {% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
 
 <div class="hero">
   <div class="container">
     <div class="hero-eyebrow">Nutrition Plan · Bulk-Staple Rebuild · 4-Week Repeatable Cycle</div>
     <h1>FUEL TO<br><span>PERFORM</span></h1>
-    <p class="hero-sub">A 4-week repeatable plan rebuilt around bulk staples — batch-roasted chicken, eggs, a Greek-yogurt tub, a whey tub and bulk oats and rice — instead of single-serve convenience packs. Same 185g+ protein, carbs timed to training, ~£18/week cheaper.</p>
+    <p class="hero-sub">A 4-week repeatable plan rebuilt around bulk staples — batch-roasted chicken, eggs, a Greek-yogurt tub, a whey tub and bulk oats and rice. Same 185g+ protein, carbs timed to training, homemade ride fuelling, ~£18/week cheaper.</p>
     <div class="hero-stats">
       <div class="stat"><div class="stat-val">185g+</div><div class="stat-label">Daily Protein</div></div>
-      <div class="stat"><div class="stat-val">~£48</div><div class="stat-label">Old weekly shop</div></div>
+      <div class="stat"><div class="stat-val">60–90</div><div class="stat-label">g carbs/hr long rides</div></div>
       <div class="stat"><div class="stat-val">~£30</div><div class="stat-label">Bulk-staple cost</div></div>
       <div class="stat"><div class="stat-val">4</div><div class="stat-label">Week cycle</div></div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:28px;">
-      <a href="/nutrition/recipes" style="display:inline-flex;align-items:center;gap:8px;padding:11px 18px;background:var(--accent);border:1px solid var(--accent);border-radius:4px;color:#0e0f0c;text-decoration:none;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">🍳 Recipes &amp; Prep Guide</a>
-      <a href="/nutrition/shopping-list" style="display:inline-flex;align-items:center;gap:8px;padding:11px 18px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);text-decoration:none;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">🛒 Asda Shopping List</a>
     </div>
   </div>
 </div>
@@ -284,7 +293,7 @@
       <div class="principle-card pc-sunday">
         <div class="principle-icon">☀️</div>
         <div class="principle-title">Sunday = Max Fuel</div>
-        <p>Carb-rich Saturday griddle dinner is the real pre-ride meal. 100–150 kcal fast carbs on waking. Fuel on-bike from minute 0 at 60–90 g/hr. The big porridge breakfast becomes the post-ride recovery meal — chocolate milk first.</p>
+        <p>Carb-rich Saturday griddle dinner is the real pre-ride meal. 100–150 kcal fast carbs on waking. Fuel on-bike from minute 0 at 60–90 g/hr. The big porridge breakfast becomes the post-ride recovery meal — chocolate milk first. Full protocols in the <a href="/nutrition/fuelling" style="color:var(--accent2)">Ride Fuelling guide</a>.</p>
       </div>
     </div>
 
@@ -324,59 +333,36 @@
     </div>
   </section>
 
-  <!-- WEEKLY PLANS -->
+  <!-- SECTION HUB -->
   <section>
-    <div class="section-label">4-Week Repeatable Cycle</div>
-    <h2>DAILY MENUS</h2>
-
-    <div class="week-tabs">
-      <button class="wtab active" onclick="showWeek('w1',this)">Week 1</button>
-      <button class="wtab" onclick="showWeek('w2',this)">Week 2</button>
-      <button class="wtab" onclick="showWeek('w3',this)">Week 3</button>
-      <button class="wtab" onclick="showWeek('w4',this)">Week 4 — Recovery</button>
-    </div>
-
-    <div id="w1" class="week-panel active"></div>
-    <div id="w2" class="week-panel"></div>
-    <div id="w3" class="week-panel"></div>
-    <div id="w4" class="week-panel"></div>
-  </section>
-
-  <!-- SHOPPING LIST -->
-  <section>
-    <div class="section-label">Asda Shopping — Target Prices June 2026</div>
-    <h2>WEEKLY SHOP — WEEK 1</h2>
-    <p>Tap any item to tick it off as you shop. Prices marked <span style="background:rgba(200,241,53,0.1);color:var(--accent);font-size:11px;padding:1px 5px;border-radius:2px;font-family:'DM Mono',monospace">CONF</span> are checked Asda prices (June 2026). Prices marked <span style="background:rgba(241,160,53,0.1);color:var(--accent2);font-size:11px;padding:1px 5px;border-radius:2px;font-family:'DM Mono',monospace">EST</span> are own-brand estimates — treat all as <em>targets</em> to track your actual bill against. Bulk pantry items (whey, oats, peanut butter, honey) last several weeks, so their figure is the <em>amortised weekly</em> cost, not the pack price.</p>
-
-    <div class="footer-note" style="margin-bottom:20px">
-      <p><strong>Dinners are separate.</strong> Gousto covers the four weekday evenings (Mon–Thu) and is billed on your Gousto subscription. This Asda shop covers breakfasts, lunches, snacks <em>and</em> the three weekend griddle dinners (Fri/Sat/Sun). The "breakfast + lunch + snacks" lines — the part you flagged at ~£49 — now come to about <strong>£28</strong>.</p>
-    </div>
-
-    <div class="shop-section" id="shopList"></div>
-
-    <h2 style="margin-top:40px">WEEKS 2 &amp; 3 — 2-WEEK SHOP</h2>
-    <p>Roughly double the weekly consumables; the rice is the same bulk basmati, just seasoned differently for variety. You may already be stocked on whey, oats, peanut butter and honey.</p>
-    <div class="shop-section" id="shopList23"></div>
-  </section>
-
-  <!-- COST OPTIMISER -->
-  <section>
-    <div class="section-label">The Rebuild — ~£18 Saved Per Week</div>
-    <h2>WHAT CHANGED</h2>
-    <p>Each swap below replaces a single-serve convenience pack with a bulk staple, holding protein constant. Together they take the breakfast + lunch + snack bill from ~£49 to ~£28. Whole-food protein from batch chicken, eggs, a Greek-yogurt tub and a whey tub does the heavy lifting.</p>
-    <div class="swap-grid" id="swapCards"></div>
-
-    <div class="footer-note" style="margin-top:24px">
-      <p><strong>Batch cook tip:</strong> Roast ~1.5kg chicken thighs Sunday at 200°C / 25 min, seasoned with mixed herbs/paprika. Cool and portion into 240g lunch containers. Cook the week's basmati in one pot (season half Mexican, half plain/golden) and fridge it. Repeat a smaller batch Wednesday for Fri/Sat. Keeps 4 days.</p>
-    </div>
-    <div class="footer-note" style="margin-top:8px;border-left-color:var(--protein)">
-      <p><strong style="color:var(--protein)">Greek-yogurt portioning:</strong> Buy 2 × 1kg tubs. Spoon into ~150g containers; each delivers ~15g protein — the GetPro pot's job at a third of the cost. Add fruit or honey for variety. Takes 5 minutes.</p>
-    </div>
-    <div class="footer-note" style="margin-top:8px;border-left-color:var(--accent2)">
-      <p><strong style="color:var(--accent2)">Homemade oat bars:</strong> Mix 250g oats + 4 tbsp peanut butter + 3 tbsp honey + 2 scoops whey + a mashed banana. Press into a tray, bake 15 min at 180°C, cut into 12. ~10g protein each — replaces the Nature Valley bars at ~25p a bar.</p>
-    </div>
-    <div class="footer-note" style="margin-top:8px;border-left-color:#9b59b6">
-      <p><strong style="color:#9b59b6">Dinners:</strong> Gousto stays on the four weekday evenings (Mon–Thu). The Blackstone griddle takes Fri/Sat/Sun through summer — griddled chicken, lean steak or salmon + veg + flatbreads/rice. The carb-rich Saturday griddle is Sunday's real pre-ride fuel.</p>
+    <div class="section-label">Explore the plan</div>
+    <h2>NUTRITION GUIDES</h2>
+    <p>Each topic has its own page — daily meals, ride fuelling protocols, batch recipes and the weekly shop.</p>
+    <div class="hub-grid">
+      <a href="/nutrition/fuelling" class="hub-card featured">
+        <div class="hub-icon">🚴</div>
+        <div class="hub-title">Ride Fuelling</div>
+        <p class="hub-desc">Homemade drinks, rice cakes and gels. Weekend long-ride timelines, evening ride rules, post-ride recovery and Friday prep checklist.</p>
+        <div class="hub-arrow">Open guide →</div>
+      </a>
+      <a href="/nutrition/meals" class="hub-card">
+        <div class="hub-icon">📅</div>
+        <div class="hub-title">Daily Menus</div>
+        <p class="hub-desc">Full 4-week meal cycle with macros and protein checkpoints. Auto-selects your current week.</p>
+        <div class="hub-arrow">View menus →</div>
+      </a>
+      <a href="/nutrition/recipes" class="hub-card">
+        <div class="hub-icon">🍳</div>
+        <div class="hub-title">Recipes &amp; Prep</div>
+        <p class="hub-desc">Batch chicken, rice, oat bars, griddle dinners and on-bike fuel formulations with step-by-step methods.</p>
+        <div class="hub-arrow">Open recipes →</div>
+      </a>
+      <a href="/nutrition/shopping-list" class="hub-card">
+        <div class="hub-icon">🛒</div>
+        <div class="hub-title">Asda Shopping</div>
+        <p class="hub-desc">Click-to-add weekly shop with running total. Maltodextrin and fructose ordered separately.</p>
+        <div class="hub-arrow">Open list →</div>
+      </a>
     </div>
   </section>
 
@@ -397,401 +383,4 @@
   {% endif %}
 
 </div><!-- /container -->
-
-<script>
-
-const AUTO_WEEK = {{ cycle_week }};
-
-// ── DATA ─────────────────────────────────────────────────────────────────────
-
-function macro(kcal,p,c,f){ return `<span class="macro m-kcal">${kcal} kcal</span><span class="macro m-p">P: ${p}g</span><span class="macro m-c">C: ${c}g</span>${f?`<span class="macro m-f">F: ${f}g</span>`:''}` }
-
-const WEEKS = {
-
-w1:{
-  banner:'<strong>Weeks 1–3 — Training structure.</strong> Porridge + Greek yogurt + whey every morning. Greek-yogurt portion at lunch Mon–Thu. Whey shake Wed/Thu/Fri/Sat. Saturday: chicken lunch (not eggs) + yogurt post-ruck + shake. Sunday: whey in recovery meal + 240g chicken at lunch. Dinners: Gousto Mon–Thu, Blackstone griddle Fri/Sat/Sun.',
-  days:[
-    {name:'Monday', badge:'badge-rest', type:'Rest day', kcal:'~2,050 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'50g bulk oats + a Greek-yogurt portion (from the tub) + ½ scoop whey. Make overnight or 3 min in the microwave. Replaces Fuel10k + GetPro pot.', macros:macro('330','35','39','7')},
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Batch-baked flapjack (oats + PB + honey + whey). ~10g protein.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Batch-cooked basmati + 240g batch-roasted chicken, Greek-yogurt portion alongside for the protein top-up.', macros:macro('680','73','70','10')},
-       {type:'PM Snack', name:'Banana', detail:'Afternoon energy.', macros:macro('90','1','23','')},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Light evening snack.', macros:macro('70','1','18','')},
-       {type:'Dinner', name:'Gousto — 60g+ protein pick', detail:'~660 kcal, 60g+ protein. Weekday Gousto night. Rest day — any strong pick (chicken, beef, salmon). Veggie or pasta-only dishes don\'t hit target.', macros:macro('660','60','55','18')}
-     ],
-     preDinP:120, note:'120g pre-dinner; any 60g+ Gousto closes the day at 185g. Easiest day to hit target.'},
-
-    {name:'Tuesday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same as Monday.', macros:macro('330','35','39','7')},
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Full 240g batch-roasted chicken + Greek-yogurt portion. Yogurt added on training days too — lunch protein needs to reach 73g to hit 185g/day.', macros:macro('700','73','70','10')},
-       {type:'PM Snack', name:'Banana', detail:'45 min before evening session.', macros:macro('90','1','23','')},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18','')},
-       {type:'Dinner', name:'Gousto — 65g protein pick', detail:'~730 kcal, 65g protein. Weekday Gousto night. Chicken thighs, beef ragu or salmon. Training day — recovery depends on this meal.', macros:macro('730','65','70','20')}
-     ],
-     preDinP:120, note:'120g pre-dinner (Greek yogurt now added to lunch). Gousto at 65g closes the day at 185g.'},
-
-    {name:'Wednesday', badge:'badge-ride', type:'Outdoor Bike 60 min', kcal:'~2,350 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Bulk Pasta + Tuna + Greek Yogurt', extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Bulk dried pasta with a stir-through tin of tuna; Greek-yogurt portion alongside. Good carbs for the afternoon ride, far cheaper than the sachet pasta.', macros:macro('600','53','78','8')},
-       {type:'PM Snack', name:'Banana', detail:'45 min before riding.', macros:macro('90','1','23','')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'One scoop from the 1kg tub, post-ride or between PM snack and dinner. Closes the protein gap on ride days where lunch is tuna/pasta rather than chicken.', macros:macro('150','25','5','')},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18','')},
-       {type:'Dinner', name:'Gousto — 65g protein pick, carb-friendly', detail:'~730 kcal, 65g protein. Weekday Gousto night. Pasta, rice or noodle Gousto works on ride evenings if the protein source is chicken, fish or beef.', macros:macro('730','65','72','18')}
-     ],
-     preDinP:125, note:'125g pre-dinner (includes whey shake). Gousto at 65g closes the day at 190g.'},
-
-    {name:'Thursday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Paprika Batch Rice + Prawns 150g + Greek Yogurt', extras:'<span class="fav-tag">★ PAELLA</span><span class="getpro-tag">+YOGURT</span>', detail:'Homemade "paella" — batch rice with paprika and peas, cold prawns stirred in, Greek-yogurt portion alongside. Replaces the Ben\'s pouch; same carb base for evening kettlebell.', macros:macro('480','47','62','12')},
-       {type:'PM Snack', name:'Banana', detail:'45 min before session. Carbs matter tonight.', macros:macro('90','1','23','')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Between session and dinner — closes the protein gap left by the lower-protein rice-and-prawn lunch. Non-negotiable on Thursdays.', macros:macro('150','25','5','')},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18','')},
-       {type:'Dinner', name:'Gousto — strongest pick of the week, ≥65g protein', detail:'~730 kcal, 65g protein. Weekday Gousto night. Lowest pre-dinner protein day — Gousto must deliver. Chicken, beef or salmon. NOT a pasta-only or veggie dish.', macros:macro('730','65','68','22')}
-     ],
-     preDinP:119, note:'⚠ 119g pre-dinner — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.', noteWarn:true},
-
-    {name:'Friday', badge:'badge-ride', type:'Outdoor Bike 60 min — Griddle night', kcal:'~2,350 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g', detail:'Full batch-roasted chicken pack. Strong protein lunch — rice+chicken gives 58g without needing the yogurt top-up.', macros:macro('550','58','58','10')},
-       {type:'PM Snack', name:'Banana', detail:'45 min before ride.', macros:macro('90','1','23','')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Post-ride or between PM snack and dinner. Brings pre-dinner total to 130g so any 65g+ griddle dinner hits 195g.', macros:macro('150','25','5','')},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18','')},
-       {type:'Dinner', name:'Blackstone griddle — 65g protein, end-of-week', detail:'~730 kcal, 65g protein. First griddle night of the weekend. Griddled chicken, lean steak or salmon + veg + flatbreads or rice. You\'ve earned the Friday cook.', macros:macro('730','65','65','18')}
-     ],
-     preDinP:130, note:'130g pre-dinner (shake included, strong chicken lunch). 65g griddle = 195g total. First griddle night.'},
-
-    {name:'Saturday', badge:'badge-ruck', type:'Rucking 60–90 min', kcal:'~2,500 kcal',
-     meals:[
-       {type:'On Waking', name:'Banana out the door (or fasted)', detail:'Very early start — at easy pace, fasted is fine. Banana if you want fuel.', macros:macro('150','3','30','5')},
-       {type:'Post-Ruck', name:'Porridge 80g + Milk + 2 Eggs + Banana + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — the recovery meal. 80g oats, semi-skimmed milk, 2 eggs, banana, Greek-yogurt portion. The yogurt is essential here — without it Saturday protein collapses.', macros:macro('680','37','72','14')},
-       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'Full 240g batch-roasted chicken — NOT eggs on toast (22g vs 58g protein). This single swap adds 36g protein to Saturday. Non-negotiable.', macros:macro('550','58','46','8')},
-       {type:'PM Snack', name:'Banana + Apple + Homemade Oat Bar', detail:'Afternoon. Add the oat bar on Saturday to keep the total moving.', macros:macro('360','12','56','')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Evening, before dinner. Saturday\'s structure makes it hard to hit 185g without a shake — treat this as a planned meal, not optional.', macros:macro('150','25','5','')},
-       {type:'Dinner', name:'Blackstone griddle — carb-rich pick (tomorrow\'s pre-ride meal)', detail:'~730 kcal, 62g protein. Saturday griddle night, biased carb-rich: griddled chicken thighs or steak + flatbreads or rice + griddled veg. This dinner fuels Sunday\'s ride.', macros:macro('730','62','82','20')}
-     ],
-     preDinP:135, note:'Saturday was the biggest protein gap in the old plan. Chicken lunch + yogurt post-ruck + shake are all required. 135g pre-dinner + 62g griddle = 197g.'},
-
-    {name:'Sunday', badge:'badge-long', type:'Long Ride — Building to 3h30', kcal:'~2,700 kcal',
-     meals:[
-       {type:'On Waking', name:'Banana + honey toast, or carb drink in bottle 1', detail:'100–150 kcal fast carbs only, 10–20 min before rolling. Last night\'s carb-rich griddle dinner was the real pre-ride meal — no big breakfast needed before an early start. No new foods today.', macros:macro('160','3','32','2')},
-       {type:'On-Bike', name:'Carb drink mix + banana + oat bar (from minute 0)', detail:'60 g carbs/hr for rides 1–2.5 h, 75–90 g/hr beyond 2.5 h. Start fuelling in the first 15 min, then take something every 20–30 min. A 500 ml bottle with 40–60 g carb drink mix does most of the work; banana (~25 g) and a homemade oat bar (~28 g) top it up. 500–750 ml fluid/hr.', macros:macro('450','6','104','4')},
-       {type:'Recovery', name:'Big Porridge + Whey + 2 Eggs + Banana + PB Toast + Chocolate Milk',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Within 45 min of finishing. Chocolate milk first, then the plate. 80g oats + whey scoop + 2 eggs + banana + PB toast. Whey is the protein anchor here — Sunday recovery was only 40g protein before, now 55g.', macros:macro('850','55','82','18')},
-       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'A few hours after the ride. Increased from 150g to 240g chicken — adds 10g protein and improves afternoon recovery before the next training day.', macros:macro('550','58','56','10')},
-       {type:'Dinner', name:'Blackstone griddle — 65g protein recovery pick', detail:'~700 kcal, 65g protein. Sunday griddle night. Griddled salmon, chicken or lean steak + veg + potatoes or rice. Strong protein close to a big ride day.', macros:macro('700','65','64','16')}
-     ],
-     preDinP:122, note:'122g pre-dinner (whey in recovery + 240g chicken at lunch). Griddle at 65g = 187g total. Get the recovery meal in within 45 min of finishing.'}
-  ]
-},
-
-w2:{
-  banner:'<strong>Week 2 — Rice variety rotation.</strong> Same structure as Week 1, with Monday and Friday batch rice seasoned differently for variety (same bulk basmati, same macros). All protein targets and calorie tiers identical.',
-  riceSwap:{mon:'Mexican-Spiced Batch Rice', fri:'Golden Turmeric Batch Rice'}
-},
-
-w3:{
-  banner:'<strong>Week 3 — Further rotation.</strong> Monday takes Golden Turmeric, Tuesday takes Mexican-Spiced, Friday returns to plain batch rice. Same structure, same macros.',
-  riceSwap:{mon:'Golden Turmeric Batch Rice', tue:'Mexican-Spiced Batch Rice', fri:'Batch Rice'}
-},
-
-w4:{
-  banner:'<strong>Week 4 — Recovery Week.</strong> Lower volume, lighter food. Calorie targets drop 150–200 kcal. Snacks reduce to 1–2 per day. Lighter dinner (Gousto Mon–Thu / lighter griddle Fri, under 600 kcal). Protein holds at 185g minimum — the shake stays in. Cut comes from carbs and fat only.',
-  recovery:true,
-  days:[
-    {name:'Mon–Fri', badge:'badge-recovery', type:'Recovery week — reduced training', kcal:'~2,000–2,100 kcal',
-     meals:[
-       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey (same)', detail:'Keep breakfast identical. The calorie reduction comes from a lighter dinner and fewer snacks, not breakfast.', macros:macro('330','35','39','7')},
-       {type:'Snack', name:'Oat bar on training days, skip on rest days', detail:'Keep protein snacks. Drop fruit snacks on rest days. Oat bar on training days only.', macros:macro('200','10','15','9')},
-       {type:'Lunch', name:'Same lunch choices — no change', detail:'Lunch stays identical to Weeks 1–3 (batch rice + chicken). The calorie cut comes from a lighter dinner and snack reduction, not lunch.', macros:macro('500','45','60','10')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Keep the shake even in recovery week — protein target doesn\'t drop.', macros:macro('150','25','5','')},
-       {type:'Dinner', name:'Lighter pick (Gousto Mon–Thu / griddle Fri) — 55g+ protein', detail:'~560 kcal, 55g protein. Thai prawn salad, baked cod with greens, or a light griddled chicken-and-veg bowl. Lean protein, less carb. Don\'t pick a low-protein option just because it\'s recovery week.', macros:macro('560','55','48','14')}
-     ],
-     preDinP:115, note:'Recovery week: protein holds at 185g minimum — shake stays in. The calorie cut comes from carbs/fat. Body adapts during rest.'},
-
-    {name:'Saturday', badge:'badge-ruck', type:'Easy 60 min ruck — recovery pace', kcal:'~2,150 kcal',
-     meals:[
-       {type:'On Waking', name:'Fasted or banana', detail:'Easy recovery ruck — fasted at easy pace is fine.', macros:macro('90','1','23','')},
-       {type:'Post-Ruck', name:'60g Porridge + 2 Eggs + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — smaller than a build week (60g oats vs 80g) but the yogurt stays in. Same protein rules apply even in recovery week.', macros:macro('570','43','48','14')},
-       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Chicken not eggs on toast — same rule as build Saturday. 150g chicken (not 240g) reflects the lighter recovery day.', macros:macro('450','40','42','8')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Saturday protein gap exists even in recovery week. Shake stays in.', macros:macro('150','25','5','')},
-       {type:'Dinner', name:'Blackstone griddle — lighter recovery pick, 58g+ protein', detail:'~650 kcal, 58g protein. Saturday griddle night. Bias carbs if Sunday is still a ride.', macros:macro('650','58','58','18')}
-     ],
-     preDinP:109, note:'Recovery Saturday: same protein rules as build week — chicken lunch and yogurt at breakfast are required. 109g pre-dinner + 58g griddle = 167g.'},
-
-    {name:'Sunday', badge:'badge-long', type:'Shorter ride — 75–90 min recovery pace', kcal:'~2,150 kcal',
-     meals:[
-       {type:'On Waking', name:'Banana or carb drink, 10–20 min before', detail:'Small fast carbs only. The big breakfast moves to after the ride.', macros:macro('150','3','32','2')},
-       {type:'On-Bike', name:'Carb drink or banana + half an oat bar (from the start)', detail:'Even the short recovery ride needs ~40–60 g carbs/hr once past 75 min. Keep practising the habit.', macros:macro('150','3','32','3')},
-       {type:'Recovery', name:'Full Sunday Porridge + Whey + 2 Eggs + Banana + Chocolate Milk',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Chocolate milk first, then 80g oats + whey scoop + 2 eggs + banana. Whey added here — recovery Sunday was missing protein before.', macros:macro('750','51','74','14')},
-       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Recovery ride: 150g chicken (lighter than build week 240g). Still essential to get protein in post-ride.', macros:macro('480','42','46','8')},
-       {type:'Dinner', name:'Blackstone griddle — end-of-cycle pick, 62g+ protein', detail:'~680 kcal, 62g protein. Sunday griddle night, final meal before the cycle repeats. Salmon, chicken or lean steak. Raise the target vs old plan (was 48g, now 62g).', macros:macro('680','62','62','16')}
-     ],
-     preDinP:99, note:'End of 4-week cycle. Whey now in recovery meal. 99g pre-dinner + 62g griddle = 161g — acceptable for recovery week. Sunday morning: weight check.'}
-  ]
-}
-};
-
-// ── RENDER WEEKS ─────────────────────────────────────────────────────────────
-
-function renderDay(day){
-  const barPct = Math.min(100, Math.round(day.preDinP/185*100));
-  const barColor = day.preDinP >= 120 ? 'var(--accent)' : day.preDinP >= 100 ? 'var(--protein)' : 'var(--accent2)';
-  const noteClass = day.noteWarn ? 'pb-note pb-warn' : 'pb-note';
-  return `
-<div class="day-card" onclick="toggleDay(this)">
-  <div class="day-header">
-    <div class="day-header-left">
-      <div class="day-name">${day.name}</div>
-      <div>
-        <span class="badge ${day.badge}">${day.type}</span>
-        <div class="day-type" style="margin-top:3px">${day.kcal}</div>
-      </div>
-    </div>
-    <span class="day-chevron">▾</span>
-  </div>
-  <div class="day-body">
-    <table class="meal-table">
-      ${day.meals.map(m=>`
-      <tr>
-        <td class="meal-type-cell">${m.type}</td>
-        <td>
-          <div class="meal-name">${m.name}${m.extras||''}</div>
-          <div class="meal-detail">${m.detail}</div>
-          <div class="meal-macros">${m.macros}</div>
-        </td>
-      </tr>`).join('')}
-    </table>
-    <div class="protein-bar-row">
-      <span class="pb-label">PRE-DINNER P</span>
-      <div class="pb-track"><div class="pb-fill" style="width:${barPct}%;background:${barColor}"></div></div>
-      <span class="pb-val">${day.preDinP}g</span>
-      <span class="${noteClass}">${day.note}</span>
-    </div>
-  </div>
-</div>`;
-}
-
-function buildWeek1(){
-  const w = WEEKS.w1;
-  return `<div class="week-banner"><p>${w.banner}</p></div>${w.days.map(renderDay).join('')}`;
-}
-
-function buildWeek2(){
-  const w1 = WEEKS.w1;
-  const swap = WEEKS.w2.riceSwap;
-  const days = JSON.parse(JSON.stringify(w1.days));
-  days[0].meals[2].name = `${swap.mon} + Chicken 240g + Greek Yogurt`;
-  days[4].meals[2].name = `${swap.fri} + Chicken 240g`;
-  return `<div class="week-banner"><p>${WEEKS.w2.banner}</p></div>${days.map(renderDay).join('')}`;
-}
-
-function buildWeek3(){
-  const w1 = WEEKS.w1;
-  const swap = WEEKS.w3.riceSwap;
-  const days = JSON.parse(JSON.stringify(w1.days));
-  days[0].meals[2].name = `${swap.mon} + Chicken 240g + Greek Yogurt`;
-  if(swap.tue) days[1].meals[2].name = `${swap.tue} + Chicken 240g + Greek Yogurt`;
-  days[4].meals[2].name = `${swap.fri} + Chicken 240g`;
-  return `<div class="week-banner"><p>${WEEKS.w3.banner}</p></div>${days.map(renderDay).join('')}`;
-}
-
-function buildWeek4(){
-  const w = WEEKS.w4;
-  return `<div class="week-banner recovery"><p>${w.banner}</p></div>${w.days.map(renderDay).join('')}`;
-}
-
-document.getElementById('w1').innerHTML = buildWeek1();
-document.getElementById('w2').innerHTML = buildWeek2();
-document.getElementById('w3').innerHTML = buildWeek3();
-document.getElementById('w4').innerHTML = buildWeek4();
-
-// Auto-select the correct week of the 4-week cycle
-if (AUTO_WEEK > 0) {
-  const _allTabs   = document.querySelectorAll('.wtab');
-  const _allPanels = document.querySelectorAll('.week-panel');
-  _allTabs[0].classList.remove('active');
-  _allPanels[0].classList.remove('active');
-  if (_allTabs[AUTO_WEEK]) { _allTabs[AUTO_WEEK].classList.add('active'); }
-  if (_allPanels[AUTO_WEEK]) { _allPanels[AUTO_WEEK].classList.add('active'); }
-}
-
-// ── SHOPPING LIST DATA ────────────────────────────────────────────────────────
-
-const SHOP_W1 = [
-  {cat:'Bulk Protein Staples', items:[
-    {name:'Boneless Chicken Thigh Fillets (per kg)', note:'Batch-roast Sun & Wed. Lunches Mon/Tue/Fri/Sat/Sun (~1.2kg cooked → ~1.5kg raw). Cheaper & tastier than cooked packs.', qty:'×1.5kg', unit:'£3.79/kg', total:5.69, conf:false},
-    {name:'Whey Protein 1kg tub', note:'Breakfasts (½ scoop) + 4 shakes/wk + Sun recovery. ~8–9 scoops/wk; 1kg tub lasts ~4 wks. Amortised weekly cost shown.', qty:'¼ tub', unit:'£20/tub', total:5.00, conf:true},
-    {name:'Asda Creamy Greek Style Yogurt 1kg', note:'Breakfast portion daily + lunch top-up Mon–Thu + Sat post-ruck = ~12 portions/wk. ~2 tubs/wk.', qty:'×2', unit:'£1.70', total:3.40, conf:true},
-    {name:'Eggs (15-pack)', note:'Weekend breakfasts (Sat 2 + Sun 2) + oat-bar batch. ~1 pack/2 wks. Amortised.', qty:'½ pack', unit:'£2.45', total:1.23, conf:false},
-    {name:'Asda Cooked & Peeled Prawns 150g', note:'Thursday — stir into the paprika batch rice cold.', qty:'×1', unit:'£1.75', total:1.75, conf:false},
-    {name:'Asda Tuna Chunks in Spring Water (4-pack)', note:'Wednesday lunch — stir into bulk pasta. 4-pack is cheaper per tin.', qty:'¼ pack', unit:'£3.00/4', total:0.75, conf:false}
-  ]},
-  {cat:'Carbs & Pantry (Bulk)', items:[
-    {name:'Asda Scottish Porridge Oats 1kg', note:'Daily porridge + oat-bar batch. ~600g/wk; bag lasts ~1.5 wks. Amortised.', qty:'⅔ bag', unit:'£1.25', total:0.85, conf:true},
-    {name:'Asda Basmati White Rice 1kg', note:'Batch-cook for all rice lunches. ~650g cooked/wk; bag lasts ~1.5 wks. Amortised.', qty:'⅔ bag', unit:'£2.25', total:1.50, conf:false},
-    {name:'Bulk Dried Pasta 500g', note:'Wednesday lunch base. Bag lasts weeks.', qty:'×1', unit:'£0.50', total:0.50, conf:false},
-    {name:'Peanut Butter (large jar)', note:'Oat bars + Sunday pre-ride toast. Lasts ~4 wks. Amortised.', qty:'¼ jar', unit:'£1.75', total:0.45, conf:false},
-    {name:'Clear Honey', note:'Oat bars + Sunday toast. Lasts weeks. Amortised.', qty:'small', unit:'£1.50', total:0.30, conf:false},
-    {name:'Wholegrain Bread (small loaf)', note:'Sunday pre-ride toast.', qty:'×1', unit:'£1.10', total:1.10, conf:false}
-  ]},
-  {cat:'Weekend Griddle Dinners (Fri/Sat/Sun)', items:[
-    {name:'Salmon Fillets (2-pack)', note:'One griddle night — strong protein recovery pick.', qty:'×1', unit:'£3.50', total:3.50, conf:false},
-    {name:'Lean Steak / Frying Steak', note:'One griddle night — lean protein. Use the bulk chicken for the third night.', qty:'×1', unit:'£3.50', total:3.50, conf:false},
-    {name:'Flatbreads / Wraps (pack)', note:'Carb base for griddle nights, esp. carb-rich Saturday.', qty:'×1', unit:'£0.85', total:0.85, conf:false},
-    {name:'Griddle Veg (peppers, onions, courgette)', note:'Across the three griddle nights.', qty:'mixed', unit:'~£3.00', total:3.00, conf:false}
-  ]},
-  {cat:'Snacks, Fruit & Recovery', items:[
-    {name:'Bananas (loose, ~1.4kg)', note:'PM snack + pre-session + on-bike Sunday.', qty:'×12', unit:'~9p', total:1.10, conf:false},
-    {name:'Apples or oranges', note:'Evening snack Mon–Fri.', qty:'×6', unit:'~20p', total:1.20, conf:false},
-    {name:'Semi-Skimmed Milk 2L', note:'Porridge, shakes + chocolate-milk recovery.', qty:'×1', unit:'£1.45', total:1.45, conf:false},
-    {name:'Cocoa / chocolate-milk mix', note:'Sunday recovery — stir cocoa into milk rather than buying bottles.', qty:'small', unit:'~£0.40', total:0.40, conf:false},
-    {name:'Carb drink mix (on-bike fuel)', note:'Long-ride fuelling. Bulk tub, amortised. Training fuel, not a meal.', qty:'weekly', unit:'~£1.00', total:1.00, conf:false}
-  ]}
-];
-
-const SHOP_W23 = [
-  {cat:'Bulk Protein Staples — 2 weeks', items:[
-    {name:'Boneless Chicken Thigh Fillets (per kg)', note:'~1.5kg/wk × 2 weeks. Batch-roast twice each week.', qty:'×3kg', unit:'£3.79/kg', total:11.37, conf:false},
-    {name:'Whey Protein 1kg tub', note:'1 tub lasts ~4 weeks — likely already stocked. Amortised 2-week cost.', qty:'½ tub', unit:'£20/tub', total:10.00, conf:true},
-    {name:'Asda Creamy Greek Style Yogurt 1kg', note:'~2 tubs/wk × 2 weeks.', qty:'×4', unit:'£1.70', total:6.80, conf:true},
-    {name:'Eggs (15-pack)', note:'~1 pack covers 2 weeks of weekend breakfasts + oat bars.', qty:'×1', unit:'£2.45', total:2.45, conf:false},
-    {name:'Asda Cooked & Peeled Prawns 150g', note:'Thursday both weeks.', qty:'×2', unit:'£1.75', total:3.50, conf:false},
-    {name:'Asda Tuna Chunks (4-pack)', note:'Wednesday both weeks — half a 4-pack.', qty:'½ pack', unit:'£3.00/4', total:1.50, conf:false}
-  ]},
-  {cat:'Carbs & Pantry — 2 weeks', items:[
-    {name:'Asda Scottish Porridge Oats 1kg', note:'~600g/wk; 1–2 bags over 2 weeks.', qty:'×1', unit:'£1.25', total:1.70, conf:true},
-    {name:'Asda Basmati White Rice 1kg', note:'Seasoned Mexican/Golden for variety. ~1.3 bags over 2 weeks.', qty:'×1.5', unit:'£2.25', total:3.00, conf:false},
-    {name:'Bulk Dried Pasta 500g', note:'Wednesday both weeks — one bag covers it.', qty:'×1', unit:'£0.50', total:0.50, conf:false},
-    {name:'Peanut Butter (large jar)', note:'Likely already stocked; amortised 2-week cost.', qty:'½ jar', unit:'£1.75', total:0.90, conf:false},
-    {name:'Clear Honey', note:'Likely already stocked; amortised.', qty:'small', unit:'£1.50', total:0.60, conf:false},
-    {name:'Wholegrain Bread (small loaf)', note:'1 per week.', qty:'×2', unit:'£1.10', total:2.20, conf:false}
-  ]},
-  {cat:'Weekend Griddle Dinners — 2 weeks', items:[
-    {name:'Salmon Fillets (2-pack)', note:'One griddle night each week.', qty:'×2', unit:'£3.50', total:7.00, conf:false},
-    {name:'Lean Steak / Frying Steak', note:'One griddle night each week.', qty:'×2', unit:'£3.50', total:7.00, conf:false},
-    {name:'Flatbreads / Wraps (pack)', note:'1 pack per week.', qty:'×2', unit:'£0.85', total:1.70, conf:false},
-    {name:'Griddle Veg (peppers, onions, courgette)', note:'Across both weekends.', qty:'mixed', unit:'~£6.00', total:6.00, conf:false}
-  ]},
-  {cat:'Snacks, Fruit & Recovery — 2 weeks', items:[
-    {name:'Bananas (loose)', note:'~12 per week.', qty:'×24', unit:'~9p', total:2.20, conf:false},
-    {name:'Apples or oranges', note:'~6 per week.', qty:'×12', unit:'~20p', total:2.40, conf:false},
-    {name:'Semi-Skimmed Milk 2L', note:'1 per week.', qty:'×2', unit:'£1.45', total:2.90, conf:false},
-    {name:'Cocoa / chocolate-milk mix', note:'Recovery, both weeks.', qty:'small', unit:'~£0.40', total:0.80, conf:false},
-    {name:'Carb drink mix (on-bike fuel)', note:'Bulk tub, amortised over 2 weeks.', qty:'weekly', unit:'~£1.00', total:2.00, conf:false}
-  ]}
-];
-
-function buildShopList(data, elId){
-  let html = '';
-  let grandTotal = 0;
-  data.forEach(section=>{
-    let subtotal = 0;
-    html += `<div class="shop-cat-label">${section.cat}</div>`;
-    html += `<table class="shop-table">`;
-    section.items.forEach((item,i)=>{
-      subtotal += item.total;
-      grandTotal += item.total;
-      const tag = item.conf ? '<span class="conf-tag">CONF</span>' : '<span class="est-tag">EST</span>';
-      html += `<tr onclick="tickRow(this)">
-        <td class="shop-check">○</td>
-        <td class="shop-name">${item.name}${tag}<span class="shop-note">${item.note}</span></td>
-        <td class="shop-qty">${item.qty}</td>
-        <td class="shop-unit">${item.unit}</td>
-        <td class="shop-total">£${item.total.toFixed(2)}</td>
-      </tr>`;
-    });
-    html += `</table>`;
-    html += `<div class="shop-subtotal"><span class="shop-subtotal-label">${section.cat} subtotal</span><span class="shop-subtotal-val">£${subtotal.toFixed(2)}</span></div>`;
-  });
-  html += `<div class="shop-grand"><div><div class="shop-grand-label">Weekly total</div><div class="shop-grand-note">Confirmed prices from trolley.co.uk · Estimated items within ±20p</div></div><div class="shop-grand-val">£${grandTotal.toFixed(2)}</div></div>`;
-  document.getElementById(elId).innerHTML = html;
-}
-
-buildShopList(SHOP_W1, 'shopList');
-buildShopList(SHOP_W23, 'shopList23');
-
-// ── COST OPTIMISER DATA ───────────────────────────────────────────────────────
-
-const SWAPS = [
-  {title:'Breakfast — porridge + yogurt + whey', saving:'SAVE ~£6.30/WK', savingClass:'sp-big',
-   from:{name:'Fuel10k 330ml × 5 + GetPro pot × 5', price:'£11.40', priceClass:'sp-old'},
-   to:{name:'Bulk oats + Greek-yogurt portion + ½ whey', price:'~£5.10', priceClass:'sp-new', note:'Overnight oats or 3 min in the microwave. Same 35g protein, 330 kcal. The single biggest line on the old shop, gone.', effort:2}},
-  {title:'Lunch protein yogurt — tub not pots', saving:'SAVE ~£3.30/WK', savingClass:'sp-big',
-   from:{name:'GetPro yoghurt 160g × ~6 (lunch top-ups)', price:'£6.00', priceClass:'sp-old'},
-   to:{name:'Asda Greek Yogurt 1kg tub, portioned', price:'~£2.70', priceClass:'sp-new', note:'£1.70/kg. Spoon into ~150g pots — 15g protein each, the GetPro job at a third of the cost.', effort:2}},
-  {title:'Chicken — batch-roast raw thighs', saving:'SAVE ~£2.30/WK', savingClass:'sp-med',
-   from:{name:'Just Essentials cooked chicken 240g × 5', price:'£9.95', priceClass:'sp-old'},
-   to:{name:'Boneless chicken thighs ~1.5kg (raw)', price:'~£5.70', priceClass:'sp-new', note:'~£3.79/kg. Season and roast Sunday 200°C, 25 min; portion into 240g lunch pots. More flavour, cheaper per cooked gram than the packs.', effort:3}},
-  {title:'Snack bars — bake your own', saving:'SAVE ~£3.50/WK', savingClass:'sp-big',
-   from:{name:'Nature Valley Protein bars 2×4-pack', price:'£5.00', priceClass:'sp-old'},
-   to:{name:'Homemade oat bars (oats+PB+honey+whey)', price:'~£1.50', priceClass:'sp-new', note:'A tray of 12 on Sunday, ~10g protein each at ~25p a bar. Same job as the NV bars, also doubles as on-bike fuel.', effort:2}},
-  {title:'Rice — bulk basmati not pouches', saving:'SAVE ~£2.45/WK', savingClass:'sp-med',
-   from:{name:'Ben\'s/microwave rice pouches × ~4', price:'£3.96', priceClass:'sp-old'},
-   to:{name:'Asda Basmati 1kg, batch-cooked', price:'~£1.50', priceClass:'sp-new', note:'Cook the week\'s rice in one pot; season half Mexican, half golden for variety. Pennies per portion vs the pouches.', effort:2}},
-  {title:'Protein milk — whey from the tub', saving:'SAVE ~£4.75/WK', savingClass:'sp-big',
-   from:{name:'Arla Protein Milk × 5 bottles', price:'£5.75', priceClass:'sp-old'},
-   to:{name:'Whey shake, home-mixed (1kg tub)', price:'~£1.00', priceClass:'sp-new', note:'~60p/scoop from a £20 1kg tub vs £1.15/bottle. Mix with water or the semi-skimmed you already buy.', effort:1}}
-];
-
-function effortDots(n){
-  let html = '<div class="effort-dots"><span class="ed-label">Effort</span>';
-  for(let i=1;i<=3;i++) html += `<div class="dot${i<=n?' on':''}"></div>`;
-  html += '</div>';
-  return html;
-}
-
-const swapHtml = SWAPS.map(s=>`
-<div class="swap-card">
-  <div class="swap-header">
-    <span class="swap-title">${s.title}</span>
-    <span class="saving-pill ${s.savingClass}">${s.saving}</span>
-  </div>
-  <div class="swap-body">
-    <div class="swap-side left">
-      <div class="swap-side-label">Current</div>
-      <div class="swap-item-name">${s.from.name}</div>
-      <div class="swap-price ${s.from.priceClass}">${s.from.price}</div>
-    </div>
-    <div class="swap-side">
-      <div class="swap-side-label">Cheaper option</div>
-      <div class="swap-item-name">${s.to.name}</div>
-      <div class="swap-price ${s.to.priceClass}">${s.to.price}</div>
-      <div class="swap-note-text">${s.to.note}</div>
-      ${s.to.effort > 0 ? effortDots(s.to.effort) : ''}
-    </div>
-  </div>
-</div>`).join('');
-
-document.getElementById('swapCards').innerHTML = swapHtml;
-
-// ── INTERACTIONS ──────────────────────────────────────────────────────────────
-
-function showWeek(id, btn){
-  document.querySelectorAll('.week-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.wtab').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
-}
-
-function toggleDay(card){
-  card.classList.toggle('open');
-}
-
-function tickRow(row){
-  row.classList.toggle('ticked');
-  const chk = row.querySelector('.shop-check');
-  if(row.classList.contains('ticked')){ chk.textContent='✓'; chk.classList.add('on'); }
-  else { chk.textContent='○'; chk.classList.remove('on'); }
-}
-
-</script>
-</body>
-</html>
+</body></html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+<title>Daily Menus — 4-Week Nutrition Cycle</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f0c;
+    --surface: #161713;
+    --surface2: #1d1f1a;
+    --border: #2a2d25;
+    --accent: #c8f135;
+    --accent2: #f1a035;
+    --accent3: #35c8f1;
+    --text: #e8ead4;
+    --muted: #7a7d6a;
+    --danger: #f14a35;
+    --protein: #35c8f1;
+    --carbs: #c8f135;
+    --fat: #7a7d6a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; min-height:100vh; }
+
+  /* HERO */
+  .hero { position:relative; padding:64px 40px 48px; overflow:hidden; border-bottom:1px solid var(--border); }
+  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:500px; height:500px; background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%); pointer-events:none; }
+  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; margin-bottom:16px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(48px,8vw,92px); line-height:0.92; letter-spacing:0.02em; color:var(--text); margin-bottom:24px; }
+  .hero h1 span { color:var(--accent); }
+  .hero-sub { font-size:15px; color:var(--muted); max-width:540px; line-height:1.7; }
+  .hero-stats { display:flex; gap:32px; margin-top:36px; flex-wrap:wrap; }
+  .stat { border-left:2px solid var(--accent); padding-left:14px; }
+  .stat-val { font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--accent); line-height:1; }
+  .stat-label { font-size:11px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:2px; }
+
+  /* LAYOUT */
+  .container { max-width:980px; margin:0 auto; padding:0 24px; }
+  section { padding:48px 0; border-bottom:1px solid var(--border); }
+  section:last-child { border-bottom:none; }
+  .section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent); margin-bottom:20px; }
+  h2 { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:0.04em; margin-bottom:20px; color:var(--text); }
+  p { color:#b0b39a; font-size:14px; line-height:1.75; margin-bottom:12px; }
+  p:last-child { margin-bottom:0; }
+
+  /* PRINCIPLES GRID */
+  .principles-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-top:24px; }
+  .principle-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:18px; position:relative; overflow:hidden; }
+  .principle-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .pc-protein::before { background:var(--protein); }
+  .pc-carbs::before { background:var(--carbs); }
+  .pc-cost::before { background:var(--accent2); }
+  .pc-gousto::before { background:#9b59b6; }
+  .pc-sunday::before { background:var(--danger); }
+  .principle-icon { font-size:20px; margin-bottom:8px; }
+  .principle-title { font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px; letter-spacing:0.04em; text-transform:uppercase; }
+  .principle-card p { font-size:11px; color:var(--muted); line-height:1.55; margin:0; }
+
+  /* CALORIE TIER STRIP */
+  .calorie-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-top:20px; }
+  .cal-cell { background:var(--surface2); padding:14px 16px; }
+  .cal-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .cal-val { font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--accent); line-height:1; }
+  .cal-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  /* WEEK TABS */
+  .week-tabs { display:flex; gap:4px; margin-bottom:28px; flex-wrap:wrap; }
+  .wtab { background:var(--surface); border:1px solid var(--border); color:var(--muted); padding:8px 18px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; border-radius:2px; transition:all 0.15s; }
+  .wtab:hover { color:var(--text); border-color:var(--muted); }
+  .wtab.active { background:var(--accent); border-color:var(--accent); color:#0e0f0c; }
+  .week-panel { display:none; }
+  .week-panel.active { display:block; }
+
+  /* WEEK INTRO BANNER */
+  .week-banner { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); padding:14px 18px; margin-bottom:20px; border-radius:0 4px 4px 0; }
+  .week-banner p { margin:0; font-size:13px; color:#b0b39a; }
+  .week-banner strong { color:var(--accent); font-weight:500; }
+  .week-banner.recovery { border-left-color:var(--accent3); }
+  .week-banner.recovery strong { color:var(--accent3); }
+
+  /* DAY CARDS */
+  .day-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:10px; transition:border-color 0.15s; }
+  .day-card:hover { border-color:#3a3d33; }
+  .day-header { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; background:var(--surface2); border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+  .day-header-left { display:flex; align-items:center; gap:14px; }
+  .day-name { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--text); min-width:90px; line-height:1; }
+  .day-type { font-size:12px; color:var(--muted); }
+  .day-kcal { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent2); letter-spacing:0.06em; }
+  .day-chevron { color:var(--muted); font-size:14px; transition:transform 0.2s; margin-left:10px; }
+  .day-card.open .day-chevron { transform:rotate(180deg); }
+  .day-body { display:none; }
+  .day-card.open .day-body { display:block; }
+
+  /* MEAL TABLE */
+  .meal-table { width:100%; border-collapse:collapse; }
+  .meal-table tr { border-bottom:1px solid var(--border); }
+  .meal-table tr:last-child { border-bottom:none; }
+  .meal-table td { padding:10px 18px; font-size:13px; vertical-align:top; }
+  .meal-type-cell { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; width:80px; padding-top:12px; white-space:nowrap; }
+  .meal-name { font-weight:500; color:var(--text); margin-bottom:2px; font-size:13px; }
+  .meal-detail { color:var(--muted); font-size:11px; line-height:1.5; }
+  .meal-macros { display:flex; gap:8px; margin-top:5px; flex-wrap:wrap; }
+  .macro { font-family:'DM Mono',monospace; font-size:10px; padding:2px 6px; border-radius:2px; letter-spacing:0.05em; }
+  .m-kcal { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
+  .m-p { background:rgba(53,200,241,0.1); color:var(--protein); border:1px solid rgba(53,200,241,0.2); }
+  .m-c { background:rgba(200,241,53,0.1); color:var(--carbs); border:1px solid rgba(200,241,53,0.2); }
+  .m-f { background:rgba(122,125,106,0.1); color:var(--muted); border:1px solid rgba(122,125,106,0.15); }
+  .getpro-tag { background:rgba(53,200,241,0.15); color:var(--protein); border:1px solid rgba(53,200,241,0.3); font-family:'DM Mono',monospace; font-size:9px; padding:1px 5px; border-radius:2px; margin-left:5px; letter-spacing:0.05em; vertical-align:middle; }
+  .fav-tag { background:rgba(200,241,53,0.15); color:var(--accent); border:1px solid rgba(200,241,53,0.3); font-family:'DM Mono',monospace; font-size:9px; padding:1px 5px; border-radius:2px; margin-left:5px; letter-spacing:0.05em; vertical-align:middle; }
+
+  /* PROTEIN BAR */
+  .protein-bar-row { padding:10px 18px 14px; background:rgba(0,0,0,0.15); border-top:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+  .pb-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; white-space:nowrap; }
+  .pb-track { flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+  .pb-fill { height:100%; border-radius:3px; background:var(--protein); }
+  .pb-val { font-family:'DM Mono',monospace; font-size:11px; color:var(--protein); white-space:nowrap; min-width:36px; text-align:right; }
+  .pb-note { font-size:11px; color:var(--muted); font-style:italic; flex:2; }
+  .pb-warn { color:var(--accent2); }
+
+  /* DAY TYPE BADGES */
+  .badge { font-family:'DM Mono',monospace; font-size:9px; padding:2px 7px; border-radius:2px; letter-spacing:0.08em; text-transform:uppercase; }
+  .badge-rest { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
+  .badge-train { background:rgba(200,241,53,0.12); color:var(--accent); border:1px solid rgba(200,241,53,0.2); }
+  .badge-ride { background:rgba(241,160,53,0.12); color:var(--accent2); border:1px solid rgba(241,160,53,0.2); }
+  .badge-ruck { background:rgba(155,89,182,0.12); color:#c39bd3; border:1px solid rgba(155,89,182,0.2); }
+  .badge-long { background:rgba(241,74,53,0.12); color:var(--danger); border:1px solid rgba(241,74,53,0.2); }
+  .badge-recovery { background:rgba(53,200,241,0.12); color:var(--accent3); border:1px solid rgba(53,200,241,0.2); }
+
+  /* SHOPPING LIST */
+  .shop-section { margin-top:0; }
+  .shop-cat-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent2); margin:24px 0 8px; }
+  .shop-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:4px; }
+  .shop-table tr { border-bottom:1px solid var(--border); transition:background 0.1s; cursor:pointer; }
+  .shop-table tr:last-child { border-bottom:none; }
+  .shop-table tr:hover { background:var(--surface2); }
+  .shop-table tr.ticked td { opacity:0.45; text-decoration:line-through; }
+  .shop-table td { padding:9px 14px; font-size:13px; vertical-align:middle; }
+  .shop-check { width:28px; font-size:14px; color:var(--muted); text-align:center; }
+  .shop-check.on { color:var(--accent); }
+  .shop-name { color:var(--text); }
+  .shop-note { font-size:11px; color:var(--muted); display:block; margin-top:1px; }
+  .shop-qty { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); text-align:center; width:50px; }
+  .shop-unit { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); text-align:right; width:58px; }
+  .shop-total { font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:var(--accent); text-align:right; width:58px; }
+  .shop-total.dimmed { color:var(--muted); }
+  .conf-tag { background:rgba(200,241,53,0.1); color:var(--accent); border:1px solid rgba(200,241,53,0.2); font-family:'DM Mono',monospace; font-size:9px; padding:1px 4px; border-radius:2px; margin-left:5px; }
+  .est-tag { background:rgba(241,160,53,0.1); color:var(--accent2); border:1px solid rgba(241,160,53,0.2); font-family:'DM Mono',monospace; font-size:9px; padding:1px 4px; border-radius:2px; margin-left:5px; }
+  .shop-subtotal { display:flex; justify-content:space-between; padding:8px 14px; background:var(--surface2); border:1px solid var(--border); border-top:none; border-radius:0 0 4px 4px; margin-bottom:2px; }
+  .shop-subtotal-label { font-size:12px; color:var(--muted); }
+  .shop-subtotal-val { font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:var(--text); }
+  .shop-grand { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); padding:14px 18px; margin-top:20px; display:flex; justify-content:space-between; align-items:center; border-radius:0 4px 4px 0; }
+  .shop-grand-label { font-size:14px; font-weight:500; color:var(--text); }
+  .shop-grand-val { font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--accent); line-height:1; }
+  .shop-grand-note { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* COST OPTIMISER */
+  .swap-grid { display:grid; gap:12px; margin-top:8px; }
+  .swap-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .swap-header { display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .swap-title { font-size:13px; font-weight:500; color:var(--text); }
+  .saving-pill { font-family:'DM Mono',monospace; font-size:10px; padding:2px 8px; border-radius:2px; letter-spacing:0.06em; }
+  .sp-big { background:rgba(200,241,53,0.15); color:var(--accent); border:1px solid rgba(200,241,53,0.25); }
+  .sp-med { background:rgba(241,160,53,0.12); color:var(--accent2); border:1px solid rgba(241,160,53,0.2); }
+  .sp-keep { background:rgba(122,125,106,0.1); color:var(--muted); border:1px solid rgba(122,125,106,0.15); }
+  .swap-body { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  .swap-side { padding:12px 16px; }
+  .swap-side.left { border-right:1px solid var(--border); }
+  .swap-side-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+  .swap-item-name { font-size:13px; color:var(--text); margin-bottom:3px; }
+  .swap-price { font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; margin-bottom:4px; }
+  .sp-old { color:var(--muted); text-decoration:line-through; }
+  .sp-new { color:var(--accent); }
+  .swap-note-text { font-size:11px; color:var(--muted); line-height:1.5; }
+  .effort-dots { display:flex; gap:3px; margin-top:6px; align-items:center; }
+  .ed-label { font-size:10px; color:var(--muted); margin-right:3px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--border); }
+  .dot.on { background:var(--accent3); }
+
+  .footer-note { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent2); padding:14px 18px; margin-top:20px; border-radius:0 4px 4px 0; }
+  .footer-note p { margin:0; font-size:12px; color:var(--muted); }
+  .footer-note strong { color:var(--accent2); font-weight:500; }
+
+  @media(max-width:640px){
+    .hero{padding:40px 20px 32px;}
+    .container{padding:0 14px;}
+    section{padding:32px 0;}
+    .calorie-strip{grid-template-columns:1fr 1fr;}
+    .swap-body{grid-template-columns:1fr;}
+    .swap-side.left{border-right:none;border-bottom:1px solid var(--border);}
+    .protein-bar-row{flex-wrap:wrap;}
+    .pb-note{flex-basis:100%;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'meals' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero" style="padding:40px 40px 32px">
+  <div class="container">
+    <div class="hero-eyebrow">4-Week Repeatable Cycle · Auto-selects current week</div>
+    <h1 style="font-size:clamp(40px,7vw,64px);margin-bottom:12px">DAILY<br><span>MENUS</span></h1>
+    <p class="hero-sub">Every meal, macro and protein checkpoint for the bulk-staple plan. Tap a day to expand. Sunday includes on-bike and recovery fuelling — see the <a href="/nutrition/fuelling" style="color:var(--accent)">Ride Fuelling guide</a> for full protocols.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <section>
+    <div class="section-label">4-Week Repeatable Cycle</div>
+    <h2>DAILY MENUS</h2>
+
+    <div class="week-tabs">
+      <button class="wtab active" onclick="showWeek('w1',this)">Week 1</button>
+      <button class="wtab" onclick="showWeek('w2',this)">Week 2</button>
+      <button class="wtab" onclick="showWeek('w3',this)">Week 3</button>
+      <button class="wtab" onclick="showWeek('w4',this)">Week 4 — Recovery</button>
+    </div>
+
+    <div id="w1" class="week-panel active"></div>
+    <div id="w2" class="week-panel"></div>
+    <div id="w3" class="week-panel"></div>
+    <div id="w4" class="week-panel"></div>
+  </section>
+
+</div><!-- /container -->
+
+<script>
+
+const AUTO_WEEK = {{ cycle_week }};
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+function macro(kcal,p,c,f){ return `<span class="macro m-kcal">${kcal} kcal</span><span class="macro m-p">P: ${p}g</span><span class="macro m-c">C: ${c}g</span>${f?`<span class="macro m-f">F: ${f}g</span>`:''}` }
+
+const WEEKS = {
+
+w1:{
+  banner:'<strong>Weeks 1–3 — Training structure.</strong> Porridge + Greek yogurt + whey every morning. Greek-yogurt portion at lunch Mon–Thu. Whey shake Wed/Thu/Fri/Sat. Saturday: chicken lunch (not eggs) + yogurt post-ruck + shake. Sunday: whey in recovery meal + 240g chicken at lunch. Dinners: Gousto Mon–Thu, Blackstone griddle Fri/Sat/Sun.',
+  days:[
+    {name:'Monday', badge:'badge-rest', type:'Rest day', kcal:'~2,050 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'50g bulk oats + a Greek-yogurt portion (from the tub) + ½ scoop whey. Make overnight or 3 min in the microwave. Replaces Fuel10k + GetPro pot.', macros:macro('330','35','39','7')},
+       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Batch-baked flapjack (oats + PB + honey + whey). ~10g protein.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Batch-cooked basmati + 240g batch-roasted chicken, Greek-yogurt portion alongside for the protein top-up.', macros:macro('680','73','70','10')},
+       {type:'PM Snack', name:'Banana', detail:'Afternoon energy.', macros:macro('90','1','23','')},
+       {type:'Eve Snack', name:'Apple or orange', detail:'Light evening snack.', macros:macro('70','1','18','')},
+       {type:'Dinner', name:'Gousto — 60g+ protein pick', detail:'~660 kcal, 60g+ protein. Weekday Gousto night. Rest day — any strong pick (chicken, beef, salmon). Veggie or pasta-only dishes don\'t hit target.', macros:macro('660','60','55','18')}
+     ],
+     preDinP:120, note:'120g pre-dinner; any 60g+ Gousto closes the day at 185g. Easiest day to hit target.'},
+
+    {name:'Tuesday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same as Monday.', macros:macro('330','35','39','7')},
+       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Full 240g batch-roasted chicken + Greek-yogurt portion. Yogurt added on training days too — lunch protein needs to reach 73g to hit 185g/day.', macros:macro('700','73','70','10')},
+       {type:'PM Snack', name:'Banana', detail:'45 min before evening session.', macros:macro('90','1','23','')},
+       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18','')},
+       {type:'Dinner', name:'Gousto — 65g protein pick', detail:'~730 kcal, 65g protein. Weekday Gousto night. Chicken thighs, beef ragu or salmon. Training day — recovery depends on this meal.', macros:macro('730','65','70','20')}
+     ],
+     preDinP:120, note:'120g pre-dinner (Greek yogurt now added to lunch). Gousto at 65g closes the day at 185g.'},
+
+    {name:'Wednesday', badge:'badge-ride', type:'Outdoor Bike 60 min', kcal:'~2,350 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
+       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Bulk Pasta + Tuna + Greek Yogurt', extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Bulk dried pasta with a stir-through tin of tuna; Greek-yogurt portion alongside. Good carbs for the afternoon ride, far cheaper than the sachet pasta.', macros:macro('600','53','78','8')},
+       {type:'PM Snack', name:'Banana', detail:'45 min before riding.', macros:macro('90','1','23','')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'One scoop from the 1kg tub, post-ride or between PM snack and dinner. Closes the protein gap on ride days where lunch is tuna/pasta rather than chicken.', macros:macro('150','25','5','')},
+       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18','')},
+       {type:'Dinner', name:'Gousto — 65g protein pick, carb-friendly', detail:'~730 kcal, 65g protein. Weekday Gousto night. Pasta, rice or noodle Gousto works on ride evenings if the protein source is chicken, fish or beef.', macros:macro('730','65','72','18')}
+     ],
+     preDinP:125, note:'125g pre-dinner (includes whey shake). Gousto at 65g closes the day at 190g.'},
+
+    {name:'Thursday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
+       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Paprika Batch Rice + Prawns 150g + Greek Yogurt', extras:'<span class="fav-tag">★ PAELLA</span><span class="getpro-tag">+YOGURT</span>', detail:'Homemade "paella" — batch rice with paprika and peas, cold prawns stirred in, Greek-yogurt portion alongside. Replaces the Ben\'s pouch; same carb base for evening kettlebell.', macros:macro('480','47','62','12')},
+       {type:'PM Snack', name:'Banana', detail:'45 min before session. Carbs matter tonight.', macros:macro('90','1','23','')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Between session and dinner — closes the protein gap left by the lower-protein rice-and-prawn lunch. Non-negotiable on Thursdays.', macros:macro('150','25','5','')},
+       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18','')},
+       {type:'Dinner', name:'Gousto — strongest pick of the week, ≥65g protein', detail:'~730 kcal, 65g protein. Weekday Gousto night. Lowest pre-dinner protein day — Gousto must deliver. Chicken, beef or salmon. NOT a pasta-only or veggie dish.', macros:macro('730','65','68','22')}
+     ],
+     preDinP:119, note:'⚠ 119g pre-dinner — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.', noteWarn:true},
+
+    {name:'Friday', badge:'badge-ride', type:'Outdoor Bike 60 min — Griddle night', kcal:'~2,350 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey', detail:'Same morning routine.', macros:macro('330','35','39','7')},
+       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Batch Rice + Chicken 240g', detail:'Full batch-roasted chicken pack. Strong protein lunch — rice+chicken gives 58g without needing the yogurt top-up.', macros:macro('550','58','58','10')},
+       {type:'PM Snack', name:'Banana', detail:'45 min before ride.', macros:macro('90','1','23','')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Post-ride or between PM snack and dinner. Brings pre-dinner total to 130g so any 65g+ griddle dinner hits 195g.', macros:macro('150','25','5','')},
+       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18','')},
+       {type:'Dinner', name:'Blackstone griddle — 65g protein, end-of-week', detail:'~730 kcal, 65g protein. First griddle night of the weekend. Griddled chicken, lean steak or salmon + veg + flatbreads or rice. You\'ve earned the Friday cook.', macros:macro('730','65','65','18')}
+     ],
+     preDinP:130, note:'130g pre-dinner (shake included, strong chicken lunch). 65g griddle = 195g total. First griddle night.'},
+
+    {name:'Saturday', badge:'badge-ruck', type:'Rucking 60–90 min', kcal:'~2,500 kcal',
+     meals:[
+       {type:'On Waking', name:'Banana out the door (or fasted)', detail:'Very early start — at easy pace, fasted is fine. Banana if you want fuel.', macros:macro('150','3','30','5')},
+       {type:'Post-Ruck', name:'Porridge 80g + Milk + 2 Eggs + Banana + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — the recovery meal. 80g oats, semi-skimmed milk, 2 eggs, banana, Greek-yogurt portion. The yogurt is essential here — without it Saturday protein collapses.', macros:macro('680','37','72','14')},
+       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'Full 240g batch-roasted chicken — NOT eggs on toast (22g vs 58g protein). This single swap adds 36g protein to Saturday. Non-negotiable.', macros:macro('550','58','46','8')},
+       {type:'PM Snack', name:'Banana + Apple + Homemade Oat Bar', detail:'Afternoon. Add the oat bar on Saturday to keep the total moving.', macros:macro('360','12','56','')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Evening, before dinner. Saturday\'s structure makes it hard to hit 185g without a shake — treat this as a planned meal, not optional.', macros:macro('150','25','5','')},
+       {type:'Dinner', name:'Blackstone griddle — carb-rich pick (tomorrow\'s pre-ride meal)', detail:'~730 kcal, 62g protein. Saturday griddle night, biased carb-rich: griddled chicken thighs or steak + flatbreads or rice + griddled veg. This dinner fuels Sunday\'s ride.', macros:macro('730','62','82','20')}
+     ],
+     preDinP:135, note:'Saturday was the biggest protein gap in the old plan. Chicken lunch + yogurt post-ruck + shake are all required. 135g pre-dinner + 62g griddle = 197g.'},
+
+    {name:'Sunday', badge:'badge-long', type:'Long Ride — Building to 3h30', kcal:'~2,700 kcal',
+     meals:[
+       {type:'On Waking', name:'Banana + honey toast, or carb drink in bottle 1', detail:'100–150 kcal fast carbs only, 10–20 min before rolling. Last night\'s carb-rich griddle dinner was the real pre-ride meal — no big breakfast needed before an early start. No new foods today.', macros:macro('160','3','32','2')},
+       {type:'On-Bike', name:'Carb drink mix + banana + oat bar (from minute 0)', detail:'60 g carbs/hr for rides 1–2.5 h, 75–90 g/hr beyond 2.5 h. Start fuelling in the first 15 min, then take something every 20–30 min. A 500 ml bottle with 40–60 g carb drink mix does most of the work; banana (~25 g) and a homemade oat bar (~28 g) top it up. 500–750 ml fluid/hr.', macros:macro('450','6','104','4')},
+       {type:'Recovery', name:'Big Porridge + Whey + 2 Eggs + Banana + PB Toast + Chocolate Milk',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Within 45 min of finishing. Chocolate milk first, then the plate. 80g oats + whey scoop + 2 eggs + banana + PB toast. Whey is the protein anchor here — Sunday recovery was only 40g protein before, now 55g.', macros:macro('850','55','82','18')},
+       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'A few hours after the ride. Increased from 150g to 240g chicken — adds 10g protein and improves afternoon recovery before the next training day.', macros:macro('550','58','56','10')},
+       {type:'Dinner', name:'Blackstone griddle — 65g protein recovery pick', detail:'~700 kcal, 65g protein. Sunday griddle night. Griddled salmon, chicken or lean steak + veg + potatoes or rice. Strong protein close to a big ride day.', macros:macro('700','65','64','16')}
+     ],
+     preDinP:122, note:'122g pre-dinner (whey in recovery + 240g chicken at lunch). Griddle at 65g = 187g total. Get the recovery meal in within 45 min of finishing.'}
+  ]
+},
+
+w2:{
+  banner:'<strong>Week 2 — Rice variety rotation.</strong> Same structure as Week 1, with Monday and Friday batch rice seasoned differently for variety (same bulk basmati, same macros). All protein targets and calorie tiers identical.',
+  riceSwap:{mon:'Mexican-Spiced Batch Rice', fri:'Golden Turmeric Batch Rice'}
+},
+
+w3:{
+  banner:'<strong>Week 3 — Further rotation.</strong> Monday takes Golden Turmeric, Tuesday takes Mexican-Spiced, Friday returns to plain batch rice. Same structure, same macros.',
+  riceSwap:{mon:'Golden Turmeric Batch Rice', tue:'Mexican-Spiced Batch Rice', fri:'Batch Rice'}
+},
+
+w4:{
+  banner:'<strong>Week 4 — Recovery Week.</strong> Lower volume, lighter food. Calorie targets drop 150–200 kcal. Snacks reduce to 1–2 per day. Lighter dinner (Gousto Mon–Thu / lighter griddle Fri, under 600 kcal). Protein holds at 185g minimum — the shake stays in. Cut comes from carbs and fat only.',
+  recovery:true,
+  days:[
+    {name:'Mon–Fri', badge:'badge-recovery', type:'Recovery week — reduced training', kcal:'~2,000–2,100 kcal',
+     meals:[
+       {type:'Breakfast', name:'Porridge + Greek Yogurt + Whey (same)', detail:'Keep breakfast identical. The calorie reduction comes from a lighter dinner and fewer snacks, not breakfast.', macros:macro('330','35','39','7')},
+       {type:'Snack', name:'Oat bar on training days, skip on rest days', detail:'Keep protein snacks. Drop fruit snacks on rest days. Oat bar on training days only.', macros:macro('200','10','15','9')},
+       {type:'Lunch', name:'Same lunch choices — no change', detail:'Lunch stays identical to Weeks 1–3 (batch rice + chicken). The calorie cut comes from a lighter dinner and snack reduction, not lunch.', macros:macro('500','45','60','10')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Keep the shake even in recovery week — protein target doesn\'t drop.', macros:macro('150','25','5','')},
+       {type:'Dinner', name:'Lighter pick (Gousto Mon–Thu / griddle Fri) — 55g+ protein', detail:'~560 kcal, 55g protein. Thai prawn salad, baked cod with greens, or a light griddled chicken-and-veg bowl. Lean protein, less carb. Don\'t pick a low-protein option just because it\'s recovery week.', macros:macro('560','55','48','14')}
+     ],
+     preDinP:115, note:'Recovery week: protein holds at 185g minimum — shake stays in. The calorie cut comes from carbs/fat. Body adapts during rest.'},
+
+    {name:'Saturday', badge:'badge-ruck', type:'Easy 60 min ruck — recovery pace', kcal:'~2,150 kcal',
+     meals:[
+       {type:'On Waking', name:'Fasted or banana', detail:'Easy recovery ruck — fasted at easy pace is fine.', macros:macro('90','1','23','')},
+       {type:'Post-Ruck', name:'60g Porridge + 2 Eggs + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — smaller than a build week (60g oats vs 80g) but the yogurt stays in. Same protein rules apply even in recovery week.', macros:macro('570','43','48','14')},
+       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Chicken not eggs on toast — same rule as build Saturday. 150g chicken (not 240g) reflects the lighter recovery day.', macros:macro('450','40','42','8')},
+       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Saturday protein gap exists even in recovery week. Shake stays in.', macros:macro('150','25','5','')},
+       {type:'Dinner', name:'Blackstone griddle — lighter recovery pick, 58g+ protein', detail:'~650 kcal, 58g protein. Saturday griddle night. Bias carbs if Sunday is still a ride.', macros:macro('650','58','58','18')}
+     ],
+     preDinP:109, note:'Recovery Saturday: same protein rules as build week — chicken lunch and yogurt at breakfast are required. 109g pre-dinner + 58g griddle = 167g.'},
+
+    {name:'Sunday', badge:'badge-long', type:'Shorter ride — 75–90 min recovery pace', kcal:'~2,150 kcal',
+     meals:[
+       {type:'On Waking', name:'Banana or carb drink, 10–20 min before', detail:'Small fast carbs only. The big breakfast moves to after the ride.', macros:macro('150','3','32','2')},
+       {type:'On-Bike', name:'Carb drink or banana + half an oat bar (from the start)', detail:'Even the short recovery ride needs ~40–60 g carbs/hr once past 75 min. Keep practising the habit.', macros:macro('150','3','32','3')},
+       {type:'Recovery', name:'Full Sunday Porridge + Whey + 2 Eggs + Banana + Chocolate Milk',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Chocolate milk first, then 80g oats + whey scoop + 2 eggs + banana. Whey added here — recovery Sunday was missing protein before.', macros:macro('750','51','74','14')},
+       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Recovery ride: 150g chicken (lighter than build week 240g). Still essential to get protein in post-ride.', macros:macro('480','42','46','8')},
+       {type:'Dinner', name:'Blackstone griddle — end-of-cycle pick, 62g+ protein', detail:'~680 kcal, 62g protein. Sunday griddle night, final meal before the cycle repeats. Salmon, chicken or lean steak. Raise the target vs old plan (was 48g, now 62g).', macros:macro('680','62','62','16')}
+     ],
+     preDinP:99, note:'End of 4-week cycle. Whey now in recovery meal. 99g pre-dinner + 62g griddle = 161g — acceptable for recovery week. Sunday morning: weight check.'}
+  ]
+}
+};
+
+// ── RENDER WEEKS ─────────────────────────────────────────────────────────────
+
+function renderDay(day){
+  const barPct = Math.min(100, Math.round(day.preDinP/185*100));
+  const barColor = day.preDinP >= 120 ? 'var(--accent)' : day.preDinP >= 100 ? 'var(--protein)' : 'var(--accent2)';
+  const noteClass = day.noteWarn ? 'pb-note pb-warn' : 'pb-note';
+  return `
+<div class="day-card" onclick="toggleDay(this)">
+  <div class="day-header">
+    <div class="day-header-left">
+      <div class="day-name">${day.name}</div>
+      <div>
+        <span class="badge ${day.badge}">${day.type}</span>
+        <div class="day-type" style="margin-top:3px">${day.kcal}</div>
+      </div>
+    </div>
+    <span class="day-chevron">▾</span>
+  </div>
+  <div class="day-body">
+    <table class="meal-table">
+      ${day.meals.map(m=>`
+      <tr>
+        <td class="meal-type-cell">${m.type}</td>
+        <td>
+          <div class="meal-name">${m.name}${m.extras||''}</div>
+          <div class="meal-detail">${m.detail}</div>
+          <div class="meal-macros">${m.macros}</div>
+        </td>
+      </tr>`).join('')}
+    </table>
+    <div class="protein-bar-row">
+      <span class="pb-label">PRE-DINNER P</span>
+      <div class="pb-track"><div class="pb-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+      <span class="pb-val">${day.preDinP}g</span>
+      <span class="${noteClass}">${day.note}</span>
+    </div>
+  </div>
+</div>`;
+}
+
+function buildWeek1(){
+  const w = WEEKS.w1;
+  return `<div class="week-banner"><p>${w.banner}</p></div>${w.days.map(renderDay).join('')}`;
+}
+
+function buildWeek2(){
+  const w1 = WEEKS.w1;
+  const swap = WEEKS.w2.riceSwap;
+  const days = JSON.parse(JSON.stringify(w1.days));
+  days[0].meals[2].name = `${swap.mon} + Chicken 240g + Greek Yogurt`;
+  days[4].meals[2].name = `${swap.fri} + Chicken 240g`;
+  return `<div class="week-banner"><p>${WEEKS.w2.banner}</p></div>${days.map(renderDay).join('')}`;
+}
+
+function buildWeek3(){
+  const w1 = WEEKS.w1;
+  const swap = WEEKS.w3.riceSwap;
+  const days = JSON.parse(JSON.stringify(w1.days));
+  days[0].meals[2].name = `${swap.mon} + Chicken 240g + Greek Yogurt`;
+  if(swap.tue) days[1].meals[2].name = `${swap.tue} + Chicken 240g + Greek Yogurt`;
+  days[4].meals[2].name = `${swap.fri} + Chicken 240g`;
+  return `<div class="week-banner"><p>${WEEKS.w3.banner}</p></div>${days.map(renderDay).join('')}`;
+}
+
+function buildWeek4(){
+  const w = WEEKS.w4;
+  return `<div class="week-banner recovery"><p>${w.banner}</p></div>${w.days.map(renderDay).join('')}`;
+}
+
+document.getElementById('w1').innerHTML = buildWeek1();
+document.getElementById('w2').innerHTML = buildWeek2();
+document.getElementById('w3').innerHTML = buildWeek3();
+document.getElementById('w4').innerHTML = buildWeek4();
+
+// Auto-select the correct week of the 4-week cycle
+if (AUTO_WEEK > 0) {
+  const _allTabs   = document.querySelectorAll('.wtab');
+  const _allPanels = document.querySelectorAll('.week-panel');
+  _allTabs[0].classList.remove('active');
+  _allPanels[0].classList.remove('active');
+  if (_allTabs[AUTO_WEEK]) { _allTabs[AUTO_WEEK].classList.add('active'); }
+  if (_allPanels[AUTO_WEEK]) { _allPanels[AUTO_WEEK].classList.add('active'); }
+}
+
+function showWeek(id, btn){
+  document.querySelectorAll('.week-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.wtab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toggleDay(card){
+  card.classList.toggle('open');
+}
+
+</script>
+</body>
+</html>

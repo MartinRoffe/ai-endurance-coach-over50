@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+<title>Ride Fuelling — Homemade Nutrition Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f0c; --surface: #161713; --surface2: #1d1f1a; --border: #2a2d25;
+    --accent: #c8f135; --accent2: #f1a035; --accent3: #35c8f1; --text: #e8ead4;
+    --muted: #7a7d6a; --danger: #f14a35; --protein: #35c8f1; --carbs: #c8f135;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; min-height:100vh; }
+  a { color:var(--accent); }
+
+  .hero { position:relative; padding:48px 40px 36px; border-bottom:1px solid var(--border); overflow:hidden; }
+  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:480px; height:480px; background:radial-gradient(circle,rgba(241,160,53,0.08) 0%,transparent 70%); pointer-events:none; }
+  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent2); text-transform:uppercase; margin-bottom:14px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(42px,7vw,76px); line-height:0.92; letter-spacing:0.02em; margin-bottom:16px; }
+  .hero h1 span { color:var(--accent2); }
+  .hero-sub { font-size:15px; color:var(--muted); max-width:640px; line-height:1.7; }
+
+  .container { max-width:980px; margin:0 auto; padding:0 24px; }
+  section { padding:40px 0; border-bottom:1px solid var(--border); scroll-margin-top:52px; }
+  section:last-child { border-bottom:none; }
+  .sec-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent2); margin-bottom:14px; }
+  h2 { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:0.04em; margin-bottom:16px; }
+  p.lead { color:#b0b39a; font-size:14px; line-height:1.75; margin-bottom:16px; max-width:720px; }
+
+  /* Compare cards */
+  .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px; }
+  .compare-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .compare-card.weekend { border-top:3px solid var(--accent2); }
+  .compare-card.evening { border-top:3px solid var(--accent3); }
+  .compare-head { padding:14px 18px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .compare-head h3 { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.03em; margin-bottom:4px; }
+  .compare-head .tag { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
+  .compare-body { padding:16px 18px; }
+  .compare-body dl { display:grid; gap:10px; }
+  .compare-body dt { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+  .compare-body dd { font-size:13px; color:#cdd0bb; line-height:1.55; margin:0; }
+
+  /* Target table */
+  .data-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-top:16px; font-size:13px; }
+  .data-table th { background:var(--surface2); text-align:left; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); padding:11px 14px; border-bottom:1px solid var(--border); }
+  .data-table td { padding:11px 14px; border-bottom:1px solid var(--border); color:#cdd0bb; vertical-align:top; }
+  .data-table tr:last-child td { border-bottom:none; }
+  .data-table td:first-child { color:var(--text); font-weight:500; }
+  .data-table .hi { color:var(--carbs); font-family:'DM Mono',monospace; font-size:12px; }
+
+  /* Rules list */
+  .rules-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; margin-top:16px; }
+  .rule { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); padding:14px 16px; border-radius:0 4px 4px 0; }
+  .rule-num { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--accent); line-height:1; margin-bottom:6px; }
+  .rule p { font-size:13px; color:#b0b39a; margin:0; line-height:1.55; }
+
+  /* Timeline tabs */
+  .dur-tabs { display:flex; gap:4px; flex-wrap:wrap; margin:20px 0 16px; }
+  .dur-tab { background:var(--surface); border:1px solid var(--border); color:var(--muted); padding:8px 16px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.06em; cursor:pointer; border-radius:3px; transition:all 0.15s; }
+  .dur-tab:hover { color:var(--text); border-color:var(--muted); }
+  .dur-tab.active { background:var(--accent2); border-color:var(--accent2); color:#0e0f0c; }
+  .dur-panel { display:none; background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .dur-panel.active { display:block; }
+  .timeline { width:100%; border-collapse:collapse; }
+  .timeline td { padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top; }
+  .timeline tr:last-child td { border-bottom:none; }
+  .timeline td:first-child { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent2); white-space:nowrap; width:100px; }
+  .timeline .total-row td { background:rgba(200,241,53,0.06); font-weight:500; color:var(--text); }
+
+  /* Protocol steps */
+  .steps { display:grid; gap:12px; margin-top:16px; }
+  .step { display:grid; grid-template-columns:48px 1fr; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+  .step-time { font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--accent2); line-height:1; text-align:center; padding-top:2px; }
+  .step-time small { display:block; font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.1em; }
+  .step h4 { font-size:14px; font-weight:500; color:var(--text); margin-bottom:6px; }
+  .step p { font-size:13px; color:#b0b39a; margin:0; line-height:1.6; }
+  .step ul { margin:8px 0 0 18px; font-size:13px; color:#b0b39a; }
+  .step li { margin-bottom:4px; }
+
+  /* Recipe mini cards */
+  .recipe-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:16px; }
+  .recipe-mini { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+  .recipe-mini h4 { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.03em; margin-bottom:8px; }
+  .recipe-mini .macros { font-family:'DM Mono',monospace; font-size:10px; color:var(--carbs); margin-bottom:10px; letter-spacing:0.05em; }
+  .recipe-mini ul { list-style:none; font-size:12px; color:#b0b39a; line-height:1.6; }
+  .recipe-mini li { padding:3px 0; border-bottom:1px dotted var(--border); }
+  .recipe-mini li:last-child { border-bottom:none; }
+  .recipe-mini li b { color:var(--text); font-weight:500; }
+
+  /* Post-ride tiers */
+  .tier-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+  .tier { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+  .tier-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--protein); margin-bottom:8px; }
+  .tier h4 { font-family:'Bebas Neue',sans-serif; font-size:20px; margin-bottom:8px; }
+  .tier p { font-size:12px; color:#b0b39a; margin:0 0 8px; line-height:1.55; }
+  .tier .targets { font-family:'DM Mono',monospace; font-size:11px; color:var(--carbs); }
+
+  /* Callouts */
+  .callout { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent2); padding:14px 18px; border-radius:0 4px 4px 0; margin-top:14px; }
+  .callout.danger { border-left-color:var(--danger); }
+  .callout.carbs { border-left-color:var(--carbs); }
+  .callout.protein { border-left-color:var(--protein); }
+  .callout p { font-size:13px; color:#b0b39a; margin:0; line-height:1.65; }
+  .callout b { color:var(--text); font-weight:500; }
+  .callout.danger b { color:var(--danger); }
+  .callout.carbs b { color:var(--carbs); }
+  .callout.protein b { color:var(--protein); }
+
+  /* Pack list */
+  .pack-list { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px 20px; margin-top:16px; }
+  .pack-list h4 { font-family:'Bebas Neue',sans-serif; font-size:20px; margin-bottom:12px; }
+  .pack-cols { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .pack-cols ul { list-style:none; font-size:13px; color:#b0b39a; }
+  .pack-cols li { padding:5px 0; border-bottom:1px dotted var(--border); }
+  .pack-cols li:last-child { border-bottom:none; }
+
+  /* Mistakes */
+  .mistake-list { display:grid; gap:8px; margin-top:16px; }
+  .mistake { display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid var(--border); padding:12px 16px; border-radius:4px; font-size:13px; color:#b0b39a; }
+  .mistake-x { color:var(--danger); font-weight:700; flex-shrink:0; }
+
+  /* Anchor toc */
+  .page-toc { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; margin:24px 0 0; }
+  .page-toc a { display:block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:10px 14px; text-decoration:none; color:var(--text); font-size:13px; transition:border-color 0.15s; }
+  .page-toc a:hover { border-color:var(--accent2); }
+  .page-toc a span { display:block; font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:2px; }
+
+  .cta-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+  .cta { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:4px; color:var(--accent); text-decoration:none; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; transition:border-color 0.15s; }
+  .cta:hover { border-color:var(--accent); }
+  .cta.primary { background:var(--accent2); border-color:var(--accent2); color:#0e0f0c; }
+
+  @media(max-width:720px){
+    .hero{padding:36px 20px 28px;}
+    .container{padding:0 14px;}
+    .compare-grid,.tier-grid,.pack-cols{grid-template-columns:1fr;}
+    section{padding:32px 0;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'fuelling' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">Homemade sports nutrition · Masters athlete</div>
+    <h1>RIDE<br><span>FUELLING</span></h1>
+    <p class="hero-sub">In-bike and immediate post-ride nutrition using homemade drinks, rice cakes and gels. Built around your schedule: early weekend long rides with almost no breakfast time, and shorter evening rides between lunch and dinner.</p>
+    <div class="page-toc">
+      <a href="#context"><span>Start here</span>Two ride types</a>
+      <a href="#targets"><span>Numbers</span>Carb &amp; fluid targets</a>
+      <a href="#weekend"><span>Scenario A</span>Long weekend rides</a>
+      <a href="#evening"><span>Scenario B</span>Evening rides</a>
+      <a href="#homemade"><span>Recipes</span>Drinks &amp; solids</a>
+      <a href="#postride"><span>Recovery</span>Post-ride window</a>
+      <a href="#prep"><span>Friday prep</span>Pack list &amp; checklist</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- TWO RIDE TYPES -->
+  <section id="context">
+    <div class="sec-label">Your schedule</div>
+    <h2>TWO DIFFERENT PROBLEMS</h2>
+    <p class="lead">Weekend long rides (2–6 h) and weekday evening rides need opposite pre-ride strategies. Get this wrong and you'll bonk on Sunday or feel heavy on Tuesday.</p>
+    <div class="compare-grid">
+      <div class="compare-card weekend">
+        <div class="compare-head">
+          <div class="tag">Scenario A · Sat &amp; Sun</div>
+          <h3>Long rides · 2–6 hours</h3>
+        </div>
+        <div class="compare-body">
+          <dl>
+            <div><dt>Start time</dt><dd>Very early — quiet roads, little time to eat</dd></div>
+            <div><dt>Pre-ride challenge</dt><dd>Can't do a proper breakfast. Saturday's carb-rich griddle dinner is the real pre-fuel.</dd></div>
+            <div><dt>During priority</dt><dd>High carb rate from minute 0. Train toward 80–90 g/hr on the longest rides.</dd></div>
+            <div><dt>Post priority</dt><dd>Aggressive recovery window, then a proper meal. Chocolate milk before shower.</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="compare-card evening">
+        <div class="compare-head">
+          <div class="tag">Scenario B · Tue–Fri evenings</div>
+          <h3>Shorter rides · 45–90 min</h3>
+        </div>
+        <div class="compare-body">
+          <dl>
+            <div><dt>Start time</dt><dd>Post-lunch, pre-dinner — typically 3–5 h after lunch</dd></div>
+            <div><dt>Pre-ride challenge</dt><dd>Lunch is your main fuel. Light top-up only if needed — don't over-eat.</dd></div>
+            <div><dt>During priority</dt><dd>Water only under 60 min. One carb bottle or banana for 75–90 min sessions.</dd></div>
+            <div><dt>Post priority</dt><dd>Recovery bridge to dinner — chocolate milk, not a second dinner.</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="callout carbs" style="margin-top:16px">
+      <p><b>Gut training:</b> weeks 5–8 practise <b>60 g/hr</b> on every ride ≥75 min. Weeks 9–11 push to <b>75–90 g/hr</b> on long rides. Use your exact homemade mix now — nothing new on event day. The deficit belongs to rest days, not the key ride.</p>
+    </div>
+  </section>
+
+  <!-- TARGETS -->
+  <section id="targets">
+    <div class="sec-label">Evidence-based ranges</div>
+    <h2>CORE TARGETS</h2>
+    <table class="data-table">
+      <thead>
+        <tr><th>Duration</th><th>Carbs/hr</th><th>Fluid/hr</th><th>Sodium/hr</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>&lt;75 min (most evenings)</td><td class="hi">0–30 g optional</td><td>400–500 ml</td><td>Only if very sweaty</td></tr>
+        <tr><td>75 min – 2.5 h</td><td class="hi">~60 g</td><td>500–750 ml</td><td>300–500 mg</td></tr>
+        <tr><td>2.5 – 4 h</td><td class="hi">~75 g</td><td>500–750 ml</td><td>400–600 mg</td></tr>
+        <tr><td>4 – 6 h</td><td class="hi">80–90 g</td><td>600–800 ml</td><td>500–700 mg</td></tr>
+      </tbody>
+    </table>
+    <div class="rules-grid">
+      <div class="rule"><div class="rule-num">1</div><p><b>Start within 15 min</b> of rolling — don't wait until hungry. Critical on fasted early starts.</p></div>
+      <div class="rule"><div class="rule-num">2</div><p><b>Every 20–30 min</b> — steady drip beats big boluses. Set a timer if needed.</p></div>
+      <div class="rule"><div class="rule-num">3</div><p>Above ~60 g/hr use <b>1:0.8 glucose:fructose</b> (maltodextrin + fructose) to raise the absorption ceiling.</p></div>
+      <div class="rule"><div class="rule-num">4</div><p>On rides &gt;2.5 h, <b>mix liquid + solid</b> — rice cakes when sweet gels start to repel.</p></div>
+      <div class="rule"><div class="rule-num">5</div><p>In heat, run <b>one carb bottle + one electrolyte bottle</b>; get extra carbs from solids.</p></div>
+    </div>
+  </section>
+
+  <!-- WEEKEND LONG RIDES -->
+  <section id="weekend">
+    <div class="sec-label">Scenario A</div>
+    <h2>WEEKEND LONG RIDES</h2>
+    <p class="lead">You cannot rely on a proper pre-ride breakfast. The fix: <b>night-before loading + wake-up liquid carbs + aggressive on-bike fuelling from minute one.</b></p>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Night before</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-time">FRI<span>or SAT</span></div>
+        <div>
+          <h4>Carb-forward dinner</h4>
+          <p>Carb-rich griddle night (Saturday) or paella-style rice — generous rice, easy on fat and fibre. Target <b>2–3 g carbs/kg</b> across dinner + a small evening snack (rice pudding, malt loaf, yogurt + honey).</p>
+          <ul>
+            <li>Avoid heavy alcohol, very spicy food, or a huge late meal</li>
+            <li>Optional: sip 200–300 ml standard drink mix with dinner if appetite is low</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Wake-up (5–20 min before out the door)</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-time">A</div>
+        <div>
+          <h4>Bedside bottle — best for 5:30 am rollouts</h4>
+          <p>Pre-mix <b>300–400 ml</b> standard drink (24–48 g carbs) the night before. Drink half on waking, half in the first 15 min on the bike.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-time">B</div>
+        <div>
+          <h4>Grab-and-go solids (10–15 min)</h4>
+          <p>1 sweet rice cake (~35 g) or 2 date balls (~36 g) + 300 ml water with pinch of salt. Optional: half a banana.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-time">C</div>
+        <div>
+          <h4>Overnight oats jar (30 min before)</h4>
+          <p>Small jar: oats + milk + honey + banana, made the night before. Eat <b>half only</b> — you don't want a full stomach at hour one.</p>
+        </div>
+      </div>
+    </div>
+    <div class="callout danger">
+      <p><b>Avoid on waking:</b> eggs, bacon, full porridge bowl, coffee-only, high-fibre muesli. Target <b>40–80 g fast carbs + 500 ml fluid</b> before/at start — the rest comes on the bike.</p>
+    </div>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">On-bike by duration</h3>
+    <div class="dur-tabs" role="tablist">
+      <button class="dur-tab active" onclick="showDur('d2',this)">2 hours</button>
+      <button class="dur-tab" onclick="showDur('d3',this)">3 hours</button>
+      <button class="dur-tab" onclick="showDur('d4',this)">4 hours</button>
+      <button class="dur-tab" onclick="showDur('d5',this)">5–6 hours</button>
+    </div>
+
+    <div id="d2" class="dur-panel active">
+      <table class="timeline">
+        <tr><td>0–15 min</td><td>Finish wake-up drink OR start bottle 1 (standard mix, 500 ml)</td></tr>
+        <tr><td>30–45 min</td><td>Half rice cake or banana (~20 g)</td></tr>
+        <tr><td>60 min</td><td>Bottle 2 — standard mix (60 g)</td></tr>
+        <tr><td>90 min</td><td>Gel flask swig (~25 g) or second half rice cake</td></tr>
+        <tr class="total-row"><td>Total</td><td>~120 g carbs (~60 g/hr) · 1–1.5 L fluid</td></tr>
+      </table>
+    </div>
+    <div id="d3" class="dur-panel">
+      <table class="timeline">
+        <tr><td>Hour 1</td><td>Standard bottle (60 g) + sweet rice cake (35 g) ≈ 95 g</td></tr>
+        <tr><td>Hour 2</td><td>Standard bottle (60 g)</td></tr>
+        <tr><td>Hour 3</td><td>Standard bottle (60 g) + gel swig (25 g)</td></tr>
+        <tr class="total-row"><td>Total</td><td>~240 g (~80 g/hr)</td></tr>
+      </table>
+    </div>
+    <div id="d4" class="dur-panel">
+      <table class="timeline">
+        <tr><td>Hour 1</td><td>Carb bottle + sweet rice cake</td></tr>
+        <tr><td>Hour 2</td><td>Carb bottle + savoury rice cake</td></tr>
+        <tr><td>Hour 3</td><td>High-carb bottle OR standard + 2 date balls</td></tr>
+        <tr><td>Hour 4</td><td>Carb bottle + savoury rice cake + gel if fading</td></tr>
+        <tr class="total-row"><td>Total</td><td>~300–320 g (~75–80 g/hr)</td></tr>
+      </table>
+    </div>
+    <div id="d5" class="dur-panel">
+      <table class="timeline">
+        <tr><td>Hours 1–2</td><td>Front-load slightly — absorption best when fresh. High-carb bottle + rice cake each hour from hour 2</td></tr>
+        <tr><td>Hours 3–5</td><td>Alternate high-carb and standard bottles. Never go &gt;45 min without fuel</td></tr>
+        <tr><td>Heat</td><td>Second bottle = electrolyte-only; carbs from solids</td></tr>
+        <tr class="total-row"><td>Total</td><td>~400–450 g over 5 h (~80–90 g/hr)</td></tr>
+      </table>
+      <div class="pack-list" style="margin-top:0;border-top:1px solid var(--border);border-radius:0 0 6px 6px;">
+        <h4>5-hour pack list</h4>
+        <div class="pack-cols">
+          <ul>
+            <li>3× high-carb bottles (pre-mixed)</li>
+            <li>2× standard bottles</li>
+            <li>4× savoury rice cakes</li>
+            <li>2× sweet rice cakes</li>
+          </ul>
+          <ul>
+            <li>1 gel flask (5 swigs)</li>
+            <li>4× date balls</li>
+            <li>1 banana</li>
+            <li>Electrolyte bottle if hot</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENING RIDES -->
+  <section id="evening">
+    <div class="sec-label">Scenario B</div>
+    <h2>EVENING RIDES</h2>
+    <p class="lead">Most weekday sessions are 45–90 min. Lunch 3–4 h earlier is the real pre-ride meal — not what you eat at 5 pm.</p>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:24px 0 12px;letter-spacing:0.03em;">Lunch (the hidden pre-ride meal)</h3>
+    <p class="lead">Aim for <b>~1.5–2 g carbs/kg</b> at lunch on ride days: batch rice + chicken, pasta + tuna, or a substantial sandwich + fruit. Moderate protein, not a huge fat load. Hydrate through the afternoon — 500 ml+ before kitting up.</p>
+
+    <table class="data-table">
+      <thead><tr><th>Timing</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>60–90 min before</td><td>Light top-up only if lunch was &gt;4 h ago: banana, 2 oatcakes + honey, or half oat bar (~15–25 g). Skip if lunch was ≤3 h ago.</td></tr>
+        <tr><td>≤60 min easy</td><td><b>Water only</b> — no food needed</td></tr>
+        <tr><td>60–75 min Z2</td><td>Water; optional half banana at 45 min if hungry</td></tr>
+        <tr><td>75–90 min tempo</td><td>1 standard bottle (60 g over the ride) OR bottle + half rice cake at 45 min</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout protein" style="margin-top:16px">
+      <p><b>Post-ride bridge (within 20 min):</b> homemade chocolate milk (300 ml) ≈ 30 g carbs + 10 g protein. Then normal dinner with extra rice/potato if it was a hard 90 min session. Don't starve until dinner — and don't eat so much recovery food that dinner becomes redundant.</p>
+    </div>
+  </section>
+
+  <!-- HOMEMADE RECIPES SUMMARY -->
+  <section id="homemade">
+    <div class="sec-label">Make at home</div>
+    <h2>DRINKS &amp; SOLID FUEL</h2>
+    <p class="lead">Full step-by-step recipes live in the Recipes guide. These are your reference formulations — make them now, train on them every long ride.</p>
+    <div class="recipe-grid">
+      <div class="recipe-mini">
+        <h4>Standard energy drink</h4>
+        <div class="macros">~60 g carbs · per 500 ml · 1 bottle/hr</div>
+        <ul>
+          <li><b>40 g</b> maltodextrin</li>
+          <li><b>20 g</b> fructose</li>
+          <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+          <li>Squash + 500 ml water</li>
+        </ul>
+      </div>
+      <div class="recipe-mini">
+        <h4>High-carb dual source</h4>
+        <div class="macros">~90 g carbs · per 500 ml · long rides</div>
+        <ul>
+          <li><b>55 g</b> maltodextrin</li>
+          <li><b>35 g</b> fructose</li>
+          <li><b>¼ tsp</b> salt + squash + lemon</li>
+          <li>500 ml water — shake well, denser mix</li>
+        </ul>
+      </div>
+      <div class="recipe-mini">
+        <h4>Electrolyte only</h4>
+        <div class="macros">Hydration · heat days · second bottle</div>
+        <ul>
+          <li>500 ml water + <b>¼ tsp</b> salt</li>
+          <li><b>1 tsp</b> sugar or honey</li>
+          <li>Juice of ½ lemon</li>
+          <li>Pinch lite salt (potassium) optional</li>
+        </ul>
+      </div>
+      <div class="recipe-mini">
+        <h4>Savoury rice cake</h4>
+        <div class="macros">~30–40 g carbs · hours 2–5</div>
+        <ul>
+          <li>250 g sushi rice + eggs + bacon + soy</li>
+          <li>Press, cut into 8, foil-wrap</li>
+          <li>Real food when gels repel</li>
+        </ul>
+      </div>
+      <div class="recipe-mini">
+        <h4>Homemade gel flask</h4>
+        <div class="macros">~25–30 g · per swig</div>
+        <ul>
+          <li>100 g maltodextrin + 3 tbsp honey</li>
+          <li>~80 ml warm water + pinch salt + lemon</li>
+          <li>Chase with water to absorb</li>
+        </ul>
+      </div>
+      <div class="recipe-mini">
+        <h4>Solid carb reference</h4>
+        <div class="macros">Count toward hourly target</div>
+        <ul>
+          <li>Banana · ~25 g</li>
+          <li>Homemade oat bar · ~28 g</li>
+          <li>Date &amp; oat ball · ~18 g (×2 ≈ gel)</li>
+          <li>Sweet rice cake · ~35 g</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cta-row">
+      <a href="/nutrition/recipes#fuel" class="cta primary">Full recipes &amp; methods →</a>
+      <a href="/nutrition/shopping-list" class="cta">Maltodextrin &amp; fructose → Shopping</a>
+    </div>
+  </section>
+
+  <!-- POST RIDE -->
+  <section id="postride">
+    <div class="sec-label">Recovery window</div>
+    <h2>IMMEDIATE POST-RIDE</h2>
+    <p class="lead">The 45-minute window after long rides is when glycogen repletion and muscle repair are most efficient. Over-50 athletes benefit from being <b>more deliberate</b> here, not less.</p>
+
+    <div class="tier-grid">
+      <div class="tier">
+        <div class="tier-label">Tier 1 · within 20 min</div>
+        <h4>Always</h4>
+        <p><b>Recovery chocolate milk</b> — 300 ml semi-skimmed + cocoa + tsp honey. Drink before showering. Pre-cool a bottle in the car if driving home.</p>
+        <div class="targets">~30 g C · ~10 g P</div>
+      </div>
+      <div class="tier">
+        <div class="tier-label">Tier 2 · within 45–60 min</div>
+        <h4>Long rides &gt;2 h</h4>
+        <p><b>Recovery plate:</b> ~1 g carbs/kg + 25–40 g protein. Big recovery porridge, or rice + 150 g chicken, or Sunday stir fry with generous rice.</p>
+        <div class="targets">60–120 g C · 25–40 g P</div>
+      </div>
+      <div class="tier">
+        <div class="tier-label">Tier 3 · next 2–3 h</div>
+        <h4>Keep eating</h4>
+        <p>Normal meals. Don't "save calories" after a 4–6 h ride. Spread protein (30–40 g/meal). Avoid heavy alcohol same afternoon.</p>
+        <div class="targets">Protein spread · sleep</div>
+      </div>
+    </div>
+
+    <table class="data-table" style="margin-top:20px">
+      <thead><tr><th>Ride length</th><th>Carbs in first 60 min</th><th>Protein in first 60 min</th></tr></thead>
+      <tbody>
+        <tr><td>≤60 min evening</td><td>20–30 g (chocolate milk enough)</td><td>10 g</td></tr>
+        <tr><td>90 min</td><td>30–40 g</td><td>15–20 g</td></tr>
+        <tr><td>2–3 h</td><td class="hi">60–90 g</td><td class="hi">25–30 g</td></tr>
+        <tr><td>4–6 h</td><td class="hi">90–120 g</td><td class="hi">30–40 g</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout" style="margin-top:16px">
+      <p><b>Sample Sunday:</b> 10:05 chocolate milk in car → 10:45 recovery porridge or big brunch → 13:00 normal lunch. Back-to-back Monday? Saturday dinner should be carb-heavy, moderate fat, early enough for sleep.</p>
+    </div>
+  </section>
+
+  <!-- PREP -->
+  <section id="prep">
+    <div class="sec-label">Friday / Saturday evening</div>
+    <h2>PREP CHECKLIST</h2>
+    <p class="lead">15 minutes Friday or Saturday evening saves a fumbled 5:30 am start. Label bottles so you're not thinking on the bike.</p>
+    <div class="steps">
+      <div class="step"><div class="step-time">1</div><div><h4>Mix drink powders into labelled bottles</h4><p>Tape: "H1 standard", "H2 high-carb", etc. Fridge or cool bag for morning.</p></div></div>
+      <div class="step"><div class="step-time">2</div><div><h4>Wrap rice cakes in foil</h4><p>Pack jersey pockets the night before. Make 8–16 on Friday if Sunday is the big one.</p></div></div>
+      <div class="step"><div class="step-time">3</div><div><h4>Fill gel flask · set bedside wake-up bottle</h4><p>300–400 ml standard mix ready to drink on waking.</p></div></div>
+      <div class="step"><div class="step-time">4</div><div><h4>Pre-cool recovery chocolate milk</h4><p>In the fridge or an insulated bottle in the car for post-ride.</p></div></div>
+    </div>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Over-50 reminders</h3>
+    <div class="rules-grid">
+      <div class="rule"><div class="rule-num">→</div><p>Start at 60 g/hr and add <b>10–15 g/hr every 2–3 weeks</b> on long rides rather than jumping straight to 90 g.</p></div>
+      <div class="rule"><div class="rule-num">→</div><p>Under-fuelling long rides → poor sleep → lower HRV next day. Your dashboard will show it.</p></div>
+      <div class="rule"><div class="rule-num">→</div><p>In a deficit phase, cut carbs on <b>rest days and easy evenings</b>, not on Sunday 4 h Z2.</p></div>
+      <div class="rule"><div class="rule-num">→</div><p>Daily protein (~1.6–2.0 g/kg) matters more than one heroic post-ride steak.</p></div>
+    </div>
+
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Common mistakes</h3>
+    <div class="mistake-list">
+      <div class="mistake"><span class="mistake-x">✕</span> Waiting until hour 2 to eat on fasted early starts</div>
+      <div class="mistake"><span class="mistake-x">✕</span> All liquid, no solids on 4 h+ rides</div>
+      <div class="mistake"><span class="mistake-x">✕</span> New recipes or shop-bought gels on event day only</div>
+      <div class="mistake"><span class="mistake-x">✕</span> Skipping post-ride because "dinner is soon" after 3 h+</div>
+      <div class="mistake"><span class="mistake-x">✕</span> Over-eating before evening rides when lunch was adequate</div>
+      <div class="mistake"><span class="mistake-x">✕</span> Forgetting salt in homemade drinks — ¼ tsp per 500 ml is not optional</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+function showDur(id, btn) {
+  document.querySelectorAll('.dur-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.dur-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
