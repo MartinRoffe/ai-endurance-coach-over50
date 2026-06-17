@@ -494,6 +494,132 @@ def load_analysis(activity_id: int) -> Optional[dict]:
     return d
 
 
+def patch_analysis_power(activity_id: int, detail: dict) -> bool:
+    """Update power-related columns on an existing analysis row. Returns True if patched."""
+    zones_json = json.dumps(detail["power_zones"]) if detail.get("power_zones") else None
+    reps_json = json.dumps(detail["interval_reps"]) if detail.get("interval_reps") else None
+    if not any((detail.get("ftp_effort_avg_w"), zones_json, reps_json)):
+        return False
+    with _conn() as con:
+        _ensure_analysis_schema(con)
+        row = con.execute(
+            "SELECT 1 FROM activity_analyses WHERE activity_id = ?", (activity_id,)
+        ).fetchone()
+        if not row:
+            return False
+        con.execute(
+            """UPDATE activity_analyses SET
+                   ftp_effort_avg_w = COALESCE(?, ftp_effort_avg_w),
+                   interval_data_json = COALESCE(?, interval_data_json),
+                   power_zones_json = COALESCE(?, power_zones_json)
+               WHERE activity_id = ?""",
+            (detail.get("ftp_effort_avg_w"), reps_json, zones_json, activity_id),
+        )
+    return True
+
+
+def _session_label_for_activity(act: dict) -> Optional[str]:
+    act_date = act.get("date")
+    if not act_date:
+        return None
+    try:
+        sess = session_for_date_extended(date.fromisoformat(act_date))
+        return sess[1] if sess else None
+    except Exception:
+        return None
+
+
+def _try_save_ftp_from_detail(act: dict, detail: dict, session_label: Optional[str]) -> bool:
+    """Seed ftp_tests.ftp_w from an FTP-labelled session when not already logged."""
+    if session_label not in _FTP_SESSION_LABELS or not detail.get("ftp_effort_avg_hr"):
+        return False
+    act_date = act.get("date")
+    if not act_date:
+        return False
+    try:
+        from .history import save_ftp_test, load_ftp_tests
+        d_obj = date.fromisoformat(act_date)
+        if any(t["date"] == d_obj.isoformat() for t in load_ftp_tests()):
+            return False
+        ftp_w = detail.get("ftp_w")
+        if not ftp_w and detail.get("ftp_effort_avg_w"):
+            ftp_w = round(detail["ftp_effort_avg_w"] * 0.95)
+        save_ftp_test(
+            d_obj.isoformat(), act["activity_id"],
+            int(detail["ftp_effort_avg_hr"]),
+            int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
+            None,
+            ftp_w=ftp_w,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def refresh_power_backfill(api: Any, days: int = 30) -> dict:
+    """Phase 6 workflow: re-fetch activities, mine power zones/decoupling on historical rides."""
+    from .metrics import fetch_activities
+    from .history import (
+        load_activities_by_date,
+        power_durability_exists,
+        save_activities,
+        save_power_durability,
+    )
+
+    stats = {
+        "days": days,
+        "activities_fetched": 0,
+        "power_rides": 0,
+        "durability_added": 0,
+        "power_patched": 0,
+        "ftp_seeded": 0,
+    }
+
+    acts = fetch_activities(api, days=days)
+    save_activities(acts)
+    stats["activities_fetched"] = len(acts)
+
+    start = date.today() - timedelta(days=days - 1)
+    power_acts: list[dict] = []
+    for _d, day_acts in load_activities_by_date(start, date.today()).items():
+        for act in day_acts:
+            if act.get("has_power_meter") and act.get("type_key") in _CYCLING_TYPES:
+                power_acts.append(act)
+    stats["power_rides"] = len(power_acts)
+
+    for act in power_acts:
+        act_id = act["activity_id"]
+        if ((act.get("duration_seconds") or 0) >= 90 * 60
+                and not power_durability_exists(act_id)):
+            try:
+                pd_row = _extract_power_durability(api, act)
+                if pd_row:
+                    save_power_durability(act_id, pd_row)
+                    stats["durability_added"] += 1
+            except Exception:
+                pass
+
+        session_label = _session_label_for_activity(act)
+        try:
+            detail = fetch_activity_detail(
+                api, act_id, activity=act, session_label=session_label,
+            )
+            existing = load_analysis(act_id)
+            if existing:
+                needs_zones = not existing.get("power_zones_json") and detail.get("power_zones")
+                needs_w = not existing.get("ftp_effort_avg_w") and detail.get("ftp_effort_avg_w")
+                if needs_zones or needs_w or detail.get("interval_reps"):
+                    if patch_analysis_power(act_id, detail):
+                        stats["power_patched"] += 1
+                if _try_save_ftp_from_detail(act, detail, session_label):
+                    stats["ftp_seeded"] += 1
+        except Exception:
+            pass
+
+    refresh_analyses(api, days=days)
+    return stats
+
+
 # ── Claude analysis ──────────────────────────────────────────────────────────
 
 def _fmt_secs(s: int) -> str:

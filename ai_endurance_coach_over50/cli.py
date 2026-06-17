@@ -22,6 +22,7 @@ from .history import (
     composite_score,
     history_for_chart,
     load,
+    power_activation_status,
     save,
     save_activities,
     z_score,
@@ -211,6 +212,15 @@ def main() -> None:
         help="Force re-fetch from Garmin Connect even if cached",
     )
     parser.add_argument(
+        "--activate-power",
+        type=int,
+        nargs="?",
+        const=30,
+        metavar="DAYS",
+        help="Power-meter onboarding: backfill last N days (default 30), mine power metrics, "
+             "then print activation checklist",
+    )
+    parser.add_argument(
         "--backfill",
         type=int,
         metavar="DAYS",
@@ -296,6 +306,43 @@ def main() -> None:
             "(copy .env.example → .env)[/red]"
         )
         sys.exit(1)
+
+    if args.activate_power is not None:
+        from .analysis import refresh_power_backfill
+
+        days = args.activate_power
+        console.print(f"[bold]Power meter activation — backfilling {days} days…[/bold]")
+        api = get_api(email, password)
+        for i in range(days, 0, -1):
+            d = date.today() - timedelta(days=i)
+            console.print(f"  {d.isoformat()}  metrics…", end="")
+            try:
+                m = fetch_metrics(api, d)
+                save(m)
+                console.print(f"  [green]{available_count(m)} fields[/green]")
+            except Exception as e:
+                console.print(f"  [red]{e}[/red]")
+        with console.status("Fetching activities & mining power metrics…"):
+            stats = refresh_power_backfill(api, days=days)
+        console.print(
+            f"  Activities: {stats['activities_fetched']}  |  "
+            f"power rides: {stats['power_rides']}  |  "
+            f"decoupling added: {stats['durability_added']}  |  "
+            f"analyses patched: {stats['power_patched']}  |  "
+            f"FTP watts seeded: {stats['ftp_seeded']}"
+        )
+        status = power_activation_status()
+        console.print("\n[bold]Activation checklist[/bold]")
+        for step in status["steps"]:
+            mark = "[green]✓[/green]" if step["done"] else "[yellow]○[/yellow]"
+            console.print(f"  {mark} {step['label']}")
+            if not step["done"] and step.get("hint"):
+                console.print(f"      [dim]{step['hint']}[/dim]")
+        if status["complete"]:
+            console.print("\n[green]Power meter fully active — visit /performance and /haute-route.[/green]")
+        elif status.get("next_action"):
+            console.print(f"\n[yellow]Next:[/yellow] {status['next_action']}")
+        return
 
     target = date.fromisoformat(args.date)
 

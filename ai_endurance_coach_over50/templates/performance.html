@@ -375,6 +375,25 @@
   </div>
   {% endif %}
 
+  <!-- ── Power meter activation (partial onboarding) ──────────────── -->
+  {% if power_activation and power_activation.power_rides_60d >= 1 and not power_activation.complete %}
+  <div class="card" style="padding:16px 20px;margin-bottom:16px;border-left:3px solid #fbbf24">
+    <p class="eyebrow" style="margin-bottom:8px">Power Meter · Activation</p>
+    <ul style="margin:0 0 12px;padding-left:18px;font-family:var(--font-m);font-size:12px;color:var(--muted);line-height:1.6">
+      {% for step in power_activation.steps %}
+      <li style="color:{% if step.done %}var(--ink){% else %}var(--muted){% endif %}">
+        {% if step.done %}✓{% else %}○{% endif %} {{ step.label }}
+        {% if not step.done and step.hint %}<span style="display:block;margin-left:14px;font-size:11px;color:var(--muted)">{{ step.hint }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <a href="/activate-power?days=30" style="font-family:var(--font-m);font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:0.08em">
+      Run activation backfill ↺
+    </a>
+    <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-left:12px">or CLI: endurance-coach --activate-power 30</span>
+  </div>
+  {% endif %}
+
   <!-- ── HR vs power caveat ───────────────────────────────────────── -->
   <div class="card" style="padding:14px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
     <span style="font-size:18px;flex-shrink:0">{% if power_meter_active %}⚡{% else %}❤️{% endif %}</span>

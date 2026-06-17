@@ -19,7 +19,7 @@ from fastapi.requests import Request
 from pydantic import BaseModel, Field
 
 from .alerts import check_fatigue_alerts
-from .analysis import generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, retrieve_relevant_analyses
+from .analysis import generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, refresh_power_backfill, retrieve_relevant_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
@@ -62,6 +62,7 @@ from .history import (
     load_fuelling_logs,
     load_power_durability,
     measured_wkg_history,
+    power_activation_status,
     power_meter_active,
     gut_training_summary,
     load_recent_activities,
@@ -815,6 +816,20 @@ async def btb_summary_view(_=Depends(_require_auth)):
     return JSONResponse(load_btb_summary())
 
 
+@app.get("/activate-power", response_class=RedirectResponse)
+def activate_power(days: int = 30):
+    """Phase 6: backfill activities and mine power metrics on historical rides."""
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        api = get_api(email_addr, password)
+        try:
+            refresh_power_backfill(api, days=max(7, min(days, 90)))
+        except Exception:
+            pass
+    return RedirectResponse(url="/performance", status_code=303)
+
+
 @app.get("/analysis-refresh", response_class=RedirectResponse)
 def analysis_refresh():
     email_addr = os.getenv("GARMIN_EMAIL", "")
@@ -995,6 +1010,7 @@ async def performance_view(request: Request):
             "wkg_history": wkg_history,
             "measured_wkg": measured_wkg,
             "power_meter_active": power_meter_active(),
+            "power_activation": power_activation_status(),
             "monotony_weeks": monotony_weeks,
             "acclimation": acclimation,
             "taper_scenarios": taper_scenarios,

@@ -829,7 +829,12 @@ def load_ftp_tests() -> list[dict]:
 
 def power_meter_active() -> bool:
     """True when ≥3 cycling activities in the last 60 days recorded power."""
-    start = (date.today() - timedelta(days=60)).isoformat()
+    return count_power_rides(60) >= 3
+
+
+def count_power_rides(days: int = 60) -> int:
+    """Count cycling activities with power in the last `days` days."""
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
     placeholders = ",".join("?" * len(_ZONE_BIKE_KEYS))
     with _conn() as con:
         _ensure_activities_schema(con)
@@ -839,7 +844,86 @@ def power_meter_active() -> bool:
                   AND has_power_meter = 1""",
             (start, *_ZONE_BIKE_KEYS),
         ).fetchone()
-    return (row["n"] or 0) >= 3
+    return row["n"] or 0
+
+
+def power_activation_status(days: int = 60) -> dict:
+    """Checklist for power-meter onboarding (Phase 6 activation workflow)."""
+    power_rides = count_power_rides(days)
+    active = power_meter_active()
+    tests = load_ftp_tests()
+    has_ftp_w = any(t.get("ftp_w") for t in tests)
+    measured = latest_measured_wkg()
+    decoupling_n = len(load_power_durability(days))
+
+    power_zones_n = 0
+    try:
+        start = (date.today() - timedelta(days=days - 1)).isoformat()
+        placeholders = ",".join("?" * len(_ZONE_BIKE_KEYS))
+        with _conn() as con:
+            _ensure_activities_schema(con)
+            row = con.execute(
+                f"""SELECT COUNT(*) AS n FROM activities a
+                    JOIN activity_analyses an ON a.activity_id = an.activity_id
+                    WHERE a.date >= ? AND a.type_key IN ({placeholders})
+                      AND a.has_power_meter = 1 AND an.power_zones_json IS NOT NULL""",
+                (start, *_ZONE_BIKE_KEYS),
+            ).fetchone()
+            power_zones_n = row["n"] or 0
+    except Exception:
+        pass
+
+    steps = [
+        {
+            "id": "garmin",
+            "label": "Record ≥1 ride with power in Garmin Connect",
+            "done": power_rides >= 1,
+            "hint": "Pair pedals and verify average watts on the activity in Connect web UI.",
+        },
+        {
+            "id": "backfill",
+            "label": "Backfill activities (endurance-coach --activate-power 30)",
+            "done": power_rides >= 1,
+            "hint": "Pulls power summary fields into the local database.",
+        },
+        {
+            "id": "active",
+            "label": "≥3 power rides in 60 days (dashboard power surfaces unlock)",
+            "done": active,
+            "hint": f"{power_rides}/3 power rides logged in the last {days} days.",
+        },
+        {
+            "id": "metrics",
+            "label": "Mine power zones & decoupling on historical rides",
+            "done": power_zones_n >= 1 or decoupling_n >= 1,
+            "hint": "Runs automatically during --activate-power; also via /analysis-refresh.",
+        },
+        {
+            "id": "ftp_w",
+            "label": "Complete one FTP test ride (seeds measured FTP watts)",
+            "done": has_ftp_w,
+            "hint": "Schedule an FTP test; watts auto-populate from the 20-min effort.",
+        },
+        {
+            "id": "performance",
+            "label": "Visit /performance — confirm measured W/kg chart",
+            "done": has_ftp_w and active,
+            "hint": "Measured W/kg supersedes the VO2max estimate when FTP watts exist.",
+        },
+    ]
+
+    next_action = next((s for s in steps if not s["done"]), None)
+    return {
+        "power_rides_60d": power_rides,
+        "power_meter_active": active,
+        "has_measured_ftp_w": has_ftp_w,
+        "measured_wkg": measured,
+        "decoupling_count": decoupling_n,
+        "power_zones_count": power_zones_n,
+        "steps": steps,
+        "next_action": next_action["label"] if next_action else None,
+        "complete": active and has_ftp_w,
+    }
 
 
 def intensity_distribution_by_week(start: date, end: date) -> list[dict]:
