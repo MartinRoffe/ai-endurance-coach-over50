@@ -151,9 +151,17 @@
     </div>
     {% endif %}
 
+    {% if measured_wkg %}
+    <div class="card" style="padding:20px 22px">
+      <p class="eyebrow" style="margin-bottom:6px">Measured W/kg <button type="button" class="gr-tip-trigger" data-tip="FTP watts from your power-meter test divided by bodyweight — the climb number for Haute Route. Primary when available; est. W/kg below is the VO2max proxy." aria-label="More info" aria-expanded="false">?</button></p>
+      <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:#fbbf24;line-height:1">{{ "%.2f"|format(measured_wkg.wkg) }}</p>
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">{{ measured_wkg.ftp_w }} W · {{ measured_wkg.date }}</p>
+    </div>
+    {% endif %}
+
     {% if est_wkg %}
     <div class="card" style="padding:20px 22px">
-      <p class="eyebrow" style="margin-bottom:6px">Est. W/kg <button type="button" class="gr-tip-trigger" data-tip="Estimated FTP (from VO2max via the ACSM formula) divided by weight — no power meter, so treat as a trend. W/kg is the number that decides climbing speed: improve it by raising fitness or lowering weight." aria-label="More info" aria-expanded="false">?</button></p>
+      <p class="eyebrow" style="margin-bottom:6px">Est. W/kg{% if measured_wkg %} <span style="color:var(--muted)">(proxy)</span>{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Estimated FTP (from VO2max via the ACSM formula) divided by weight{% if measured_wkg %} — secondary to measured W/kg above{% else %} — no power meter, so treat as a trend{% endif %}." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ "%.2f"|format(est_wkg.wkg) }}</p>
       <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">~{{ est_wkg.est_ftp_w }} W est · estimated</p>
     </div>

@@ -527,6 +527,19 @@
   </div>
   {% endif %}
 
+  <!-- ── Last quality session power (informational) ──────────────── -->
+  {% if power_snapshot %}
+  {% set ps = power_snapshot %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px">
+    <p class="eyebrow" style="margin-bottom:6px">Last Quality Session · Power</p>
+    <p style="font-family:var(--font-m);font-size:13px;color:var(--text-dim);line-height:1.5">
+      <span style="color:var(--text)">{{ ps.label }}</span> ({{ ps.date }}) —
+      NP <span style="color:#fbbf24;font-weight:500">{{ ps.norm_power_w }} W</span>
+      <span style="color:var(--muted)">({{ ps.pct_ftp }}% FTP)</span>
+    </p>
+  </div>
+  {% endif %}
+
   <!-- ── Today's nutrition ───────────────────────────────────────── -->
   {% if nutrition_today %}
   {% set nt = nutrition_today %}

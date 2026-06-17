@@ -226,14 +226,14 @@
 
   <!-- ── FTP Trend ────────────────────────────────────────────────── -->
   <div id="ftpChartCard" class="card" style="padding:20px 24px;margin-bottom:16px;display:none">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">FTP Trend · Estimated LTHR <button type="button" class="gr-tip-trigger" data-tip="Your estimated lactate threshold heart rate from FTP test efforts. Lower HR for the same effort over time = improved threshold fitness. Retest every 4–6 weeks to track progress." aria-label="More info" aria-expanded="false">?</button></p>
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Average HR during FTP test effort · lower = improved threshold economy</p>
+        <p class="eyebrow" style="margin-bottom:4px">FTP Trend · LTHR{% if power_meter_active %} &amp; Watts{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Your lactate threshold from FTP test efforts — HR and (when available) measured watts. Lower LTHR for the same effort = improved threshold economy; rising watts at stable weight = true fitness gain." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">FTP test history · HR (left){% if power_meter_active %} · watts (right){% endif %}</p>
       </div>
       <span id="ftpCurrentLabel" style="font-family:var(--font-m);font-size:12px;color:#60a5fa;flex-shrink:0;padding-top:2px"></span>
     </div>
-    <div style="height:160px;position:relative"><canvas id="ftpTrendChart"></canvas></div>
+    <div style="height:180px;position:relative"><canvas id="ftpTrendChart"></canvas></div>
   </div>
 
   <!-- ── Training Polarisation ─────────────────────────────────────── -->
@@ -255,6 +255,29 @@
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:center">
       <div style="height:180px;position:relative"><canvas id="zonePolarChart"></canvas></div>
       <div style="height:180px;position:relative"><canvas id="zoneDonutChart"></canvas></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Power polarisation (when power meter active) ─────────────── -->
+  {% if power_meter_active and zone_dist_by_week_power and zone_dist_by_week_power | length > 0 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Power Polarisation · Zone Distribution <button type="button" class="gr-tip-trigger" data-tip="Time-in-zone by power — the true intensity split when HR drifts. On long rides HR can mis-bucket easy work as Z3; power reveals whether you actually stayed aerobic. Target: 80%+ Z1–Z2, &lt;10% Z3, 10–20% Z4–Z5." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Power-meter rides since plan start · parallel view to HR polarisation above</p>
+      </div>
+      <div style="display:flex;gap:10px;font-family:var(--font-m);font-size:11px;flex-wrap:wrap;flex-shrink:0">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#52525b;margin-right:4px;vertical-align:middle"></span>Z1</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#a3e635;margin-right:4px;vertical-align:middle"></span>Z2</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fde047;margin-right:4px;vertical-align:middle"></span>Z3</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fb923c;margin-right:4px;vertical-align:middle"></span>Z4</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f87171;margin-right:4px;vertical-align:middle"></span>Z5</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:center">
+      <div style="height:180px;position:relative"><canvas id="powerZonePolarChart"></canvas></div>
+      <div style="height:180px;position:relative"><canvas id="powerZoneDonutChart"></canvas></div>
     </div>
   </div>
   {% endif %}
@@ -305,13 +328,42 @@
   </div>
   {% endif %}
 
+  <!-- ── Pw:HR decoupling (power-meter long rides) ─────────────────── -->
+  {% if power_durability_points and power_durability_points | length >= 2 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Pw:HR Decoupling · Long Rides <button type="button" class="gr-tip-trigger" data-tip="HR drift % minus power drift % on rides ≥90 min. Positive = HR rising faster than power (cardiac drift at similar effort) — a key Haute Route readiness signal. Falling trend = better late-ride durability." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Final-third vs first-third · positive = HR outpacing power</p>
+      </div>
+    </div>
+    <div style="height:160px;position:relative"><canvas id="powerDurabilityChart"></canvas></div>
+  </div>
+  {% endif %}
+
+  <!-- ── Measured FTP & W/kg ──────────────────────────────────────── -->
+  {% if measured_wkg and measured_wkg | length >= 1 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Measured FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="FTP watts from power-meter test efforts crossed with bodyweight. W/kg is the climb number for Haute Route. Dashed line = VO2max estimate for comparison — divergence shows where measured power differs from the proxy." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">From FTP test watts · dashed = VO2max estimate overlay</p>
+      </div>
+      <span style="font-family:var(--font-m);font-size:12px;color:#fbbf24;flex-shrink:0;padding-top:2px">
+        Latest: {{ measured_wkg[-1].ftp_w }} W · {{ measured_wkg[-1].wkg }} W/kg
+      </span>
+    </div>
+    <div style="height:160px;position:relative"><canvas id="measuredWkgChart"></canvas></div>
+  </div>
+  {% endif %}
+
   <!-- ── Estimated FTP & W/kg ─────────────────────────────────────── -->
   {% if wkg_history and wkg_history | length >= 2 %}
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Estimated FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="Estimated from VO2max + weight (ACSM formula) — no power meter, so treat as a trend, not an absolute. W/kg is THE number for climbing: it improves by raising fitness (VO2max) or lowering weight. Both levers are tracked here." aria-label="More info" aria-expanded="false">?</button></p>
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Estimated from VO2max + weight (ACSM) · no power meter — trend, not absolute</p>
+        <p class="eyebrow" style="margin-bottom:4px">Estimated FTP &amp; W/kg{% if measured_wkg %} <span style="color:var(--muted);font-weight:400">(proxy)</span>{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Estimated from VO2max + weight (ACSM formula) — no power meter required. When measured FTP exists above, treat this as a secondary cross-check, not the primary number." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Estimated from VO2max + weight (ACSM){% if measured_wkg %} · secondary to measured FTP{% else %} · trend, not absolute{% endif %}</p>
       </div>
       {% if wkg_history %}
       <span style="font-family:var(--font-m);font-size:12px;color:#a78bfa;flex-shrink:0;padding-top:2px">
@@ -323,15 +375,21 @@
   </div>
   {% endif %}
 
-  <!-- ── HR-vs-power caveat ───────────────────────────────────────── -->
+  <!-- ── HR vs power caveat ───────────────────────────────────────── -->
   <div class="card" style="padding:14px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
-    <span style="font-size:18px;flex-shrink:0">❤️</span>
+    <span style="font-size:18px;flex-shrink:0">{% if power_meter_active %}⚡{% else %}❤️{% endif %}</span>
     <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin:0;line-height:1.5">
+      {% if power_meter_active %}
+      <strong style="color:var(--ink)">Dual-channel coaching:</strong> HR leads on hot days, altitude, and variable terrain — it reflects autonomic stress and cardiac drift when power stays flat.
+      Power leads on steady climbs and intervals — watts don't lie when HR is suppressed or inflated.
+      Use HR for readiness and the morning gate; use watts for pacing precision on long alpine climbs.
+      {% else %}
       <strong style="color:var(--ink)">Reading the HR-based numbers:</strong> all zones and thresholds here key off heart rate,
       which drifts with heat, dehydration, fatigue, poor sleep, caffeine and altitude — and rises late in long
       climbs (cardiac drift) even at steady effort. Treat HR caps as a guide, not a hard ceiling: on a hot day or
       a big mountain stage the same effort will show a higher HR, so go by perceived effort and breathing too.
       The estimated W/kg above is a coarse VO2max-derived proxy, not a measured power figure — a trend line, not a target.
+      {% endif %}
     </p>
   </div>
 
@@ -737,7 +795,7 @@
   })();
   {% endif %}
 
-  // FTP trend chart (fetched from API)
+  // FTP trend chart (LTHR + optional watts)
   (async function() {
     try {
       const data = await fetch('/api/ftp-tests').then(r => r.json());
@@ -745,30 +803,45 @@
       document.getElementById('ftpChartCard').style.display = '';
       const labels  = data.map(d => d.date.slice(5).replace('-', '/'));
       const hrVals  = data.map(d => d.ftp_hr);
-      const latest  = hrVals.filter(v => v != null).at(-1);
-      if (latest) document.getElementById('ftpCurrentLabel').textContent = `Current: ${latest} bpm LTHR`;
-      const flatLine = Array(hrVals.length).fill(latest);
+      const wVals   = data.map(d => d.ftp_w);
+      const hasW    = wVals.some(v => v != null);
+      const latestHr = hrVals.filter(v => v != null).at(-1);
+      const latestW  = wVals.filter(v => v != null).at(-1);
+      const labelParts = [];
+      if (latestHr) labelParts.push(`${latestHr} bpm LTHR`);
+      if (latestW)  labelParts.push(`${latestW} W`);
+      if (labelParts.length) document.getElementById('ftpCurrentLabel').textContent = `Current: ${labelParts.join(' · ')}`;
+      const flatHr = Array(hrVals.length).fill(latestHr);
+      const datasets = [
+        { label:'LTHR', data:hrVals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', borderWidth:2, pointRadius:5, tension:0.2, fill:true, spanGaps:true, yAxisID:'y' },
+        { label:'LTHR ref', data:flatHr, borderColor:'rgba(96,165,250,0.3)', borderWidth:1, borderDash:[5,4], pointRadius:0, tension:0, yAxisID:'y' },
+      ];
+      if (hasW) {
+        datasets.push({ label:'FTP (W)', data:wVals, borderColor:'#fbbf24', borderWidth:2, pointRadius:5, tension:0.2, spanGaps:true, yAxisID:'y1' });
+      }
       new Chart(document.getElementById('ftpTrendChart'), {
         type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label:'Est. LTHR', data:hrVals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', borderWidth:2, pointRadius:5, tension:0.2, fill:true, spanGaps:true },
-            { label:'Current', data:flatLine, borderColor:'rgba(96,165,250,0.3)', borderWidth:1, borderDash:[5,4], pointRadius:0, tension:0 },
-          ]
-        },
+        data: { labels, datasets },
         options: {
           responsive:true, maintainAspectRatio:false,
+          interaction:{mode:'index',intersect:false},
           plugins:{
             legend:{display:false},
             tooltip:{
-              callbacks:{ label: ctx => ctx.dataset.label==='Current' ? null : `LTHR: ${ctx.raw} bpm` },
-              filter: item => item.dataset.label !== 'Current',
+              callbacks:{
+                label: ctx => {
+                  if (ctx.dataset.label === 'LTHR ref') return null;
+                  if (ctx.dataset.label === 'FTP (W)') return `FTP: ${ctx.raw} W`;
+                  return `LTHR: ${ctx.raw} bpm`;
+                }
+              },
+              filter: item => item.dataset.label !== 'LTHR ref',
             }
           },
           scales:{
             x:{grid:{color:G},ticks:{...T}},
-            y:{grid:{color:G},ticks:{...T,callback:v=>v+' bpm'},suggestedMin:140,suggestedMax:185}
+            y:{position:'left',grid:{color:G},ticks:{...T,callback:v=>v+' bpm'},suggestedMin:140,suggestedMax:185},
+            ...(hasW ? { y1:{position:'right',grid:{drawOnChartArea:false},ticks:{...T,callback:v=>v+' W'}} } : {}),
           }
         }
       });
@@ -823,6 +896,53 @@
             legend:{display:false},
             tooltip:{ callbacks:{ label: ctx=>`${ctx.label}: ${ctx.raw}%` } }
           }
+        }
+      });
+    }
+  })();
+  {% endif %}
+
+  // Power zone distribution charts
+  {% if power_meter_active and zone_dist_by_week_power and zone_dist_by_week_power | length > 0 %}
+  (function() {
+    const weeks   = {{ zone_dist_by_week_power | tojson }};
+    const zColors = ['#52525b','#a3e635','#fde047','#fb923c','#f87171'];
+    const wLabels = weeks.map(w => w.week_label ? w.week_label.replace(/^\d{4}-/,'') : '');
+
+    new Chart(document.getElementById('powerZonePolarChart'), {
+      type: 'bar',
+      data: {
+        labels: wLabels,
+        datasets: [1,2,3,4,5].map((z,i) => ({
+          label: `Z${z}`,
+          data: weeks.map(w => +(w[`z${z}_pct`] ?? 0).toFixed(1)),
+          backgroundColor: zColors[i],
+          stack: 'zones',
+          borderRadius: i === 4 ? 2 : 0,
+          borderSkipped: false,
+        }))
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`Z${ctx.datasetIndex+1}: ${ctx.raw}%` } } },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:12},stacked:true},
+          y:{grid:{color:G},ticks:{...T,callback:v=>v+'%'},stacked:true,min:0,max:100}
+        }
+      }
+    });
+
+    const block = {{ zone_dist_block_power | tojson }};
+    if (block && Object.keys(block).length) {
+      new Chart(document.getElementById('powerZoneDonutChart'), {
+        type: 'doughnut',
+        data:{
+          labels:['Z1','Z2','Z3','Z4','Z5'],
+          datasets:[{ data:[1,2,3,4,5].map(z=>+(block[`z${z}_pct`]??0).toFixed(1)), backgroundColor:zColors, borderWidth:0 }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false, cutout:'65%',
+          plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.label}: ${ctx.raw}%` } } }
         }
       });
     }
@@ -914,6 +1034,92 @@
           x:{grid:{color:G},ticks:{...T,maxTicksLimit:8}},
           y:{grid:{color: ctx=>ctx.tick.value===0?'#3f3f46':G, lineWidth: ctx=>ctx.tick.value===0?1.5:1},
              ticks:{...T,callback:v=>v+'%'}}
+        }
+      }
+    });
+  })();
+  {% endif %}
+
+  // Pw:HR decoupling scatter + trend
+  {% if power_durability_points and power_durability_points | length >= 2 %}
+  (function() {
+    const pts   = {{ power_durability_points | tojson }};
+    const trend = {{ power_durability_trend | tojson }};
+    const n = pts.length;
+    const trendData = (trend.length === 2 && n > 1)
+      ? pts.map((_, i) => +(trend[0].v + (trend[1].v - trend[0].v) * i / (n - 1)).toFixed(2))
+      : [];
+    new Chart(document.getElementById('powerDurabilityChart'), {
+      type: 'line',
+      data: {
+        labels: pts.map(p => p.date.slice(5).replace('-','/')),
+        datasets: [
+          { label:'Decoupling %', data:pts.map(p=>p.decoupling_pct),
+            borderColor:'#fbbf24', backgroundColor:'#fbbf24', pointRadius:5, showLine:false },
+          ...(trendData.length ? [{ label:'Trend', data:trendData, borderColor:'rgba(251,191,36,0.4)', borderWidth:1.5, borderDash:[5,4], pointRadius:0, showLine:true, tension:0 }] : []),
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title: ctx => pts[ctx[0].dataIndex]?.date ?? '',
+              label: ctx => {
+                if (ctx.dataset.label === 'Trend') return null;
+                const p = pts[ctx.dataIndex];
+                return [`Decoupling: ${p.decoupling_pct > 0 ? '+' : ''}${p.decoupling_pct}%`,
+                        `HR ${p.hr_drift_pct > 0 ? '+' : ''}${p.hr_drift_pct}% · Pwr ${p.power_drift_pct > 0 ? '+' : ''}${p.power_drift_pct}%`,
+                        `${p.first_third_power}→${p.final_third_power} W · ${p.duration_min} min`];
+              }
+            },
+            filter: item => item.dataset.label !== 'Trend',
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:8}},
+          y:{grid:{color: ctx=>ctx.tick.value===0?'#3f3f46':G, lineWidth: ctx=>ctx.tick.value===0?1.5:1},
+             ticks:{...T,callback:v=>v+'%'}}
+        }
+      }
+    });
+  })();
+  {% endif %}
+
+  // Measured FTP & W/kg dual-axis
+  {% if measured_wkg and measured_wkg | length >= 1 %}
+  (function() {
+    const mk = {{ measured_wkg | tojson }};
+    new Chart(document.getElementById('measuredWkgChart'), {
+      type: 'line',
+      data: {
+        labels: mk.map(p => p.label),
+        datasets: [
+          { label:'FTP (W)', data:mk.map(p=>p.ftp_w), borderColor:'#fbbf24', backgroundColor:'rgba(251,191,36,0.08)', borderWidth:2, pointRadius:5, tension:0.2, fill:true, yAxisID:'y' },
+          { label:'W/kg', data:mk.map(p=>p.wkg), borderColor:'#34d399', borderWidth:1.5, pointRadius:4, tension:0.2, fill:false, yAxisID:'y1' },
+          { label:'Est. FTP (W)', data:mk.map(p=>p.est_ftp_w ?? null), borderColor:'rgba(167,139,250,0.5)', borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0.2, spanGaps:true, yAxisID:'y' },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label: ctx => {
+                if (ctx.dataset.label === 'W/kg') return `W/kg: ${ctx.raw} (${mk[ctx.dataIndex]?.weight_kg} kg)`;
+                if (ctx.dataset.label === 'Est. FTP (W)') return ctx.raw ? `Est. FTP: ${ctx.raw} W` : null;
+                return `FTP: ${ctx.raw} W`;
+              }
+            }
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:10}},
+          y:{position:'left',grid:{color:G},ticks:{...T,callback:v=>v+' W'}},
+          y1:{position:'right',grid:{drawOnChartArea:false},ticks:{...T,callback:v=>v.toFixed(2)}},
         }
       }
     });

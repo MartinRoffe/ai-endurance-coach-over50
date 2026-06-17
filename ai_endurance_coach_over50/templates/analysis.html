@@ -155,6 +155,18 @@
         <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:var(--text)">{{ a.avg_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
       </div>
       {% endif %}
+      {% if a.avg_power_w %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Avg Power</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:#fbbf24">{{ a.avg_power_w | int }} <span style="font-size:11px;color:var(--muted)">W</span></p>
+      </div>
+      {% endif %}
+      {% if a.norm_power_w %}
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Norm. Power</p>
+        <p style="font-family:var(--font-m);font-size:15px;font-weight:500;color:#fbbf24">{{ a.norm_power_w | int }} <span style="font-size:11px;color:var(--muted)">W</span></p>
+      </div>
+      {% endif %}
       {% if a.max_hr %}
       <div>
         <p class="eyebrow" style="margin-bottom:3px">Max HR</p>
@@ -186,8 +198,14 @@
     <div style="background:rgba(251,146,60,0.07);border:1px solid rgba(251,146,60,0.25);border-left:3px solid #fb923c;padding:12px 16px;margin-bottom:18px;border-radius:2px">
       <p class="eyebrow" style="margin-bottom:8px;color:#fb923c;letter-spacing:0.15em">⚡ FTP Test — 20-min Effort</p>
       <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+        {% if a.ftp_w %}
         <div>
-          <p class="eyebrow" style="margin-bottom:3px">Effort Avg HR</p>
+          <p class="eyebrow" style="margin-bottom:3px">FTP</p>
+          <p style="font-family:var(--font-m);font-size:18px;font-weight:600;color:#fbbf24">{{ a.ftp_w | int }} <span style="font-size:11px;color:var(--muted)">W</span>{% if a.ftp_wkg %} <span style="font-size:14px;color:var(--text)">({{ "%.2f"|format(a.ftp_wkg) }} W/kg)</span>{% endif %}</p>
+        </div>
+        {% endif %}
+        <div>
+          <p class="eyebrow" style="margin-bottom:3px">LTHR</p>
           <p style="font-family:var(--font-m);font-size:18px;font-weight:600;color:var(--text)">{{ a.ftp_effort_avg_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
         </div>
         {% if a.ftp_effort_max_hr %}
@@ -196,7 +214,7 @@
           <p style="font-family:var(--font-m);font-size:18px;font-weight:600;color:var(--text)">{{ a.ftp_effort_max_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
         </div>
         {% endif %}
-        <p style="font-size:12px;color:var(--muted);line-height:1.5;padding-bottom:2px">Threshold HR ≈ effort avg HR · update Z4 targets accordingly</p>
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;padding-bottom:2px">{% if a.ftp_w %}FTP = 95% of 20-min watts · {% endif %}LTHR ≈ effort avg HR</p>
       </div>
     </div>
     {% endif %}
@@ -274,6 +292,27 @@
       <p class="eyebrow" style="margin-bottom:10px">Heart Rate Zones <button type="button" class="gr-tip-trigger" data-tip="Z1 = very easy recovery. Z2 = aerobic base (conversational pace). Z3 = tempo (somewhat hard — the grey zone, use sparingly). Z4 = threshold (race-pace hard effort). Z5 = max intervals. Most sessions should be Z1–Z2." aria-label="More info" aria-expanded="false">?</button></p>
       <div style="display:flex;flex-direction:column;gap:5px">
         {% for z in a.hr_zones %}
+        {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);width:16px;text-align:right;letter-spacing:0.05em">Z{{ z.zone }}</span>
+          <div style="flex:1;background:var(--border);border-radius:2px;height:3px;overflow:hidden">
+            <div class="zbar {{ zc }}" style="width:{{ [z.pct, 100]|min }}%"></div>
+          </div>
+          <span style="font-family:var(--font-m);font-size:12px;color:var(--text-dim);width:30px;text-align:right">{{ z.pct }}%</span>
+          <span style="font-family:var(--font-m);font-size:12px;color:var(--muted);width:44px;text-align:right">
+            {% set m = (z.secs // 60) %}{% set s = (z.secs % 60) %}{{ m }}m{% if s %}{{ "%02d"|format(s) }}s{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if a.power_zones %}
+    <div style="margin-bottom:18px">
+      <p class="eyebrow" style="margin-bottom:10px">Power Zones</p>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        {% for z in a.power_zones %}
         {% set zc = ['z1','z2','z3','z4','z5'][z.zone - 1] if z.zone <= 5 else 'z1' %}
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);width:16px;text-align:right;letter-spacing:0.05em">Z{{ z.zone }}</span>

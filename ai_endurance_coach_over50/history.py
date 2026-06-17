@@ -1226,6 +1226,55 @@ def latest_estimated_wkg() -> Optional[dict]:
     return hist[-1] if hist else None
 
 
+def _weight_kg_on_date(d_iso: str, weights: list[tuple[str, float]]) -> Optional[float]:
+    """Most recent bodyweight on or before d_iso."""
+    weight = None
+    for wd, wv in weights:
+        if wd <= d_iso:
+            weight = wv
+        else:
+            break
+    return weight
+
+
+def measured_wkg_history(days: int = 180) -> list[dict]:
+    """Measured FTP watts and W/kg from ftp_tests crossed with bodyweight."""
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    with _conn() as con:
+        _ensure_ftp_schema(con)
+        _ensure_body_metrics_schema(con)
+        tests = con.execute(
+            "SELECT date, ftp_w FROM ftp_tests WHERE ftp_w IS NOT NULL ORDER BY date",
+        ).fetchall()
+        weight_rows = con.execute(
+            "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL ORDER BY date",
+        ).fetchall()
+    weights = [(r["date"], float(r["weight_kg"])) for r in weight_rows]
+    result = []
+    for r in tests:
+        d_iso = r["date"]
+        if d_iso < start:
+            continue
+        weight = _weight_kg_on_date(d_iso, weights)
+        if not weight or weight <= 0:
+            continue
+        ftp_w = int(r["ftp_w"])
+        d = date.fromisoformat(d_iso)
+        result.append({
+            "date": d_iso,
+            "label": d.strftime("%-d %b"),
+            "ftp_w": ftp_w,
+            "weight_kg": round(weight, 1),
+            "wkg": round(ftp_w / weight, 2),
+        })
+    return result
+
+
+def latest_measured_wkg() -> Optional[dict]:
+    hist = measured_wkg_history(180)
+    return hist[-1] if hist else None
+
+
 # ── Latest bodyweight / lean mass (single source of truth for nutrition) ─────
 
 def latest_weight_kg() -> Optional[float]:

@@ -25,6 +25,7 @@ from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
                    build_combined_event_weeks, COMPOUND_SESSIONS,
                    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, TENERIFE_DAYS, session_for_date,
+                   session_for_date_extended,
                    CAMP_START, CAMP_END)
 from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
                       build_hr_calendar_weeks, build_hr_event_weeks,
@@ -46,7 +47,9 @@ from .history import (
     get_plan_override,
     history_for_chart,
     intensity_distribution_by_week,
+    intensity_distribution_by_week_power,
     latest_estimated_wkg,
+    latest_measured_wkg,
     list_plan_overrides,
     load,
     load_activities_by_date,
@@ -57,6 +60,9 @@ from .history import (
     load_durability,
     load_ftp_tests,
     load_fuelling_logs,
+    load_power_durability,
+    measured_wkg_history,
+    power_meter_active,
     gut_training_summary,
     load_recent_activities,
     load_session_rpe,
@@ -507,6 +513,36 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     except Exception:
         pass
 
+    power_snapshot = None
+    try:
+        if power_meter_active():
+            tests = load_ftp_tests()
+            ftp_w = next((t["ftp_w"] for t in reversed(tests) if t.get("ftp_w")), None)
+            if ftp_w:
+                for act in load_recent_activities(14):
+                    if act.get("type_key") not in _BIKE_TYPE_KEYS:
+                        continue
+                    np_w = act.get("norm_power_w")
+                    if not np_w:
+                        continue
+                    try:
+                        sess = session_for_date_extended(date.fromisoformat(act["date"]))
+                    except Exception:
+                        sess = None
+                    label = sess[1] if sess else ""
+                    if label not in QUALITY_BIKE_LABELS:
+                        continue
+                    power_snapshot = {
+                        "label": label,
+                        "date": act["date"],
+                        "norm_power_w": round(np_w),
+                        "ftp_w": ftp_w,
+                        "pct_ftp": round(np_w / ftp_w * 100),
+                    }
+                    break
+    except Exception:
+        pass
+
     return {
         "date": date_key,
         "date_long": target.strftime("%A, %-d %B %Y"),
@@ -537,6 +573,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "is_monday": is_monday,
         "nutrition_today": nutrition_today,
         "gut_training": gut_training,
+        "power_snapshot": power_snapshot,
     }
 
 
@@ -698,6 +735,22 @@ def analysis_view(request: Request):
                 if plan:
                     a["planned_fuel"] = plan
             a["fuel_log"] = fuel_logs.get(str(a.get("activity_id")))
+    except Exception:
+        pass
+
+    # FTP watts + W/kg for FTP test cards
+    try:
+        from .history import _weight_kg_on_date, load_body_metrics
+        weight_rows = [(r["date"], r["weight_kg"]) for r in load_body_metrics(365) if r.get("weight_kg")]
+        weights = [(d, float(w)) for d, w in weight_rows]
+        for a in activities:
+            effort_w = a.get("ftp_effort_avg_w")
+            if effort_w:
+                w = _weight_kg_on_date(a["date"], weights)
+                ftp_w = a.get("ftp_w") or round(effort_w * 0.95)
+                a["ftp_w"] = ftp_w
+                if w:
+                    a["ftp_wkg"] = round(ftp_w / w, 2)
     except Exception:
         pass
 
@@ -890,6 +943,27 @@ async def performance_view(request: Request):
     # Intensity distribution by week
     zone_dist_by_week = intensity_distribution_by_week(_PLAN_START, date.today())
     zone_dist_block = _block_zone_totals(zone_dist_by_week)
+    zone_dist_by_week_power = intensity_distribution_by_week_power(_PLAN_START, date.today())
+    zone_dist_block_power = _block_zone_totals(zone_dist_by_week_power)
+
+    # Measured FTP / W/kg (power tests + weight)
+    measured_wkg = measured_wkg_history(180)
+    est_by_date = {r["date"]: r for r in wkg_history}
+    for row in measured_wkg:
+        row["est_ftp_w"] = est_by_date.get(row["date"], {}).get("est_ftp_w")
+
+    # Pw:HR decoupling on long power rides
+    power_durability_points = load_power_durability(180)
+    power_durability_trend: list[dict] = []
+    if len(power_durability_points) >= 3:
+        fit = _ols([p["decoupling_pct"] for p in power_durability_points])
+        if fit:
+            slope, intercept = fit
+            n = len(power_durability_points)
+            power_durability_trend = [
+                {"date": power_durability_points[0]["date"], "v": round(intercept, 2)},
+                {"date": power_durability_points[-1]["date"], "v": round(slope * (n - 1) + intercept, 2)},
+            ]
 
     return TEMPLATES.TemplateResponse(
         request=request,
@@ -912,9 +986,15 @@ async def performance_view(request: Request):
             "vo2_history": vo2_history(days=90),
             "zone_dist_by_week": zone_dist_by_week,
             "zone_dist_block": zone_dist_block,
+            "zone_dist_by_week_power": zone_dist_by_week_power,
+            "zone_dist_block_power": zone_dist_block_power,
             "durability_points": durability_points,
             "durability_trend": durability_trend,
+            "power_durability_points": power_durability_points,
+            "power_durability_trend": power_durability_trend,
             "wkg_history": wkg_history,
+            "measured_wkg": measured_wkg,
+            "power_meter_active": power_meter_active(),
             "monotony_weeks": monotony_weeks,
             "acclimation": acclimation,
             "taper_scenarios": taper_scenarios,
@@ -1794,8 +1874,10 @@ def _body_context() -> dict[str, Any]:
     cal_labels  = _short(_cal_isos)
 
     est_wkg = None
+    measured_wkg = None
     try:
         est_wkg = latest_estimated_wkg()
+        measured_wkg = latest_measured_wkg()
     except Exception:
         pass
 
@@ -1803,6 +1885,7 @@ def _body_context() -> dict[str, Any]:
         "latest_body": latest_body,
         "latest_bp": latest_bp,
         "est_wkg": est_wkg,
+        "measured_wkg": measured_wkg,
         "bp_class_label": bp_class_label,
         "bp_class_colour": bp_class_colour,
         "weight_dates": _short(weight_dates),
