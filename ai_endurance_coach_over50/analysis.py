@@ -1431,22 +1431,63 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
 
 # ── Haute Route per-stage pacing & fuelling plans ────────────────────────────
 
+HR_STAGE_PLAN_CACHE_VER = "v2"
+_PEAK_DECOUPLING_THRESHOLD = 8.0
+
+
+def peak_sim_decoupling_flags(weeks: list[dict]) -> dict[int, dict]:
+    """Flag upcoming peak-phase simulation weeks when recent Pw:HR decoupling is elevated."""
+    from .history import load_power_durability, power_meter_active
+
+    if not power_meter_active():
+        return {}
+    rows = load_power_durability(90)
+    if not rows:
+        return {}
+    recent = rows[-3:]
+    if not any((r.get("decoupling_pct") or 0) > _PEAK_DECOUPLING_THRESHOLD for r in recent):
+        return {}
+    latest_pct = recent[-1]["decoupling_pct"]
+    today = date.today()
+    flags: dict[int, dict] = {}
+    for week in weeks:
+        wn = week.get("week_num", 0)
+        if wn < 36 or wn > 43:
+            continue
+        if not any("Simulation Day" in d.get("label", "") for d in week.get("days", [])):
+            continue
+        wk_start = week["start"]
+        if wk_start + timedelta(days=6) < today:
+            continue
+        flags[wn] = {
+            "decoupling_pct": latest_pct,
+            "message": (
+                f"Recent Pw:HR decoupling +{latest_pct}% on long rides — "
+                "pace simulation days conservatively or add recovery before this block."
+            ),
+        }
+    return flags
+
+
 def generate_hr_stage_plans() -> dict[int, dict]:
     """Return {stage_day: plan_dict} for the 7 Haute Route Alpes stages.
 
-    Cached per stage in text_cache (key hr_stage_plan_v1_{day}, JSON string).
+    Cached per stage in text_cache (key hr_stage_plan_v2_{day}, JSON string).
     When any stage is missing and an API key is set, makes ONE batched
     claude-sonnet-4-6 call for all missing stages, grounded in the athlete's
-    latest LTHR and estimated FTP. Returns whatever is cached on failure.
+    latest LTHR and measured or estimated FTP. Returns whatever is cached on failure.
     """
     import json as _json
     from .hr_plan import HR_EVENT_STAGES
-    from .history import get_cached_text, set_cached_text, load_ftp_tests, latest_estimated_wkg
+    from .history import (
+        get_cached_text, set_cached_text, load_ftp_tests,
+        latest_estimated_wkg, latest_measured_wkg, power_meter_active,
+    )
 
     plans: dict[int, dict] = {}
     missing: list[dict] = []
     for stage in HR_EVENT_STAGES:
-        cached = get_cached_text(f"hr_stage_plan_v1_{stage['day']}")
+        cached = get_cached_text(f"hr_stage_plan_{HR_STAGE_PLAN_CACHE_VER}_{stage['day']}")
         if cached:
             try:
                 plans[stage["day"]] = _json.loads(cached)
@@ -1463,7 +1504,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
 
     # Negative cache: after a failed generation, don't re-fire a blocking
     # Sonnet call on every page view — back off for an hour.
-    _FAIL_KEY = "hr_stage_plan_fail_until"
+    _FAIL_KEY = f"hr_stage_plan_{HR_STAGE_PLAN_CACHE_VER}_fail_until"
     fail_until = get_cached_text(_FAIL_KEY)
     if fail_until:
         try:
@@ -1472,7 +1513,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
         except ValueError:
             pass
 
-    # Athlete context: LTHR from the most recent FTP test, estimated FTP watts
+    has_power = power_meter_active()
     lthr_note = "LTHR unknown — express HR caps as % of LTHR"
     try:
         tests = load_ftp_tests()
@@ -1480,26 +1521,58 @@ def generate_hr_stage_plans() -> dict[int, dict]:
             lthr_note = f"LTHR ≈ {tests[-1]['ftp_hr']} bpm (from FTP test {tests[-1]['date']})"
     except Exception:
         pass
-    ftp_note = ""
-    try:
-        wkg = latest_estimated_wkg()
-        if wkg:
-            ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only, no power meter."
-    except Exception:
-        pass
+
+    if has_power:
+        measured = latest_measured_wkg()
+        ftp_w = measured["ftp_w"] if measured else None
+        if not ftp_w:
+            tests = load_ftp_tests()
+            if tests and tests[-1].get("ftp_w"):
+                ftp_w = tests[-1]["ftp_w"]
+        wkg_str = f"{measured['wkg']} W/kg" if measured else "unknown"
+        athlete_note = (
+            f"Athlete has a power meter. Measured FTP = {ftp_w or 'unknown'} W ({wkg_str}). "
+            f"{lthr_note}. Dual-channel coaching: HR + watts."
+        )
+        json_schema = (
+            '{"pacing": "2-3 sentence stage pacing strategy", '
+            '"hr_cap_first_climb": "specific HR cap or %LTHR for the first climb", '
+            '"wkg_cap_first_climb": "W/kg cap for the first climb (e.g. 2.8 W/kg)", '
+            '"steady_state_w": "target watts for flat/rolling sections between climbs", '
+            '"carbs_g_per_hr": int, "total_carbs_g": int, "fluid_ml_per_hr": int, '
+            '"brief": "one-sentence key reminder"}'
+        )
+        climb_rule = (
+            "On climbs >8%, anchor by W/kg; on hot days (>25°C) or above 2000 m, "
+            "defer to the HR cap when HR exceeds power-predicted effort."
+        )
+    else:
+        athlete_note = f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}."
+        ftp_note = ""
+        try:
+            wkg = latest_estimated_wkg()
+            if wkg:
+                ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only."
+        except Exception:
+            pass
+        athlete_note += ftp_note
+        json_schema = (
+            '{"pacing": "2-3 sentence stage pacing strategy", '
+            '"hr_cap_first_climb": "specific HR cap or %LTHR for the first climb", '
+            '"carbs_g_per_hr": int, "total_carbs_g": int, "fluid_ml_per_hr": int, '
+            '"brief": "one-sentence key reminder"}'
+        )
+        climb_rule = "Express all pacing caps in HR / %LTHR terms."
 
     lines = [
         "Plan pacing and in-ride fuelling for each stage of the Haute Route Alpes "
         "(7-day amateur stage race, timed climbs, untimed descents).",
-        f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}.{ftp_note}",
+        athlete_note,
         "Key stage-race principles: the event is won in the final 3 stages, not the first 2 — "
         "cap effort on day 1–2 climbs; fuel from the first 30 minutes; respect altitude above 2000 m "
         "(HR runs higher for the same effort).",
-        "Reply ONLY with valid JSON: a dict mapping stage day number (as string) -> "
-        "{\"pacing\": \"2-3 sentence stage pacing strategy\", "
-        "\"hr_cap_first_climb\": \"specific HR cap or %LTHR for the first climb\", "
-        "\"carbs_g_per_hr\": int, \"total_carbs_g\": int, \"fluid_ml_per_hr\": int, "
-        "\"brief\": \"one-sentence key reminder\"}",
+        climb_rule,
+        "Reply ONLY with valid JSON: a dict mapping stage day number (as string) -> " + json_schema,
         "No extra text, no markdown fences.",
         "",
         "Stages:",
@@ -1534,7 +1607,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
                 day = int(day_str)
             except (TypeError, ValueError):
                 continue
-            set_cached_text(f"hr_stage_plan_v1_{day}", _json.dumps(plan))
+            set_cached_text(f"hr_stage_plan_{HR_STAGE_PLAN_CACHE_VER}_{day}", _json.dumps(plan))
             plans[day] = plan
     except Exception as exc:
         import logging

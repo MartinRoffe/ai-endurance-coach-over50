@@ -167,6 +167,14 @@
     {% endif %}
 
     <!-- Week row -->
+    {% if peak_decoupling_flags.get(week.week_num) %}
+    {% set pf = peak_decoupling_flags[week.week_num] %}
+    <div class="rounded border col-span-8" style="border-color:#b45309;background:rgba(251,191,36,0.08);padding:8px 12px;margin-bottom:4px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:#fbbf24;margin:0;line-height:1.5">
+        ⚠️ Simulation week · {{ pf.message }}
+      </p>
+    </div>
+    {% endif %}
     <div class="grid grid-cols-8 gap-1 mb-1">
 
       <!-- Week label + total hours -->
@@ -278,7 +286,15 @@
         </summary>
         <div style="padding:4px 16px 14px 16px;font-size:12px;color:#d4d4d8;line-height:1.6">
           {% if sp.pacing %}<p style="margin:0 0 6px 0"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">Pacing</span><br>{{ sp.pacing }}</p>{% endif %}
-          {% if sp.hr_cap_first_climb %}<p style="margin:0 0 6px 0"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">First-climb HR cap</span><br>{{ sp.hr_cap_first_climb }}</p>{% endif %}
+          <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:6px">
+            {% if sp.wkg_cap_first_climb %}
+            <p style="margin:0;flex:1;min-width:140px"><span style="color:#fbbf24;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">First-climb W/kg cap</span><br>{{ sp.wkg_cap_first_climb }}</p>
+            {% endif %}
+            {% if sp.hr_cap_first_climb %}
+            <p style="margin:0;flex:1;min-width:140px"><span style="color:#7dd3fc;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">First-climb HR cap</span><br>{{ sp.hr_cap_first_climb }}</p>
+            {% endif %}
+          </div>
+          {% if sp.steady_state_w %}<p style="margin:0 0 6px 0"><span style="color:#fbbf24;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em">Flat / rolling watts</span><br>{{ sp.steady_state_w }}</p>{% endif %}
           <p style="margin:0 0 6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#a1a1aa">
             {% if sp.carbs_g_per_hr %}⛽ {{ sp.carbs_g_per_hr }} g/h carbs{% endif %}
             {% if sp.total_carbs_g %} · {{ sp.total_carbs_g }} g total{% endif %}

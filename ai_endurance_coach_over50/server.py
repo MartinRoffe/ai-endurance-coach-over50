@@ -1663,16 +1663,19 @@ def haute_route_view(request: Request):
         hr_event_ctl = hr_proj_data[-1]["ctl"] if hr_proj_data else None
 
     stage_plans: dict = {}
+    peak_decoupling_flags: dict = {}
     try:
-        from .analysis import generate_hr_stage_plans
+        from .analysis import generate_hr_stage_plans, peak_sim_decoupling_flags
+        weeks = build_hr_calendar_weeks()
         stage_plans = generate_hr_stage_plans()
+        peak_decoupling_flags = peak_sim_decoupling_flags(weeks)
     except Exception:
-        pass
+        weeks = build_hr_calendar_weeks()
 
     ctx = {
         "active_tab":    "haute_route",
         "phases":        HR_PHASES,
-        "weeks":         build_hr_calendar_weeks(),
+        "weeks":         weeks,
         "event_weeks":   build_hr_event_weeks(),
         "event_start":   HR_EVENT_START,
         "event_end":     HR_EVENT_END,
@@ -1681,6 +1684,8 @@ def haute_route_view(request: Request):
         "hr_event_ctl":  round(hr_event_ctl, 1) if hr_event_ctl is not None else None,
         "heat_protocol": HR_HEAT_PROTOCOL,
         "stage_plans":   stage_plans,
+        "peak_decoupling_flags": peak_decoupling_flags,
+        "power_meter_active": power_meter_active(),
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
 
