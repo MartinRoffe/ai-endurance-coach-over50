@@ -3,7 +3,7 @@
 **Nav:** top-level **Nutrition** tab (not under Health).
 
 Sub-pages use a sticky bar below the main navigation: Overview · Daily Menus ·
-Ride Fuelling · Recipes · Shopping.
+Ride Fuelling · Recipes · Asda · Lidl.
 
 ---
 
@@ -59,6 +59,12 @@ drinks / rice cakes / gels.
 
 Click-to-add Asda shopping list with a running total. Maltodextrin and fructose
 are ordered separately from sports-nutrition suppliers.
+
+**Route:** `/nutrition/lidl-shopping-list`
+
+Same weekly list with Lidl target prices. Links open Google search for in-store
+shopping (Lidl has no online grocery trolley). Maltodextrin and fructose are
+ordered separately from sports-nutrition suppliers.
 
 ---
 

@@ -1,11 +1,13 @@
-{# nutrition_section: overview | meals | fuelling | recipes | shopping #}
+{# nutrition_section: overview | meals | fuelling | recipes | shopping | lidl_shopping #}
 <style>
   .nut-subnav {
-    background: var(--surface);
+    background: rgba(17, 17, 20, 0.92);
     border-bottom: 1px solid var(--border);
     position: sticky;
-    top: 0;
-    z-index: 40;
+    top: var(--gr-nav-height, 44px);
+    z-index: 99;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   .nut-subnav-inner {
     max-width: 980px;
@@ -47,6 +49,7 @@
     <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">Daily Menus</a>
     <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Ride Fuelling</a>
     <a href="/nutrition/recipes" class="{% if nutrition_section == 'recipes' %}active{% endif %}">Recipes</a>
-    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' %}active{% endif %}">Shopping</a>
+    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' %}active{% endif %}">Asda</a>
+    <a href="/nutrition/lidl-shopping-list" class="{% if nutrition_section == 'lidl_shopping' %}active{% endif %}">Lidl</a>
   </div>
 </nav>

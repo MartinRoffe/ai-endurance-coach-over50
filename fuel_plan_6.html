@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Feed Plan — Weekly Fuel & Lidl Shop</title>
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --road:#1a1d21;        /* tarmac near-black */
+    --road-2:#23272c;      /* raised panel */
+    --paper:#f3efe6;       /* musette cream */
+    --paper-2:#e8e2d4;     /* card cream */
+    --ink:#16181b;         /* near-black text */
+    --ink-soft:#4a4e54;    /* muted ink */
+    --hi-vis:#d6ff3f;      /* hi-vis lime — race accent */
+    --hi-vis-deep:#a9cf1f;
+    --bidon:#ff5a2c;       /* bottle orange — secondary accent */
+    --line:#cfc7b5;        /* hairline on paper */
+    --line-dark:#34383e;   /* hairline on road */
+    --good:#3fa34d;
+    --font-display:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --font-body:Georgia,"Times New Roman",serif;
+    --font-data:"SF Mono",ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--hi-vis);color:var(--ink);}
+
+  /* ============ LAYOUT ============ */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px;}
+
+  /* ============ MASTHEAD ============ */
+  header.mast{
+    background:var(--road);
+    color:var(--paper);
+    padding:46px 0 0;
+    border-bottom:3px solid var(--hi-vis);
+    position:relative;
+    overflow:hidden;
+  }
+  /* road centre-line motif */
+  .mast::after{
+    content:"";
+    position:absolute;
+    left:0;right:0;bottom:0;height:3px;
+    background:repeating-linear-gradient(90deg,var(--hi-vis) 0 38px,transparent 38px 70px);
+    opacity:.0; /* the solid border carries it; dashes layered below in plate */
+  }
+  .eyebrow{
+    font-family:var(--font-data);
+    font-size:.72rem;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    color:var(--hi-vis);
+    margin-bottom:14px;
+  }
+  .mast h1{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(2.6rem,7vw,5rem);
+    line-height:.92;
+    letter-spacing:-.02em;
+    text-transform:uppercase;
+  }
+  .mast h1 .thin{font-weight:300;display:block;color:var(--paper-2);}
+  .mast .sub{
+    font-family:var(--font-body);
+    font-style:italic;
+    color:#b9bfc6;
+    font-size:1.05rem;
+    margin:18px 0 30px;
+    max-width:48ch;
+  }
+  .rider-stats{
+    display:flex;flex-wrap:wrap;gap:0;
+    border-top:1px solid var(--line-dark);
+    margin-top:6px;
+  }
+  .rider-stats div{
+    flex:1 1 0;
+    min-width:120px;
+    padding:16px 18px 18px 0;
+    border-right:1px solid var(--line-dark);
+  }
+  .rider-stats div:last-child{border-right:none;}
+  .rider-stats .k{
+    font-family:var(--font-data);
+    font-size:.64rem;letter-spacing:.18em;
+    text-transform:uppercase;color:#7d848c;
+    display:block;margin-bottom:6px;
+  }
+  .rider-stats .v{
+    font-family:var(--font-display);
+    font-weight:700;font-size:1.32rem;color:var(--paper);
+  }
+  .rider-stats .v small{font-size:.78rem;font-weight:400;color:#9aa1a8;}
+
+  /* ============ NAV (sticky) ============ */
+  nav.jump{
+    position:sticky;top:0;z-index:50;
+    background:var(--road-2);
+    border-bottom:1px solid var(--line-dark);
+    padding:0;
+  }
+  nav.jump .wrap{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  nav.jump a{
+    flex:0 0 auto;
+    font-family:var(--font-data);
+    font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:#aeb4bb;text-decoration:none;
+    padding:15px 20px;
+    border-bottom:3px solid transparent;
+    transition:color .15s,border-color .15s;
+    white-space:nowrap;
+  }
+  nav.jump a:hover{color:var(--hi-vis);}
+  nav.jump a.on{color:var(--paper);border-bottom-color:var(--hi-vis);}
+
+  /* ============ SECTION SHELL ============ */
+  section{padding:62px 0 22px;}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:34px;border-bottom:2px solid var(--ink);padding-bottom:14px;}
+  .sec-num{
+    font-family:var(--font-data);
+    font-size:.8rem;letter-spacing:.1em;
+    color:var(--bidon);font-weight:700;
+    padding-top:6px;
+  }
+  .sec-head h2{
+    font-family:var(--font-display);
+    font-weight:800;font-size:clamp(1.6rem,4vw,2.5rem);
+    text-transform:uppercase;letter-spacing:-.01em;line-height:1;
+  }
+  .sec-intro{font-size:1.05rem;color:var(--ink-soft);max-width:66ch;margin:-16px 0 30px;}
+  .sec-intro strong{color:var(--ink);}
+
+  /* ============ PRINCIPLE STRIP ============ */
+  .principles{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));
+    gap:1px;background:var(--line);
+    border:1px solid var(--line);margin-bottom:14px;
+  }
+  .principles .p{background:var(--paper);padding:22px 20px;}
+  .principles .p h4{
+    font-family:var(--font-display);font-weight:700;font-size:.82rem;
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .principles .p h4 .dot{width:9px;height:9px;background:var(--hi-vis-deep);border-radius:50%;flex:0 0 auto;}
+  .principles .p p{font-size:.92rem;color:var(--ink-soft);}
+  .principles .p p b{color:var(--ink);}
+
+  /* ============ WEEK GRID ============ */
+  .weekgrid{
+    display:grid;grid-template-columns:90px repeat(3,1fr);
+    gap:1px;background:var(--line);border:1px solid var(--line);
+    font-size:.9rem;overflow:hidden;
+  }
+  .weekgrid > div{background:var(--paper);padding:13px 14px;}
+  .weekgrid .col-h{
+    background:var(--road);color:var(--paper);
+    font-family:var(--font-data);font-size:.68rem;letter-spacing:.14em;
+    text-transform:uppercase;display:flex;align-items:center;
+  }
+  .weekgrid .day{
+    background:var(--paper-2);
+    font-family:var(--font-display);font-weight:700;font-size:.82rem;
+    text-transform:uppercase;letter-spacing:.04em;
+    display:flex;align-items:center;
+  }
+  .weekgrid .gousto{color:var(--ink-soft);}
+  .weekgrid .gousto::before{
+    content:"GOUSTO";font-family:var(--font-data);font-size:.6rem;
+    letter-spacing:.12em;background:var(--bidon);color:#fff;
+    padding:2px 6px;border-radius:2px;margin-right:7px;vertical-align:2px;
+  }
+  .weekgrid .ride{
+    background:#1a1d21;color:var(--hi-vis);
+    font-family:var(--font-data);font-size:.74rem;letter-spacing:.06em;
+    display:flex;align-items:center;
+  }
+  .weekgrid .home small{color:var(--ink-soft);font-family:var(--font-data);font-size:.66rem;display:block;letter-spacing:.04em;text-transform:uppercase;margin-top:2px;}
+
+  /* ============ MEAL CARDS ============ */
+  .mealwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-bottom:10px;}
+  .card{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-top:4px solid var(--ink);
+    padding:22px 22px 20px;
+    position:relative;
+  }
+  .card.fish{border-top-color:var(--bidon);}
+  .card.fuel{border-top-color:var(--hi-vis-deep);}
+  .card .tag{
+    font-family:var(--font-data);font-size:.62rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--bidon);font-weight:700;margin-bottom:9px;
+  }
+  .card.fish .tag{color:var(--bidon);}
+  .card h3{
+    font-family:var(--font-display);font-weight:700;font-size:1.16rem;
+    line-height:1.15;margin-bottom:6px;letter-spacing:-.01em;
+  }
+  .card .equip{
+    font-family:var(--font-data);font-size:.66rem;letter-spacing:.05em;
+    color:var(--ink-soft);text-transform:uppercase;margin-bottom:13px;
+  }
+  .card .equip b{color:var(--ink);}
+  .card ul{list-style:none;margin:0 0 14px;}
+  .card ul li{
+    font-size:.9rem;padding:3px 0 3px 16px;position:relative;color:var(--ink-soft);
+  }
+  .card ul li::before{
+    content:"";position:absolute;left:0;top:11px;
+    width:6px;height:6px;background:var(--hi-vis-deep);
+  }
+  .macros{
+    display:flex;gap:0;border-top:1px solid var(--line);
+    font-family:var(--font-data);
+  }
+  .macros div{flex:1;padding:10px 4px 2px;text-align:center;border-right:1px solid var(--line);}
+  .macros div:last-child{border-right:none;}
+  .macros .mk{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);display:block;}
+  .macros .mv{font-size:1.04rem;font-weight:700;color:var(--ink);}
+  .macros .mv.hot{color:var(--bidon);}
+
+  /* ============ ROTATION TABLE ============ */
+  .rota{width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:8px;}
+  .rota th{
+    background:var(--road);color:var(--paper);
+    font-family:var(--font-data);font-size:.66rem;letter-spacing:.12em;
+    text-transform:uppercase;text-align:left;padding:12px 14px;font-weight:400;
+  }
+  .rota td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .rota tr:nth-child(even) td{background:var(--paper-2);}
+  .rota .d{font-family:var(--font-display);font-weight:700;text-transform:uppercase;font-size:.82rem;white-space:nowrap;}
+  .rota .gou{color:var(--ink-soft);font-style:italic;}
+  .rota .rd{color:var(--bidon);font-family:var(--font-data);font-size:.78rem;}
+
+  /* ============ PREP TIMELINE ============ */
+  .timeline{border-left:3px solid var(--ink);margin:0 0 14px 6px;padding-left:0;}
+  .timeline .step{position:relative;padding:0 0 26px 28px;}
+  .timeline .step::before{
+    content:"";position:absolute;left:-9px;top:3px;
+    width:15px;height:15px;background:var(--hi-vis);border:3px solid var(--ink);border-radius:50%;
+  }
+  .timeline .step:last-child{padding-bottom:4px;}
+  .timeline .t{font-family:var(--font-data);font-size:.7rem;letter-spacing:.1em;color:var(--bidon);font-weight:700;text-transform:uppercase;margin-bottom:4px;}
+  .timeline .step h4{font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:5px;}
+  .timeline .step p{font-size:.92rem;color:var(--ink-soft);}
+
+  /* ============ FUEL TABLE ============ */
+  .fueltable{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:10px;}
+  .fueltable th{
+    background:var(--road-2);color:var(--paper);
+    font-family:var(--font-data);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;
+    padding:11px 13px;text-align:left;font-weight:400;
+  }
+  .fueltable td{padding:11px 13px;border-bottom:1px solid var(--line);}
+  .fueltable tr:nth-child(even) td{background:var(--paper-2);}
+  .fueltable .dur{font-family:var(--font-data);font-weight:700;color:var(--ink);white-space:nowrap;}
+  .fueltable .carb{font-family:var(--font-data);color:var(--bidon);font-weight:700;}
+
+  .recipe-note{
+    background:var(--road);color:var(--paper-2);
+    padding:20px 22px;border-left:4px solid var(--hi-vis);
+    font-size:.92rem;margin:6px 0 14px;
+  }
+  .recipe-note b{color:var(--hi-vis);}
+
+  /* ============ STORAGE PANEL ============ */
+  .storage{
+    border:1px solid var(--line);
+    margin:22px 0 14px;
+    background:var(--paper-2);
+  }
+  .storage .sh{
+    background:var(--ink);color:var(--paper);
+    font-family:var(--font-display);font-weight:700;font-size:.92rem;
+    text-transform:uppercase;letter-spacing:.04em;
+    padding:13px 20px;display:flex;align-items:center;gap:11px;
+  }
+  .storage .sh .ico{font-size:1rem;}
+  .storage table{width:100%;border-collapse:collapse;font-size:.9rem;}
+  .storage th{
+    font-family:var(--font-data);font-size:.62rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);text-align:left;
+    padding:11px 20px;border-bottom:1px solid var(--line);font-weight:400;
+  }
+  .storage td{padding:13px 20px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .storage tr:last-child td{border-bottom:none;}
+  .storage .item-n{font-family:var(--font-display);font-weight:700;font-size:.92rem;white-space:nowrap;}
+  .storage .item-n small{display:block;font-family:var(--font-data);font-weight:400;font-size:.64rem;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;margin-top:3px;}
+  .storage .days{
+    font-family:var(--font-data);font-weight:700;font-size:1.05rem;
+    white-space:nowrap;
+  }
+  .storage .days.ok{color:var(--good);}
+  .storage .days.watch{color:var(--bidon);}
+  .storage .freeze{font-family:var(--font-data);font-size:.78rem;color:var(--ink-soft);white-space:nowrap;}
+  .storage .freeze b{color:var(--ink);}
+  .storage .why{color:var(--ink-soft);font-size:.86rem;}
+  @media(max-width:680px){
+    .storage .hide-sm{display:none;}
+    .storage th,.storage td{padding:11px 14px;}
+  }
+
+  /* ============ SHOPPING LIST ============ */
+  .shop-head{
+    background:var(--road);color:var(--paper);
+    padding:28px 26px;border-bottom:3px solid var(--hi-vis);
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px;
+  }
+  .shop-head .lidl{
+    font-family:var(--font-display);font-weight:800;font-size:1.3rem;
+    letter-spacing:.02em;
+  }
+  .shop-head .lidl span{color:var(--hi-vis);}
+  .shop-head .note{font-size:.86rem;color:#aeb4bb;font-style:italic;max-width:42ch;}
+  .progress-wrap{display:flex;align-items:center;gap:14px;width:100%;margin-top:6px;}
+  .bar{flex:1;height:8px;background:var(--line-dark);border-radius:0;overflow:hidden;}
+  .bar i{display:block;height:100%;width:0;background:var(--hi-vis);transition:width .25s;}
+  .progress-wrap .pct{font-family:var(--font-data);font-size:.78rem;color:var(--hi-vis);font-weight:700;white-space:nowrap;}
+
+  .shop-controls{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap;}
+  .shop-controls button{
+    font-family:var(--font-data);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+    background:var(--paper-2);border:1px solid var(--line);color:var(--ink);
+    padding:9px 15px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .shop-controls button:hover{background:var(--ink);color:var(--paper);}
+
+  .shop-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:18px;}
+  .cat{background:var(--paper-2);border:1px solid var(--line);}
+  .cat h3{
+    background:var(--ink);color:var(--paper);
+    font-family:var(--font-display);font-weight:700;font-size:.92rem;
+    text-transform:uppercase;letter-spacing:.04em;
+    padding:13px 18px;display:flex;align-items:center;gap:11px;
+  }
+  .cat h3 .ico{font-size:1rem;}
+  .cat ul{list-style:none;}
+  .cat li{border-bottom:1px solid var(--line);}
+  .cat li:last-child{border-bottom:none;}
+  .cat label{
+    display:flex;align-items:flex-start;gap:12px;padding:11px 18px;cursor:pointer;
+    transition:background .12s;
+  }
+  .cat label:hover{background:#ded7c7;}
+  .cat input{
+    appearance:none;-webkit-appearance:none;
+    width:20px;height:20px;border:2px solid var(--ink-soft);
+    flex:0 0 auto;margin-top:2px;cursor:pointer;position:relative;border-radius:0;
+    transition:background .12s,border-color .12s;
+  }
+  .cat input:checked{background:var(--hi-vis-deep);border-color:var(--hi-vis-deep);}
+  .cat input:checked::after{
+    content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-weight:800;font-size:.8rem;color:var(--ink);
+  }
+  .cat .item{flex:1;font-size:.92rem;line-height:1.35;}
+  .cat .item .q{font-family:var(--font-data);font-size:.74rem;color:var(--ink-soft);display:block;margin-top:1px;}
+  .cat label.done .item{text-decoration:line-through;color:var(--ink-soft);opacity:.6;}
+  .cat .lidl-pick{
+    font-family:var(--font-data);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--bidon);font-weight:700;display:inline-block;margin-top:3px;
+  }
+  .cat .wktag{
+    font-family:var(--font-data);font-size:.58rem;font-weight:700;letter-spacing:.06em;
+    padding:1px 6px;border-radius:2px;color:#fff;margin-left:6px;vertical-align:1px;
+  }
+  .cat .wktag.a{background:var(--ink);}
+  .cat .wktag.b{background:var(--bidon);}
+  .cat .wktag.both{background:var(--hi-vis-deep);color:var(--ink);}
+
+  /* ============ CALLOUT / FOOTER ============ */
+  .bigcallout{
+    background:var(--hi-vis);color:var(--ink);
+    padding:34px 30px;margin:14px 0;
+    display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;
+  }
+  .bigcallout .num{font-family:var(--font-display);font-weight:800;font-size:3.4rem;line-height:1;}
+  .bigcallout p{font-size:1.02rem;}
+  .bigcallout p b{font-weight:700;}
+
+  footer{
+    background:var(--road);color:#8a9098;
+    padding:40px 0;margin-top:50px;
+    font-family:var(--font-data);font-size:.74rem;letter-spacing:.06em;
+  }
+  footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;}
+  footer b{color:var(--hi-vis);}
+
+  /* ============ A/B WEEK ROTATION ============ */
+  .weeks2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px;}
+  .wk{border:1px solid var(--line);background:var(--paper-2);}
+  .wk-head{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 18px;color:var(--paper);
+  }
+  .wk-a .wk-head{background:var(--ink);}
+  .wk-b .wk-head{background:var(--bidon);}
+  .wk-head .badge{
+    font-family:var(--font-display);font-weight:800;font-size:1.3rem;
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border:2px solid currentColor;flex:0 0 auto;
+  }
+  .wk-a .wk-head .badge{color:var(--hi-vis);}
+  .wk-b .wk-head .badge{color:#fff;}
+  .wk-head .wk-t{font-family:var(--font-display);font-weight:700;font-size:.94rem;text-transform:uppercase;letter-spacing:.04em;line-height:1.15;}
+  .wk-head .wk-t small{display:block;font-family:var(--font-data);font-size:.62rem;font-weight:400;letter-spacing:.08em;opacity:.85;margin-top:2px;}
+  .wk table{width:100%;border-collapse:collapse;font-size:.84rem;}
+  .wk td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .wk tr:last-child td{border-bottom:none;}
+  .wk .d{font-family:var(--font-display);font-weight:700;text-transform:uppercase;font-size:.72rem;white-space:nowrap;width:38px;color:var(--ink-soft);}
+  .wk .m{color:var(--ink);}
+  .wk .m small{display:block;color:var(--ink-soft);font-family:var(--font-data);font-size:.6rem;text-transform:uppercase;letter-spacing:.04em;margin-top:1px;}
+  .wk .gou{color:var(--ink-soft);font-style:italic;}
+  .wk .rd{color:var(--bidon);font-family:var(--font-data);font-size:.74rem;}
+  .wk-legend{
+    font-family:var(--font-data);font-size:.74rem;color:var(--ink-soft);
+    margin:0 0 22px;padding:13px 16px;background:var(--paper-2);border:1px solid var(--line);
+    border-left:4px solid var(--hi-vis-deep);
+  }
+  .wk-legend b{color:var(--ink);}
+  @media(max-width:720px){
+    .weeks2{grid-template-columns:1fr;}
+  }
+
+  /* meal-card week ribbon */
+  .card .wkflag{
+    position:absolute;top:0;right:0;
+    font-family:var(--font-data);font-size:.6rem;font-weight:700;letter-spacing:.1em;
+    padding:4px 9px;color:#fff;
+  }
+  .card .wkflag.a{background:var(--ink);}
+  .card .wkflag.b{background:var(--bidon);}
+  .group-label{
+    font-family:var(--font-display);font-weight:800;font-size:1.05rem;
+    text-transform:uppercase;letter-spacing:.04em;
+    display:flex;align-items:center;gap:12px;
+    margin:30px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--ink);
+  }
+  .group-label .gb{
+    font-size:1.2rem;width:34px;height:34px;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;border:2px solid;
+  }
+  .group-label .gb.a{background:var(--ink);border-color:var(--ink);}
+  .group-label .gb.b{background:var(--bidon);border-color:var(--bidon);}
+
+  /* ============ DETAILED RECIPES ============ */
+  .recipe{
+    border:1px solid var(--line);
+    background:var(--paper-2);
+    margin-bottom:24px;
+  }
+  .recipe-top{
+    background:var(--ink);color:var(--paper);
+    padding:20px 24px;
+  }
+  .recipe-top .rtag{
+    font-family:var(--font-data);font-size:.62rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--hi-vis);font-weight:700;margin-bottom:8px;
+  }
+  .recipe-top h3{
+    font-family:var(--font-display);font-weight:800;font-size:1.4rem;
+    line-height:1.1;letter-spacing:-.01em;
+  }
+  .recipe-top .meta{
+    display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;
+    font-family:var(--font-data);font-size:.7rem;letter-spacing:.04em;
+    text-transform:uppercase;color:#aeb4bb;
+  }
+  .recipe-top .meta b{color:var(--hi-vis);font-weight:700;}
+  .recipe-body{padding:22px 24px 24px;}
+  .recipe-body .blk{font-family:var(--font-display);font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--bidon);margin:0 0 12px;padding-bottom:7px;border-bottom:2px solid var(--line);}
+  .recipe-body .blk:not(:first-child){margin-top:26px;}
+  .ing{list-style:none;margin:0;}
+  .ing li{
+    display:flex;gap:14px;padding:7px 0;font-size:.94rem;align-items:baseline;
+    border-bottom:1px dotted var(--line);
+  }
+  .ing li:last-child{border-bottom:none;}
+  .ing .amt{
+    font-family:var(--font-data);font-weight:700;font-size:.84rem;color:var(--ink);
+    flex:0 0 96px;
+  }
+  .ing .nm{color:var(--ink-soft);flex:1;}
+  .ing .nm em{color:var(--ink);font-style:normal;font-weight:600;}
+  .ing .nm small{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:2px;font-style:italic;}
+  .kit{
+    display:flex;flex-wrap:wrap;gap:8px;margin:0;
+  }
+  .kit span{
+    font-family:var(--font-data);font-size:.72rem;
+    background:var(--paper);border:1px solid var(--line);
+    padding:5px 11px;color:var(--ink-soft);
+  }
+  .steps-d{list-style:none;counter-reset:rstep;margin:0;}
+  .steps-d li{
+    position:relative;padding:0 0 20px 50px;font-size:.96rem;line-height:1.55;
+    color:var(--ink);
+  }
+  .steps-d li:last-child{padding-bottom:0;}
+  .steps-d li::before{
+    counter-increment:rstep;content:counter(rstep);
+    position:absolute;left:0;top:-2px;
+    width:34px;height:34px;
+    background:var(--hi-vis);color:var(--ink);
+    font-family:var(--font-display);font-weight:800;font-size:1rem;
+    display:flex;align-items:center;justify-content:center;
+    border:2px solid var(--ink);
+  }
+  /* connecting line between step numbers */
+  .steps-d li::after{
+    content:"";position:absolute;left:16px;top:34px;bottom:6px;
+    width:2px;background:var(--line);
+  }
+  .steps-d li:last-child::after{display:none;}
+  .steps-d li b{font-weight:700;}
+  .steps-d li .tip{
+    display:block;margin-top:7px;font-size:.86rem;color:var(--ink-soft);
+    padding:9px 13px;background:var(--paper);border-left:3px solid var(--hi-vis-deep);
+  }
+  .steps-d li .tip b{color:var(--ink);}
+  .steps-d li .safe{border-left-color:var(--bidon);}
+  .steps-d li .safe b{color:var(--bidon);}
+  .jargon{
+    background:var(--road);color:var(--paper-2);
+    padding:18px 22px;margin:8px 0 24px;border-left:4px solid var(--bidon);
+    font-size:.9rem;line-height:1.6;
+  }
+  .jargon h4{font-family:var(--font-display);font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bidon);margin-bottom:10px;}
+  .jargon dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;}
+  .jargon dt{font-weight:700;color:var(--hi-vis);font-family:var(--font-data);font-size:.8rem;white-space:nowrap;}
+  .jargon dd{margin:0;color:var(--paper-2);}
+  @media(max-width:680px){
+    .ing li{flex-wrap:wrap;gap:2px;}
+    .ing .amt{flex:0 0 100%;}
+    .jargon dl{grid-template-columns:1fr;gap:2px 0;}
+    .jargon dt{margin-top:8px;}
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media(max-width:760px){
+    .weekgrid{grid-template-columns:70px 1fr;}
+    .weekgrid .col-h:nth-child(2),
+    .weekgrid .col-h:nth-child(3),
+    .weekgrid .col-h:nth-child(4){display:none;}
+    .weekgrid .day{grid-column:1;}
+    .weekgrid > div:not(.day):not(.col-h){grid-column:2;}
+    .rider-stats div{flex:1 1 45%;border-right:none;border-bottom:1px solid var(--line-dark);}
+    .bigcallout{grid-template-columns:1fr;gap:12px;}
+    .bigcallout .num{font-size:2.6rem;}
+  }
+  @media print{
+    nav.jump{display:none;}
+    body{background:#fff;}
+    .card,.cat{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ MASTHEAD ============ -->
+<header class="mast">
+  <div class="wrap">
+    <div class="eyebrow">Weekly Fuel Strategy · Over-50 Endurance</div>
+    <h1>The Feed<span class="thin">Plan</span></h1>
+    <p class="sub">Office-ready breakfasts and lunches, weekend ride fuel, and a budget Lidl shop — built around a Blackstone griddle, soup maker and rice cooker.</p>
+    <div class="rider-stats">
+      <div><span class="k">Bodyweight</span><span class="v">93<small>kg</small> → 81<small>kg</small></span></div>
+      <div><span class="k">Daily Protein</span><span class="v">150–185<small>g</small></span></div>
+      <div><span class="k">Per Meal</span><span class="v">30–40<small>g</small></span></div>
+      <div><span class="k">Weekend Rides</span><span class="v">2–6<small>hr</small></span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ NAV ============ -->
+<nav class="jump">
+  <div class="wrap" id="navwrap">
+    <a href="#week">The Week</a>
+    <a href="#breakfast">Breakfasts</a>
+    <a href="#lunch">Lunches</a>
+    <a href="#prep">Sunday Prep</a>
+    <a href="#recipes">Recipes</a>
+    <a href="#weekend">Weekend</a>
+    <a href="#fuel">On-Bike Fuel</a>
+    <a href="#shop">Lidl Shop</a>
+  </div>
+</nav>
+
+<!-- ============ THE WEEK ============ -->
+<section id="week">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>How the week runs</h2></div>
+    <p class="sec-intro">Three appliances, one short Sunday prep session, and a clean split between what you batch-cook and what arrives ready. To stop it getting repetitive, breakfasts and lunches run on a <strong>two-week A/B rotation</strong> — Week A one week, Week B the next, then back to A. Each week is still just <strong>two breakfasts and two lunches</strong>, keeping the Sunday session to roughly <strong>60–75 minutes</strong>. <strong>Mon–Thu evening meals are Gousto</strong>; weekends are cooked fresh around your rides and stay the same each week.</p>
+
+    <div class="weeks2">
+      <div class="wk wk-a">
+        <div class="wk-head"><span class="badge">A</span><span class="wk-t">Week A<small>Oats · Muffins · Rice Bowls · Soup</small></span></div>
+        <table>
+          <tbody>
+            <tr><td class="d">Mon</td><td class="m">Overnight oats<small>Breakfast</small></td><td class="m">Chicken &amp; rice bowl</td></tr>
+            <tr><td class="d">Tue</td><td class="m">Egg &amp; veg muffins</td><td class="m">Lentil &amp; chicken soup</td></tr>
+            <tr><td class="d">Wed</td><td class="m">Overnight oats</td><td class="m">Chicken &amp; rice bowl</td></tr>
+            <tr><td class="d">Thu</td><td class="m">Egg &amp; veg muffins</td><td class="m">Lentil &amp; chicken soup</td></tr>
+            <tr><td class="d">Fri</td><td class="m">Overnight oats</td><td class="m">Chicken &amp; rice bowl</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="wk wk-b">
+        <div class="wk-head"><span class="badge">B</span><span class="wk-t">Week B<small>Oat Bars · Yoghurt+Egg · Beef Chilli · Pasta</small></span></div>
+        <table>
+          <tbody>
+            <tr><td class="d">Mon</td><td class="m">Baked banana oat bars<small>Breakfast</small></td><td class="m">Beef &amp; sweet potato chilli</td></tr>
+            <tr><td class="d">Tue</td><td class="m">Yoghurt pot + boiled eggs</td><td class="m">Chicken pesto pasta pot</td></tr>
+            <tr><td class="d">Wed</td><td class="m">Baked banana oat bars</td><td class="m">Beef &amp; sweet potato chilli</td></tr>
+            <tr><td class="d">Thu</td><td class="m">Yoghurt pot + boiled eggs</td><td class="m">Chicken pesto pasta pot</td></tr>
+            <tr><td class="d">Fri</td><td class="m">Baked banana oat bars</td><td class="m">Beef &amp; sweet potato chilli</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="wk-legend">
+      <b>Both weeks share the same weekend:</b> Sat &amp; Sun start with a pre-ride fix, then a post-ride recovery bowl, with fresh griddle dinners Fri–Sun. The weekend plan and the on-bike fuel don't change — only weekday breakfasts and lunches alternate.
+    </div>
+
+    <div class="principles" style="margin-top:26px;">
+      <div class="p"><h4><span class="dot"></span>Protein first</h4><p>Over 50 you need a higher leucine threshold to trigger muscle synthesis. <b>30–40g every meal</b>, repeated through the day — distribution beats total.</p></div>
+      <div class="p"><h4><span class="dot"></span>Carbs follow training</h4><p>Generous on weekend ride days, moderate midweek, lower on rest days. Carbs are a <b>tool, not the enemy</b> of fat loss.</p></div>
+      <div class="p"><h4><span class="dot"></span>Deficit at the table</h4><p>The modest calorie deficit comes from portion control at meals — <b>never from under-fuelling rides</b>, which costs muscle, not fat.</p></div>
+      <div class="p"><h4><span class="dot"></span>Two weeks, still simple</h4><p>Alternating A and B keeps it interesting, but each week is still just <b>two breakfasts, two lunches</b>, big-batched. Same appliances, same ~60–75 min prep.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BREAKFASTS ============ -->
+<section id="breakfast">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Office breakfasts</h2></div>
+    <p class="sec-intro">Each week has two breakfasts, alternating fortnightly. <strong>Week A</strong> is overnight oats and egg muffins; <strong>Week B</strong> swaps in baked banana oat bars and yoghurt-and-egg pots for a change of flavour and texture. All batch in one go on Sunday with minimal hands-on time. Cheese-free throughout. <a href="#recipes" style="color:var(--bidon);font-weight:700;">Full beginner-friendly methods are in the Recipes section.</a></p>
+
+    <div class="group-label"><span class="gb a">A</span>Week A breakfasts</div>
+    <div class="mealwrap">
+      <div class="card">
+        <span class="wkflag a">WEEK A</span>
+        <div class="tag">3 jars · ~8 min hands-on</div>
+        <h3>High-Protein Overnight Oats</h3>
+        <div class="equip">No cook · covers Mon / Wed / Fri</div>
+        <ul>
+          <li>Per jar: 60g oats + 1 scoop whey/casein</li>
+          <li>200ml milk + 100g Greek yoghurt</li>
+          <li>1 tbsp chia + 100g berries (frozen fine)</li>
+          <li>1 tsp honey · just spoon, pour, seal</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">480</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">38</span></div>
+          <div><span class="mk">Carb</span><span class="mv">50</span></div>
+          <div><span class="mk">Fat</span><span class="mv">14</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="wkflag a">WEEK A</span>
+        <div class="tag">1 tray of 12 · ~15 min · freezes</div>
+        <h3>Egg & Vegetable Muffins</h3>
+        <div class="equip">Oven does the work · covers Tue / Thu</div>
+        <ul>
+          <li>10 eggs, whisked in one bowl</li>
+          <li>100g diced potato + 1 pepper + spinach</li>
+          <li>200g bacon or ham, diced</li>
+          <li>Pour into tray, bake 20–25 min, walk away</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">340</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">28</span></div>
+          <div><span class="mk">Carb</span><span class="mv">12</span></div>
+          <div><span class="mk">Fat</span><span class="mv">20</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group-label"><span class="gb b">B</span>Week B breakfasts</div>
+    <div class="mealwrap">
+      <div class="card fish">
+        <span class="wkflag b">WEEK B</span>
+        <div class="tag">1 tray · ~12 min · freezes</div>
+        <h3>Baked Banana Oat Bars</h3>
+        <div class="equip">Oven does the work · covers Mon / Wed / Fri</div>
+        <ul>
+          <li>3 mashed bananas + 200g oats</li>
+          <li>2 eggs + 1 scoop protein powder</li>
+          <li>200ml milk + 2 tbsp honey + cinnamon</li>
+          <li>Bake, cool, cut into 6 bars</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">300</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">14</span></div>
+          <div><span class="mk">Carb</span><span class="mv">42</span></div>
+          <div><span class="mk">Fat</span><span class="mv">7</span></div>
+        </div>
+      </div>
+
+      <div class="card fish">
+        <span class="wkflag b">WEEK B</span>
+        <div class="tag">Fastest prep · ~10 min for all</div>
+        <h3>Yoghurt Pot + Boiled Eggs</h3>
+        <div class="equip">Just boil eggs · covers Tue / Thu</div>
+        <ul>
+          <li>250g Greek yoghurt or Skyr per pot</li>
+          <li>40g granola + handful of berries</li>
+          <li>1 tsp honey + mixed seeds</li>
+          <li>+ 2 boiled eggs on the side for protein</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">410</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">32</span></div>
+          <div><span class="mk">Carb</span><span class="mv">38</span></div>
+          <div><span class="mk">Fat</span><span class="mv">15</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Even faster fallback (either week):</b> a 200g Arla Skyr pot with a handful of granola and a banana needs zero prep and still lands ~28g protein. Keep a few in the fridge as a no-effort backup for any breakfast slot.
+    </div>
+  </div>
+</section>
+
+<!-- ============ LUNCHES ============ -->
+<section id="lunch">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Office lunches</h2></div>
+    <p class="sec-intro">Two lunches per week, alternating fortnightly. <strong>Week A</strong> is chicken &amp; rice bowls and lentil soup; <strong>Week B</strong> swaps in a beef &amp; sweet potato chilli and a cold chicken pesto pasta pot. Both weeks lean on unattended appliances, so your active time stays low. <a href="#recipes" style="color:var(--bidon);font-weight:700;">Full beginner-friendly methods are in the Recipes section.</a></p>
+
+    <div class="group-label"><span class="gb a">A</span>Week A lunches</div>
+    <div class="mealwrap">
+      <div class="card">
+        <span class="wkflag a">WEEK A</span>
+        <div class="tag">Flagship · 3 portions · ~20 min</div>
+        <h3>Chicken & Rice Bowls</h3>
+        <div class="equip"><b>Rice cooker + Blackstone</b> · Mon / Wed / Fri</div>
+        <ul>
+          <li>Big batch rice in the cooker (unattended)</li>
+          <li>~600g chicken, one cook on the griddle</li>
+          <li>Soy, sesame, ginger, garlic</li>
+          <li>Steam broccoli + edamame in the cooker basket</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">520</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">42</span></div>
+          <div><span class="mk">Carb</span><span class="mv">55</span></div>
+          <div><span class="mk">Fat</span><span class="mv">14</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="wkflag a">WEEK A</span>
+        <div class="tag">2 portions · ~10 min hands-on · freezes</div>
+        <h3>Lentil & Chicken Soup</h3>
+        <div class="equip"><b>Soup maker</b> · Tue / Thu</div>
+        <ul>
+          <li>200g red lentils + sweet potato base</li>
+          <li>Onion, carrot, celery, stock — chop & drop</li>
+          <li>Soup maker runs the full cycle unattended</li>
+          <li>Stir in chicken from the bowl-batch + boiled egg side</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">340</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">28</span></div>
+          <div><span class="mk">Carb</span><span class="mv">40</span></div>
+          <div><span class="mk">Fat</span><span class="mv">6</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Week A shared-ingredient trick:</b> cook extra chicken in the single griddle batch — some goes into the rice bowls, the rest gets shredded into the soup. One protein cook feeds both lunches, the biggest single time-saver of the week.
+    </div>
+
+    <div class="group-label"><span class="gb b">B</span>Week B lunches</div>
+    <div class="mealwrap">
+      <div class="card fish">
+        <span class="wkflag b">WEEK B</span>
+        <div class="tag">3 portions · ~20 min · freezes brilliantly</div>
+        <h3>Beef & Sweet Potato Chilli</h3>
+        <div class="equip"><b>Blackstone + rice cooker</b> · Mon / Wed / Fri</div>
+        <ul>
+          <li>500g beef mince, browned on the griddle</li>
+          <li>1 sweet potato + kidney beans + chopped tomatoes</li>
+          <li>Onion, pepper, chilli, cumin, paprika</li>
+          <li>Rice cooked separately in the cooker</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">540</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">38</span></div>
+          <div><span class="mk">Carb</span><span class="mv">58</span></div>
+          <div><span class="mk">Fat</span><span class="mv">16</span></div>
+        </div>
+      </div>
+
+      <div class="card fish">
+        <span class="wkflag b">WEEK B</span>
+        <div class="tag">2 portions · ~15 min · eat cold</div>
+        <h3>Chicken Pesto Pasta Pot</h3>
+        <div class="equip"><b>1 pan + Blackstone</b> · Tue / Thu</div>
+        <ul>
+          <li>Pasta, boiled and cooled</li>
+          <li>~250g chicken, griddled and sliced</li>
+          <li>Stir through green pesto + a splash of oil</li>
+          <li>Cherry tomatoes + spinach + rocket</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">560</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">40</span></div>
+          <div><span class="mk">Carb</span><span class="mv">52</span></div>
+          <div><span class="mk">Fat</span><span class="mv">20</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Week B shared-ingredient trick:</b> the chilli and the pasta pot don't share a protein, but both are simple one-pan jobs. Brown the mince and griddle the chicken back-to-back on the Blackstone while the rice and pasta cook, and you're still done inside the same ~60–75 min window.
+    </div>
+
+    <table class="rota">
+      <thead><tr><th>Day</th><th>Week A lunch</th><th>Week B lunch</th><th>Evening</th></tr></thead>
+      <tbody>
+        <tr><td class="d">Mon</td><td>Chicken & rice</td><td>Beef chilli</td><td class="gou">Gousto</td></tr>
+        <tr><td class="d">Tue</td><td>Lentil chicken soup</td><td>Chicken pesto pasta</td><td class="gou">Gousto</td></tr>
+        <tr><td class="d">Wed</td><td>Chicken & rice</td><td>Beef chilli</td><td class="gou">Gousto</td></tr>
+        <tr><td class="d">Thu</td><td>Lentil chicken soup</td><td>Chicken pesto pasta</td><td class="gou">Gousto</td></tr>
+        <tr><td class="d">Fri</td><td>Chicken & rice</td><td>Beef chilli</td><td>Griddle night</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ SUNDAY PREP ============ -->
+<section id="prep">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The Sunday session</h2></div>
+    <p class="sec-intro">Down to <strong>roughly 60–75 minutes</strong>, most of it unattended, in <strong>both weeks</strong>. The timeline below is Week A; Week B follows the exact same rhythm — start the unattended appliances, do one or two protein cooks on the griddle, bake or assemble the breakfast, then portion. The <a href="#recipes" style="color:var(--bidon);font-weight:700;">Recipes section</a> has full methods for every dish in both weeks.</p>
+
+    <div class="group-label"><span class="gb a">A</span>Week A — Sunday session</div>
+    <div class="timeline">
+      <div class="step"><div class="t">0:00 · Start the machines</div><h4>Rice cooker + soup maker on</h4><p>Big batch of rice in the cooker. Chopped veg, lentils and stock into the soup maker on its full cycle. Both now run unattended — this is where the time saving lives.</p></div>
+      <div class="step"><div class="t">0:05 · One protein cook</div><h4>Griddle the chicken — all of it</h4><p>Cook the whole batch of chicken in one go on the Blackstone. Some goes into the rice bowls, the rest gets shredded into the soup. One cook feeds both lunches.</p></div>
+      <div class="step"><div class="t">0:15 · Oven tray</div><h4>Egg muffins in</h4><p>Whisk 10 eggs, fold in the fillings, pour into the tray, oven on. Walk away for 20–25 min — set a timer and use the gap for the next step.</p></div>
+      <div class="step"><div class="t">0:20 · No-cook assembly</div><h4>Build the oats jars</h4><p>While everything cooks: spoon oats, protein, yoghurt, chia, milk and berries into three jars. Hard-boil a few eggs for the soup sides if you want them.</p></div>
+      <div class="step"><div class="t">0:40 · Portion & store</div><h4>Into containers, done</h4><p>Rice + chicken + veg into three bowls; soup into two tubs; muffins out of the oven to cool. Fridge the week, freeze anything for Thu/Fri. Tidy up and you're finished.</p></div>
+    </div>
+
+    <div class="recipe-note">
+      <b>The big lever:</b> two recipes per week means far fewer separate operations, and in Week A cooking chicken once for both lunches removes a whole step. If even this feels long, the Skyr-pot breakfast and a shop-bought soup are zero-prep get-outs that still hit your protein targets.
+    </div>
+
+    <div class="group-label"><span class="gb b">B</span>Week B — Sunday session</div>
+    <div class="timeline">
+      <div class="step"><div class="t">0:00 · Start the machines</div><h4>Rice cooker on + pasta water heating</h4><p>Rice for the chilli goes in the cooker (unattended). Put a pan of water on to boil for the pasta. Boil 4 eggs at the same time for the yoghurt-pot breakfasts.</p></div>
+      <div class="step"><div class="t">0:05 · Brown the mince</div><h4>Beef chilli on the griddle</h4><p>Brown the beef mince on the Blackstone, then add onion, pepper, sweet potato, beans, tomatoes and spices and let it simmer. This is the one dish that needs a little stirring.</p></div>
+      <div class="step"><div class="t">0:10 · Cook pasta + chicken</div><h4>Pasta in, chicken on</h4><p>Pasta into the boiling water (cook per packet, then drain and cool). Griddle the chicken for the pasta pots alongside the chilli — both fit on the Blackstone.</p></div>
+      <div class="step"><div class="t">0:20 · Bake the oat bars</div><h4>Banana oat bars in the oven</h4><p>Mash bananas, mix with oats, eggs, protein, milk and honey, pour into a lined tray, and bake. Walk away for 20–25 min.</p></div>
+      <div class="step"><div class="t">0:40 · Portion & store</div><h4>Into containers, done</h4><p>Chilli + rice into three tubs; pasta + pesto + chicken into two pots; oat bars out to cool and slice; yoghurt pots and boiled eggs ready. Fridge the week, freeze any Thu/Fri portions.</p></div>
+    </div>
+
+    <div class="storage">
+      <div class="sh"><span class="ico">🧊</span>Fridge Life &amp; Storage · prepped Sunday</div>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Fridge</th><th>Freezer</th><th class="hide-sm">Why / notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="item-n">Overnight oats<small>Week A · Mon/Wed/Fri</small></td>
+            <td class="days ok">4–5 days</td>
+            <td class="freeze">not advised</td>
+            <td class="why hide-sm">Improves over the first 2 days as oats &amp; chia hydrate. Add fresh berries on the morning; frozen-in berries are fine.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Egg &amp; veg muffins<small>Week A · Tue/Thu</small></td>
+            <td class="days ok">4 days</td>
+            <td class="freeze"><b>up to 1 month</b></td>
+            <td class="why hide-sm">Freeze half a double batch to skip prep another week — move to the fridge the night before.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Chicken &amp; rice bowls<small>Week A · Mon/Wed/Fri</small></td>
+            <td class="days watch">3–4 days</td>
+            <td class="freeze"><b>up to 1 month</b></td>
+            <td class="why hide-sm">Rice is the limiter (<i>B. cereus</i>). Cool within 1 hr, spread out, fridge promptly. Friday's bowl is at the edge — see note below.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Lentil &amp; chicken soup<small>Week A · Tue/Thu</small></td>
+            <td class="days ok">3–4 days</td>
+            <td class="freeze"><b>up to 3 months</b></td>
+            <td class="why hide-sm">The most freezer-friendly item — ideal for batch-and-freeze.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Banana oat bars<small>Week B · Mon/Wed/Fri</small></td>
+            <td class="days ok">4–5 days</td>
+            <td class="freeze"><b>up to 1 month</b></td>
+            <td class="why hide-sm">Bake once, keep all week. Freeze individually wrapped and thaw overnight if you prefer.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Yoghurt pots + eggs<small>Week B · Tue/Thu</small></td>
+            <td class="days ok">4 days</td>
+            <td class="freeze">not advised</td>
+            <td class="why hide-sm">Boiled eggs keep 4 days in the fridge (leave shells on until eating). Add granola at your desk so it stays crunchy.</td>
+          </tr>
+          <tr>
+            <td class="item-n">Beef &amp; sweet potato chilli<small>Week B · Mon/Wed/Fri</small></td>
+            <td class="days watch">3–4 days</td>
+            <td class="freeze"><b>up to 3 months</b></td>
+            <td class="why hide-sm">The chilli itself keeps well, but the rice with it is the limiter — same 1-hour cooling rule, and Friday's portion is at the edge (see note below).</td>
+          </tr>
+          <tr>
+            <td class="item-n">Chicken pesto pasta pot<small>Week B · Tue/Thu</small></td>
+            <td class="days watch">3 days</td>
+            <td class="freeze">not advised</td>
+            <td class="why hide-sm">Cooked chicken is the limiter at 3 days, so eat these Tue/Thu as planned. Pasta is best not frozen. Keep dressed and cold.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="recipe-note">
+      <b>The Friday rice portion (both weeks):</b> rice cooked on Sunday is at its 4–5 day limit by Friday — for both the Week A chicken bowl and the Week B chilli. Two easy fixes: <b>freeze Friday's portion on Sunday</b> and move it to the fridge Thursday night (reheat until piping hot), or do a quick <b>Wednesday-evening rice top-up</b> — five minutes in the rice cooker for a fresh Friday portion. Everything else sits comfortably inside its window.
+    </div>
+  </div>
+</section>
+
+<!-- ============ DETAILED RECIPES ============ -->
+<section id="recipes">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Step-by-step recipes</h2></div>
+    <p class="sec-intro">Every recipe written out in full — no steps skipped, no cooking knowledge assumed. If a cooking word is unfamiliar, the glossary just below explains the ones used here. The orange-edged notes are <strong>food-safety steps that genuinely matter</strong> — especially for chicken and rice — so don't skip those.</p>
+
+    <div class="jargon">
+      <h4>Cooking terms used on this page</h4>
+      <dl>
+        <dt>Dice</dt><dd>Cut into small cubes, roughly 1cm — about the size of the tip of your little finger. It doesn't need to be neat.</dd>
+        <dt>Finely chop</dt><dd>Cut into small pieces, smaller than a dice. Again, neatness doesn't matter — smaller just means it cooks faster and spreads through the dish.</dd>
+        <dt>Simmer</dt><dd>Liquid heated until small bubbles rise gently — one notch below a full rolling boil. If it's bubbling violently, turn the heat down a little.</dd>
+        <dt>Drain</dt><dd>Tip the food into a colander (the bowl with holes) in the sink to let water run off.</dd>
+        <dt>Season</dt><dd>Add salt and pepper. "Season to taste" means add a little, try it, add more if it needs it.</dd>
+        <dt>Preheat</dt><dd>Turn the oven on ahead of time so it's already hot when the food goes in. Takes about 10 minutes.</dd>
+        <dt>Medium heat</dt><dd>On a hob dial of 1–9, that's about 5–6. Hot enough to cook and sizzle, not so hot things burn.</dd>
+        <dt>Piping hot</dt><dd>Heated all the way through until steaming — the test for safely reheated food.</dd>
+      </dl>
+    </div>
+
+    <div class="group-label"><span class="gb a">A</span>Week A recipes</div>
+
+    <!-- ===== BREAKFAST 1: OATS ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Breakfast · makes 3 jars (Mon / Wed / Fri)</div>
+        <h3>High-Protein Overnight Oats</h3>
+        <div class="meta"><span><b>No cooking at all</b></span><span>Hands-on: <b>~8 min</b></span><span>Needs: <b>3 jars or tubs with lids</b></span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">What goes in each jar</p>
+        <ul class="ing">
+          <li><span class="amt">60 g</span><span class="nm"><em>Porridge oats</em><small>About 6 heaped tablespoons if you don't have scales</small></span></li>
+          <li><span class="amt">1 scoop</span><span class="nm"><em>Protein powder</em> (whey or casein)<small>Use the scoop that comes in the tub — usually ~30g</small></span></li>
+          <li><span class="amt">200 ml</span><span class="nm"><em>Milk</em><small>About a large glass; any milk works</small></span></li>
+          <li><span class="amt">100 g</span><span class="nm"><em>Greek yoghurt</em><small>About 4 tablespoons</small></span></li>
+          <li><span class="amt">1 tbsp</span><span class="nm"><em>Chia seeds</em> (tbsp = tablespoon)</span></li>
+          <li><span class="amt">100 g</span><span class="nm"><em>Berries</em><small>A small handful; frozen is fine and cheaper</small></span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Honey</em> (tsp = teaspoon)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li>Put the <b>oats, protein powder and chia seeds</b> into a jar. Give it a quick stir with a spoon so the powder is mixed through the oats.</li>
+          <li>Pour in the <b>milk</b>, add the <b>Greek yoghurt</b> and the <b>honey</b>. Stir well for about 15 seconds until there are no dry patches and the powder has dissolved. It will look quite runny — that's correct, the oats soak it up overnight.</li>
+          <li>If you're using <b>fresh berries</b>, you can stir them in now. If using <b>frozen</b>, it's better to leave them in a separate small bag and add them in the morning so they don't make everything watery.<span class="tip"><b>Tip:</b> for the freshest result, add any berries on the morning you eat it rather than mixing through on Sunday.</span></li>
+          <li>Put the lid on and <b>put it in the fridge</b>. Repeat for the other two jars. That's it — no cooking. They're ready to eat cold straight from the fridge the next morning, and keep for 4–5 days.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== BREAKFAST 2: EGG MUFFINS ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Breakfast · makes 12 muffins (Tue / Thu + spares)</div>
+        <h3>Egg &amp; Vegetable Muffins</h3>
+        <div class="meta"><span>Oven does the work</span><span>Hands-on: <b>~15 min</b></span><span>Oven: <b>20–25 min</b></span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>12-hole muffin tray</span><span>Paper or silicone muffin cases</span><span>1 large mixing bowl</span><span>1 frying pan</span><span>A fork or whisk</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">10</span><span class="nm"><em>Eggs</em></span></li>
+          <li><span class="amt">200 g</span><span class="nm"><em>Smoked bacon</em> (or cooked ham)<small>About 6 rashers of bacon, or 1 small pack of ham</small></span></li>
+          <li><span class="amt">100 g</span><span class="nm"><em>Potato</em>, already cooked<small>About 1 medium potato — see step 1</small></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Red pepper</em></span></li>
+          <li><span class="amt">2 handfuls</span><span class="nm"><em>Spinach</em></span></li>
+          <li><span class="amt">A few pinches</span><span class="nm"><em>Salt, pepper and paprika</em></span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Oil</em> for the pan (any cooking oil)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Cook the potato first</b> (if it's not already cooked). Peel 1 medium potato, cut it into roughly 1cm cubes, put them in a small pan, cover with water, and boil for about 10 minutes until a fork slides in easily. Drain and set aside.<span class="tip"><b>Shortcut:</b> a handful of frozen diced potato or frozen hash browns, cooked per the bag, saves this step entirely.</span></li>
+          <li><b>Preheat the oven to 180°C</b> (fan) / 200°C (no fan) / gas mark 6. Pop 12 paper or silicone cases into the muffin tray.</li>
+          <li><b>Dice the bacon</b> into small pieces. Heat the 1 tsp oil in the frying pan on medium heat, add the bacon, and cook for about 4–5 minutes, stirring now and then, until it's cooked through and lightly golden. Tip it onto a plate to cool slightly. <i>(If using ready-cooked ham, just dice it — no frying needed.)</i></li>
+          <li><b>Cut the red pepper:</b> slice around the stalk, pull out the seedy core and throw it away, then dice the rest into small pieces.</li>
+          <li><b>Crack all 10 eggs into the large bowl.</b> Beat them with a fork or whisk for about 30 seconds until the yellows and whites are fully combined and slightly frothy. Add a few pinches of salt, pepper and paprika.</li>
+          <li>Add the <b>diced potato, bacon, pepper and spinach</b> to the bowl. (The spinach looks like a lot but shrinks right down when it cooks.) Stir everything together.</li>
+          <li><b>Spoon the mixture into the 12 cases</b>, filling each about three-quarters full. A ladle or a jug makes this easier and tidier.</li>
+          <li><b>Bake for 20–25 minutes.</b> They're done when the tops are set, slightly risen and golden, and don't wobble when you gently shake the tray.<span class="safe tip"><b>Safety check:</b> egg should be fully set with no runny liquid in the middle. If unsure, push a knife into one — it should come out clean, not wet.</span></li>
+          <li><b>Let them cool</b> in the tray for 10 minutes, then lift them out. Once fully cold, store in a tub in the fridge (4 days) or freeze. Eat 2–3 per breakfast, cold or warmed in a microwave for about 40 seconds.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== LUNCH 1: CHICKEN & RICE ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Lunch · makes 3 bowls (Mon / Wed / Fri)</div>
+        <h3>Chicken &amp; Rice Bowls</h3>
+        <div class="meta"><span>Rice cooker + griddle/pan</span><span>Hands-on: <b>~20 min</b></span><span>Cook extra chicken for the soup</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>Rice cooker</span><span>Blackstone griddle or a frying pan</span><span>Chopping board + knife</span><span>3 lunch containers with lids</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">1.2 kg</span><span class="nm"><em>Chicken breast</em><small>This makes extra on purpose — about half goes into the soup recipe below</small></span></li>
+          <li><span class="amt">250 g</span><span class="nm"><em>Rice</em>, uncooked (basmati or long-grain)<small>About 1½ rice-cooker cups; this is the right amount for 3 bowls</small></span></li>
+          <li><span class="amt">1 large</span><span class="nm"><em>Head of broccoli</em></span></li>
+          <li><span class="amt">2 handfuls</span><span class="nm"><em>Frozen edamame</em> (soya beans)</span></li>
+          <li><span class="amt">2</span><span class="nm"><em>Carrots</em></span></li>
+          <li><span class="amt">3 tbsp</span><span class="nm"><em>Soy sauce</em></span></li>
+          <li><span class="amt">1 tbsp</span><span class="nm"><em>Sesame oil</em> (or any cooking oil)</span></li>
+          <li><span class="amt">1 tsp each</span><span class="nm"><em>Ginger and garlic</em><small>Jars of pre-chopped ginger and garlic are perfect and save effort</small></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Start the rice.</b> Measure 250g (about 1½ cups) of rice into the rice cooker. Rinse it under cold water in a sieve first if you have one — it stops it being sticky, but it's optional. Add water to the line the rice cooker shows for that amount of rice (or roughly 1½ times the depth of the rice), put the lid on and switch it on. It turns itself off when done — leave it alone.</li>
+          <li><b>Prepare the chicken.</b> Put the chicken breasts on a chopping board. Cut each one into strips about 2cm wide, then across into bite-sized chunks.<span class="safe tip"><b>Safety:</b> raw chicken — wash your hands, the board and the knife with hot soapy water straight after, and don't let raw chicken touch anything you'll eat without cooking (like the salad or cooked rice).</span></li>
+          <li><b>Cook the chicken.</b> Heat the sesame oil on the griddle or in a frying pan on medium-high heat. Add the chicken chunks in a single layer. Cook for about 8–10 minutes, turning every couple of minutes, until every piece is white all the way through with no pink, and the outsides are lightly golden.<span class="safe tip"><b>Safety check:</b> cut the biggest piece in half — the inside must be white/opaque, never pink or glassy. If in doubt, cook another 2 minutes. This is the one step worth being fussy about.</span></li>
+          <li>About halfway through, add the <b>ginger and garlic</b> and the <b>soy sauce</b> to the pan and stir so it coats the chicken.</li>
+          <li><b>Cook the vegetables.</b> While the chicken cooks: cut the broccoli into small florets (bite-sized trees). Peel and grate the carrots, or cut into thin sticks. Put the broccoli and the frozen edamame in a microwave bowl with a splash of water, cover with a plate, and microwave for about 4 minutes until the broccoli is bright green and just tender. <i>(Or use the rice cooker's steamer basket if it has one.)</i></li>
+          <li><b>Split the chicken.</b> Once cooked, set <b>about half the chicken aside in a separate tub</b> for the soup recipe (it'll go in the fridge). The other half stays for these bowls.</li>
+          <li><b>Build the 3 bowls.</b> Divide the rice between 3 containers. Top each with chicken, broccoli, edamame and carrot. Let everything cool.<span class="safe tip"><b>Important for rice:</b> get the bowls into the fridge within 1 hour of cooking. Cooked rice left out too long can cause food poisoning. Cooling it quickly and refrigerating promptly is what keeps it safe.</span></li>
+          <li>Lids on, into the fridge. Reheat in the microwave until <b>piping hot</b> (steaming all the way through), about 2–3 minutes. Eats well for 3–4 days — see the storage note about Friday's bowl.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== LUNCH 2: SOUP ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Lunch · makes 2 portions (Tue / Thu)</div>
+        <h3>Lentil &amp; Chicken Soup</h3>
+        <div class="meta"><span>Soup maker does it all</span><span>Hands-on: <b>~10 min</b></span><span>Uses chicken from the bowls above</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>Soup maker</span><span>Chopping board + knife</span><span>2 soup containers with lids</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">100 g</span><span class="nm"><em>Red lentils</em>, dried<small>About 1 mug; no soaking needed, they cook in the soup</small></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Onion</em></span></li>
+          <li><span class="amt">2</span><span class="nm"><em>Carrots</em></span></li>
+          <li><span class="amt">1 stick</span><span class="nm"><em>Celery</em> (optional)</span></li>
+          <li><span class="amt">1 small</span><span class="nm"><em>Sweet potato</em></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Stock cube</em> (chicken or vegetable) + boiling water</span></li>
+          <li><span class="amt">Half the</span><span class="nm"><em>Cooked chicken</em> set aside from the bowls recipe</span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Cumin and smoked paprika</em> (optional, for flavour)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Chop the vegetables roughly</b> — they get blended at the end, so neatness genuinely doesn't matter. Peel the onion and cut into rough chunks. Peel the carrots and sweet potato and cut into rough 2cm chunks. Slice the celery if using.</li>
+          <li><b>Rinse the lentils</b> in a sieve under the cold tap for a few seconds to wash off any dust.</li>
+          <li><b>Put it all in the soup maker:</b> the chopped vegetables, the rinsed lentils, and the spices if using. <i>Do not add the chicken yet.</i></li>
+          <li><b>Make the stock:</b> dissolve 1 stock cube in boiling water (follow the cube's packet — usually 1 cube to ~500ml). Pour it into the soup maker up to its <b>maximum fill line</b> — never above it, or it can overflow.</li>
+          <li><b>Choose the "smooth" setting</b> and press start. The soup maker now heats and blends everything by itself — this takes around 25 minutes. You don't need to watch it.<span class="tip"><b>If your soup maker has no blend button:</b> let it finish the heat cycle, then blend with a hand blender, or leave it chunky — both are fine.</span></li>
+          <li>When it's finished, <b>stir in the cooked chicken</b> from the tub. The heat of the soup warms it through in a minute or two. Taste, and add a pinch of salt if it needs it.<span class="safe tip"><b>Safety:</b> the chicken was already fully cooked, so it just needs warming. If you want it hotter, stir and leave the lid on for 2 minutes.</span></li>
+          <li><b>Pour into 2 containers</b> and let cool, then lid and fridge. Reheat in the microwave until piping hot. Keeps 3–4 days; also freezes very well.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="group-label"><span class="gb b">B</span>Week B recipes</div>
+
+    <!-- ===== WEEK B BREAKFAST 1: OAT BARS ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Week B breakfast · makes 6 bars (Mon / Wed / Fri)</div>
+        <h3>Baked Banana Oat Bars</h3>
+        <div class="meta"><span>Oven does the work</span><span>Hands-on: <b>~12 min</b></span><span>Oven: <b>20–25 min</b></span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>1 baking tray or dish (roughly A4-sized)</span><span>1 large mixing bowl</span><span>A fork (to mash banana)</span><span>Baking paper</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">3</span><span class="nm"><em>Ripe bananas</em><small>The browner the better — easier to mash and naturally sweeter</small></span></li>
+          <li><span class="amt">200 g</span><span class="nm"><em>Porridge oats</em><small>About 2 mugs</small></span></li>
+          <li><span class="amt">2</span><span class="nm"><em>Eggs</em></span></li>
+          <li><span class="amt">1 scoop</span><span class="nm"><em>Protein powder</em> (optional but recommended)<small>Boosts the protein; vanilla or chocolate both work</small></span></li>
+          <li><span class="amt">200 ml</span><span class="nm"><em>Milk</em></span></li>
+          <li><span class="amt">2 tbsp</span><span class="nm"><em>Honey</em></span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Cinnamon</em> (optional)</span></li>
+          <li><span class="amt">1 pinch</span><span class="nm"><em>Salt</em></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Preheat the oven to 180°C</b> (fan) / 200°C (no fan) / gas mark 6. Line your baking tray with baking paper (it stops the bars sticking).</li>
+          <li><b>Mash the bananas.</b> Peel them into the large bowl and mash with a fork until fairly smooth — a few lumps are fine.</li>
+          <li><b>Crack in the 2 eggs</b> and add the milk, honey, protein powder, cinnamon and pinch of salt. Stir well until combined.</li>
+          <li><b>Add the oats</b> and stir until everything is evenly mixed. It will be a thick, wet, spoonable batter — that's correct.</li>
+          <li><b>Pour the mixture into the lined tray</b> and spread it out evenly with the back of a spoon, so it's roughly the same thickness all over (about 2cm deep).</li>
+          <li><b>Bake for 20–25 minutes</b>, until the top is golden and firm to a light touch in the middle.<span class="tip"><b>How to check:</b> press the centre gently — it should spring back rather than feel wet or sloppy. If unsure, give it another 3–4 minutes.</span></li>
+          <li><b>Cool, then cut.</b> Let it cool in the tray for 10–15 minutes, then lift it out by the paper and cut into 6 bars.</li>
+          <li><b>Store:</b> in a tub in the fridge for 4–5 days. Grab one each morning — they're good cold, or warmed for 20 seconds. They also freeze well wrapped individually.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== WEEK B BREAKFAST 2: YOGHURT POT ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Week B breakfast · makes 2 (Tue / Thu)</div>
+        <h3>Yoghurt Pot + Boiled Eggs</h3>
+        <div class="meta"><span>Only boiling required</span><span>Hands-on: <b>~10 min for both</b></span><span>The easiest hot-protein breakfast</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>1 small saucepan</span><span>2 pots/tubs with lids</span><span>A slotted spoon</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients (for 2 breakfasts)</p>
+        <ul class="ing">
+          <li><span class="amt">4</span><span class="nm"><em>Eggs</em> (2 per breakfast)</span></li>
+          <li><span class="amt">500 g</span><span class="nm"><em>Greek yoghurt or Skyr</em><small>250g per pot</small></span></li>
+          <li><span class="amt">80 g</span><span class="nm"><em>Granola</em><small>Keep separate until eating so it stays crunchy</small></span></li>
+          <li><span class="amt">2 handfuls</span><span class="nm"><em>Berries</em></span></li>
+          <li><span class="amt">2 tsp</span><span class="nm"><em>Honey</em></span></li>
+          <li><span class="amt">A sprinkle</span><span class="nm"><em>Mixed seeds</em> (optional)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Boil the eggs.</b> Put the 4 eggs in the saucepan and cover with cold water from the tap (enough to sit about 2cm above the eggs). Put on a high heat.</li>
+          <li><b>Time from boiling.</b> When the water reaches a rolling boil (lots of bubbles), turn it down to a simmer and set a timer for <b>9 minutes</b> for firm, hard-boiled eggs that are easy to take to work.<span class="tip"><b>Tip:</b> 9 minutes gives a fully set yolk that travels well and won't be messy in your bag.</span></li>
+          <li><b>Cool them.</b> When the timer goes, lift the eggs out with a slotted spoon and put them in a bowl of cold water for a few minutes. This stops them cooking and makes them easier to peel later. <i>Leave the shells on</i> until you eat them — they keep better that way.</li>
+          <li><b>Fill the pots.</b> Spoon 250g of yoghurt or Skyr into each pot. Add a handful of berries, a teaspoon of honey, and a sprinkle of seeds. Lid on.</li>
+          <li><b>Keep granola separate</b> in a small bag or tub and add it at your desk so it stays crunchy.</li>
+          <li><b>Store:</b> pots and eggs keep 4 days in the fridge. Each breakfast is one pot plus 2 boiled eggs on the side — that's where the protein comes from.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== WEEK B LUNCH 1: BEEF CHILLI ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Week B lunch · makes 3 portions (Mon / Wed / Fri)</div>
+        <h3>Beef &amp; Sweet Potato Chilli</h3>
+        <div class="meta"><span>Griddle/pan + rice cooker</span><span>Hands-on: <b>~20 min</b></span><span>Freezes brilliantly</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>Blackstone griddle or a large frying pan / pot</span><span>Rice cooker</span><span>Chopping board + knife</span><span>3 lunch containers</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">500 g</span><span class="nm"><em>Beef mince</em><small>5% fat ("lean") is best for your goals</small></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Sweet potato</em></span></li>
+          <li><span class="amt">1 tin</span><span class="nm"><em>Kidney beans</em><small>Drained — tip into a sieve and rinse</small></span></li>
+          <li><span class="amt">1 tin</span><span class="nm"><em>Chopped tomatoes</em></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Onion</em></span></li>
+          <li><span class="amt">1</span><span class="nm"><em>Red pepper</em></span></li>
+          <li><span class="amt">1–2 tsp</span><span class="nm"><em>Chilli powder</em><small>1 for mild, 2 for more kick — your choice</small></span></li>
+          <li><span class="amt">1 tsp each</span><span class="nm"><em>Cumin and smoked paprika</em></span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Garlic</em> (a jar is fine)</span></li>
+          <li><span class="amt">200 g</span><span class="nm"><em>Rice</em>, uncooked<small>For the 3 portions</small></span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Oil</em> for cooking</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Start the rice</b> in the rice cooker (200g rice, water to the line, switch on, leave it).</li>
+          <li><b>Prepare the vegetables.</b> Peel and finely chop the onion. Cut the pepper (remove the seedy core first) into small pieces. Peel the sweet potato and cut into roughly 1.5cm cubes.</li>
+          <li><b>Brown the mince.</b> Heat the oil on the griddle or in a large pot on medium-high heat. Add the beef mince. Break it up with a spoon and cook for about 6–8 minutes, stirring, until there's no pink left and it's lightly browned.<span class="safe tip"><b>Safety:</b> mince must be cooked right through — no pink. Because it's been ground, any bacteria are mixed throughout, so thorough cooking matters.</span></li>
+          <li><b>Add everything else:</b> the onion, pepper, sweet potato, garlic, chilli powder, cumin and paprika. Stir for 2 minutes so the spices coat the meat.</li>
+          <li><b>Add the tomatoes and beans.</b> Tip in the tin of chopped tomatoes and the drained, rinsed kidney beans. Fill the empty tomato tin about halfway with water and add that too. Stir.</li>
+          <li><b>Simmer.</b> Turn the heat down so it bubbles gently, and let it cook for about 15 minutes, stirring now and then, until the sweet potato is soft (test with a fork) and the sauce has thickened. Taste and add a pinch of salt if needed.<span class="tip"><b>On a Blackstone:</b> if your griddle can't hold liquid, just brown the mince on it, then move everything to a saucepan on the hob for the simmering stage.</span></li>
+          <li><b>Build the 3 portions.</b> Divide the rice between 3 containers and spoon the chilli on top. Let it cool.<span class="safe tip"><b>Important for rice:</b> get the portions into the fridge within 1 hour of cooking — the same rule as any rice dish. Cool quickly, refrigerate promptly.</span></li>
+          <li><b>Store:</b> 3–4 days in the fridge (the rice is the limiter), or freeze for up to 3 months. Reheat until piping hot.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== WEEK B LUNCH 2: PASTA POT ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Week B lunch · makes 2 portions (Tue / Thu)</div>
+        <h3>Chicken Pesto Pasta Pot</h3>
+        <div class="meta"><span>1 pan + griddle</span><span>Hands-on: <b>~15 min</b></span><span>Eaten cold — no reheating</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>1 saucepan</span><span>Blackstone griddle or frying pan</span><span>A colander/sieve</span><span>2 lunch containers</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">160 g</span><span class="nm"><em>Pasta</em>, uncooked<small>Any short shape — fusilli or penne work well. About 80g per portion</small></span></li>
+          <li><span class="amt">250 g</span><span class="nm"><em>Chicken breast</em></span></li>
+          <li><span class="amt">3 tbsp</span><span class="nm"><em>Green pesto</em><small>From a jar; check it's one you like as it carries the flavour</small></span></li>
+          <li><span class="amt">1 tbsp</span><span class="nm"><em>Olive oil</em></span></li>
+          <li><span class="amt">1 handful</span><span class="nm"><em>Cherry tomatoes</em>, halved</span></li>
+          <li><span class="amt">2 handfuls</span><span class="nm"><em>Spinach or rocket</em></span></li>
+          <li><span class="amt">A pinch</span><span class="nm"><em>Salt and pepper</em></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Cook the pasta.</b> Fill the saucepan with water, add a pinch of salt, and bring to the boil. Add the pasta and cook for the time on the packet (usually 10–12 minutes), until soft but with a slight bite.</li>
+          <li><b>Drain and cool.</b> Tip the pasta into a colander in the sink and run cold water over it for a few seconds to cool it and stop it sticking. Leave it to drain.</li>
+          <li><b>Cook the chicken.</b> While the pasta cooks: cut the chicken into bite-sized chunks. Heat the olive oil on the griddle or in a pan on medium-high heat and cook for about 8–10 minutes, turning, until white all the way through.<span class="safe tip"><b>Safety check:</b> cut the biggest piece — the inside must be white, never pink. Wash hands, board and knife after handling raw chicken.</span></li>
+          <li><b>Mix it all together.</b> In a big bowl, combine the cooled pasta, the cooked chicken, the pesto, the halved tomatoes and the spinach or rocket. Add a pinch of salt and pepper and stir until everything is coated in pesto.</li>
+          <li><b>Portion into 2 containers</b>, lids on, into the fridge.</li>
+          <li><b>Store:</b> 3 days in the fridge — eat these on Tuesday and Thursday. <b>No reheating needed</b>, they're designed to be eaten cold, which makes them the easiest desk lunch of the lot.<span class="safe tip"><b>Note:</b> the cooked chicken is the limiter here, so don't keep these longer than 3 days.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <p class="blk" style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:10px;margin:38px 0 22px;">On-bike fuel — homemade</p>
+
+    <!-- ===== FUEL 1: EVERYDAY BOTTLE ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Ride drink · 1 bottle · up to 60g carbs/hr</div>
+        <h3>Everyday Ride Bottle</h3>
+        <div class="meta"><span>No cooking</span><span>Hands-on: <b>~3 min</b></span><span>Make the night before</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Ingredients (per 750ml bottle)</p>
+        <ul class="ing">
+          <li><span class="amt">750 ml</span><span class="nm"><em>Water</em><small>One standard cycling bottle full</small></span></li>
+          <li><span class="amt">45 g</span><span class="nm"><em>Sugar</em> (white table sugar) or honey<small>About 3 level tablespoons of sugar</small></span></li>
+          <li><span class="amt">¼ tsp</span><span class="nm"><em>Table salt</em><small>A small pinch — this matters, it replaces what you sweat out</small></span></li>
+          <li><span class="amt">Juice of ½</span><span class="nm"><em>Lemon or lime</em> (for flavour)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li>Put the <b>sugar and salt</b> into the bottle.</li>
+          <li>Add a splash of <b>warm water</b> (about 100ml) and shake for 20 seconds — warm water dissolves the sugar far more easily than cold, so it doesn't sit gritty at the bottom.</li>
+          <li>Squeeze in the <b>lemon or lime juice</b>, then top up to full with cold water.</li>
+          <li>Shake well, put it in the fridge overnight. Grab it on your way out. <b>Cold drinks are absorbed faster and taste better</b> on the bike.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== FUEL 2: HIGH-CARB BOTTLE ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Ride drink · 1 bottle · up to 90g carbs/hr · for 3hr+ rides</div>
+        <h3>High-Carb Performance Bottle</h3>
+        <div class="meta"><span>No cooking</span><span>Hands-on: <b>~3 min</b></span><span>For your longer weekend rides</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Ingredients (per 750ml bottle)</p>
+        <ul class="ing">
+          <li><span class="amt">750 ml</span><span class="nm"><em>Water</em></span></li>
+          <li><span class="amt">40 g</span><span class="nm"><em>Maltodextrin</em><small>A flavourless carb powder, bought online; about 3 tablespoons</small></span></li>
+          <li><span class="amt">20 g</span><span class="nm"><em>Fructose</em> (fruit sugar)<small>About 1½ tablespoons</small></span></li>
+          <li><span class="amt">¼ tsp</span><span class="nm"><em>Table salt</em></span></li>
+          <li><span class="amt">Juice of ½</span><span class="nm"><em>Lemon</em>, + squash to taste<small>Maltodextrin is fairly tasteless, so flavour it however you like</small></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li>Put the <b>maltodextrin and fructose</b> into the bottle. Maltodextrin can clump, so add a splash of <b>warm water first</b> and shake into a smooth liquid before adding more.<span class="tip"><b>Why two sugars?</b> Your body absorbs glucose and fructose through different routes, so using both lets you take on more carbs per hour without stomach trouble — the key to long rides.</span></li>
+          <li>Add the <b>salt</b>, the <b>lemon juice</b> and a splash of squash if you'd like more flavour.</li>
+          <li>Top up to full with cold water, shake hard, and refrigerate overnight.</li>
+          <li><b>Practise with this on training rides first</b>, not on a big day out. Your stomach needs to get used to taking on this many carbs — building up gradually avoids any discomfort.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== FUEL 3: RICE CAKES ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Ride food · makes ~12 cakes · freezes</div>
+        <h3>Savoury Rice Cakes</h3>
+        <div class="meta"><span>Rice cooker + griddle/pan</span><span>Hands-on: <b>~20 min</b></span><span>Set overnight, then slice</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>Rice cooker</span><span>1 frying pan</span><span>A baking tray or dish (roughly A4-sized)</span><span>Cling film</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">400 g</span><span class="nm"><em>Sushi rice</em> (short-grain), uncooked<small>Must be short-grain "sushi" rice — it's sticky, which holds the cakes together. Normal rice won't work here.</small></span></li>
+          <li><span class="amt">3</span><span class="nm"><em>Eggs</em></span></li>
+          <li><span class="amt">3 rashers</span><span class="nm"><em>Bacon</em></span></li>
+          <li><span class="amt">2 tbsp</span><span class="nm"><em>Soy sauce</em></span></li>
+          <li><span class="amt">1 tbsp</span><span class="nm"><em>Sesame oil</em></span></li>
+          <li><span class="amt">1 splash</span><span class="nm"><em>Rice vinegar</em> (optional)</span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Cook the sushi rice</b> in the rice cooker following the cup-and-water lines as normal. Sushi rice comes out deliberately sticky — that's what you want.</li>
+          <li><b>Cook the egg and bacon.</b> Dice the bacon small. Heat the sesame oil in the frying pan on medium heat and cook the bacon for 4–5 minutes until done. Crack in the 3 eggs and scramble them (stir constantly with a spatula) until set, about 2 minutes. Turn off the heat.</li>
+          <li><b>Mix everything while the rice is still warm</b> (it sticks together best warm). In a big bowl, combine the cooked rice, the bacon and egg, the soy sauce, and the splash of vinegar. Stir well.</li>
+          <li><b>Press into the tray.</b> Line your baking tray with cling film (let it hang over the edges). Tip the rice mixture in and press it down firmly and evenly with the back of a spoon or your hand, until it's about 2–3cm thick and well compacted. The firmer you press, the better they hold.</li>
+          <li><b>Chill to set.</b> Cover with the overhanging cling film and put in the fridge for at least 2 hours, or overnight. It firms up into a sliceable slab.</li>
+          <li><b>Slice and wrap.</b> Lift the slab out using the cling film, and cut into roughly 12 rectangles. Wrap each one individually in cling film or foil — these are your pocket-sized ride snacks.</li>
+          <li><b>Store:</b> fridge for 3 days, or freeze. If frozen, take them out as you leave — they thaw in your jersey pocket within an hour or two and are perfect to eat mid-ride.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== FUEL 4: SWEET RICE CAKES ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Ride food · makes ~10 cakes · freezes</div>
+        <h3>Sweet Rice Cakes — Banana &amp; Honey</h3>
+        <div class="meta"><span>Rice cooker only</span><span>Hands-on: <b>~12 min</b></span><span>For the later hours of a long ride</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Why these</p>
+        <p style="font-size:.92rem;color:var(--ink-soft);margin:-4px 0 18px;">On rides over about three hours, savoury flavours start to win — but it works the other way too. After a couple of hours of nothing but sweet gels and drinks some riders crave the opposite, and others find a soft sweet bite goes down more easily late on when appetite fades. These are a gentler, less salty alternative to the savoury cakes, and there's no frying involved at all.</p>
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>Rice cooker</span><span>A baking tray or dish (roughly A4-sized)</span><span>A fork (to mash banana)</span><span>Cling film</span></div>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">400 g</span><span class="nm"><em>Sushi rice</em> (short-grain), uncooked<small>Must be the sticky short-grain "sushi" rice again — it's what holds the cakes together</small></span></li>
+          <li><span class="amt">2</span><span class="nm"><em>Ripe bananas</em><small>The riper and browner, the sweeter and easier to mash</small></span></li>
+          <li><span class="amt">3 tbsp</span><span class="nm"><em>Honey</em> (or maple syrup)</span></li>
+          <li><span class="amt">1 tsp</span><span class="nm"><em>Cinnamon</em> (optional)</span></li>
+          <li><span class="amt">1 pinch</span><span class="nm"><em>Salt</em><small>Just a small pinch — it lifts the flavour and replaces a little of what you sweat</small></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Cook the sushi rice</b> in the rice cooker following its cup-and-water lines, exactly as for the savoury version. It comes out sticky, which is what you want. Leave it to cool for 5 minutes so it's warm rather than piping hot.</li>
+          <li><b>Mash the bananas.</b> Peel them, put them in a big bowl, and mash with a fork until smooth — a few small lumps are fine.</li>
+          <li><b>Mix everything together</b> while the rice is still warm (it sticks best warm). Add the cooked rice, the honey, the cinnamon if using, and the pinch of salt to the mashed banana. Stir well until it's evenly combined.</li>
+          <li><b>Press into the tray.</b> Line the baking tray with cling film, letting it hang over the edges. Tip the mixture in and press it down firmly and evenly with the back of a spoon until it's about 2–3cm thick. The firmer you press, the better the cakes hold together.</li>
+          <li><b>Chill to set.</b> Cover with the overhanging cling film and refrigerate for at least 2 hours, or overnight, until it's firm enough to slice.</li>
+          <li><b>Slice and wrap.</b> Lift the slab out by the cling film and cut into roughly 10 rectangles. Wrap each individually in cling film or foil.</li>
+          <li><b>Store:</b> fridge for 3 days, or freeze and take out as you leave — they thaw in your pocket within an hour or two.<span class="tip"><b>Tip:</b> carry a mix of sweet and savoury cakes on a long ride and alternate them. Swapping flavours stops "flavour fatigue", the point where everything tastes the same and you stop wanting to eat — which is exactly when you most need to.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ===== FUEL 5: ENERGY BALLS ===== -->
+    <div class="recipe">
+      <div class="recipe-top">
+        <div class="rtag">Ride food · makes ~16 balls · no cooking</div>
+        <h3>No-Bake Date &amp; Oat Energy Balls</h3>
+        <div class="meta"><span><b>No oven, no hob</b></span><span>Hands-on: <b>~15 min</b></span><span>A long-ride favourite</span></div>
+      </div>
+      <div class="recipe-body">
+        <p class="blk">Why these</p>
+        <p style="font-size:.92rem;color:var(--ink-soft);margin:-4px 0 18px;">Energy balls are one of the most popular homemade ride foods going, for good reason: no cooking at all, they pack a lot of carbohydrate into a small bite, they don't melt or go to crumbs in a jersey pocket, and dates give natural fast-acting sugars. They're also the easiest recipe on this whole page — if you make nothing else, make these.</p>
+        <p class="blk">Kit you'll need</p>
+        <div class="kit"><span>A food processor or blender</span><span>1 mixing bowl</span><span>A plate or tub to store them</span></div>
+        <p style="font-size:.86rem;color:var(--ink-soft);font-style:italic;margin:10px 0 0;">No processor? You can still make them — see the note at the end.</p>
+        <p class="blk" style="margin-top:22px;">Ingredients</p>
+        <ul class="ing">
+          <li><span class="amt">200 g</span><span class="nm"><em>Medjool dates</em>, stones removed<small>About 10–12 dates. Squeeze each one and pull out the hard stone in the middle — don't skip this</small></span></li>
+          <li><span class="amt">200 g</span><span class="nm"><em>Porridge oats</em><small>About 2 mugs</small></span></li>
+          <li><span class="amt">3 tbsp</span><span class="nm"><em>Peanut butter</em> (or any nut butter)<small>Smooth is easier to mix than crunchy</small></span></li>
+          <li><span class="amt">2 tbsp</span><span class="nm"><em>Honey</em></span></li>
+          <li><span class="amt">1 pinch</span><span class="nm"><em>Salt</em></span></li>
+          <li><span class="amt">2 tbsp</span><span class="nm"><em>Cocoa powder or desiccated coconut</em><small>Optional — for rolling the balls in at the end</small></span></li>
+        </ul>
+        <p class="blk">Method</p>
+        <ol class="steps-d">
+          <li><b>Soften the dates.</b> Put the pitted dates in a bowl, cover with warm water from the kettle, and leave for 10 minutes. This makes them soft enough to blend into a paste. Then drain off the water.</li>
+          <li><b>Blend the dates.</b> Put the softened, drained dates in the food processor and blitz for about 30 seconds until they form a sticky paste. Stop and scrape down the sides if they climb up.</li>
+          <li><b>Add everything else</b> — the oats, peanut butter, honey and pinch of salt — and blitz again for 20–30 seconds until it all comes together into a thick, sticky dough. It should hold its shape when you squeeze a bit in your hand. <span class="tip"><b>Too dry/crumbly?</b> Add a teaspoon of honey or a splash of water and blitz again. <b>Too sticky to handle?</b> Add a spoonful more oats.</span></li>
+          <li><b>Roll into balls.</b> Scoop out heaped teaspoons of the mixture and roll each between your palms into a ball about the size of a walnut. You should get around 16. <span class="tip"><b>Tip:</b> lightly wet your hands first and the mixture won't stick to them.</span></li>
+          <li><b>(Optional) Coat them.</b> Roll each ball in a little cocoa powder or desiccated coconut on a plate. This stops them sticking together and adds a bit of flavour.</li>
+          <li><b>Chill to firm up.</b> Put them on a plate or in a tub and refrigerate for at least 1 hour. They firm up and hold their shape much better once cold.</li>
+          <li><b>Store:</b> they keep in a tub in the fridge for up to 5 days. For the bike, wrap a few individually in cling film or pop them in a small sandwich bag.<span class="tip"><b>No food processor?</b> Use ready-made date paste (sold in bags) or very finely chop soft dates by hand, then mix everything in a bowl with a sturdy spoon and your hands. It takes more elbow grease but works perfectly well.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Zero-effort ride fuel:</b> if you'd rather not make any of these, shop-bought malt loaf (sliced and wrapped in foil the night before), fig rolls, Medjool dates and jelly sweets all work brilliantly on the bike with no preparation at all. They're already on your Lidl list.
+    </div>
+  </div>
+</section>
+
+<!-- ============ WEEKEND ============ -->
+<section id="weekend">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Friday & weekend</h2></div>
+    <p class="sec-intro">Cooked fresh and more flexible. Both Saturday and Sunday are long-ride days, so weekend nutrition shifts toward higher carbohydrate around training and substantial recovery meals.</p>
+
+    <div class="mealwrap">
+      <div class="card">
+        <div class="tag">Friday night</div>
+        <h3>Griddle Steak / Chicken Night</h3>
+        <div class="equip"><b>Blackstone + rice cooker</b></div>
+        <ul>
+          <li>250g griddled sirloin, chicken or pork</li>
+          <li>Sweet potato wedges or rice</li>
+          <li>Charred tenderstem, asparagus, courgette</li>
+          <li>Chimichurri or olive oil + lemon</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">650</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">48</span></div>
+          <div><span class="mk">Carb</span><span class="mv">55</span></div>
+          <div><span class="mk">Fat</span><span class="mv">24</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Sat & Sun · post-ride</div>
+        <h3>Recovery Bowl</h3>
+        <div class="equip"><b>Rice cooker + Blackstone</b> · within 60–90 min</div>
+        <ul>
+          <li>Large rice portion (glycogen reload)</li>
+          <li>Griddled chicken thigh or salmon</li>
+          <li>Roasted veg + avocado</li>
+          <li>Eggs on top if appetite allows</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">700</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">45</span></div>
+          <div><span class="mk">Carb</span><span class="mv">80</span></div>
+          <div><span class="mk">Fat</span><span class="mv">22</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tag">Sun morning · rest/post-ride</div>
+        <h3>The Big Griddle Breakfast</h3>
+        <div class="equip"><b>Blackstone</b></div>
+        <ul>
+          <li>Eggs, scrambled or fried</li>
+          <li>Lean bacon or chicken sausage</li>
+          <li>Griddled mushroom, tomato, spinach</li>
+          <li>Sourdough + optional hash browns</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">600</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">38</span></div>
+          <div><span class="mk">Carb</span><span class="mv">45</span></div>
+          <div><span class="mk">Fat</span><span class="mv">28</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tag">Sat/Sun evening</div>
+        <h3>Light Protein & Veg</h3>
+        <div class="equip"><b>Blackstone</b> · glycogen now topped up</div>
+        <ul>
+          <li>Griddled fish or lean meat</li>
+          <li>Large mixed salad + olive oil</li>
+          <li>Small portion grains / new potatoes</li>
+          <li>Earlier & lighter — work week ahead</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">520</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">42</span></div>
+          <div><span class="mk">Carb</span><span class="mv">35</span></div>
+          <div><span class="mk">Fat</span><span class="mv">22</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Both ride days:</b> the early start means breakfast is just the "pre-ride fix" — 2 Medjool dates + black coffee + water before rolling, or overnight oats if you've 30+ minutes. The real fuelling happens on the bike (next section), and the recovery bowl does the heavy lifting afterwards.
+    </div>
+  </div>
+</section>
+
+<!-- ============ ON-BIKE FUEL ============ -->
+<section id="fuel">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">07</span><h2>On-bike fuelling</h2></div>
+    <p class="sec-intro">For the weekend long rides. Carbohydrate targets scale with duration — and at the top end you need <strong>two transportable carbs together</strong> (glucose + fructose) to beat the single-transporter absorption ceiling. The cards below are quick summaries; <a href="#recipes" style="color:var(--bidon);font-weight:700;">full step-by-step methods for the bottles and rice cakes are in the Recipes section</a>.</p>
+
+    <table class="fueltable">
+      <thead><tr><th>Ride duration</th><th>Carbs / hr</th><th>How to hit it</th></tr></thead>
+      <tbody>
+        <tr><td class="dur">&lt; 75 min · Z2</td><td class="carb">0–30g</td><td>Water or electrolyte. Fat-adaptation opportunity at low intensity.</td></tr>
+        <tr><td class="dur">75–120 min</td><td class="carb">30–45g</td><td>1 bottle + 1 solid item at 60 min. Start fuelling from 20 min in.</td></tr>
+        <tr><td class="dur">2–3 hr</td><td class="carb">60g</td><td>1 bottle/hr + 1–2 solids. Alternate sweet & savoury. Salt from hr 2.</td></tr>
+        <tr><td class="dur">3–5 hr</td><td class="carb">60–80g</td><td>2:1 maltodextrin:fructose drink. Sodium 700–1000mg/hr.</td></tr>
+        <tr><td class="dur">5–6 hr</td><td class="carb">80–90g</td><td>Needs gut training. Add savoury + 5–10g/hr protein from hr 3.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mealwrap" style="margin-top:8px;">
+      <div class="card fuel">
+        <div class="tag">Homemade drink · up to 60g/hr</div>
+        <h3>Everyday Ride Bottle</h3>
+        <div class="equip">Per 750ml · make night before</div>
+        <ul>
+          <li>40–45g sugar or honey</li>
+          <li>¼ tsp salt (or ½ tsp sodium citrate)</li>
+          <li>Juice of ½ lemon or lime</li>
+          <li>Pinch of ginger optional</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">170</span></div>
+          <div><span class="mk">Carb</span><span class="mv hot">42</span></div>
+          <div><span class="mk">Na mg</span><span class="mv">400</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Homemade drink · up to 90g/hr</div>
+        <h3>High-Carb Performance Bottle</h3>
+        <div class="equip">Per 750ml · for 3hr+</div>
+        <ul>
+          <li>40g maltodextrin + 20g fructose (2:1)</li>
+          <li>¼ tsp salt + pinch magnesium</li>
+          <li>Juice of ½ lemon + squash to taste</li>
+          <li>Paste the maltodextrin in warm water first</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">225</span></div>
+          <div><span class="mk">Carb</span><span class="mv hot">60</span></div>
+          <div><span class="mk">Na mg</span><span class="mv">500</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Pocket food · pro staple</div>
+        <h3>Savoury Rice Cakes</h3>
+        <div class="equip"><b>Rice cooker</b> · ~12 cakes, freeze</div>
+        <ul>
+          <li>400g sushi rice + 3 scrambled eggs</li>
+          <li>3 rashers bacon, diced small</li>
+          <li>Soy, rice vinegar, sesame oil</li>
+          <li>Press, set overnight, slice & wrap</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">/cake</span><span class="mv">—</span></div>
+          <div><span class="mk">Carb</span><span class="mv hot">25</span></div>
+          <div><span class="mk">Pro</span><span class="mv">4</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Pocket food · sweet · later hours</div>
+        <h3>Sweet Rice Cakes</h3>
+        <div class="equip"><b>Rice cooker</b> · ~10 cakes, no frying</div>
+        <ul>
+          <li>400g sushi rice + 2 mashed bananas</li>
+          <li>3 tbsp honey + pinch of salt</li>
+          <li>Cinnamon optional</li>
+          <li>Press, set overnight, slice & wrap</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">/cake</span><span class="mv">—</span></div>
+          <div><span class="mk">Carb</span><span class="mv hot">28</span></div>
+          <div><span class="mk">Pro</span><span class="mv">2</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Pocket food · no cooking · long-ride favourite</div>
+        <h3>Date &amp; Oat Energy Balls</h3>
+        <div class="equip">Food processor · ~16 balls</div>
+        <ul>
+          <li>200g dates + 200g oats</li>
+          <li>3 tbsp peanut butter + 2 tbsp honey</li>
+          <li>Blitz, roll, chill</li>
+          <li>Roll in cocoa or coconut (optional)</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">/ball</span><span class="mv">—</span></div>
+          <div><span class="mk">Carb</span><span class="mv hot">22</span></div>
+          <div><span class="mk">Pro</span><span class="mv">3</span></div>
+        </div>
+      </div>
+
+      <div class="card fuel">
+        <div class="tag">Post-ride · within 30 min</div>
+        <h3>Recovery Smoothie</h3>
+        <div class="equip">Over-50: hit the leucine threshold</div>
+        <ul>
+          <li>1 banana + 30g whey</li>
+          <li>400ml milk + handful oats</li>
+          <li>1 tsp honey</li>
+          <li>Then the recovery bowl 60–90 min later</li>
+        </ul>
+        <div class="macros">
+          <div><span class="mk">kcal</span><span class="mv">420</span></div>
+          <div><span class="mk">Carb</span><span class="mv">55</span></div>
+          <div><span class="mk">Pro</span><span class="mv hot">35</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe-note">
+      <b>Pocket-food shortcuts from Lidl:</b> malt loaf slabs, fig rolls, Medjool dates and jelly sweets all work brilliantly on the bike with zero prep. Pre-slice malt loaf the night before and wrap in foil — it survives a jersey pocket and hits hard on maltose.
+    </div>
+  </div>
+</section>
+
+<!-- ============ LIDL SHOP ============ -->
+<section id="shop">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">08</span><h2>The Lidl shop</h2></div>
+
+    <div class="shop-head">
+      <div>
+        <div class="lidl">LIDL<span> · fortnightly list</span></div>
+        <div class="note">Covers both weeks. Items are tagged <span style="background:#1a1d21;color:#fff;font-family:monospace;font-size:.62rem;padding:1px 6px;border-radius:2px;">A</span> <span style="background:#ff5a2c;color:#fff;font-family:monospace;font-size:.62rem;padding:1px 6px;border-radius:2px;">B</span> or <span style="background:#a9cf1f;color:#16181b;font-family:monospace;font-size:.62rem;padding:1px 6px;border-radius:2px;">BOTH</span> — just buy the ones for the week you're prepping. <b style="color:var(--hi-vis)">No Mon–Thu dinners</b> (Gousto).</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="bar"><i id="bar"></i></div>
+        <span class="pct" id="pct">0 / 0</span>
+      </div>
+    </div>
+
+    <div class="shop-controls">
+      <button onclick="checkAll(true)">Tick all</button>
+      <button onclick="checkAll(false)">Clear all</button>
+      <button onclick="window.print()">Print list</button>
+    </div>
+
+    <div class="shop-cats" id="shopcats">
+
+      <div class="cat">
+        <h3><span class="ico">🥩</span>Proteins · Fresh Meat & Fish</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Chicken breast fillets<span class="q">Week A ~1.2kg (bowls + soup) · Week B ~250g (pasta pots)<span class="wktag both">BOTH</span></span><span class="lidl-pick">Birchwood / Red Hen</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Beef mince, 5% lean<span class="q">500g (chilli)<span class="wktag b">WEEK B</span></span><span class="lidl-pick">Birchwood</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Chicken thighs<span class="q">~600g (weekend recovery bowls)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Salmon fillets<span class="q">2–4 (weekend meals)<span class="wktag both">BOTH</span></span><span class="lidl-pick">fresh or frozen pack</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Sirloin / pork steak<span class="q">250g (Friday night)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Smoked back bacon<span class="q">Week A: muffins; + weekend breakfast both weeks<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Chicken sausages<span class="q">1 pack (weekend breakfast)<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🥚</span>Dairy, Eggs & Skyr</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Large eggs<span class="q">Week A: 2 dozen · Week B: 2 dozen (oat bars + 4 boiled/breakfast + sides)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Greek yoghurt or Skyr<span class="q">Week A: oats + backup · Week B: large tub for breakfast pots<span class="wktag both">BOTH</span></span><span class="lidl-pick">Milbona / Arla</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Semi-skimmed milk<span class="q">2L (oats, oat bars, smoothie, recovery)<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🍚</span>Carbs & Grains</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Basmati / long-grain rice<span class="q">1kg (Week A bowls / Week B chilli + weekend recovery)<span class="wktag both">BOTH</span></span><span class="lidl-pick">Golden Sun</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Pasta (short shape)<span class="q">500g bag (pasta pots — fusilli or penne)<span class="wktag b">WEEK B</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Sushi / short-grain rice<span class="q">1kg (rice cakes — must be sticky short-grain)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Porridge oats<span class="q">1kg (oats / oat bars, smoothie, energy balls)<span class="wktag both">BOTH</span></span><span class="lidl-pick">value bag</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Sourdough / wholemeal loaf<span class="q">weekend breakfasts<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Granola<span class="q">1 bag (Week B breakfast pots + backup)<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🥦</span>Vegetables</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Broccoli / tenderstem<span class="q">large (Week A bowls + Friday both weeks)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Spinach<span class="q">2 bags (muffins/soup/pasta pots + weekend)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Peppers<span class="q">Week A: 1 (muffins) · Week B: +1 (chilli) · + Friday/weekend<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Onions<span class="q">4 (soup/chilli, griddle nights, recovery bowls)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Carrots<span class="q">1kg bag (Week A bowls + soup)<span class="wktag a">WEEK A</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Courgettes<span class="q">2 (Friday + weekend)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Sweet potatoes<span class="q">Week A: soup · Week B: chilli · + Friday — 3 total<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">White potatoes<span class="q">500g (Week A muffins + weekend breakfast)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Cherry tomatoes<span class="q">Week B: pasta pots · + weekend breakfast/salads<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Mushrooms<span class="q">1 pack (weekend breakfast)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Rocket / salad leaves<span class="q">Week B pasta pots + weekend salads<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Avocado<span class="q">2 (recovery bowls)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Celery<span class="q">1 head (Week A lentil soup)<span class="wktag a">WEEK A</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Asparagus / tenderstem<span class="q">Friday + weekend<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Frozen edamame<span class="q">500g (Week A chicken rice bowls)<span class="wktag a">WEEK A</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🫘</span>Pulses & Tins</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Red lentils<span class="q">500g (Week A soup)<span class="wktag a">WEEK A</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Kidney beans<span class="q">1 tin (Week B chilli)<span class="wktag b">WEEK B</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Chopped tomatoes<span class="q">1 tin (Week B chilli)<span class="wktag b">WEEK B</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Tuna<span class="q">1 tin (Week A soup-side backup)<span class="wktag a">WEEK A</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Stock cubes / pots<span class="q">chicken + vegetable<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🍌</span>Fruit & On-Bike Fuel</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Bananas<span class="q">large bunch — Week B needs 3 ripe for oat bars; extras for cakes/fuel<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Fresh berries<span class="q">1–2 punnets (oats / breakfast pots)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Frozen berries<span class="q">1 bag (oats — cheaper)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Medjool dates<span class="q">700g (pre-ride fix + energy balls + ride fuel)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Malt loaf<span class="q">2-pack (pocket fuel)<span class="wktag both">BOTH</span></span><span class="lidl-pick">slice & wrap</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Fig rolls<span class="q">1 pack (pocket fuel)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Jelly sweets / wine gums<span class="q">on-bike top-ups<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Lemons<span class="q">drinks + dressings<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">🧂</span>Store Cupboard & Flavour</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Olive oil<span class="q">dressings + griddle + pasta pots<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Green pesto<span class="q">1 jar (Week B pasta pots)<span class="wktag b">WEEK B</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Sesame oil<span class="q">rice bowls + savoury cakes<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Soy sauce<span class="q">bowls + savoury rice cakes<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Honey<span class="q">oats, oat bars, drinks, cakes, energy balls<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Peanut butter<span class="q">1 jar (energy balls) — any nut butter<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Cinnamon<span class="q">small jar (oat bars + sweet rice cakes)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Cocoa powder or desiccated coconut<span class="q">coating energy balls (optional)<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Chia seeds<span class="q">overnight oats (Week A)<span class="wktag a">WEEK A</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Mixed seeds<span class="q">breakfast pots / backup<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Spice set<span class="q">cumin, smoked paprika, chilli, oregano<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Garlic + fresh ginger<span class="q">bowls, soup, chilli<span class="wktag both">BOTH</span></span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Salsa / hot sauce<span class="q">weekend breakfast + bowls<span class="wktag both">BOTH</span></span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <h3><span class="ico">⚡</span>Supplement / Specialist</h3>
+        <ul>
+          <li><label><input type="checkbox"><span class="item">Whey or casein protein<span class="q">oats + recovery (online if not in store)</span><span class="lidl-pick">check Lidl protein range</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Maltodextrin<span class="q">bulk bag — high-carb bottle (online)</span></span></label></li>
+          <li><label><input type="checkbox"><span class="item">Fructose / fruit sugar<span class="q">high-carb bottle (online / health shop)</span></span></label></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="bigcallout">
+      <div class="num">£</div>
+      <p><b>Budget note:</b> the heavy lifting here — rice, oats, eggs, frozen veg, tinned pulses, Skyr and Birchwood meat — is exactly where Lidl wins on price. Buy maltodextrin, fructose and protein powder in bulk online, where cost-per-gram drops sharply versus single tubs. Frozen berries and frozen salmon cut cost further with no nutritional loss.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>THE FEED PLAN · Over-50 endurance fuel</span>
+    <span>Calibrated 93→81kg · 150–185g protein/day</span>
+    <span><b>Mon–Thu dinners: Gousto</b></span>
+  </div>
+</footer>
+
+<script>
+  // ---- sticky-nav active state ----
+  const links=[...document.querySelectorAll('nav.jump a')];
+  const secs=links.map(l=>document.querySelector(l.getAttribute('href')));
+  const navH=58;
+  function spy(){
+    let i=secs.length-1;
+    for(let j=0;j<secs.length;j++){
+      if(secs[j] && secs[j].getBoundingClientRect().top<=navH+90){i=j;}
+    }
+    links.forEach(l=>l.classList.remove('on'));
+    if(links[i])links[i].classList.add('on');
+  }
+  window.addEventListener('scroll',spy,{passive:true});spy();
+
+  // ---- shopping list checkboxes + progress ----
+  const boxes=[...document.querySelectorAll('#shopcats input[type=checkbox]')];
+  const bar=document.getElementById('bar');
+  const pct=document.getElementById('pct');
+  function refresh(){
+    const done=boxes.filter(b=>b.checked).length;
+    const total=boxes.length;
+    bar.style.width=(total? (done/total*100):0)+'%';
+    pct.textContent=done+' / '+total;
+  }
+  boxes.forEach(b=>{
+    b.addEventListener('change',()=>{
+      b.closest('label').classList.toggle('done',b.checked);
+      refresh();
+    });
+  });
+  function checkAll(state){
+    boxes.forEach(b=>{
+      b.checked=state;
+      b.closest('label').classList.toggle('done',state);
+    });
+    refresh();
+  }
+  refresh();
+</script>
+</body>
+</html>

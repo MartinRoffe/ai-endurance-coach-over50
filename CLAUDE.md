@@ -50,7 +50,7 @@ The app has two interfaces sharing the same data layer:
 - `/calendar` — unified plan/camp/event-prep calendar with completion tracking, interference flags, BTB log
 - `/training`, `/compliance` — plan completion stats and per-discipline adherence
 - `/nutrition` — nutrition hub (principles, calorie tiers, supplements)
-- `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/shopping-list` — nutrition sub-pages
+- `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/shopping-list`, `/nutrition/lidl-shopping-list` — nutrition sub-pages
 - `/architecture` — bundled architecture.html diagram (Mermaid system map)
 - `/sleep` — 30-day sleep quality history with stage breakdown
 - `/body`, `/body-refresh` — body composition and blood pressure tracking

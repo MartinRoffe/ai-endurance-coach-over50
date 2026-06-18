@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
-<title>Asda Click-to-Add Shopping List</title>
+<title>Lidl Shopping List</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -65,29 +65,30 @@
 </style>
 </head>
 <body>
-{% set active_tab = 'shopping' %}
-{% set nutrition_section = 'shopping' %}
+{% set active_tab = 'lidl_shopping' %}
+{% set nutrition_section = 'lidl_shopping' %}
 {% include 'nav.html' %}
 {% include 'nutrition_subnav.html' %}
 <header>
   <div class="wrap" style="padding:0;">
-    <h1>🛒 Asda Click-to-Add Shopping List</h1>
-    <p>Tap <b>Add&nbsp;▸</b> to open that item on Asda groceries, then add it to your trolley. Tap the box to tick it off — the bar at the bottom keeps a running total of what you've ticked. Prices are targets; check the real price as you go.</p>
-    <a href="/nutrition/lidl-shopping-list" class="compare-link">Compare: Lidl list →</a>
+    <h1>🛒 Lidl Shopping List</h1>
+    <p>Tap <b>Find&nbsp;▸</b> to look up that item at Lidl, then tick the box as you put it in your basket. The bar at the bottom keeps a running total of what you've ticked. Prices are targets; check the real price in store — Lidl prices vary by week and location.</p>
+    <a href="/nutrition/shopping-list" class="compare-link">Compare: Asda list →</a>
   </div>
 </header>
 
 <div class="wrap" id="list">
 
-  <div class="banner"><b>Tip:</b> sign in to Asda first so items drop straight into your trolley. Each link opens an Asda search in a new tab.</div>
+  <div class="banner"><b>Tip:</b> Lidl has no online grocery trolley like Asda — each link opens a Google search for that Lidl product. Check the Lidl Plus app or weekly leaflet for current offers before you shop.</div>
+  <div class="banner"><b>Week 2 (Set B breakfasts):</b> add <b>Skyr pots ×3–4</b> (200g, Mon/Wed/Fri with oat bars) and an extra <b>eggs</b> pack for Tue/Thu boil batch. See <a href="/nutrition/recipes#banana-oat-bars">breakfast recipes</a>.</div>
 
   <div class="cat"><h2>Buy Every Week</h2><span class="sub">fresh, weekly</span></div>
   <!-- items injected -->
 
   <div class="cat"><h2>Top Up When Low</h2><span class="sub">bulk staples that last several weeks</span></div>
 
-  <div class="cat purple"><h2>Separate Online Order</h2><span class="sub">sports nutrition — not stocked at Asda</span></div>
-  <div class="banner p"><b>Heads-up:</b> maltodextrin and fructose come from sports-nutrition shops (Bulk, Peak Supps, Amacx), not Asda. These links open a web search — order them separately, they last several weeks.</div>
+  <div class="cat purple"><h2>Separate Online Order</h2><span class="sub">sports nutrition — not stocked at Lidl</span></div>
+  <div class="banner p"><b>Heads-up:</b> maltodextrin and fructose come from sports-nutrition shops (Bulk, Peak Supps, Amacx), not Lidl. These links open a web search — order them separately, they last several weeks.</div>
 
 </div>
 
@@ -96,46 +97,52 @@
   <div class="right"><div class="lbl">Full list target</div><div class="big" id="fullTotal">£0.00</div><div class="count" id="count">0 of 0 added</div></div>
 </div>
 
-<footer>Companion to your weekly meal plan &amp; tracker · prices are targets, June 2026 · Gousto (Mon–Thu dinners) ordered separately.</footer>
+<footer>Companion to your weekly meal plan &amp; tracker · Lidl target prices, June 2026 · Gousto (Mon–Thu dinners) ordered separately.</footer>
 
 <script>
-const ASDA = t => "https://groceries.asda.com/search/" + encodeURIComponent(t);
+const LIDL = t => "https://www.google.com/search?q=" + encodeURIComponent("lidl " + t + " uk");
 const WEB  = t => "https://www.google.com/search?q=" + encodeURIComponent(t);
 
 const GROUPS = [
   {after:"Buy Every Week", items:[
-    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",5.69,"chicken thigh fillets"],
-    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",3.40,"greek style yogurt 1kg"],
-    ["Salmon fillets (2-pack)","one griddle night",3.50,"salmon fillets"],
-    ["Frying / lean steak","one griddle night",3.50,"frying steak"],
-    ["Flatbreads / wraps","griddle carb base",0.85,"flatbreads"],
-    ["Mixed peppers","griddle veg",1.20,"mixed peppers"],
-    ["Onions & courgettes","griddle veg",1.80,"courgette"],
-    ["Cooked & peeled prawns 150g","Thursday paprika rice",1.75,"cooked peeled prawns"],
-    ["Bananas (loose) ×12","snacks + on-bike fuel",1.10,"bananas loose"],
-    ["Apples or oranges ×6","evening snack",1.20,"apples"],
-    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.45,"semi skimmed milk 2l"],
-    ["Wholemeal bread loaf","Sunday pre-ride toast",1.10,"wholemeal bread"],
-    ["White potatoes (1.5kg bag)","savoury potato bites — on-bike fuel",1.50,"white potatoes"],
+    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",4.95,"chicken thigh fillets"],
+    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",2.78,"greek style yogurt 1kg"],
+    ["Salmon fillets (2-pack)","one griddle night",2.99,"salmon fillets"],
+    ["Frying / lean steak","one griddle night",2.99,"frying steak"],
+    ["Flatbreads / wraps","griddle carb base",0.65,"flatbreads"],
+    ["Mixed peppers","griddle veg",0.99,"mixed peppers"],
+    ["Onions & courgettes","griddle veg",1.50,"courgette"],
+    ["Cooked & peeled prawns 150g","Thursday paprika rice",1.49,"cooked peeled prawns"],
+    ["Bananas (loose) ×12","snacks + on-bike fuel",0.99,"bananas loose"],
+    ["Frozen berries 500g","overnight oats + yoghurt pots",1.99,"frozen berries"],
+    ["Arla Skyr / Greek yogurt pots ×4","Week B Mon/Wed/Fri — mandatory with oat bars",2.50,"skyr yogurt pots"],
+    ["Apples or oranges ×6","evening snack",1.00,"apples"],
+    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.25,"semi skimmed milk 2l"],
+    ["Wholemeal bread loaf","Sunday pre-ride toast",0.89,"wholemeal bread"],
+    ["White potatoes (1.5kg bag)","savoury potato bites — on-bike fuel",1.19,"white potatoes"],
   ]},
   {after:"Top Up When Low", items:[
-    ["Eggs (15-pack)","weekend breakfasts + oat bars + rice cakes",2.45,"eggs 15 pack"],
-    ["Porridge oats 1kg","porridge + oat bars + energy balls",1.25,"porridge oats 1kg"],
-    ["Basmati rice 1kg","batch-cooked lunches",2.25,"basmati rice 1kg"],
-    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes",1.80,"sushi rice"],
-    ["Pitted dates 500g","date & oat energy balls",1.80,"pitted dates"],
-    ["Tuna chunks (4-pack)","Wednesday pasta lunch",3.00,"tuna chunks spring water"],
+    ["Eggs (15-pack)","weekend + breakfast rotation + oat bars",2.00,"eggs 15 pack"],
+    ["Smoked bacon or ham 200g","egg muffin tray (Set A)",1.79,"smoked bacon"],
+    ["Muffin cases (12-pack)","egg muffins — Set A Tue/Thu",0.65,"muffin cases"],
+    ["Chia seeds 200g","overnight oats — Set A",1.49,"chia seeds"],
+    ["Granola 500g","yoghurt pots — Set B Tue/Thu",1.49,"granola"],
+    ["Porridge oats 1kg","porridge + oat bars + energy balls",0.89,"porridge oats 1kg"],
+    ["Basmati rice 1kg","batch-cooked lunches",1.49,"basmati rice 1kg"],
+    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes",1.29,"sushi rice"],
+    ["Pitted dates 500g","date & oat energy balls",1.49,"pitted dates"],
+    ["Tuna chunks (4-pack)","Wednesday pasta lunch",2.36,"tuna chunks spring water"],
     ["Whey protein 1kg tub","breakfasts + shakes (~every 4 wks)",20.00,"whey protein 1kg"],
-    ["Peanut butter (large jar)","oat bars + rice cakes + toast",1.75,"peanut butter"],
-    ["Clear honey","oat bars + gel + toast",1.50,"clear honey"],
-    ["Cocoa powder","recovery chocolate milk",1.50,"cocoa powder"],
-    ["Dried pasta 500g","Wednesday lunch base",0.50,"pasta"],
-    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.50,"soreen malt loaf"],
-    ["Fig rolls","emergency jersey pockets",1.20,"fig rolls"],
-    ["Jelly babies","late-ride carb top-ups",1.00,"jelly babies"],
-    ["Lo-Salt (lite salt)","potassium in electrolyte drinks",1.50,"lo salt"],
-    ["Coconut water (4-pack)","electrolyte drink base — optional",2.50,"coconut water"],
-    ["Pumpkin seeds 150g","post-ride magnesium + snacks",1.80,"pumpkin seeds"],
+    ["Peanut butter (large jar)","oat bars + rice cakes + toast",1.29,"peanut butter"],
+    ["Clear honey","oat bars + gel + toast",1.19,"clear honey"],
+    ["Cocoa powder","recovery chocolate milk",1.09,"cocoa powder"],
+    ["Dried pasta 500g","Wednesday lunch base",0.39,"pasta"],
+    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.00,"soreen malt loaf"],
+    ["Fig rolls","emergency jersey pockets",0.99,"fig rolls"],
+    ["Jelly babies","late-ride carb top-ups",0.79,"jelly babies"],
+    ["Lo-Salt (lite salt)","potassium in electrolyte drinks",1.19,"lo salt"],
+    ["Coconut water (4-pack)","electrolyte drink base — optional",1.99,"coconut water"],
+    ["Pumpkin seeds 150g","post-ride magnesium + snacks",1.49,"pumpkin seeds"],
   ]},
   {after:"Separate Online Order", ext:true, items:[
     ["Maltodextrin 1kg","energy drinks + homemade gel",10.00,"maltodextrin 1kg buy uk"],
@@ -153,7 +160,6 @@ function catByName(n){return cats.find(c=>c.querySelector('h2').textContent.trim
 GROUPS.forEach(g=>{
   const anchor=catByName(g.after);
   let insertAfter=anchor;
-  // skip any banner immediately after the cat
   if(insertAfter.nextElementSibling && insertAfter.nextElementSibling.classList.contains('banner')) insertAfter=insertAfter.nextElementSibling;
   g.items.forEach(([name,note,price,term])=>{
     fullTotal+=price; count++;
@@ -163,8 +169,8 @@ GROUPS.forEach(g=>{
     meta.appendChild(el('div','name',name));
     meta.appendChild(el('div','note',note));
     const pr=el('div','price','£'+price.toFixed(2));
-    const a=el('a','add'+(g.ext?' ext':''),(g.ext?'Find ▸':'Add ▸'));
-    a.href=(g.ext?WEB(term):ASDA(term)); a.target='_blank'; a.rel='noopener';
+    const a=el('a','add'+(g.ext?' ext':''),'Find ▸');
+    a.href=(g.ext?WEB(term):LIDL(term)); a.target='_blank'; a.rel='noopener';
     row.append(chk,meta,pr,a);
     chk.onclick=()=>{
       const on=row.classList.toggle('done'); chk.classList.toggle('on',on); chk.textContent=on?'✓':'';

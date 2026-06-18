@@ -182,7 +182,7 @@ body {
   <div class="gr-nav-inner">
     {% set perf_active   = active_tab in ['performance', 'analysis'] %}
     {% set plan_active   = active_tab in ['calendar', 'training', 'compliance'] %}
-    {% set nutrition_active = active_tab in ['nutrition', 'meals', 'fuelling', 'recipes', 'shopping'] %}
+    {% set nutrition_active = active_tab in ['nutrition', 'meals', 'fuelling', 'recipes', 'shopping', 'lidl_shopping'] %}
     {% set health_active = active_tab in ['sleep', 'body'] %}
     {% set events_active = active_tab in ['tenerife', 'haute_route'] %}
 
@@ -312,5 +312,18 @@ document.addEventListener('click', e => {
   document.addEventListener('focusout',  e => { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) hide(); });
   window.addEventListener('scroll', hide, { passive: true, capture: true });
   window.addEventListener('resize', hide, { passive: true });
+})();
+
+(function () {
+  const nav = document.querySelector('.gr-nav');
+  if (!nav) return;
+  function setNavHeight() {
+    document.documentElement.style.setProperty('--gr-nav-height', nav.offsetHeight + 'px');
+  }
+  setNavHeight();
+  window.addEventListener('resize', setNavHeight, { passive: true });
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(setNavHeight).observe(nav);
+  }
 })();
 </script>

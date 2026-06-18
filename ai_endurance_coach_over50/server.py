@@ -1662,6 +1662,11 @@ async def nutrition_shopping_list(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})
 
 
+@app.get("/nutrition/lidl-shopping-list", response_class=HTMLResponse)
+async def nutrition_lidl_shopping_list(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="lidl-shopping-list.html", context={})
+
+
 _ARCHITECTURE_HTML = Path(__file__).resolve().parent / "architecture.html"
 
 

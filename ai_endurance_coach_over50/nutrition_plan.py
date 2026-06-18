@@ -110,7 +110,11 @@ PRINCIPLES = [
     "Recovery week (W4): protein holds at 185g minimum — cut comes from carbs/fat only. "
     "Snacks reduce to 1–2/day. Lighter dinner (<550 kcal, Gousto Mon–Thu / lighter griddle Fri). "
     "Whey shake stays in.",
-    "Thursday warning: lowest pre-dinner protein day (119g). "
+    "Breakfast rotation (Weeks 1 & 3 = Set A, Week 2 = Set B, Week 4 = Set A recovery portions): "
+    "two breakfasts batched each Sunday (~60–75 min). Set A: overnight oats Mon/Wed/Fri + egg muffins "
+    "Tue/Thu. Set B: banana oat bar + 200g Skyr Mon/Wed/Fri + yoghurt pot + 2 eggs Tue/Thu. "
+    "Skyr pot is mandatory with Week B bars — bar alone is carb-only. Arla Skyr backup any morning.",
+    "Thursday warning: lowest pre-dinner protein day (~112g Set A / ~116g Set B). "
     "Gousto MUST be chicken/beef/salmon ≥65g protein — not a pasta-only dish.",
     "Saturday is the highest-risk protein day. Lunch must be chicken+rice (not eggs on toast). "
     "Greek yogurt at post-ruck breakfast. Whey shake as evening snack. These are non-negotiable.",
@@ -136,20 +140,93 @@ _SUPPLEMENT_DISCLAIMER = (
     "especially alongside any medication or blood-pressure management."
 )
 
+# ── Breakfast A/B rotation (Week 2 = Set B; all other weeks = Set A) ─────────
+# Each entry: (name, detail, kcal, protein_g, carbs_g)
+BREAKFASTS: dict[str, tuple[str, str, int, int, int]] = {
+    "a_mwf": (
+        "High-Protein Overnight Oats",
+        "Per jar: 60g oats + 1 scoop whey + 200ml milk + 100g Greek yogurt + 1 tbsp chia + "
+        "100g berries + 1 tsp honey. Spoon, pour, seal — no cooking. Covers Mon/Wed/Fri.",
+        480, 38, 50,
+    ),
+    "a_tuth": (
+        "Egg & Veg Muffins ×2",
+        "10-egg tray bake with potato, pepper, spinach and bacon/ham. Bake Sunday; "
+        "2 muffins per breakfast Tue/Thu. Freezes well.",
+        340, 28, 12,
+    ),
+    "b_mwf": (
+        "Banana Oat Bar + Skyr Pot",
+        "1 baked banana oat bar + 200g Skyr pot. Bar alone is carb-only — Skyr is required "
+        "for protein on Week B Mon/Wed/Fri.",
+        420, 34, 44,
+    ),
+    "b_tuth": (
+        "Yoghurt Pot + 2 Boiled Eggs",
+        "250g Greek yogurt or Skyr + 40g granola + berries + honey + 2 boiled eggs on the side. "
+        "Granola kept separate until eating so it stays crunchy.",
+        410, 32, 38,
+    ),
+}
+
+_WEEKDAY_BREAKFAST_TYPES = frozenset({
+    "rest", "training", "bike", "bike_fri", "thursday", "recovery_weekday",
+})
+
+_BREAKFAST_ROTATION_LABEL = {
+    0: "Set A (overnight oats + egg muffins)",
+    1: "Set B (oat bars + Skyr / yoghurt + eggs)",
+    2: "Set A (overnight oats + egg muffins)",
+    3: "Set A (recovery portions — same recipes)",
+}
+
+
+def breakfast_key(cycle_week: int, weekday: int) -> str:
+    """Rotation slot for Mon–Fri breakfasts. Week 2 (index 1) = Set B."""
+    rot = "b" if cycle_week == 1 else "a"
+    slot = "mwf" if weekday in (0, 2, 4) else "tuth"
+    return f"{rot}_{slot}"
+
+
+def _skip_am_snack(cycle_week: int, weekday: int) -> bool:
+    """Drop the separate AM oat bar when breakfast is already 480 kcal overnight oats."""
+    return breakfast_key(cycle_week, weekday) == "a_mwf"
+
+
+def _assemble_meals(dtype: str, cycle_week: int, weekday: int) -> list[tuple]:
+    """Merge A/B breakfast rotation into weekday day-type meal lists."""
+    raw = DAY_TYPES[dtype]["meals"]
+    if dtype not in _WEEKDAY_BREAKFAST_TYPES:
+        return list(raw)
+    key = breakfast_key(cycle_week, weekday)
+    name, detail, kcal, prot, carbs = BREAKFASTS[key]
+    result: list[tuple] = [("Breakfast", name, detail, kcal, prot, carbs)]
+    for slot, mname, mdetail, mkcal, mprot, mcarbs in raw:
+        if slot == "AM Snack" and _skip_am_snack(cycle_week, weekday):
+            continue
+        result.append((slot, mname, mdetail, mkcal, mprot, mcarbs))
+    return result
+
+
+def _pre_dinner_protein(meals: list[tuple]) -> int:
+    """Sum protein for all meals except the last (dinner / griddle)."""
+    if len(meals) <= 1:
+        return sum(m[4] for m in meals)
+    return sum(m[4] for m in meals[:-1])
+
+
 # ── Day-type templates ────────────────────────────────────────────────────────
 # Each meal: (slot, name, detail, kcal, protein_g, carbs_g)
+# Weekday breakfasts are injected by `_assemble_meals()` — not stored here.
 DAY_TYPES: dict[str, dict] = {
 
     "rest": {
         "label": "Rest day",
         "calorie_tier": "rest",
-        "pre_dinner_protein_g": 120,
-        "protein_note": "120g pre-dinner; Gousto must deliver 60g+ to hit 185g. Easiest day.",
+        "pre_dinner_protein_g": 113,
+        "protein_note": "~113g pre-dinner (Set A Mon); Gousto must deliver 60g+ to hit 185g.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey",
-             "50g bulk oats + a Greek-yogurt portion (from the tub) + ½ scoop whey. Make overnight "
-             "or 3 min in the microwave. Replaces Fuel10k + GetPro pot at a fraction of the cost.", 330, 35, 39),
-            ("AM Snack", "Homemade Oat Bar", "Batch-baked flapjack (oats + PB + honey + whey). ~10g protein.", 200, 10, 15),
+            ("AM Snack", "Homemade Oat Bar", "Batch-baked flapjack (oats + PB + honey + whey). ~10g protein. Skipped on overnight-oats mornings (Mon/Wed/Fri Set A).", 200, 10, 15),
             ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
              "Batch-cooked basmati + 240g batch-roasted chicken, Greek-yogurt portion alongside "
              "for the protein top-up. Replaces the rice pouch + GetPro.", 680, 73, 70),
@@ -164,11 +241,10 @@ DAY_TYPES: dict[str, dict] = {
     "training": {
         "label": "Kettlebell + MaxiClimber",
         "calorie_tier": "training",
-        "pre_dinner_protein_g": 120,
-        "protein_note": "120g pre-dinner (Greek yogurt now added to lunch). Gousto at 65g closes the day at 185g.",
+        "pre_dinner_protein_g": 113,
+        "protein_note": "~113g pre-dinner (Set A Tue). Gousto at 65g closes the day at 185g.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey", "Same morning routine.", 330, 35, 39),
-            ("AM Snack", "Homemade Oat Bar", "Mid-morning.", 200, 10, 15),
+            ("AM Snack", "Homemade Oat Bar", "Mid-morning. Skipped on overnight-oats mornings (Set A Mon/Wed/Fri).", 200, 10, 15),
             ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
              "Full 240g batch-roasted chicken + Greek-yogurt portion. Same as rest day lunch — "
              "protein floor needs the yogurt on training days too.", 700, 73, 70),
@@ -183,11 +259,10 @@ DAY_TYPES: dict[str, dict] = {
     "bike": {
         "label": "Outdoor Bike 60 min",
         "calorie_tier": "training",
-        "pre_dinner_protein_g": 125,
-        "protein_note": "125g pre-dinner (includes whey shake). Gousto at 65g closes the day at 190g.",
+        "pre_dinner_protein_g": 128,
+        "protein_note": "~128g pre-dinner (includes whey shake). Gousto at 65g closes the day at 190g.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey", "Same morning routine.", 330, 35, 39),
-            ("AM Snack", "Homemade Oat Bar", "Mid-morning.", 200, 10, 15),
+            ("AM Snack", "Homemade Oat Bar", "Mid-morning. Skipped on overnight-oats mornings (Set A Mon/Wed/Fri).", 200, 10, 15),
             ("Lunch", "Bulk Pasta + Tuna + Greek Yogurt",
              "Bulk dried pasta with a stir-through tin of tuna; Greek-yogurt portion alongside. "
              "Good carbs for the afternoon ride, far cheaper than the sachet pasta.", 600, 53, 78),
@@ -205,10 +280,9 @@ DAY_TYPES: dict[str, dict] = {
     "bike_fri": {
         "label": "Outdoor Bike 60 min — Friday griddle",
         "calorie_tier": "training",
-        "pre_dinner_protein_g": 130,
-        "protein_note": "130g pre-dinner (whey shake + strong chicken lunch). Griddle at 65g = 195g. Friday griddle night.",
+        "pre_dinner_protein_g": 128,
+        "protein_note": "~128g pre-dinner (whey shake + strong chicken lunch). Griddle at 65g = 193g. Friday griddle night.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey", "Same morning routine.", 330, 35, 39),
             ("AM Snack", "Homemade Oat Bar", "Mid-morning.", 200, 10, 15),
             ("Lunch", "Batch Rice + Chicken 240g",
              "Full batch-roasted chicken pack. Strong protein lunch — rice + chicken gives 58g "
@@ -227,11 +301,10 @@ DAY_TYPES: dict[str, dict] = {
     "thursday": {
         "label": "Kettlebell + MaxiClimber — Paprika Rice Thursday",
         "calorie_tier": "training",
-        "pre_dinner_protein_g": 119,
-        "protein_note": "⚠ 119g pre-dinner — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.",
+        "pre_dinner_protein_g": 112,
+        "protein_note": "⚠ ~112g pre-dinner (Set A) — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey", "Same morning routine.", 330, 35, 39),
-            ("AM Snack", "Homemade Oat Bar", "Mid-morning.", 200, 10, 15),
+            ("AM Snack", "Homemade Oat Bar", "Mid-morning. Skipped on overnight-oats mornings only.", 200, 10, 15),
             ("Lunch", "Paprika Batch Rice + Prawns 150g + Greek Yogurt",
              "Homemade 'paella' — batch rice with paprika and peas, cold prawns stirred in, "
              "Greek-yogurt portion alongside. Replaces the Ben's pouch; same carb base for "
@@ -303,11 +376,10 @@ DAY_TYPES: dict[str, dict] = {
     "recovery_weekday": {
         "label": "Recovery week Mon–Fri",
         "calorie_tier": "recovery",
-        "pre_dinner_protein_g": 115,
+        "pre_dinner_protein_g": 110,
         "protein_note": "Recovery week: protein holds at 185g minimum — cut from carbs/fat only. "
                         "Whey shake stays in even on recovery week.",
         "meals": [
-            ("Breakfast", "Porridge + Greek Yogurt + Whey (same)", "Keep breakfast identical.", 330, 35, 39),
             ("Snack", "Oat bar on training days, skip on rest days",
              "Keep protein snacks. Drop fruit snacks on rest days. Oat bar on training days only.", 200, 10, 15),
             ("Lunch", "Same lunch choices — no change",
@@ -409,25 +481,32 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
     weekday = today.weekday()
     dtype = today_day_type(cycle_week, weekday)
     day_data = DAY_TYPES[dtype]
+    meals = _assemble_meals(dtype, cycle_week, weekday)
     tier = CALORIE_TIERS[day_data["calorie_tier"]]
     cycle_label = f"Week {cycle_week + 1}" + (" — Recovery" if cycle_week == 3 else "")
+    rot_label = _BREAKFAST_ROTATION_LABEL.get(cycle_week, "")
 
-    total_protein = sum(m[4] for m in day_data["meals"])
+    total_protein = sum(m[4] for m in meals)
+    pre_din = _pre_dinner_protein(meals)
     pt = protein_target_g()
 
     lines = [
         "## Nutrition Plan — Today's Prescribed Meals",
         f"Cycle: {cycle_label}  |  Day type: {day_data['label']}  |  "
         f"Target: {tier['kcal']} kcal" + (f" ({tier['note']})" if tier.get("note") else ""),
+    ]
+    if rot_label and dtype in _WEEKDAY_BREAKFAST_TYPES:
+        lines.append(f"Breakfast rotation: {rot_label}")
+    lines += [
         f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}), distributed ~0.4 g/kg "
         f"across 4+ meals plus a ~40 g pre-sleep casein/dairy dose to preserve muscle in the deficit.",
         f"Today's meals deliver: {total_protein}g total  |  "
-        f"Pre-dinner: {day_data['pre_dinner_protein_g']}g  — {day_data['protein_note']}",
+        f"Pre-dinner: {pre_din}g  — {day_data['protein_note']}",
         "",
         "Meals:",
     ]
 
-    for slot, name, detail, kcal, prot, carbs in day_data["meals"]:
+    for slot, name, detail, kcal, prot, carbs in meals:
         name = _apply_rice_swap(name, cycle_week, weekday)
         lines.append(f"  {slot}: {name} — {kcal} kcal, {prot}g protein, {carbs}g carbs")
         lines.append(f"    {detail}")
@@ -478,21 +557,24 @@ def nutrition_week_context(plan_start: date, today: date) -> str:
 
     lines = [
         "## Nutrition Plan — This Week (Mon–Sun)",
-        f"Cycle: {cycle_label}. Meals below show name + kcal + protein per day. "
+        f"Cycle: {cycle_label}. Breakfast: {_BREAKFAST_ROTATION_LABEL.get(cycle_week, 'n/a')}. "
+        "Meals below show name + kcal + protein per day. "
         "For the full 4-week cycle and an aggregated shopping list, call the "
         "get_meal_cycle tool.",
     ]
     for wd in range(7):
         d = monday + timedelta(days=wd)
-        day_data = DAY_TYPES[today_day_type(cycle_week, wd)]
+        dtype = today_day_type(cycle_week, wd)
+        day_data = DAY_TYPES[dtype]
+        meals = _assemble_meals(dtype, cycle_week, wd)
         tier = CALORIE_TIERS[day_data["calorie_tier"]]
-        total_protein = sum(meal[4] for meal in day_data["meals"])
+        total_protein = sum(meal[4] for meal in meals)
         marker = "  ← today" if d == today else ""
         lines.append(
             f"  {_WEEKDAY_LABELS[wd]} {d.strftime('%d %b')}: {day_data['label']} "
             f"— {tier['kcal']} kcal, ~{total_protein}g protein{marker}"
         )
-        for slot, name, _detail, kcal, prot, _carbs in day_data["meals"]:
+        for slot, name, _detail, kcal, prot, _carbs in meals:
             name = _apply_rice_swap(name, cycle_week, wd)
             lines.append(f"      {slot}: {name} ({kcal} kcal, {prot}g P)")
     return "\n".join(lines)
@@ -507,8 +589,9 @@ def _week_shopping_tally(cycle_week: int) -> list[tuple[str, int]]:
     """Count how many times each meal component recurs across one cycle week."""
     counter: Counter[str] = Counter()
     for wd in range(7):
-        day_data = DAY_TYPES[today_day_type(cycle_week, wd)]
-        for _slot, name, _detail, _kcal, _prot, _carbs in day_data["meals"]:
+        dtype = today_day_type(cycle_week, wd)
+        day_data = DAY_TYPES[dtype]
+        for _slot, name, _detail, _kcal, _prot, _carbs in _assemble_meals(dtype, cycle_week, wd):
             name = _apply_rice_swap(name, cycle_week, wd)
             for comp in _meal_components(name):
                 counter[comp] += 1
@@ -526,22 +609,25 @@ def meal_cycle_full() -> str:
     lines = [
         "FULL 4-WEEK NUTRITION CYCLE (repeats every 28 days).",
         f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}).",
-        "Weeks 1–3 are build weeks (same structure; rice varieties rotate). "
-        "Week 4 is the recovery week.",
+        "Weeks 1 & 3: Set A breakfasts (overnight oats + egg muffins). "
+        "Week 2: Set B breakfasts (oat bars + Skyr / yoghurt + eggs). "
+        "Week 4: recovery week. Rice varieties rotate weeks 2–3.",
         "",
     ]
     for cw in range(4):
         cycle_label = f"WEEK {cw + 1}" + (" (Recovery)" if cw == 3 else "")
-        lines.append(f"=== {cycle_label} ===")
+        lines.append(f"=== {cycle_label} — {_BREAKFAST_ROTATION_LABEL.get(cw, '')} ===")
         for wd in range(7):
-            day_data = DAY_TYPES[today_day_type(cw, wd)]
+            dtype = today_day_type(cw, wd)
+            day_data = DAY_TYPES[dtype]
+            meals = _assemble_meals(dtype, cw, wd)
             tier = CALORIE_TIERS[day_data["calorie_tier"]]
-            total_protein = sum(meal[4] for meal in day_data["meals"])
+            total_protein = sum(meal[4] for meal in meals)
             lines.append(
                 f"{_WEEKDAY_LABELS[wd]} — {day_data['label']} "
                 f"({tier['kcal']} kcal, ~{total_protein}g protein):"
             )
-            for slot, name, _detail, kcal, prot, carbs in day_data["meals"]:
+            for slot, name, _detail, kcal, prot, carbs in meals:
                 name = _apply_rice_swap(name, cw, wd)
                 lines.append(f"  {slot}: {name} — {kcal} kcal, {prot}g P, {carbs}g C")
         lines.append(f"Shopping tally for Week {cw + 1} (component → times/week):")
