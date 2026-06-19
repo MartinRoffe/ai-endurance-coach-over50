@@ -183,6 +183,8 @@ def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
         save_activities(acts)
     except Exception:
         pass
+    from .hr_profile import refresh_hr_profile_if_needed
+    refresh_hr_profile_if_needed(api, force=force)
     return m
 
 

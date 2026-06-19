@@ -6,6 +6,7 @@ from typing import Optional
 
 from .alerts import check_fatigue_alerts
 from .analysis import retrieve_relevant_analyses
+from .hr_profile import format_hr_profile_lines
 from .history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -226,6 +227,10 @@ def _section_coach_memory() -> list[str]:
     return []
 
 
+def _section_hr_profile(resting_hr_today: Optional[float] = None) -> list[str]:
+    return format_hr_profile_lines(resting_hr_today=resting_hr_today)
+
+
 def _section_ftp(limit: int = 1) -> list[str]:
     ftp_rows = load_ftp_tests()
     if not ftp_rows:
@@ -272,7 +277,7 @@ def _section_rag(session_type: Optional[str], limit: int = 2) -> list[str]:
 
 def build_advice_context(target: date) -> str:
     """Focused context for daily readiness advice (today's decision)."""
-    _, _, _, traffic_light, modulation, today_pmc = _load_day_state(target)
+    m, _, _, traffic_light, modulation, today_pmc = _load_day_state(target)
     session = session_for_date_extended(target)
     session_type = session[0] if session and session[0] != "rest" else None
 
@@ -297,6 +302,9 @@ def build_advice_context(target: date) -> str:
     ftp = _section_ftp(limit=1)
     if ftp:
         parts += ["", *ftp]
+    hr = _section_hr_profile(m.resting_hr)
+    if hr:
+        parts += ["", *hr]
     rag = _section_rag(session_type, limit=2)
     if rag:
         parts += ["", *rag]
@@ -696,6 +704,8 @@ def build_coach_context() -> str:
                 line += f"  |  FTP {r['ftp_w']}W"
             ftp_parts.append(line)
 
+    hr_profile_parts = _section_hr_profile(m.resting_hr)
+
     # Durability drift (late-ride HR drift, last 5 rides ≥ 90 min)
     dur_parts: list[str] = []
     dur_rows = load_durability(90)
@@ -908,6 +918,7 @@ def build_coach_context() -> str:
         *([*power_parts, ""] if power_parts else []),
         *([*accl_parts, ""] if accl_parts else []),
         *([*ftp_parts, ""] if ftp_parts else []),
+        *([*hr_profile_parts, ""] if hr_profile_parts else []),
         *([*dur_parts, ""] if dur_parts else []),
         *([*monotony_parts, ""] if monotony_parts else []),
         *([*zone_parts, ""] if zone_parts else []),

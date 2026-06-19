@@ -283,6 +283,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
             api = get_api(email, password)
             m = fetch_metrics(api, target)
             save(m)
+            from .hr_profile import refresh_hr_profile_if_needed
+            refresh_hr_profile_if_needed(api, force=True)
         else:
             m = load(target) or DailyMetrics(date=target)
     else:
@@ -294,6 +296,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 api = get_api(email, password)
                 m = fetch_metrics(api, target)
                 save(m)
+                from .hr_profile import refresh_hr_profile_if_needed
+                refresh_hr_profile_if_needed(api, force=False)
 
     stats = baseline_stats(target)
     comp_z = composite_score(m, stats)
@@ -2459,7 +2463,23 @@ def _enrich_plan_proposal(raw: dict) -> dict:
     return proposal
 
 
+def _ensure_hr_profile_cached() -> None:
+    from .hr_profile import load_hr_profile, refresh_hr_profile_if_needed
+    if load_hr_profile():
+        return
+    email = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if not email or not password:
+        return
+    try:
+        api = get_api(email, password)
+        refresh_hr_profile_if_needed(api, force=True)
+    except Exception as e:
+        logger.debug("HR profile lazy fetch failed: %s", e)
+
+
 def _call_coach(messages: list[dict], api_key: str) -> tuple[str, list[dict]]:
+    _ensure_hr_profile_cached()
     context = _build_coach_context()
     system = _coach_system() + f"\n\n## Current Context\n{context}"
 
@@ -2597,6 +2617,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     # Save user message immediately so it survives connection drops or server restarts.
     save_coach_message("user", user_message)
 
+    _ensure_hr_profile_cached()
     context = _build_coach_context()
     system = _coach_system() + f"\n\n## Current Context\n{context}"
     client = _anthropic.Anthropic(api_key=api_key)
