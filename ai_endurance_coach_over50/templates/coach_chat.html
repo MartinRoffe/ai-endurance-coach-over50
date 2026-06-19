@@ -12,14 +12,7 @@
     <p id="chat-empty" style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;padding:32px 0">Ask your coach anything about your training...</p>
   </div>
 
-  <div id="proposal-card" style="display:none;background:rgba(96,165,250,0.05);border:1px solid rgba(96,165,250,0.2);border-left:3px solid #60a5fa;padding:14px 16px;margin-bottom:12px;border-radius:2px">
-    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#60a5fa;margin-bottom:8px">Proposed Change</p>
-    <p id="proposal-text" style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px"></p>
-    <div style="display:flex;gap:8px">
-      <button id="apply-btn" onclick="applyProposal()" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:#60a5fa;color:#09090b;border:none;padding:7px 16px;cursor:pointer;border-radius:2px;font-weight:600">APPLY CHANGE</button>
-      <button onclick="dismissProposal()" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:7px 14px;cursor:pointer;border-radius:2px">DISMISS</button>
-    </div>
-  </div>
+  <div id="proposal-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:12px"></div>
 
   <div style="display:flex;gap:8px;align-items:flex-end">
     <textarea id="coach-input" rows="1" placeholder="e.g. How is my training load looking this week?"
@@ -34,7 +27,7 @@
 
 <script>
 (function() {
-  let _proposal = null;
+  let _proposals = [];
 
   function mdToHtml(text) {
     return text
@@ -74,39 +67,86 @@
     return bubble;
   }
 
-  function renderProposal(proposal) {
-    _proposal = proposal;
-    const pt = document.getElementById('proposal-text');
-    const curr = proposal.current_duration_min ? `${proposal.current_duration_min} min` : 'current';
-    pt.innerHTML = `<strong>${proposal.session_label || 'Session'}</strong> on <strong>${proposal.date}</strong>: ${curr} → <strong>${proposal.duration_min} min</strong><br><span style="color:var(--muted);font-size:12px;margin-top:4px;display:inline-block">${mdToHtml(proposal.reason)}</span>`;
-    document.getElementById('proposal-card').style.display = 'block';
+  function proposalSummary(proposal) {
+    const currLabel = proposal.current_session_label || 'Session';
+    const newLabel = proposal.session_label || 'Session';
+    const currDur = proposal.current_duration_min ? `${proposal.current_duration_min} min` : 'current';
+    const newDur = `${proposal.duration_min} min`;
+    const labelLine = currLabel !== newLabel
+      ? `<strong>${currLabel}</strong> → <strong>${newLabel}</strong>`
+      : `<strong>${newLabel}</strong>`;
+    const durLine = currDur !== newDur
+      ? `${currDur} → <strong>${newDur}</strong>`
+      : `<strong>${newDur}</strong>`;
+    return `${labelLine} on <strong>${proposal.date}</strong>: ${durLine}<br><span style="color:var(--muted);font-size:12px;margin-top:4px;display:inline-block">${mdToHtml(proposal.reason)}</span>`;
   }
 
-  window.dismissProposal = function() {
-    _proposal = null;
-    document.getElementById('proposal-card').style.display = 'none';
+  function renderProposals(proposals) {
+    _proposals = proposals.filter(p => p && p.session_type);
+    const container = document.getElementById('proposal-cards');
+    container.innerHTML = '';
+    if (!_proposals.length) {
+      container.style.display = 'none';
+      return;
+    }
+    _proposals.forEach((proposal, idx) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:rgba(96,165,250,0.05);border:1px solid rgba(96,165,250,0.2);border-left:3px solid #60a5fa;padding:14px 16px;border-radius:2px';
+      card.innerHTML = `
+        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#60a5fa;margin-bottom:8px">Proposed Change</p>
+        <p style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px">${proposalSummary(proposal)}</p>
+        <div style="display:flex;gap:8px">
+          <button data-idx="${idx}" class="apply-proposal-btn" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:#60a5fa;color:#09090b;border:none;padding:7px 16px;cursor:pointer;border-radius:2px;font-weight:600">APPLY CHANGE</button>
+          <button data-idx="${idx}" class="dismiss-proposal-btn" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:7px 14px;cursor:pointer;border-radius:2px">DISMISS</button>
+        </div>`;
+      container.appendChild(card);
+    });
+    container.style.display = 'flex';
+    container.querySelectorAll('.apply-proposal-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyProposal(Number(btn.dataset.idx)));
+    });
+    container.querySelectorAll('.dismiss-proposal-btn').forEach(btn => {
+      btn.addEventListener('click', () => dismissProposal(Number(btn.dataset.idx)));
+    });
+  }
+
+  window.dismissProposal = function(idx) {
+    if (typeof idx === 'number') {
+      _proposals.splice(idx, 1);
+      renderProposals(_proposals);
+      return;
+    }
+    _proposals = [];
+    const container = document.getElementById('proposal-cards');
+    container.style.display = 'none';
+    container.innerHTML = '';
   };
 
-  window.applyProposal = async function() {
-    if (!_proposal || !_proposal.session_type) return;
-    const btn = document.getElementById('apply-btn');
-    btn.textContent = 'APPLYING…';
-    btn.disabled = true;
+  window.applyProposal = async function(idx) {
+    const proposal = typeof idx === 'number' ? _proposals[idx] : _proposals[0];
+    if (!proposal || !proposal.session_type) return;
+    const container = document.getElementById('proposal-cards');
+    const btn = container.querySelector(`.apply-proposal-btn[data-idx="${idx}"]`);
+    if (btn) {
+      btn.textContent = 'APPLYING…';
+      btn.disabled = true;
+    }
     try {
       const res = await fetch('/apply-plan-change', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          date: _proposal.date,
-          duration_min: _proposal.duration_min,
-          reason: _proposal.reason,
-          session_type: _proposal.session_type || null,
-          label: _proposal.session_label || null,
+          date: proposal.date,
+          duration_min: proposal.duration_min,
+          reason: proposal.reason,
+          session_type: proposal.session_type || null,
+          label: proposal.session_label || null,
         }),
       });
       const data = await res.json();
       if (data.ok) {
-        dismissProposal();
+        if (typeof idx === 'number') dismissProposal(idx);
+        else dismissProposal();
         const g = data.garmin || {};
         const sync = g.pushed
           ? ' Pushed to Garmin Connect.'
@@ -114,8 +154,10 @@
         renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to **${data.duration_min} min**.${sync}`);
       }
     } catch(e) {
-      btn.textContent = 'APPLY CHANGE';
-      btn.disabled = false;
+      if (btn) {
+        btn.textContent = 'APPLY CHANGE';
+        btn.disabled = false;
+      }
     }
   };
 
@@ -185,7 +227,9 @@
                   (labels[event.name] || 'your data') + '…</span>';
               }
             } else if (event.type === 'proposal' && event.data && event.data.session_type) {
-              renderProposal(event.data);
+              const existing = _proposals.some(p => p.date === event.data.date);
+              if (!existing) _proposals.push(event.data);
+              renderProposals(_proposals);
             } else if (event.type === 'done') {
               if (accumulated) updateBubble(bubble, accumulated, false);
             } else if (event.type === 'error') {

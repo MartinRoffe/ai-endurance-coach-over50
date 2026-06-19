@@ -74,6 +74,19 @@ class DailyMetrics:
     protein_consumed: Optional[float] = None      # grams of protein logged
 
 
+def needs_metrics_refetch(m: DailyMetrics) -> bool:
+    """Re-fetch rows saved before field-mapping fixes left gaps."""
+    if m.hrv_weekly_avg is not None and m.hrv_last_night is None:
+        return True
+    if m.avg_stress is not None and m.rest_stress is None:
+        return True
+    return False
+
+
+# Back-compat alias — callers may still import the old name.
+needs_hrv_refetch = needs_metrics_refetch
+
+
 def _safe_get(d: dict, *keys, default=None):
     for k in keys:
         if not isinstance(d, dict):
@@ -84,12 +97,49 @@ def _safe_get(d: dict, *keys, default=None):
     return d
 
 
+def _first_present(d: dict, *keys):
+    """Return the first non-None value for any of the candidate keys."""
+    for k in keys:
+        v = d.get(k)
+        if v is not None:
+            return v
+    return None
+
+
+def _rest_stress_from_chart(
+    stress: dict,
+    sleep_start_ms: Optional[float],
+    sleep_end_ms: Optional[float],
+) -> Optional[float]:
+    """Derive rest-period stress when the API omits restStressLevel.
+
+    Uses the mean stress reading during the primary sleep window — the same
+    overnight rest window Garmin uses for HRV and body-battery morning values.
+    """
+    if sleep_start_ms is None or sleep_end_ms is None:
+        return None
+    vals: list[float] = []
+    for row in stress.get("stressValuesArray") or []:
+        if not isinstance(row, (list, tuple)) or len(row) < 2 or row[1] is None:
+            continue
+        level = float(row[1])
+        if level < 0:
+            continue
+        ts = float(row[0])
+        if sleep_start_ms <= ts <= sleep_end_ms:
+            vals.append(level)
+    if not vals:
+        return None
+    return sum(vals) / len(vals)
+
+
 def fetch_metrics(api, target_date: date) -> DailyMetrics:
     """Fetch all wellness metrics for target_date; missing endpoints leave fields None."""
     date_str = target_date.strftime("%Y-%m-%d")
     m = DailyMetrics(date=target_date)
 
     # --- Sleep ---
+    _sleep_start_ms: Optional[float] = None
     _sleep_end_ms: Optional[float] = None  # passed to body battery section
     try:
         sleep = api.get_sleep_data(date_str)
@@ -102,11 +152,12 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
         m.sleep_seconds = float(raw_secs) if raw_secs is not None else None
         start_ms = dto.get("sleepStartTimestampGMT")
         if start_ms is not None:
-            m.sleep_start_ts = float(start_ms) / 1000.0
+            _sleep_start_ms = float(start_ms)
+            m.sleep_start_ts = _sleep_start_ms / 1000.0
         end_ms = dto.get("sleepEndTimestampGMT")
         if end_ms is not None:
-            m.sleep_end_ts = float(end_ms) / 1000.0
             _sleep_end_ms = float(end_ms)
+            m.sleep_end_ts = _sleep_end_ms / 1000.0
         for src, dest in (
             ("deepSleepSeconds",  "deep_sleep_seconds"),
             ("lightSleepSeconds", "light_sleep_seconds"),
@@ -128,7 +179,8 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
     try:
         hrv = api.get_hrv_data(date_str)
         summary = (hrv or {}).get("hrvSummary") or {}
-        last_night = summary.get("lastNight")
+        # Garmin uses lastNightAvg; older docs/samples used lastNight.
+        last_night = _first_present(summary, "lastNightAvg", "lastNight")
         weekly = summary.get("weeklyAvg")
         m.hrv_last_night = float(last_night) if last_night is not None else None
         m.hrv_weekly_avg = float(weekly) if weekly is not None else None
@@ -162,9 +214,11 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
 
     # --- Stress ---
     try:
-        stress = api.get_stress_data(date_str)
-        avg = stress.get("avgStressLevel") if stress else None
-        rest = stress.get("restStressLevel") if stress else None
+        stress = api.get_stress_data(date_str) or {}
+        avg = stress.get("avgStressLevel")
+        rest = _first_present(stress, "restStressLevel", "restStressAvg")
+        if rest is None:
+            rest = _rest_stress_from_chart(stress, _sleep_start_ms, _sleep_end_ms)
         m.avg_stress = float(avg) if avg is not None and avg >= 0 else None
         m.rest_stress = float(rest) if rest is not None and rest >= 0 else None
     except Exception as e:

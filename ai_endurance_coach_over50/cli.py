@@ -29,7 +29,7 @@ from .history import (
     LOWER_IS_BETTER,
     SCORED_FIELDS,
 )
-from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities
+from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, needs_metrics_refetch
 
 console = Console()
 
@@ -170,7 +170,7 @@ def _render_dashboard(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> 
 def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
     if not force:
         cached = load(target)
-        if cached is not None and available_count(cached) > 0:
+        if cached is not None and available_count(cached) > 0 and not needs_metrics_refetch(cached):
             return cached
 
     if api is None:
@@ -353,7 +353,7 @@ def main() -> None:
         for i in range(args.backfill, 0, -1):
             d = date.today() - timedelta(days=i)
             cached = load(d)
-            if cached and available_count(cached) > 0 and not args.fetch:
+            if cached and available_count(cached) > 0 and not args.fetch and not needs_metrics_refetch(cached):
                 console.print(f"  {d.isoformat()}  [dim]cached[/dim]")
                 continue
             console.print(f"  {d.isoformat()}  fetching…", end="")

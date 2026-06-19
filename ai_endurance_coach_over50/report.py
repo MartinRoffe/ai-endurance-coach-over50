@@ -28,11 +28,12 @@ from .history import (
 )
 from .metrics import DailyMetrics
 from .llm import MODEL_FAST, MODEL_SMART
+from .coach_context import build_advice_context, coach_persona_brief
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
 
 
-def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+def _build_advice_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
     target = m.date
     label, _ = readiness_label(comp_z)
 
@@ -62,21 +63,13 @@ def _build_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
         lines.append(f"ACWR: {m.acwr:.2f} ({m.acwr_status.replace('_', ' ').lower()})")
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
-
-    session = session_for_date_extended(target)
-    if session:
-        stype, label, dur = session
-        dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"
-        lines += ["", f"Today's planned workout: {label} ({stype}, {dur_str})"]
-    else:
-        lines += ["", "Today's planned workout: not in plan period"]
-
+    lines += [build_advice_context(target)]
     lines += [
         "",
-        "Based on these metrics, please provide:",
+        "Based on these metrics and coaching context, please provide:",
         "1. A clear one-line recommendation: Train / Rest / Active Recovery",
         "2. Two or three sentences explaining the key signals driving that recommendation",
-        "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification",
+        "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification within the same discipline (never running)",
         "4. One watchout if any metric is concerning",
         "",
         "Keep the response concise — it will appear in a morning email. "
@@ -96,30 +89,15 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
         return _rule_based_advice(m, stats, comp_z)
 
     from .history import power_meter_active
-    has_power = power_meter_active()
-    if has_power:
-        system = (
-            "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
-            "based on objective physiological data from a Garmin device. "
-            "The athlete has a power meter — use watts for interval/climb cues when relevant, "
-            "but keep HR primary for readiness and variable conditions. "
-            "Be direct, warm, and evidence-based. Never be vague."
-        )
-    else:
-        system = (
-            "You are a knowledgeable fitness coach who helps athletes decide whether to train or rest "
-            "based on objective physiological data from a Garmin device. "
-            "The athlete trains on heart rate (no power meter) — cue any intensity in HR zones / RPE, never watts. "
-            "Be direct, warm, and evidence-based. Never be vague."
-        )
+    system = coach_persona_brief(power_meter_active())
 
     client = anthropic.Anthropic(api_key=api_key)
-    prompt = _build_prompt(m, stats, comp_z)
+    prompt = _build_advice_prompt(m, stats, comp_z)
 
     try:
         message = client.messages.create(
-            model=MODEL_FAST,
-            max_tokens=400,
+            model=MODEL_SMART,
+            max_tokens=500,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
             system=system,

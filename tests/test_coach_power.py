@@ -30,6 +30,7 @@ def test_coach_system_power_active():
     text = _coach_system()
     assert "power meter" in text
     assert "watts for climb and interval" in text
+    assert "NO RUNNING" in text
 
 
 def test_coach_system_hr_only_without_power():

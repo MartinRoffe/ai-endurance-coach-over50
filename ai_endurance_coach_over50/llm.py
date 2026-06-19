@@ -1,8 +1,8 @@
 """Shared Claude model IDs — single place to bump versions.
 
-MODEL_SMART: coach chat, post-workout analysis, PMC/sleep/body analyses,
+MODEL_SMART: coach chat, daily advice, post-workout analysis, PMC/sleep/body analyses,
 Haute Route stage plans.
-MODEL_FAST: email advice, recovery suggestions, workout descriptions,
+MODEL_FAST: recovery suggestions, workout descriptions,
 nutrition targets, fuelling plans, weekly briefings, coach memory summaries.
 """
 
