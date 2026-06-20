@@ -1669,6 +1669,16 @@ async def nutrition_recipes(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes.html", context={})
 
 
+@app.get("/nutrition/recipes/weekend-fuel", response_class=HTMLResponse)
+async def nutrition_recipes_weekend_fuel(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes-weekend-fuel.html", context={})
+
+
+@app.get("/nutrition/recipes/griddle", response_class=HTMLResponse)
+async def nutrition_recipes_griddle(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes-griddle.html", context={})
+
+
 @app.get("/nutrition/shopping-list", response_class=HTMLResponse)
 async def nutrition_shopping_list(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})

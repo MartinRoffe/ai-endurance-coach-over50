@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+<title>Blackstone Griddle — 6 Recipes</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+    --griddle:#9b59b6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:60px 40px 44px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,8vw,84px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:620px;margin-top:18px;}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  /* TOC */
+  .toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:32px 0 8px;}
+  .toc a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 14px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s,background .15s;}
+  .toc a:hover{border-color:var(--accent);background:var(--surface2);}
+  .toc a span{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+
+  section{padding:40px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;margin-bottom:6px;}
+  h2 .num{color:var(--muted);margin-right:10px;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  /* RECIPE CARD */
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .t-griddle{background:rgba(155,89,182,.15);color:#c39bd3;border:1px solid rgba(155,89,182,.3);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .note{margin:14px 20px 18px;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+
+  /* PREP SCHEDULE */
+  .sched{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .sched th{background:var(--surface2);text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:11px 14px;border-bottom:1px solid var(--border);}
+  .sched td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;color:#cdd0bb;}
+  .sched tr:last-child td{border-bottom:none;}
+  .sched td:first-child{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);white-space:nowrap;width:120px;}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+  .pill{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 12px;margin-top:8px;}
+
+  @media(max-width:680px){
+    .hero{padding:40px 20px 30px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+  }
+  @media print{
+    body{background:#fff;color:#111;}
+    .hero::before{display:none;}
+    .recipe,.sched,.toc a{break-inside:avoid;}
+    :root{--bg:#fff;--surface:#fafafa;--surface2:#f0f0f0;--border:#ccc;--text:#111;--muted:#555;}
+    a{color:#111;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'recipes' %}
+{% set recipes_section = 'recipes_griddle' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+{% include 'recipes_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · Weekend Dinners · Flat Top</div>
+    <h1>BLACKSTONE<br><span>GRIDDLE</span></h1>
+    <p>Method primer plus six tagged recipes — Full English, pancakes, smash burgers, Friday fajitas, Saturday paella (pre-ride carb load) and Sunday stir fry. Each serves 4 with coach tweaks for training days.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#griddle-primer"><span>Start</span>Griddle Primer</a>
+    <a href="#r1"><span>01</span>Full English</a>
+    <a href="#r2"><span>02</span>American Pancakes &amp; Bacon</a>
+    <a href="#r3"><span>03</span>Double Smash Burgers</a>
+    <a href="#r4"><span>04</span>Chicken Fajitas (Friday)</a>
+    <a href="#r5"><span>05</span>Paella (Saturday pre-ride)</a>
+    <a href="#r6"><span>06</span>Beef Stir Fry (Sunday)</a>
+    <a href="/nutrition/recipes"><span>Batch prep</span>Cook Once · Eat All Week →</a>
+    <a href="/nutrition/recipes/weekend-fuel"><span>Weekend</span>Ride Fuel Recipes →</a>
+  </div>
+
+  <!-- 10 GRIDDLE -->
+  <section id="griddle">
+    <div class="sec-label">Dinner &amp; weekend — the Blackstone flat top</div>
+    <h2><span class="num">10</span>Blackstone Griddle — Method + 6 Recipes</h2>
+    <p class="lead">Your full griddle book, folded in and tagged for training. Each recipe serves 4 (2 adults, 2 kids) — for a hungry training day, scale up your own rice/protein portion. The "Where it fits" note on each tells you which day of the week it belongs to and how to make it work for the riding.</p>
+
+    <div class="recipe" id="griddle-primer">
+      <div class="recipe-head">
+        <div class="recipe-title">Griddle Primer</div>
+        <div class="tags"><span class="tag t-griddle">Read first</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Set-up</div>
+          <ul>
+            <li>Preheat 8–10 min; run a hotter zone and a cooler zone</li>
+            <li>Thin film of high-smoke-point oil (rapeseed/veg)</li>
+            <li>Scraper, melting dome, and a squirt bottle of water for steam</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Principles</div>
+          <ol>
+            <li>Protein on the hot zone for the sear; finish on the cooler zone so it cooks through without burning.</li>
+            <li>Veg, tortillas and flatbreads on the cooler zone alongside.</li>
+            <li>Rest meat 3–5 min before slicing. Scrape down while the surface is still hot.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- R1 Full English -->
+    <div class="recipe" id="r1">
+      <div class="recipe-head">
+        <div class="recipe-title" id="r1">01 · Griddle Full English</div>
+        <div class="tags"><span class="tag t-griddle">Breakfast</span><span class="tag t-time">30 min · Med-High</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~35g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>8</b> pork sausages</li>
+            <li><b>8</b> back bacon rashers</li>
+            <li><b>4</b> large eggs</li>
+            <li><b>4</b> thick bread slices</li>
+            <li><b>4</b> vine tomatoes, halved</li>
+            <li><b>200 g</b> chestnut mushrooms, sliced</li>
+            <li><b>2 tbsp</b> veg oil + <b>2 tbsp</b> butter</li>
+            <li>Salt &amp; black pepper</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Sausages first on a medium-high zone with the oil — they need the most time, ~8 min, turning.</li>
+            <li>Add bacon and tomatoes (cut-side down); melt butter on the second zone for the mushrooms.</li>
+            <li>Flip bacon, push sausages to the cool zone, butter and toast the bread directly on the griddle.</li>
+            <li>Drop a zone to low, crack the eggs straight on, season, cover with the dome 2–3 min for set whites/runny yolks.</li>
+            <li>Everything lands together — plate and eat fast, a flat-top fry-up cools quickly.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> a weekend treat or a <b>post-long-ride brunch</b> — high protein and fat, so it's recovery/rest-day food, not a pre-ride meal (the fat and fibre sit heavy before riding).</div>
+      <div class="note protein"><b>Coach tweak:</b> to make it a proper recovery plate, add the toast (and beans, heated on the hob) for carbs, go an extra egg, and lean on the bacon over the sausage for cleaner protein. Black pudding griddles well — 2 min a side.</div>
+    </div>
+
+    <!-- R2 Pancakes -->
+    <div class="recipe" id="r2">
+      <div class="recipe-head">
+        <div class="recipe-title">02 · American Pancakes &amp; Crispy Bacon</div>
+        <div class="tags"><span class="tag t-griddle">Breakfast</span><span class="tag t-time">25 min · Medium</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">carb-rich</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Batter</li>
+            <li><b>300 g</b> plain flour</li>
+            <li><b>2 tsp</b> baking powder · <b>2 tbsp</b> caster sugar · <b>½ tsp</b> salt</li>
+            <li><b>300 ml</b> whole milk · <b>2</b> eggs</li>
+            <li><b>3 tbsp</b> melted butter · <b>1 tsp</b> vanilla</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">To cook</li>
+            <li><b>12</b> back bacon rashers</li>
+            <li><b>1 tbsp</b> butter · maple syrup to serve</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix dry; whisk eggs into milk with vanilla + melted butter; combine — lumps are fine, don't overmix.</li>
+            <li>One zone medium for pancakes, one medium-high for bacon. Butter the pancake zone (it should foam, not brown).</li>
+            <li>Cook bacon 3–4 min a side until crisp; move to the cool edge.</li>
+            <li>Pour digestive-sized rounds; flip <b>once</b> when bubbles break across the surface and edges look dry.</li>
+            <li>Stack 3–4 per person with bacon and maple syrup. Serve hot.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> a brilliant <b>carb-load</b> — eat the night before or ~3 h before a long ride, or turn it into a recovery breakfast. Maple syrup is fast carbs that do a real job around training.</div>
+      <div class="note protein"><b>Coach tweak (recovery stack):</b> beat <b>2 scoops whey</b> into the batter and top with a Greek-yogurt pot + sliced banana — that turns a ~10g-protein breakfast into a 40g+ recovery meal. Blueberries/banana straight onto the batter for the kids.</div>
+    </div>
+
+    <!-- R3 Smash Burgers -->
+    <div class="recipe" id="r3">
+      <div class="recipe-head">
+        <div class="recipe-title">03 · Double Smash Burgers</div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">15 min · Max heat</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~40g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>600 g</b> beef mince, 20% fat</li>
+            <li><b>4</b> brioche buns · <b>8</b> slices American cheese</li>
+            <li><b>2 tbsp</b> butter · salt &amp; pepper</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Sauce</li>
+            <li><b>4 tbsp</b> mayo · <b>2 tbsp</b> ketchup · <b>1 tbsp</b> mustard · <b>1 tbsp</b> gherkin relish</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Topping</li>
+            <li>Iceberg lettuce · <b>2</b> tomatoes, sliced</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix the sauce; chill. Roll mince into 8 loose ~75g balls, keep cold.</li>
+            <li>Toast buttered buns on medium-high; set aside.</li>
+            <li>Crank to max. Place balls with space, smash flat within 5 seconds, season — then don't touch.</li>
+            <li>Flip once at a dark crust, cheese on, dome to melt ~45 sec.</li>
+            <li>Sauce both buns, build with lettuce/tomato, two patties per adult. Serve immediately.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> an indulgence — best on a <b>rest day</b> or as a post-event reward. The 20% fat that makes it great also makes it heavy fuel mid-training-block.</div>
+      <div class="note protein"><b>Coach tweak (training-week version):</b> use 15% mince (5% won't smash as well but works pressed thicker), a wholemeal/seeded bun, and pile the salad. Still ~40g protein, far less saturated fat.</div>
+    </div>
+
+    <!-- R4 Fajitas -->
+    <div class="recipe" id="r4">
+      <div class="recipe-head">
+        <div class="recipe-title">04 · Chicken &amp; Pepper Fajitas <span style="font-size:11px;color:var(--griddle)">★ Friday</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">25 min · High</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~40g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>4</b> chicken breasts (or thighs from batch), in strips</li>
+            <li><b>3</b> mixed peppers · <b>2</b> red onions, sliced</li>
+            <li><b>3 tbsp</b> fajita seasoning · <b>4 tbsp</b> oil</li>
+            <li><b>8</b> flour tortillas</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">To serve</li>
+            <li>Sour cream · salsa · <b>100 g</b> cheddar · lime</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Toss chicken with 2 tbsp oil + the seasoning; marinate 15 min if you can.</li>
+            <li>Both zones high. Lay chicken in a single layer, leave 3–4 min for sizzle not steam.</li>
+            <li>Flip chicken; on the other zone char the peppers and onions until soft with colour.</li>
+            <li>Clear a space, char the tortillas 30 sec a side, wrap to keep warm.</li>
+            <li>Build at the table — chicken, veg, sour cream, salsa, cheddar, lime.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> this is your <b>Friday griddle night</b> — the ideal training dinner: lean protein, a pile of veg, and tortilla carbs you can dial up or down. Batch chicken thighs slot straight in.</div>
+      <div class="note protein"><b>Coach tweak:</b> on a weeknight go easy on the cheese/sour cream and add an extra tortilla for carbs; full-fat the toppings at the weekend. DIY seasoning: 2 tsp smoked paprika, 1 tsp cumin, 1 tsp garlic powder, ½ tsp chilli, ½ tsp oregano, ½ tsp salt.</div>
+    </div>
+
+    <!-- R5 Paella -->
+    <div class="recipe" id="r5">
+      <div class="recipe-head">
+        <div class="recipe-title">05 · Chicken &amp; Chorizo Paella <span style="font-size:11px;color:var(--accent2)">★ Saturday pre-ride</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">45 min · Med→Low</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">high carb</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>4</b> bone-in chicken thighs · <b>150 g</b> cooking chorizo</li>
+            <li><b>300 g</b> paella rice (Bomba/Calasparra)</li>
+            <li><b>900 ml</b> hot chicken stock · <b>1</b> pinch saffron</li>
+            <li><b>1</b> onion · <b>4</b> garlic cloves · <b>2</b> tomatoes, grated</li>
+            <li><b>2 tsp</b> smoked paprika · <b>100 g</b> peas</li>
+            <li><b>3 tbsp</b> olive oil · lemon · parsley</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Steep saffron in the hot stock ~10 min until deep gold.</li>
+            <li>Brown seasoned thighs skin-down ~6 min; add chorizo until the fat runs; move to the edges.</li>
+            <li>Sofrito in the centre: onion 3 min, garlic + paprika 1 min, grated tomato until darkened.</li>
+            <li>Stir rice through to coat, toast 1–2 min, spread everything out with the chicken/chorizo.</li>
+            <li>Pour the saffron stock evenly — <b>now do not stir</b>. Medium-low ~18–20 min; listen for the crackle of the socarrat.</li>
+            <li>Peas in for the last 3 min; rest 5 min under the hood. Parsley + lemon, scrape up the crust.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> this is your <b>carb-rich Saturday dinner</b> — the real pre-ride fuel for Sunday's long ride. Big bowl of rice = a topped-up glycogen tank before an early start.</div>
+      <div class="note protein"><b>Coach tweak:</b> go generous on the rice and easy on the chorizo to keep the fat down the night before a big effort; add prawns in the last 4 min for extra lean protein. Don't swap the Bomba rice — basmati/risotto rice won't behave.</div>
+    </div>
+
+    <!-- R6 Stir Fry -->
+    <div class="recipe" id="r6">
+      <div class="recipe-head">
+        <div class="recipe-title">06 · Chinese-Style Beef Stir Fry <span style="font-size:11px;color:var(--protein)">★ Sunday recovery</span></div>
+        <div class="tags"><span class="tag t-griddle">Dinner</span><span class="tag t-time">20 min · Max heat</span><span class="tag t-makes">Serves 4</span><span class="tag t-prot">~38g P/adult</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>500 g</b> sirloin/rump, thin sliced + <b>2 tbsp</b> soy, <b>1 tbsp</b> cornflour, <b>1 tsp</b> sesame oil</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Sauce</li>
+            <li><b>3 tbsp</b> oyster · <b>2 tbsp</b> soy · <b>1 tbsp</b> rice vinegar · <b>1 tsp</b> sugar · <b>1 tsp</b> cornflour + 2 tbsp water</li>
+            <li class="lead" style="margin:0;color:var(--muted);font-size:11px;">Stir fry</li>
+            <li><b>200 g</b> tenderstem · <b>2</b> pak choi · <b>150 g</b> mushrooms</li>
+            <li><b>4</b> garlic · <b>30 g</b> ginger · <b>4</b> spring onions · <b>3 tbsp</b> oil</li>
+            <li>Steamed rice + sesame seeds to serve</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Velvet the beef in soy/cornflour/sesame, 15 min. Mix the sauce.</li>
+            <li>Max heat + oil. Sear beef in a single layer, 90 sec, in 2–3 batches; move to the edge.</li>
+            <li>Garlic + ginger 30 sec until fragrant.</li>
+            <li>Broccoli + mushrooms first; pak choi stems, then leaves; a splash of water to steam through.</li>
+            <li>Beef back in, sauce over, toss ~30 sec until glossy. Spring onions, sesame, over rice.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> an excellent <b>Sunday post-long-ride recovery dinner</b> — lean protein, a load of vegetables, and rice to refill glycogen. Quick enough after a big day out.</div>
+      <div class="note protein"><b>Coach tweak:</b> pile the rice high for recovery, and chicken-thigh strips work identically if you'd rather go leaner than beef. Velveting (the cornflour coat) is what keeps the meat tender — don't skip it.</div>
+    </div>
+  </section>
+
+<div class="footer">
+  Bulk-Staple Recipe &amp; Prep Guide · companion to the 4-week endurance nutrition plan · protein/calorie figures match the plan.
+  <div class="pill">Print or save to PDF for the kitchen — File ▸ Print ▸ Save as PDF</div>
+</div>
+
+</body>
+</html>

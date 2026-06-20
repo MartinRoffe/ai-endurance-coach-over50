@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+<title>Weekend Ride Fuel — Oats, Rice Cakes & Drinks</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+    --griddle:#9b59b6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:60px 40px 44px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,8vw,84px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:620px;margin-top:18px;}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  /* TOC */
+  .toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:32px 0 8px;}
+  .toc a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 14px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s,background .15s;}
+  .toc a:hover{border-color:var(--accent);background:var(--surface2);}
+  .toc a span{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+
+  section{padding:40px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;margin-bottom:6px;}
+  h2 .num{color:var(--muted);margin-right:10px;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  /* RECIPE CARD */
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .t-griddle{background:rgba(155,89,182,.15);color:#c39bd3;border:1px solid rgba(155,89,182,.3);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .note{margin:14px 20px 18px;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+
+  /* PREP SCHEDULE */
+  .sched{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .sched th{background:var(--surface2);text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:11px 14px;border-bottom:1px solid var(--border);}
+  .sched td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;color:#cdd0bb;}
+  .sched tr:last-child td{border-bottom:none;}
+  .sched td:first-child{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);white-space:nowrap;width:120px;}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+  .pill{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 12px;margin-top:8px;}
+
+  @media(max-width:680px){
+    .hero{padding:40px 20px 30px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+  }
+  @media print{
+    body{background:#fff;color:#111;}
+    .hero::before{display:none;}
+    .recipe,.sched,.toc a{break-inside:avoid;}
+    :root{--bg:#fff;--surface:#fafafa;--surface2:#f0f0f0;--border:#ccc;--text:#111;--muted:#555;}
+    a{color:#111;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'recipes' %}
+{% set recipes_section = 'recipes_weekend' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+{% include 'recipes_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · Summer Solids · Post-Ride Recovery</div>
+    <h1>WEEKEND<br><span>RIDE FUEL</span></h1>
+    <p>Recovery overnight oats (≥30 g protein), on-bike rice cakes and flapjack for summer long rides, plus event-day maltodextrin drinks for charity-ride and Haute Route prep. Protocols in the Ride Fuelling guide.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#weekend-recipes"><span>14b</span>Overview &amp; Oats Base</a>
+    <a href="#oats-efpro"><span>Oats</span>EF Pro · Banoffee · Strawberries · Classic</a>
+    <a href="#rice-cakes"><span>Solids</span>Four Rice Cake Variants</a>
+    <a href="#flapjack"><span>Solids</span>Classic Ride Flapjack</a>
+    <a href="#fuel"><span>15</span>Event-Day Drinks &amp; Gels</a>
+    <a href="/nutrition/fuelling"><span>Protocols</span>Ride Fuelling Guide →</a>
+    <a href="/nutrition/recipes"><span>Batch prep</span>Cook Once · Eat All Week →</a>
+  </div>
+
+  <!-- 14b WEEKEND RIDE FUEL RECIPES -->
+  <section id="weekend-recipes">
+    <div class="sec-label">Weekend long rides — solids on the bike, protein oats after</div>
+    <h2><span class="num">14b</span>Weekend Ride Fuel</h2>
+    <p class="lead">Summer model: <b>all ride carbs from these solids</b>; bottles are electrolyte-only (see <a href="/nutrition/fuelling">Ride Fuelling</a>). Build one recovery oats jar the night before each ride — every variant below hits <b>≥30 g protein</b> via whey + Greek yogurt. A/B rotation sequences are in the fuelling guide.</p>
+
+    <h3 id="oats-efpro" style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Recovery overnight oats (post-ride · 1 jar)</h3>
+    <p class="lead" style="margin-bottom:16px">Shared base per jar: <b>60 g</b> oats · <b>200 ml</b> milk · <b>100 g</b> Greek yogurt · <b>1 scoop whey</b> (~30 g powder) · <b>1 tbsp</b> chia · <b>1 tsp</b> honey · pinch salt. Mix, seal, fridge overnight. Eat the <b>full jar</b> within 45–60 min of finishing (after chocolate milk). ~55–70 g carbs · <b>38–42 g protein</b>.</p>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">EF Pro Cycling Athlete Overnight Oats</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~40g P</span><span class="tag t-time">5 min prep</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Add to base</div>
+          <ul>
+            <li><b>100 g</b> mixed berries (frozen fine)</li>
+            <li><b>1 tbsp</b> almond butter</li>
+            <li><b>½</b> banana, sliced (add morning or night)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Weekend A Saturday recovery after the big ride.</li>
+            <li>Berries + almond butter add flavour without dropping protein — base whey + yogurt covers the 30 g threshold.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Banoffee Overnight Oats</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~40g P</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Add to base</div>
+          <ul>
+            <li><b>1</b> ripe banana, mashed</li>
+            <li><b>1 tbsp</b> maple syrup or golden syrup</li>
+            <li><b>2</b> Medjool dates, chopped</li>
+            <li>Pinch cinnamon</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Weekend A Sunday recovery.</li>
+            <li>Sweet but still high-protein — don't drop the whey scoop for extra banana.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Strawberries 'n' Cream Overnight Oats</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~40g P</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Add to base</div>
+          <ul>
+            <li><b>100 g</b> fresh strawberries, sliced</li>
+            <li><b>1 tbsp</b> vanilla extract</li>
+            <li><b>50 g</b> extra Greek yogurt stirred through (creaminess)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Weekend B Saturday recovery.</li>
+            <li>Extra yogurt boosts protein — still keep the whey scoop in the base.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Cycling Labs Classic Overnight Oats</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~38g P</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Add to base</div>
+          <ul>
+            <li><b>1</b> banana, sliced</li>
+            <li><b>1 tbsp</b> peanut butter</li>
+            <li><b>1 tsp</b> cinnamon</li>
+            <li><b>1 tbsp</b> raisins</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Weekend B Sunday recovery — the simplest variant.</li>
+            <li>Classic flavours; protein comes entirely from the shared base.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <h3 id="rice-cakes" style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:36px 0 12px;letter-spacing:0.03em;">On-bike rice cakes (~27 g carbs / piece)</h3>
+    <p class="lead" style="margin-bottom:16px">Cook sticky sushi rice, fold toppings, press ~2 cm thick, cool 24 h in the fridge, cut into squares, foil-wrap. Rice cakes need a full day to set — make Friday for Saturday, Thursday for Sunday.</p>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Bacon &amp; Egg Rice Cakes</div>
+        <div class="tags"><span class="tag t-makes">~10 pieces</span><span class="tag t-prot">~27g C · ~8g P</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Full batch</div>
+          <ul>
+            <li><b>200 g</b> sushi rice · <b>350 ml</b> water · <b>1 tbsp</b> brown sugar · <b>¼ tsp</b> salt</li>
+            <li><b>4 oz</b> smoked streaky bacon, crisped · <b>2</b> eggs, scrambled</li>
+            <li><b>1 tbsp</b> liquid aminos · <b>1 tbsp</b> parmesan (optional)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Half batch (5 pieces)</div>
+          <ol>
+            <li>Use half of everything above — ideal for solo weekends.</li>
+            <li>Fold bacon, eggs, aminos and parmesan through warm sticky rice; press, cool, cut, wrap.</li>
+            <li>Savoury anchor for hours 1–3 on long rides. Shelf life 3–4 days.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Avocado &amp; Egg Rice Cakes</div>
+        <div class="tags"><span class="tag t-makes">~6 pieces</span><span class="tag t-prot">~27g C</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Half batch (3 pieces)</div>
+          <ul>
+            <li><b>90 g</b> rice · <b>180 ml</b> water · <b>½ tbsp</b> sugar · <b>¼ tbsp</b> salt</li>
+            <li><b>¼</b> avocado, mashed · <b>1</b> egg, scrambled · <b>15 g</b> chopped nuts</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Fold avocado, egg and nuts through warm rice; press, cool, cut, wrap.</li>
+            <li>Milder savoury option — good for Sunday recovery-paced spins. Eat within 3–4 days.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">PB&amp;J Sweet Rice Cakes</div>
+        <div class="tags"><span class="tag t-makes">~6 pieces</span><span class="tag t-prot">~28g C</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Half batch (3 pieces)</div>
+          <ul>
+            <li><b>90 g</b> rice · <b>180 ml</b> water · <b>½ tbsp</b> sugar · <b>¼ tbsp</b> salt</li>
+            <li><b>1 tbsp</b> peanut butter · <b>1 tbsp</b> raspberry jam, warmed to swirl</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Fold PB and jam through warm rice; press, cool, cut, wrap.</li>
+            <li>Sweet option for mid-ride or when savoury fatigue hits. 4–5 days fridge; don't freeze.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Team Sky Cinnamon Rice Cakes</div>
+        <div class="tags"><span class="tag t-makes">~20 pieces</span><span class="tag t-prot">~27g C</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Quarter batch (~5 pieces) — recommended solo size</div>
+          <ul>
+            <li><b>125 g</b> rice · <b>200 ml</b> water · <b>1 tbsp</b> coconut oil</li>
+            <li><b>½ tsp</b> cinnamon · <b>2¼ tsp</b> coconut sugar</li>
+            <li><b>75 g</b> cream cheese · <b>25 ml</b> agave</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook rice with coconut oil; fold cinnamon, sugar, cream cheese and agave while warm.</li>
+            <li>Press, cool 24 h, cut, wrap. Best sweet cake for hours 3+ when heavy savoury repels.</li>
+            <li>Arborio rice gives authentic texture; sushi rice works fine.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipe" id="flapjack">
+      <div class="recipe-head">
+        <div class="recipe-title">Classic Ride Flapjack</div>
+        <div class="tags"><span class="tag t-makes">~12 bars</span><span class="tag t-prot">~32g C · ~4g P</span><span class="tag t-time">30 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> rolled oats</li>
+            <li><b>125 g</b> butter · <b>125 g</b> golden syrup · <b>75 g</b> brown sugar</li>
+            <li><b>100 g</b> mixed dried fruit</li>
+            <li>Pinch salt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Heat oven to 180°C. Melt butter, syrup and sugar; stir in oats, fruit and salt.</li>
+            <li>Press into a lined tin (~2 cm). Bake 20–25 min until golden.</li>
+            <li>Cool completely, cut into 12 bars, wrap individually. Keeps 1–2 weeks airtight; freezes well.</li>
+            <li>Most energy-dense pocket fuel — bonk insurance on 4–6 h days.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Energy balls:</b> use the Date &amp; Oat Energy Balls in section 15 below (~15 g C each — eat two together). Batch fortnightly with the rice cakes.</div>
+    </div>
+  </section>
+
+  <!-- 11 DURING-EXERCISE FUEL -->
+  <section id="fuel">
+    <div class="sec-label">Carbs during exercise — race-day fuel you can make at home</div>
+    <h2><span class="num">11</span>On-Bike &amp; During-Exercise Fuel</h2>
+    <p class="lead"><b>Summer weekends:</b> solids + electrolyte bottles only — recipes in <a href="#weekend-recipes">section 14b</a>. <b>Winter / event prep:</b> maltodextrin drinks below for charity-ride and Haute Route gut training. Start fuelling in the first 15 minutes of any ride over ~75 minutes. Protocol: <a href="/nutrition/fuelling">Ride Fuelling guide</a>.</p>
+
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Fuelling Primer — how much, how often</div>
+        <div class="tags"><span class="tag t-griddle">Read first</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Targets</div>
+          <ul>
+            <li><b>Summer weekends:</b> all carbs from rice cakes, flapjack and balls; bottles = electrolyte only</li>
+            <li><b>Carbs:</b> ~45–60 g/hr for rides 75 min–2 h; <b>~60–70 g/hr</b> for 2–4 h; <b>75–90 g/hr</b> beyond 4 h and on event day</li>
+            <li><b>Fluid:</b> 500–750 ml/hr electrolyte (600–800 ml/hr in heat)</li>
+            <li><b>Sodium:</b> ~400–700 mg/hr from electrolyte bottles</li>
+            <li><b>Event prep:</b> above ~60 g/hr optionally add 1:0.8 maltodextrin:fructose drinks</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">How to apply it</div>
+          <ol>
+            <li>Start within 15 min, then take solids every 20–30 min — set a timer on long rides.</li>
+            <li>Alternate savoury and sweet rice cakes; energy balls when appetite drops in heat.</li>
+            <li><b>Gut training:</b> progress 60 → 70–80 → 90 g/hr via more frequent solids in summer; add carb drinks for event rehearsal if needed.</li>
+            <li>Pre-mix electrolyte bottles E1/E2 Friday — see hot-weather drink below.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standard drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Energy Drink — Standard (~60 g/hr)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-prot">~60g carbs</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>40 g</b> maltodextrin</li>
+            <li><b>20 g</b> fructose</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li>Squash/cordial for flavour</li>
+            <li><b>500 ml</b> water</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Add everything to the bottle and shake hard until dissolved.</li>
+            <li>One bottle per hour ≈ 60 g carbs + sodium covered.</li>
+            <li><b>No-scales version:</b> 3 tbsp white sugar + a pinch of salt + squash per 500 ml is a rough 60 g equivalent (single-source, fine up to ~60 g/hr).</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- High carb drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Energy Drink — High-Carb Dual Source (~90 g/hr)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-prot">~90g carbs</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>55 g</b> maltodextrin</li>
+            <li><b>35 g</b> fructose</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li>Pinch magnesium chloride or Epsom salt (muscle function over 50)</li>
+            <li>Squash + a squeeze of lemon</li>
+            <li><b>500 ml</b> water</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Shake until fully dissolved — it's a denser mix, give it a minute.</li>
+            <li>The ~1 : 0.8 malto:fructose ratio is what lets you push past 60 g/hr without gut trouble.</li>
+            <li>For long alpine days, run this <em>plus</em> a rice cake or banana each hour rather than forcing all 90 g into liquid — easier on the stomach.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Tenerife &amp; the alpine event:</b> this is the bottle to rehearse on every long ride from week 9. Dial flavour now so it's familiar when it matters.</div>
+    </div>
+
+    <!-- Electrolyte drink -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Hot-Weather Electrolyte Drink (low carb + potassium)</div>
+        <div class="tags"><span class="tag t-makes">per 500 ml bottle</span><span class="tag t-time">heat / hydration</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>500 ml</b> water (or replace 200 ml with coconut water for natural electrolytes)</li>
+            <li><b>¼ tsp</b> salt (~575 mg sodium)</li>
+            <li><b>1 tsp</b> sugar or honey (helps sodium uptake)</li>
+            <li>Juice of ½ lemon or orange</li>
+            <li><b>Pinch of "lite" salt</b> (half sodium, half potassium) — important over 50 and in heat</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Shake to dissolve. This is a <em>hydration</em> bottle, not a fuel bottle.</li>
+            <li>On hot days run one electrolyte bottle alongside your carb bottle, and get the carbs from solids/gel.</li>
+            <li>Heat acclimation block (final 10 days before the event): useful for the indoor Z2 heat sessions too.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Night-before concentrate -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Night-Before Concentrate (early-start batch prep)</div>
+        <div class="tags"><span class="tag t-makes">4 × 500 ml bottles</span><span class="tag t-time">10 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Concentrate (store in small bottle)</div>
+          <ul>
+            <li><b>200 ml</b> boiling water</li>
+            <li><b>160 g</b> maltodextrin</li>
+            <li><b>80 g</b> fructose</li>
+            <li><b>2 g</b> salt (~½ tsp)</li>
+            <li><b>100 ml</b> lemon juice or squash concentrate</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Dissolve maltodextrin in warm water first (stir to paste), add fructose and salt, then lemon. Pour into a small bottle.</li>
+            <li>On the morning: add <b>100 ml concentrate</b> to each 500 ml bottle, top with cold water, shake hard.</li>
+            <li>Each bottle ≈ 60 g carbs — perfect for 5:30 am rollouts when you don't want to measure powders at dawn.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Homemade gel -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Homemade Energy Gel (flask)</div>
+        <div class="tags"><span class="tag t-makes">~5 × 30g servings</span><span class="tag t-time">5 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>100 g</b> maltodextrin</li>
+            <li><b>3 tbsp</b> honey</li>
+            <li><b>~80 ml</b> warm water</li>
+            <li>Pinch of salt</li>
+            <li>Squeeze of lemon (cuts the sweetness)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method &amp; use</div>
+          <ol>
+            <li>Whisk everything warm until smooth; thin with a little more water to a gel consistency.</li>
+            <li>Decant into a small soft flask (refillable gel flask). ~25–30 g carbs per good swig.</li>
+            <li>Chase with a mouthful of water/electrolyte — concentrated carbs need fluid to absorb well.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Savoury rice cakes -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Savoury Rice Cakes (the long-ride staple)</div>
+        <div class="tags"><span class="tag t-makes">~8 cakes</span><span class="tag t-time">25 min</span><span class="tag t-prot">~30–40g C/cake</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> short-grain / sushi rice (uncooked)</li>
+            <li><b>2</b> eggs, scrambled</li>
+            <li><b>4</b> rashers bacon (or 100 g pancetta), chopped &amp; crisped</li>
+            <li><b>1 tbsp</b> soy sauce + pinch salt</li>
+            <li><b>30 g</b> grated parmesan (optional)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook the rice slightly past done so it's sticky; keep it warm.</li>
+            <li>Scramble the eggs and crisp the bacon (do both on the griddle).</li>
+            <li>Fold eggs, bacon, soy, salt and parmesan through the warm rice.</li>
+            <li>Press ~2 cm thick into a lined tray, cool, cut into ~8 squares, wrap each in foil.</li>
+            <li>Real food that goes down easily after 2+ hours when sweet gels start to repel — a long-ride saviour.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note"><b>Where it fits:</b> the workhorse for rides over ~2.5 h and for the charity day / alpine stages. Two cakes ≈ one bottle's worth of carbs in solid form. Eat early, before you're hungry.</div>
+    </div>
+
+    <!-- Sweet rice cakes -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Sweet Rice Cakes (banana &amp; nut butter)</div>
+        <div class="tags"><span class="tag t-makes">~8 cakes</span><span class="tag t-time">25 min</span><span class="tag t-prot">~35g C/cake</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>250 g</b> short-grain / sushi rice (uncooked)</li>
+            <li><b>2</b> ripe bananas, mashed</li>
+            <li><b>3 tbsp</b> peanut butter</li>
+            <li><b>2 tbsp</b> honey or maple</li>
+            <li>Pinch salt + cinnamon</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook the rice sticky and warm.</li>
+            <li>Fold the banana, peanut butter, honey, salt and cinnamon through it.</li>
+            <li>Press, cool, cut into ~8, wrap in foil.</li>
+            <li>A sweeter option for the first half of a long ride; alternate with the savoury cakes to dodge flavour fatigue.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Energy balls -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Date &amp; Oat Energy Balls</div>
+        <div class="tags"><span class="tag t-makes">~12 balls</span><span class="tag t-time">10 min · no bake</span><span class="tag t-prot">~18g C/ball</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>200 g</b> soft pitted dates</li>
+            <li><b>100 g</b> porridge oats</li>
+            <li><b>2 tbsp</b> honey or rice syrup</li>
+            <li>Pinch of salt</li>
+            <li>Optional: 1 tbsp cocoa or a scoop of whey</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Blitz the dates to a paste (a splash of water helps).</li>
+            <li>Mix in oats, honey, salt (and cocoa/whey if using) to a stiff dough.</li>
+            <li>Roll into ~12 balls; fridge to firm. Pocket-sized, foil-wrapped pick-me-ups.</li>
+            <li>Great for the back end of a long ride or in the jersey for a quick chew on a climb.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Don't forget:</b> the <b>homemade oat bars (#03)</b> double as on-bike fuel (~28 g carbs each), and a plain banana is ~25 g — count them all toward your hourly target.</div>
+    </div>
+
+    <!-- Savoury potato bites -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Savoury Potato Bites (Ineos-style)</div>
+        <div class="tags"><span class="tag t-makes">~20 pieces</span><span class="tag t-time">20 min</span><span class="tag t-prot">~15–20g C/piece</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>6</b> medium white potatoes</li>
+            <li><b>1 tsp</b> flaky sea salt</li>
+            <li>Optional: dried rosemary or paprika</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Boil potatoes until just cooked (not mushy). Cut into 3 cm chunks.</li>
+            <li>Season generously with salt (and herbs if using). Cool completely.</li>
+            <li>Wrap 3–4 pieces per foil packet. The salt load makes these excellent electrolyte sources in hot weather or rides over 3 h.</li>
+            <li>Incredibly easy to digest at high intensities — alternate with rice cakes from hour 2 onward.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Baked banana-honey bars -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Baked Banana &amp; Honey Bars</div>
+        <div class="tags"><span class="tag t-makes">~12 bars</span><span class="tag t-time">30 min</span><span class="tag t-prot">~25–30g C/bar</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>3</b> ripe bananas, mashed</li>
+            <li><b>200 g</b> rolled oats</li>
+            <li><b>100 g</b> dried cranberries or raisins</li>
+            <li><b>3 tbsp</b> honey</li>
+            <li><b>1 tbsp</b> coconut oil (melted)</li>
+            <li><b>1 tsp</b> vanilla extract + pinch salt</li>
+            <li>Optional: sesame or sunflower seeds</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix all ingredients. Press into a lined tin (~2 cm deep).</li>
+            <li>Bake 180°C for 20–25 min until golden and set. Cool completely, slice into bars.</li>
+            <li>Wrap individually in foil or beeswax wrap. Holds together better than balls — easier one-handed eating on the bike.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Malt loaf slabs -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Malt Loaf Slabs (zero prep)</div>
+        <div class="tags"><span class="tag t-makes">emergency backup</span><span class="tag t-time">2 min</span><span class="tag t-prot">~30g C/slice</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">What you need</div>
+          <ul>
+            <li>1 standard <b>Soreen malt loaf</b></li>
+            <li>Optional: light scrape of unsalted butter</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Pre-slice the night before into thick slabs (~60 g each ≈ 30 g carbs).</li>
+            <li>Wrap each slice in foil. Sticky enough to survive jersey-pocket abuse.</li>
+            <li>Fast-absorbed maltose — your emergency/lazy backup that also works brilliantly on long rides.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emergency pockets -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Emergency Pockets (shop-bought, zero prep)</div>
+        <div class="tags"><span class="tag t-makes">jersey stash</span><span class="tag t-time">0 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Keep in stock</div>
+          <ul>
+            <li><b>Fig rolls</b> — ~10 g carbs each, digestively gentle, individually wrapped</li>
+            <li><b>Medjool dates</b> — ~18 g carbs each; pack in a small zip bag</li>
+            <li><b>Soreen mini malt loaf bars</b> — pre-portioned, pocket-perfect</li>
+            <li><b>Jelly babies</b> — ~6 g each; pro trick: 5–6 every 20 min ≈ 30 g/hr top-up</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">When to use</div>
+          <ol>
+            <li>Excellent complements to homemade fuel — not replacements for gut training on race-day mix.</li>
+            <li>Jelly babies are ideal when legs fade late in a ride and solid food won't go down.</li>
+            <li>Always count toward your hourly carb target.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recovery (after, not during) -->
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Recovery Chocolate Milk <span style="font-size:11px;color:var(--protein)">after, not during</span></div>
+        <div class="tags"><span class="tag t-makes">1 serving</span><span class="tag t-time">2 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>300 ml</b> semi-skimmed milk</li>
+            <li><b>1–2 tsp</b> cocoa powder</li>
+            <li><b>1 tsp</b> sugar or honey</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Whisk cocoa + sugar with a splash of warm milk to a paste (stops lumps), top with cold milk, shake.</li>
+            <li>Drink within 45 min of finishing — the carb-to-protein ratio is near-ideal for recovery, then eat the big recovery porridge (#06).</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<div class="footer">
+  Bulk-Staple Recipe &amp; Prep Guide · companion to the 4-week endurance nutrition plan · protein/calorie figures match the plan.
+  <div class="pill">Print or save to PDF for the kitchen — File ▸ Print ▸ Save as PDF</div>
+</div>
+
+</body>
+</html>
