@@ -1,45 +1,57 @@
 {# recipes_section: recipes | recipes_weekend | recipes_griddle #}
 <style>
-  .rec-subnav {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+  .rec-hero-tabs {
+    margin-top: 24px;
   }
-  .rec-subnav-inner {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 0 24px;
-    display: flex;
-    gap: 4px;
+  .rec-hero-tabs-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .rec-hero-tabs-group {
+    display: inline-flex;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
     overflow-x: auto;
     scrollbar-width: none;
   }
-  .rec-subnav-inner::-webkit-scrollbar { display: none; }
-  .rec-subnav a {
+  .rec-hero-tabs-group::-webkit-scrollbar { display: none; }
+  .rec-hero-tabs-group a {
     flex-shrink: 0;
-    padding: 10px 14px;
+    padding: 10px 16px;
     font-family: 'DM Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.07em;
     text-transform: uppercase;
     text-decoration: none;
     color: var(--muted);
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
+    border-right: 1px solid var(--border);
+    transition: color 0.15s, background 0.15s;
     white-space: nowrap;
   }
-  .rec-subnav a:hover { color: var(--text); }
-  .rec-subnav a.active {
+  .rec-hero-tabs-group a:last-child { border-right: none; }
+  .rec-hero-tabs-group a:hover {
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .rec-hero-tabs-group a.active {
     color: var(--accent);
-    border-bottom-color: var(--accent);
+    background: rgba(200, 241, 53, 0.1);
   }
   @media (max-width: 680px) {
-    .rec-subnav-inner { padding: 0 14px; }
+    .rec-hero-tabs-group a { padding: 10px 12px; }
   }
 </style>
-<nav class="rec-subnav" aria-label="Recipe guides">
-  <div class="rec-subnav-inner">
+<div class="rec-hero-tabs" role="navigation" aria-label="Recipe guides">
+  <div class="rec-hero-tabs-label">Recipe guides</div>
+  <div class="rec-hero-tabs-group">
     <a href="/nutrition/recipes" class="{% if recipes_section == 'recipes' %}active{% endif %}">Cook Once · Week</a>
     <a href="/nutrition/recipes/weekend-fuel" class="{% if recipes_section == 'recipes_weekend' %}active{% endif %}">Weekend Ride Fuel</a>
     <a href="/nutrition/recipes/griddle" class="{% if recipes_section == 'recipes_griddle' %}active{% endif %}">Blackstone Griddle</a>
   </div>
-</nav>
+</div>
