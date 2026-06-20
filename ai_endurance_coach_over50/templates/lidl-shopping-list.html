@@ -26,12 +26,20 @@
   .back-link:hover{border-color:var(--accent);}
   .compare-link{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:10px;display:inline-block;}
   .compare-link:hover{color:var(--accent);}
+  .export-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+  .export-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,background .15s;}
+  .export-btn:hover{border-color:var(--accent);}
+  .export-btn.primary{background:var(--accent);color:#0e0f0c;border-color:var(--accent);font-weight:500;}
+  .export-btn.primary:hover{opacity:.92;}
+  .export-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:10px 16px;border-radius:6px;font-size:13px;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .export-toast.show{opacity:1;}
 
   .wrap{max-width:720px;margin:0 auto;padding:16px 14px;}
   .cat{display:flex;align-items:baseline;gap:8px;margin:28px 4px 10px;}
   .cat h2{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:500;}
   .cat .sub{font-size:11px;color:var(--muted);font-weight:300;text-transform:none;letter-spacing:0;}
   .cat.amber h2{color:var(--accent2);} .cat.purple h2{color:var(--purple);}
+  .cat.blue h2{color:var(--accent3);}
 
   .item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px 13px;margin-bottom:8px;transition:opacity .15s,border-color .15s;}
   .item:hover{border-color:#3a3d33;}
@@ -74,18 +82,26 @@
     <h1>🛒 Lidl Shopping List</h1>
     <p>Tap <b>Find&nbsp;▸</b> to look up that item at Lidl, then tick the box as you put it in your basket. The bar at the bottom keeps a running total of what you've ticked. Prices are targets; check the real price in store — Lidl prices vary by week and location.</p>
     <a href="/nutrition/shopping-list" class="compare-link">Compare: Asda list →</a>
+    <div class="export-row">
+      <button type="button" class="export-btn primary" id="exportNotes">Copy for Notes</button>
+      <button type="button" class="export-btn" id="exportRemaining">Copy unchecked only</button>
+    </div>
   </div>
 </header>
+<div class="export-toast" id="exportToast" role="status" aria-live="polite"></div>
 
 <div class="wrap" id="list">
 
   <div class="banner"><b>Tip:</b> Lidl has no online grocery trolley like Asda — each link opens a Google search for that Lidl product. Check the Lidl Plus app or weekly leaflet for current offers before you shop.</div>
-  <div class="banner"><b>Week 2 (Set B breakfasts):</b> add <b>Skyr pots ×3–4</b> (200g, Mon/Wed/Fri with oat bars) and an extra <b>eggs</b> pack for Tue/Thu boil batch. See <a href="/nutrition/recipes#banana-oat-bars">breakfast recipes</a>.</div>
+  <div class="banner"><b>Gousto</b> covers Mon–Thu dinners (not on this list). <b>Week 2 breakfasts</b> need the Skyr pots and extra eggs in section 1.</div>
+  <div class="banner"><b>Griddle treat weeks</b> (burgers, full English, chorizo paella): add sausages, back bacon, beef mince, brioche and cheese that week only.</div>
 
-  <div class="cat"><h2>Buy Every Week</h2><span class="sub">fresh, weekly</span></div>
+  <div class="cat"><h2>Breakfast &amp; Lunch</h2><span class="sub">batch prep · weekday meals · snacks</span></div>
   <!-- items injected -->
 
-  <div class="cat"><h2>Top Up When Low</h2><span class="sub">bulk staples that last several weeks</span></div>
+  <div class="cat blue"><h2>Weekend Evening Meals</h2><span class="sub">Fri / Sat / Sun griddle nights</span></div>
+
+  <div class="cat amber"><h2>Sundries</h2><span class="sub">larder · spices · ride fuel · top-ups</span></div>
 
   <div class="cat purple"><h2>Separate Online Order</h2><span class="sub">sports nutrition — not stocked at Lidl</span></div>
   <div class="banner p"><b>Heads-up:</b> maltodextrin and fructose come from sports-nutrition shops (Bulk, Peak Supps, Amacx), not Lidl. These links open a web search — order them separately, they last several weeks.</div>
@@ -104,45 +120,86 @@ const LIDL = t => "https://www.google.com/search?q=" + encodeURIComponent("lidl 
 const WEB  = t => "https://www.google.com/search?q=" + encodeURIComponent(t);
 
 const GROUPS = [
-  {after:"Buy Every Week", items:[
-    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",4.95,"chicken thigh fillets"],
-    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",2.78,"greek style yogurt 1kg"],
-    ["Salmon fillets (2-pack)","one griddle night",2.99,"salmon fillets"],
-    ["Frying / lean steak","one griddle night",2.99,"frying steak"],
-    ["Flatbreads / wraps","griddle carb base",0.65,"flatbreads"],
-    ["Mixed peppers","griddle veg",0.99,"mixed peppers"],
-    ["Onions & courgettes","griddle veg",1.50,"courgette"],
-    ["Cooked & peeled prawns 150g","Thursday paprika rice",1.49,"cooked peeled prawns"],
-    ["Bananas (loose) ×12","snacks + on-bike fuel",0.99,"bananas loose"],
-    ["Frozen berries 500g","overnight oats + yoghurt pots",1.99,"frozen berries"],
-    ["Arla Skyr / Greek yogurt pots ×4","Week B Mon/Wed/Fri — mandatory with oat bars",2.50,"skyr yogurt pots"],
+  {after:"Breakfast & Lunch", items:[
     ["Apples or oranges ×6","evening snack",1.00,"apples"],
-    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.25,"semi skimmed milk 2l"],
-    ["Wholemeal bread loaf","Sunday pre-ride toast",0.89,"wholemeal bread"],
-    ["White potatoes (1.5kg bag)","savoury potato bites — on-bike fuel",1.19,"white potatoes"],
-  ]},
-  {after:"Top Up When Low", items:[
-    ["Eggs (15-pack)","weekend + breakfast rotation + oat bars",2.00,"eggs 15 pack"],
-    ["Smoked bacon or ham 200g","egg muffin tray (Set A)",1.79,"smoked bacon"],
-    ["Muffin cases (12-pack)","egg muffins — Set A Tue/Thu",0.65,"muffin cases"],
+    ["Arla Skyr / Greek yogurt pots ×4","Week B Mon/Wed/Fri — with oat bars",2.50,"skyr yogurt pots"],
+    ["Bananas (loose) ×12","breakfast, snacks + on-bike fuel",0.99,"bananas loose"],
+    ["Basmati rice 1kg","batch-cooked lunches Mon–Sun",1.49,"basmati rice 1kg"],
+    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",4.95,"chicken thigh fillets"],
     ["Chia seeds 200g","overnight oats — Set A",1.49,"chia seeds"],
+    ["Cooked & peeled prawns 150g","Thursday paprika rice lunch",1.49,"cooked peeled prawns"],
+    ["Dried pasta 500g","Wednesday tuna pasta lunch",0.39,"pasta"],
+    ["Eggs (15-pack)","breakfast rotation + oat bars + recovery",2.00,"eggs 15 pack"],
+    ["Frozen berries 500g","overnight oats + yoghurt pots",1.99,"frozen berries"],
+    ["Frozen peas 900g","rice variations + Thursday paella lunch",1.29,"frozen peas"],
     ["Granola 500g","yoghurt pots — Set B Tue/Thu",1.49,"granola"],
+    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",2.78,"greek style yogurt 1kg"],
+    ["Lemons ×3","tuna pasta + prawn rice lunch",0.69,"lemons"],
+    ["Mixed peppers","egg muffins + lunch rice",0.99,"mixed peppers"],
+    ["Muffin cases (12-pack)","egg muffins — Set A Tue/Thu",0.65,"muffin cases"],
     ["Porridge oats 1kg","porridge + oat bars + energy balls",0.89,"porridge oats 1kg"],
-    ["Basmati rice 1kg","batch-cooked lunches",1.49,"basmati rice 1kg"],
-    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes",1.29,"sushi rice"],
-    ["Pitted dates 500g","date & oat energy balls",1.49,"pitted dates"],
+    ["Salad leaves or mixed salad","chicken rice bowls",0.99,"mixed salad leaves"],
+    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.25,"semi skimmed milk 2l"],
+    ["Smoked bacon or ham 200g","egg muffin tray (Set A)",1.79,"smoked bacon"],
+    ["Spinach 200g","egg muffin tray (Set A Tue/Thu)",0.89,"spinach"],
+    ["Tinned sweetcorn (2-pack)","tuna pasta + Mexican rice lunch",0.79,"sweetcorn tin"],
     ["Tuna chunks (4-pack)","Wednesday pasta lunch",2.36,"tuna chunks spring water"],
-    ["Whey protein 1kg tub","breakfasts + shakes (~every 4 wks)",20.00,"whey protein 1kg"],
-    ["Peanut butter (large jar)","oat bars + rice cakes + toast",1.29,"peanut butter"],
-    ["Clear honey","oat bars + gel + toast",1.19,"clear honey"],
-    ["Cocoa powder","recovery chocolate milk",1.09,"cocoa powder"],
-    ["Dried pasta 500g","Wednesday lunch base",0.39,"pasta"],
-    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.00,"soreen malt loaf"],
-    ["Fig rolls","emergency jersey pockets",0.99,"fig rolls"],
-    ["Jelly babies","late-ride carb top-ups",0.79,"jelly babies"],
-    ["Lo-Salt (lite salt)","potassium in electrolyte drinks",1.19,"lo salt"],
+    ["White potatoes (1.5kg bag)","egg muffins + savoury potato bites",1.19,"white potatoes"],
+    ["Wholemeal bread loaf","Sunday pre-ride toast + recovery",0.89,"wholemeal bread"],
+  ]},
+  {after:"Weekend Evening Meals", items:[
+    ["Chestnut mushrooms 250g","griddle full English + stir fry",0.99,"chestnut mushrooms"],
+    ["Flatbreads / wraps","fajitas + griddle carb base",0.65,"flatbreads"],
+    ["Fresh ginger","Sunday stir-fry griddle night",0.59,"fresh ginger"],
+    ["Frying / lean steak","griddle night — Sun recovery",2.99,"frying steak"],
+    ["Onions & courgettes","griddle veg",1.50,"courgette"],
+    ["Red onions ×3","Friday fajitas + rice seasonings",0.79,"red onions"],
+    ["Salmon fillets (2-pack)","griddle night — Fri or Sun",2.99,"salmon fillets"],
+  ]},
+  {after:"Sundries", items:[
+    ["Baking powder","griddle pancakes — top up",0.79,"baking powder"],
+    ["Black pepper grinder","general cooking — top up",1.49,"black pepper grinder"],
+    ["Butter 250g","batch rice + griddle + recovery toast",1.69,"butter"],
+    ["Chicken stock cubes (8-pack)","griddle paella — top up",0.79,"chicken stock cubes"],
+    ["Chilli flakes","Mexican rice + fajitas — top up",0.79,"chilli flakes"],
+    ["Chopped tomatoes (tin)","griddle paella sofrito — top up",0.45,"chopped tomatoes tin"],
+    ["Clear honey","oat bars + gel + toast — top up",1.19,"clear honey"],
+    ["Cocoa powder","recovery chocolate milk — top up",1.09,"cocoa powder"],
     ["Coconut water (4-pack)","electrolyte drink base — optional",1.99,"coconut water"],
-    ["Pumpkin seeds 150g","post-ride magnesium + snacks",1.49,"pumpkin seeds"],
+    ["Cornflour 500g","stir-fry velvet beef — top up",0.65,"cornflour"],
+    ["Dried oregano","DIY fajita seasoning — top up",0.79,"dried oregano"],
+    ["Fig rolls","emergency jersey pockets",0.99,"fig rolls"],
+    ["Garlic granules","chicken + stir-fry + fajitas — top up",0.79,"garlic granules"],
+    ["Ground cinnamon","banana oat bars + sweet rice cakes — top up",0.79,"cinnamon"],
+    ["Ground cumin","Mexican rice + fajitas — top up",0.79,"ground cumin"],
+    ["Jelly babies","late-ride carb top-ups",0.79,"jelly babies"],
+    ["Kidney beans (tin)","Mexican-spiced batch rice — top up",0.45,"kidney beans tin"],
+    ["Lo-Salt (lite salt)","potassium in electrolyte drinks — top up",1.19,"lo salt"],
+    ["Mixed dried herbs","batch chicken roast — top up",0.79,"mixed herbs"],
+    ["Olive oil 500ml","batch chicken + griddle + tuna — top up",2.99,"olive oil"],
+    ["Oyster sauce","Sunday stir-fry — top up",0.99,"oyster sauce"],
+    ["Parmesan (small block)","savoury rice cakes — optional",1.79,"parmesan"],
+    ["Peanut butter (large jar)","oat bars + rice cakes + toast — top up",1.29,"peanut butter"],
+    ["Pitted dates 500g","date & oat energy balls — top up",1.49,"pitted dates"],
+    ["Plain flour 1kg","griddle pancakes — top up",0.55,"plain flour 1kg"],
+    ["Pumpkin seeds 150g","post-ride magnesium + snacks — top up",1.49,"pumpkin seeds"],
+    ["Rapeseed / veg oil 1L","griddle high-heat + egg muffins — top up",1.49,"rapeseed oil"],
+    ["Raisins or dried cranberries 500g","oat bars + baked ride bars — top up",1.29,"raisins"],
+    ["Rice vinegar","Sunday stir-fry sauce — top up",0.89,"rice vinegar"],
+    ["Sesame oil","Sunday stir-fry + beef velvet — top up",1.49,"sesame oil"],
+    ["Sesame seeds","stir-fry finish — top up",0.89,"sesame seeds"],
+    ["Smoked paprika","chicken, prawn rice, fajitas — top up",0.79,"smoked paprika"],
+    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.00,"soreen malt loaf"],
+    ["Soy sauce","savoury rice cakes + stir fry — top up",0.89,"soy sauce"],
+    ["Squash / cordial","homemade carb drink flavour — top up",0.99,"squash cordial"],
+    ["Sunflower or mixed seeds 150g","yoghurt pots + oat bars — top up",1.29,"sunflower seeds"],
+    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes — top up",1.29,"sushi rice"],
+    ["Table salt 750g","cooking + potato bites + electrolytes — top up",0.35,"table salt"],
+    ["Tomato purée tube","Mexican rice variation — top up",0.59,"tomato puree"],
+    ["Turmeric","golden rice + Thursday paella — top up",0.79,"turmeric"],
+    ["Vanilla extract","baked ride bars + pancakes — top up",1.29,"vanilla extract"],
+    ["Whey protein 1kg tub","breakfasts + shakes (~every 4 wks)",20.00,"whey protein 1kg"],
+    ["White sugar 1kg","energy drinks + electrolytes — top up",0.65,"white sugar"],
   ]},
   {after:"Separate Online Order", ext:true, items:[
     ["Maltodextrin 1kg","energy drinks + homemade gel",10.00,"maltodextrin 1kg buy uk"],
@@ -156,6 +213,13 @@ const list=document.getElementById('list');
 let fullTotal=0, total=0, count=0, added=0;
 const cats=[...list.querySelectorAll('.cat h2')].map(h=>h.parentElement);
 function catByName(n){return cats.find(c=>c.querySelector('h2').textContent.trim()===n);}
+
+const itemRows=[];
+GROUPS.forEach(g=>{
+  g.items.forEach(([name,note])=>{
+    itemRows.push({section:g.after,name,note,row:null});
+  });
+});
 
 GROUPS.forEach(g=>{
   const anchor=catByName(g.after);
@@ -178,6 +242,8 @@ GROUPS.forEach(g=>{
       render();
     };
     insertAfter.after(row); insertAfter=row;
+    const idx=itemRows.findIndex(it=>it.name===name && it.note===note);
+    if(idx>=0) itemRows[idx].row=row;
   });
 });
 
@@ -187,6 +253,49 @@ function render(){
   document.getElementById('count').textContent=added+' of '+count+' added';
 }
 render();
+
+function buildNotesText(uncheckedOnly){
+  const lines=['LIDL SHOPPING LIST','','1 Breakfast & Lunch · 2 Weekend Evening Meals · 3 Sundries (check cupboard) · 4 Online order',''];
+  let section='';
+  itemRows.forEach(({section:sec,name,note,row})=>{
+    if(uncheckedOnly && row && row.classList.contains('done')) return;
+    if(sec!==section){section=sec; lines.push(section.toUpperCase(),'');}
+    const tick=row && row.classList.contains('done') ? '☑' : '☐';
+    lines.push(tick+' '+name+(note ? ' — '+note : ''));
+  });
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('exportToast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+async function copyNotes(uncheckedOnly){
+  const text=buildNotesText(uncheckedOnly);
+  try{
+    if(navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+      await navigator.share({title:'Lidl shopping list',text});
+      showToast('Shared — pick Notes to save');
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    showToast('Copied — paste into Notes');
+  }catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy'); showToast('Copied — paste into Notes');}
+    catch{showToast('Select the text and copy manually'); prompt('Copy this list:',text);}
+    finally{document.body.removeChild(ta);}
+  }
+}
+
+document.getElementById('exportNotes').onclick=()=>copyNotes(false);
+document.getElementById('exportRemaining').onclick=()=>copyNotes(true);
 </script>
 </body>
 </html>
