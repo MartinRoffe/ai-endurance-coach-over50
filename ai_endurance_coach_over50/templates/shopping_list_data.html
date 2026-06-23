@@ -1,0 +1,155 @@
+{# Canonical weekly shop — shared by Asda + Lidl shopping list pages.
+   cats: breakfast | lunch | ride | griddle | staples (any combination) #}
+const SHOP_CATEGORY_IDS = ["breakfast", "lunch", "ride", "griddle", "staples"];
+const LIDL_ZONES = [
+  "1 · Fresh Produce",
+  "2 · Bakery & Bread",
+  "3 · Chilled",
+  "4 · Frozen",
+  "5 · World Foods & Ambient",
+  "6 · Alesto — Nuts, Seeds & Dried Fruit",
+  "7 · Separate Online Order",
+];
+const ASDA_ZONES = ["Buy Every Week", "Top Up When Low", "Separate Online Order"];
+const SHOP_ITEMS = [
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast"], name:"Apples or oranges ×6", note:"evening snack", asdaPrice:1.20, lidlPrice:1.00, term:"apples"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast","ride"], name:"Bananas (loose) ×12", note:"breakfast, snacks + on-bike pre-roll bite", asdaPrice:1.10, lidlPrice:0.99, term:"bananas loose"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["ride"], name:"Strawberries 1 punnet", note:"recovery oats — Weekend B", asdaPrice:2.00, lidlPrice:1.99, term:"strawberries"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast","ride"], name:"Blueberries 1 punnet", note:"overnight oats + recovery oats — or use frozen", asdaPrice:2.50, lidlPrice:1.99, term:"blueberries"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["ride"], name:"Avocados ×2", note:"avocado & egg rice cakes — top up when batching", asdaPrice:1.80, lidlPrice:1.49, term:"avocados"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["griddle"], name:"Chestnut mushrooms 250g", note:"griddle full English + stir fry — optional", asdaPrice:1.20, lidlPrice:0.99, term:"chestnut mushrooms"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["griddle","staples"], name:"Fresh ginger", note:"Sunday stir-fry griddle night — top up", asdaPrice:0.80, lidlPrice:0.59, term:"fresh ginger"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["lunch","ride"], name:"Lemons ×3", note:"tuna pasta + prawn rice + electrolyte bottles", asdaPrice:0.90, lidlPrice:0.69, term:"lemons"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast","lunch","griddle"], name:"Mixed peppers", note:"egg muffins + lunch rice + griddle veg", asdaPrice:1.20, lidlPrice:0.99, term:"mixed peppers"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["griddle"], name:"Onions & courgettes", note:"griddle veg", asdaPrice:1.80, lidlPrice:1.50, term:"courgette"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["lunch","griddle"], name:"Red onions ×3", note:"Friday fajitas + rice seasonings", asdaPrice:0.90, lidlPrice:0.79, term:"red onions"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["lunch"], name:"Salad leaves or mixed salad", note:"chicken rice bowls — Sat lunch", asdaPrice:1.20, lidlPrice:0.99, term:"mixed salad leaves"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast"], set:"a", name:"Spinach 200g", note:"egg muffin tray (Set A Tue/Thu)", asdaPrice:1.20, lidlPrice:0.89, term:"spinach"},
+  {lidl:"1 · Fresh Produce", asda:"Buy Every Week", cats:["breakfast"], set:"a", name:"White potatoes (1.5kg bag)", note:"egg muffin tray — diced, not on-bike fuel", asdaPrice:1.50, lidlPrice:1.19, term:"white potatoes"},
+
+  {lidl:"2 · Bakery & Bread", asda:"Buy Every Week", cats:["ride"], name:"Wholemeal bread loaf", note:"Sunday pre-ride toast + recovery", asdaPrice:1.10, lidlPrice:0.89, term:"wholemeal bread"},
+
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["breakfast","ride"], name:"Semi-skimmed milk 2L", note:"porridge, shakes, recovery oats + chocolate milk", asdaPrice:1.45, lidlPrice:1.25, term:"semi skimmed milk 2l"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["breakfast","ride"], name:"Eggs (15-pack)", note:"breakfast rotation + oat bars + rice cakes + recovery", asdaPrice:2.45, lidlPrice:2.00, term:"eggs 15 pack"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["breakfast","lunch"], name:"Greek style yogurt 1kg ×2", note:"breakfast + lunch top-ups Mon–Thu", asdaPrice:3.40, lidlPrice:2.78, term:"greek style yogurt 1kg"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["breakfast"], set:"b", name:"Arla Skyr / Greek yogurt pots ×4", note:"Set B Mon/Wed/Fri — with oat bars", asdaPrice:3.00, lidlPrice:2.50, term:"skyr yogurt pots"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["ride","griddle"], name:"Butter 250g", note:"flapjack + griddle + recovery toast", asdaPrice:2.00, lidlPrice:1.69, term:"butter"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["ride"], name:"Cream cheese", note:"Team Sky cinnamon rice cakes — top up", asdaPrice:1.20, lidlPrice:0.99, term:"cream cheese"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["ride"], name:"Parmesan (small block)", note:"savoury rice cakes — optional", asdaPrice:2.00, lidlPrice:1.79, term:"parmesan"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["breakfast","ride"], name:"Smoked bacon or ham 200g", note:"egg muffin tray + bacon rice cakes", asdaPrice:2.50, lidlPrice:1.79, term:"smoked bacon"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["lunch","griddle"], name:"Chicken thigh fillets", note:"~1.5kg — batch roast for lunches", asdaPrice:5.69, lidlPrice:4.95, term:"chicken thigh fillets"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["lunch"], name:"Cooked & peeled prawns 150g", note:"Thursday paprika rice lunch", asdaPrice:1.75, lidlPrice:1.49, term:"cooked peeled prawns"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["griddle"], name:"Salmon fillets (2-pack)", note:"griddle night — Fri or Sun", asdaPrice:3.50, lidlPrice:2.99, term:"salmon fillets"},
+  {lidl:"3 · Chilled", asda:"Buy Every Week", cats:["griddle"], name:"Frying / lean steak", note:"griddle night — Sun recovery", asdaPrice:3.50, lidlPrice:2.99, term:"frying steak"},
+
+  {lidl:"4 · Frozen", asda:"Buy Every Week", cats:["breakfast"], set:"a", name:"Frozen berries 500g", note:"Set A overnight oats Mon/Wed/Fri", asdaPrice:2.50, lidlPrice:1.99, term:"frozen berries"},
+  {lidl:"4 · Frozen", asda:"Buy Every Week", cats:["lunch"], name:"Frozen peas 900g", note:"rice variations + Thursday paella lunch", asdaPrice:1.50, lidlPrice:1.29, term:"frozen peas"},
+
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle"], name:"Basmati rice 1kg", note:"batch-cooked lunches Mon–Sun", asdaPrice:2.25, lidlPrice:1.49, term:"basmati rice 1kg"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Sushi / short-grain rice 1kg", note:"savoury & sweet rice cakes — top up", asdaPrice:1.80, lidlPrice:1.29, term:"sushi rice"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch"], name:"Dried pasta 500g", note:"Wednesday tuna pasta lunch", asdaPrice:0.50, lidlPrice:0.39, term:"pasta"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Porridge oats 1kg", note:"oat bars + recovery oats + flapjack + energy balls", asdaPrice:1.25, lidlPrice:0.89, term:"porridge oats 1kg"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Plain flour 1kg", note:"griddle pancakes — top up", asdaPrice:0.65, lidlPrice:0.55, term:"plain flour 1kg"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle"], name:"Flatbreads / wraps", note:"fajitas + griddle carb base", asdaPrice:0.85, lidlPrice:0.65, term:"flatbreads"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast"], set:"b", name:"Granola 500g", note:"yoghurt pots — Set B Tue/Thu", asdaPrice:2.00, lidlPrice:1.49, term:"granola"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch"], name:"Tuna chunks (4-pack)", note:"Wednesday pasta lunch", asdaPrice:3.00, lidlPrice:2.36, term:"tuna chunks spring water"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch"], name:"Tinned sweetcorn (2-pack)", note:"tuna pasta + Mexican rice lunch", asdaPrice:1.00, lidlPrice:0.79, term:"sweetcorn tin"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","staples"], name:"Kidney beans (tin)", note:"Mexican-spiced batch rice — top up", asdaPrice:0.55, lidlPrice:0.45, term:"kidney beans tin"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Chopped tomatoes (tin)", note:"griddle paella sofrito — top up", asdaPrice:0.45, lidlPrice:0.45, term:"chopped tomatoes tin"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Olive oil 500ml", note:"batch chicken + griddle + tuna — top up", asdaPrice:3.50, lidlPrice:2.99, term:"olive oil"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","griddle","staples"], name:"Rapeseed / veg oil 1L", note:"egg muffins + griddle high-heat — top up", asdaPrice:2.00, lidlPrice:1.49, term:"rapeseed oil"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Sesame oil", note:"Sunday stir-fry — top up", asdaPrice:2.00, lidlPrice:1.49, term:"sesame oil"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","griddle","staples"], name:"Soy sauce", note:"rice cakes + stir fry — top up", asdaPrice:1.20, lidlPrice:0.89, term:"soy sauce"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Oyster sauce", note:"Sunday stir-fry — top up", asdaPrice:1.50, lidlPrice:0.99, term:"oyster sauce"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Rice vinegar", note:"Sunday stir-fry sauce — top up", asdaPrice:1.50, lidlPrice:0.89, term:"rice vinegar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","staples"], name:"Tomato purée tube", note:"Mexican rice variation — top up", asdaPrice:0.70, lidlPrice:0.59, term:"tomato puree"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Raspberry jam", note:"PB&J sweet rice cakes — top up", asdaPrice:1.20, lidlPrice:0.99, term:"raspberry jam"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["staples"], name:"Black pepper grinder", note:"general cooking — top up", asdaPrice:1.50, lidlPrice:1.49, term:"black pepper grinder"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Chilli flakes", note:"Mexican rice + fajitas — top up", asdaPrice:0.90, lidlPrice:0.79, term:"chilli flakes"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Dried oregano", note:"fajita seasoning — top up", asdaPrice:0.90, lidlPrice:0.79, term:"dried oregano"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Garlic granules", note:"chicken + stir-fry + fajitas — top up", asdaPrice:0.90, lidlPrice:0.79, term:"garlic granules"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride","staples"], name:"Ground cinnamon", note:"oat bars + sweet rice cakes — top up", asdaPrice:0.90, lidlPrice:0.79, term:"cinnamon"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Ground cumin", note:"Mexican rice + fajitas — top up", asdaPrice:0.90, lidlPrice:0.79, term:"ground cumin"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","staples"], name:"Mixed dried herbs", note:"batch chicken roast — top up", asdaPrice:0.90, lidlPrice:0.79, term:"mixed herbs"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","griddle","staples"], name:"Smoked paprika", note:"chicken, prawn rice, fajitas — top up", asdaPrice:0.90, lidlPrice:0.79, term:"smoked paprika"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["lunch","staples"], name:"Turmeric", note:"golden rice + Thursday paella — top up", asdaPrice:0.90, lidlPrice:0.79, term:"turmeric"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","staples"], name:"Brown sugar 500g", note:"bacon rice cakes + ride flapjack — top up", asdaPrice:1.00, lidlPrice:0.65, term:"brown sugar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Muscovado sugar 500g", note:"Banoffee recovery oats — top up", asdaPrice:1.49, lidlPrice:1.29, term:"muscovado sugar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","staples"], name:"White sugar 1kg", note:"electrolytes + winter carb drinks — top up", asdaPrice:0.90, lidlPrice:0.65, term:"white sugar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Golden syrup", note:"oat bars + ride flapjack — top up", asdaPrice:1.50, lidlPrice:1.19, term:"golden syrup"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Maple syrup", note:"sweet rice cakes — honey works too", asdaPrice:2.50, lidlPrice:1.99, term:"maple syrup"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Agave nectar", note:"Team Sky cinnamon rice cakes — top up", asdaPrice:3.00, lidlPrice:2.49, term:"agave nectar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Coconut sugar", note:"Team Sky cinnamon rice cakes — top up", asdaPrice:2.00, lidlPrice:1.49, term:"coconut sugar"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride","staples"], name:"Clear honey", note:"oat bars + toast + electrolyte uptake — top up", asdaPrice:1.50, lidlPrice:1.19, term:"clear honey"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Dark chocolate 100g", note:"Banoffee recovery oats — optional grate", asdaPrice:1.50, lidlPrice:1.29, term:"dark chocolate 100g"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Baking powder", note:"griddle pancakes — top up", asdaPrice:1.00, lidlPrice:0.79, term:"baking powder"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast"], set:"a", name:"Muffin cases (12-pack)", note:"egg muffins — Set A Tue/Thu", asdaPrice:0.80, lidlPrice:0.65, term:"muffin cases"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Cocoa powder", note:"recovery chocolate milk + energy balls — top up", asdaPrice:1.50, lidlPrice:1.09, term:"cocoa powder"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride","griddle","staples"], name:"Vanilla extract", note:"oats + ride bars + pancakes — top up", asdaPrice:1.20, lidlPrice:1.29, term:"vanilla extract"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Chicken stock cubes (8-pack)", note:"griddle paella — top up", asdaPrice:1.00, lidlPrice:0.79, term:"chicken stock cubes"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["griddle","staples"], name:"Cornflour 500g", note:"stir-fry velvet beef — top up", asdaPrice:0.80, lidlPrice:0.65, term:"cornflour"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","staples"], name:"Lo-Salt (lite salt)", note:"potassium in electrolyte drinks — top up", asdaPrice:1.50, lidlPrice:1.19, term:"lo salt"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","staples"], name:"Table salt 750g", note:"cooking + electrolyte bottles — top up", asdaPrice:0.45, lidlPrice:0.35, term:"table salt"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Jelly babies", note:"late-ride carb top-ups", asdaPrice:1.00, lidlPrice:0.79, term:"jelly babies"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Fig rolls", note:"emergency jersey pockets", asdaPrice:1.20, lidlPrice:0.99, term:"fig rolls"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Soreen malt loaf (2-pack)", note:"pre-sliced on-bike slabs + emergency fuel", asdaPrice:2.50, lidlPrice:2.00, term:"soreen malt loaf"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Coconut water (4-pack)", note:"electrolyte drink base — optional", asdaPrice:2.50, lidlPrice:1.99, term:"coconut water"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride","staples"], name:"Squash / cordial", note:"electrolyte + winter carb drink flavour — top up", asdaPrice:1.20, lidlPrice:0.99, term:"squash cordial"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["ride"], name:"Mixed dried fruit 500g", note:"ride flapjack — top up", asdaPrice:1.80, lidlPrice:1.49, term:"mixed dried fruit"},
+  {lidl:"5 · World Foods & Ambient", asda:"Top Up When Low", cats:["breakfast","ride","staples"], name:"Whey protein 1kg tub", note:"breakfasts + shakes (~every 4 wks)", asdaPrice:20.00, lidlPrice:20.00, term:"whey protein 1kg"},
+
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Chia seeds 200g", note:"overnight oats + recovery oats base", asdaPrice:2.00, lidlPrice:1.49, term:"chia seeds"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["ride","staples"], name:"Pumpkin seeds 150g", note:"post-ride magnesium + snacks — top up", asdaPrice:1.80, lidlPrice:1.49, term:"pumpkin seeds"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Sunflower or mixed seeds 150g", note:"yoghurt pots + oat bars — top up", asdaPrice:1.50, lidlPrice:1.29, term:"sunflower seeds"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["griddle","staples"], name:"Sesame seeds", note:"stir-fry finish — top up", asdaPrice:1.00, lidlPrice:0.89, term:"sesame seeds"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["ride"], name:"Pitted dates 500g", note:"date & oat energy balls — top up", asdaPrice:1.80, lidlPrice:1.49, term:"pitted dates"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Raisins or dried cranberries 500g", note:"oat bars + baked ride bars — top up", asdaPrice:1.50, lidlPrice:1.29, term:"raisins"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["breakfast","ride"], name:"Peanut butter (large jar)", note:"oat bars + rice cakes + toast — top up", asdaPrice:1.75, lidlPrice:1.29, term:"peanut butter"},
+  {lidl:"6 · Alesto — Nuts, Seeds & Dried Fruit", asda:"Top Up When Low", cats:["ride"], name:"Coconut oil 500g", note:"Team Sky rice cakes — top up", asdaPrice:3.00, lidlPrice:2.49, term:"coconut oil"},
+
+  {lidl:"7 · Separate Online Order", asda:"Separate Online Order", cats:["ride"], name:"Maltodextrin 1kg", note:"winter / event-day carb drinks + homemade gel", asdaPrice:10.00, lidlPrice:10.00, term:"maltodextrin 1kg buy uk", ext:true},
+  {lidl:"7 · Separate Online Order", asda:"Separate Online Order", cats:["ride"], name:"Fructose 1kg", note:"dual-source carb drinks (1:0.8) — event prep", asdaPrice:8.00, lidlPrice:8.00, term:"fructose powder 1kg buy uk", ext:true},
+];
+
+const SHOP_CATEGORY_LABELS = {
+  breakfast: "Breakfast",
+  lunch: "Lunches",
+  ride: "Weekend ride",
+  griddle: "Griddle",
+  staples: "Shared staples",
+};
+
+function itemForSet(item, breakfastSet) {
+  const s = item.set || "both";
+  return s === "both" || s === breakfastSet;
+}
+
+function itemForCategories(item, activeCats) {
+  if (!item.cats || !item.cats.length) return true;
+  return item.cats.some(function(c) { return activeCats.has(c); });
+}
+
+function itemVisible(item, breakfastSet, activeCats) {
+  return itemForSet(item, breakfastSet) && itemForCategories(item, activeCats);
+}
+
+function shopGroupsFor(store, breakfastSet, activeCats) {
+  breakfastSet = breakfastSet || "a";
+  if (!activeCats || !activeCats.size) {
+    activeCats = new Set(SHOP_CATEGORY_IDS);
+  }
+  const zones = store === "lidl" ? LIDL_ZONES : ASDA_ZONES;
+  const zoneKey = store === "lidl" ? "lidl" : "asda";
+  const onlineZone = store === "lidl" ? "7 · Separate Online Order" : "Separate Online Order";
+  return zones.map(function(zone) {
+    return {
+      after: zone,
+      ext: zone === onlineZone,
+      items: SHOP_ITEMS.filter(function(i) {
+        return i[zoneKey] === zone && itemVisible(i, breakfastSet, activeCats);
+      }).map(function(i) {
+        return [i.name, i.note, store === "lidl" ? i.lidlPrice : i.asdaPrice, i.term];
+      }),
+    };
+  }).filter(function(g) { return g.items.length; });
+}

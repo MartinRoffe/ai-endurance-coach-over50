@@ -1699,14 +1699,34 @@ async def nutrition_recipes_griddle(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes-griddle.html", context={})
 
 
+def _shopping_list_context() -> dict:
+    """Cycle week + default breakfast set for nutrition shopping lists."""
+    today = _today()
+    days_since_start = (today - _PLAN_START).days
+    cycle_week = max(0, days_since_start // 7) % 4
+    labels = [
+        "Week 1 — Set A",
+        "Week 2 — Set B",
+        "Week 3 — Set A",
+        "Week 4 — Set A recovery",
+    ]
+    return {
+        "cycle_week": cycle_week,
+        "cycle_week_label": labels[cycle_week],
+        "default_breakfast_set": "b" if cycle_week == 1 else "a",
+    }
+
+
 @app.get("/nutrition/shopping-list", response_class=HTMLResponse)
 async def nutrition_shopping_list(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context={})
+    ctx = _shopping_list_context()
+    return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context=ctx)
 
 
 @app.get("/nutrition/lidl-shopping-list", response_class=HTMLResponse)
 async def nutrition_lidl_shopping_list(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="lidl-shopping-list.html", context={})
+    ctx = _shopping_list_context()
+    return TEMPLATES.TemplateResponse(request=request, name="lidl-shopping-list.html", context=ctx)
 
 
 _ARCHITECTURE_HTML = Path(__file__).resolve().parent / "architecture.html"

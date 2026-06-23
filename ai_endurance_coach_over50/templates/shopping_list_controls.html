@@ -1,0 +1,63 @@
+<style>
+  .filter-block{margin-top:18px;}
+  .filter-block + .filter-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .set-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;}
+  .set-bar-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:10px;min-width:72px;}
+  .set-btns{display:flex;flex-wrap:wrap;gap:8px;flex:1;}
+  .set-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;padding:9px 14px;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s,color .15s;line-height:1.35;text-align:left;}
+  .set-btn:hover{border-color:#4a4d42;}
+  .set-btn.active{border-color:var(--accent);background:rgba(200,241,53,.1);color:var(--accent);}
+  .set-btn.dimmed{opacity:.45;}
+  .set-btn .set-sub{display:block;font-size:11px;color:var(--muted);font-weight:300;margin-top:2px;}
+  .set-btn.active .set-sub{color:#a8b86a;}
+  .set-btn-all{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:10px 12px;}
+  .set-hint{font-size:12px;color:var(--muted);margin-top:12px;max-width:680px;line-height:1.55;}
+  .set-hint b{color:var(--accent2);font-weight:500;}
+</style>
+
+<div class="filter-block">
+  <div class="set-bar" role="group" aria-label="Shop categories">
+    <span class="set-bar-label">Show</span>
+    <div class="set-btns" id="categoryBtns">
+      <button type="button" class="set-btn set-btn-all" data-shop-cat="all">All</button>
+      <button type="button" class="set-btn" data-shop-cat="breakfast">
+        Breakfast
+        <span class="set-sub">Set A/B · Sunday batch</span>
+      </button>
+      <button type="button" class="set-btn" data-shop-cat="lunch">
+        Lunches
+        <span class="set-sub">Chicken · rice · pasta · prawns</span>
+      </button>
+      <button type="button" class="set-btn" data-shop-cat="ride">
+        Weekend ride
+        <span class="set-sub">Rice cakes · oats · electrolytes</span>
+      </button>
+      <button type="button" class="set-btn" data-shop-cat="griddle">
+        Griddle
+        <span class="set-sub">Fri / Sat / Sun dinners</span>
+      </button>
+      <button type="button" class="set-btn" data-shop-cat="staples">
+        Shared staples
+        <span class="set-sub">Cupboard top-ups</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="filter-block" id="breakfastSetBlock">
+  <div class="set-bar" role="group" aria-label="Breakfast set for this shop">
+    <span class="set-bar-label">Breakfast set</span>
+    <div class="set-btns">
+      <button type="button" class="set-btn" data-breakfast-set="a">
+        Set A
+        <span class="set-sub">Overnight oats · egg muffins</span>
+      </button>
+      <button type="button" class="set-btn" data-breakfast-set="b">
+        Set B
+        <span class="set-sub">Oat bars · Skyr · yoghurt + eggs</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<p class="set-hint" id="setHint"></p>

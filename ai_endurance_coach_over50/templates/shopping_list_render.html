@@ -1,0 +1,218 @@
+{# Shared list builder — include after shopping_list_data.html and store link constants. #}
+function initShoppingList(opts) {
+  const STORE = opts.store;
+  const linkFn = opts.linkFn;
+  const webFn = opts.webFn;
+  const addLabel = opts.addLabel || "Add ▸";
+  const defaultSet = opts.defaultSet || "a";
+  const cycleLabel = opts.cycleLabel || "";
+
+  let breakfastSet = defaultSet;
+  let activeCats = new Set(SHOP_CATEGORY_IDS);
+
+  const params = new URLSearchParams(location.search);
+  const urlSet = params.get("set");
+  if (urlSet === "a" || urlSet === "b") breakfastSet = urlSet;
+  else {
+    const savedSet = localStorage.getItem("shopBreakfastSet");
+    if (savedSet === "a" || savedSet === "b") breakfastSet = savedSet;
+  }
+
+  const urlCats = params.get("cats");
+  if (urlCats) {
+    const picked = urlCats.split(",").filter(function(c) { return SHOP_CATEGORY_IDS.indexOf(c) >= 0; });
+    if (picked.length) activeCats = new Set(picked);
+  } else {
+    const savedCats = localStorage.getItem("shopCategories");
+    if (savedCats) {
+      try {
+        const arr = JSON.parse(savedCats);
+        if (Array.isArray(arr) && arr.length) {
+          activeCats = new Set(arr.filter(function(c) { return SHOP_CATEGORY_IDS.indexOf(c) >= 0; }));
+        }
+      } catch (e) { /* ignore */ }
+    }
+  }
+
+  const list = document.getElementById("list");
+  const cats = [...list.querySelectorAll(".cat h2")].map(function(h) { return h.parentElement; });
+  const itemRows = [];
+  const tickState = new Map();
+  let fullTotal = 0, total = 0, count = 0, added = 0;
+
+  function catByName(n) {
+    return cats.find(function(c) { return c.querySelector("h2").textContent.trim() === n; });
+  }
+
+  function itemKey(name, note) { return name + "\0" + note; }
+
+  function persistFilters() {
+    localStorage.setItem("shopBreakfastSet", breakfastSet);
+    localStorage.setItem("shopCategories", JSON.stringify([...activeCats]));
+    const u = new URL(location.href);
+    u.searchParams.set("set", breakfastSet);
+    u.searchParams.set("cats", [...activeCats].join(","));
+    history.replaceState(null, "", u);
+    document.querySelectorAll("a.compare-link").forEach(function(a) {
+      try {
+        const link = new URL(a.getAttribute("href"), location.origin);
+        link.searchParams.set("set", breakfastSet);
+        link.searchParams.set("cats", [...activeCats].join(","));
+        a.href = link.pathname + "?" + link.searchParams.toString();
+      } catch (e) { /* ignore */ }
+    });
+  }
+
+  function saveTicks() {
+    tickState.clear();
+    list.querySelectorAll(".item").forEach(function(row) {
+      const name = row.querySelector(".name").textContent;
+      const note = row.querySelector(".note").textContent;
+      if (row.classList.contains("done")) tickState.set(itemKey(name, note), true);
+    });
+  }
+
+  function clearItems() {
+    saveTicks();
+    list.querySelectorAll(".item").forEach(function(el) { el.remove(); });
+    itemRows.length = 0;
+    fullTotal = 0; total = 0; count = 0; added = 0;
+  }
+
+  function renderTotals() {
+    document.getElementById("tickedTotal").textContent = "£" + total.toFixed(2);
+    document.getElementById("fullTotal").textContent = "£" + fullTotal.toFixed(2);
+    document.getElementById("count").textContent = added + " of " + count + " added";
+  }
+
+  function updateFilterUi() {
+    document.querySelectorAll("[data-shop-cat]").forEach(function(btn) {
+      if (btn.dataset.shopCat === "all") {
+        btn.classList.toggle("active", activeCats.size === SHOP_CATEGORY_IDS.length);
+        return;
+      }
+      btn.classList.toggle("active", activeCats.has(btn.dataset.shopCat));
+    });
+    document.querySelectorAll("[data-breakfast-set]").forEach(function(btn) {
+      btn.classList.toggle("active", btn.dataset.breakfastSet === breakfastSet);
+    });
+    const breakfastOn = activeCats.has("breakfast");
+    const setBlock = document.getElementById("breakfastSetBlock");
+    if (setBlock) setBlock.style.opacity = breakfastOn ? "1" : "0.45";
+    document.querySelectorAll("[data-breakfast-set]").forEach(function(btn) {
+      btn.disabled = !breakfastOn;
+    });
+
+    const hint = document.getElementById("setHint");
+    if (!hint) return;
+    const catLabels = [...activeCats].map(function(c) { return SHOP_CATEGORY_LABELS[c]; });
+    const catText = catLabels.length === SHOP_CATEGORY_IDS.length
+      ? "all categories"
+      : catLabels.join(", ");
+    const setName = breakfastSet === "b"
+      ? "Set B (oat bars + Skyr)"
+      : "Set A (oats + egg muffins)";
+    const auto = breakfastSet === defaultSet ? " · matches " + cycleLabel : "";
+    let extra = "";
+    if (breakfastOn) {
+      extra = breakfastSet === "a"
+        ? " Breakfast-only swaps: Skyr + granola hidden."
+        : " Breakfast-only swaps: muffin cases, spinach, potatoes + frozen berries hidden.";
+    }
+    hint.innerHTML = "Showing <b>" + catText + "</b>" +
+      (breakfastOn ? " · <b>" + setName + "</b>" + auto : " · breakfast set idle (turn Breakfast on to filter Set A/B)") +
+      extra;
+  }
+
+  function renderList() {
+    clearItems();
+    const GROUPS = shopGroupsFor(STORE, breakfastSet, activeCats);
+    GROUPS.forEach(function(g) {
+      const anchor = catByName(g.after);
+      if (!anchor) return;
+      let insertAfter = anchor;
+      if (insertAfter.nextElementSibling && insertAfter.nextElementSibling.classList.contains("banner")) {
+        insertAfter = insertAfter.nextElementSibling;
+      }
+      g.items.forEach(function(tuple) {
+        const name = tuple[0], note = tuple[1], price = tuple[2], term = tuple[3];
+        fullTotal += price; count++;
+        const row = el("div", "item");
+        const chk = el("div", "check"); chk.textContent = "";
+        const meta = el("div", "meta");
+        meta.appendChild(el("div", "name", name));
+        meta.appendChild(el("div", "note", note));
+        const pr = el("div", "price", "£" + price.toFixed(2));
+        const a = el("a", "add" + (g.ext ? " ext" : ""), g.ext ? "Find ▸" : addLabel);
+        a.href = g.ext ? webFn(term) : linkFn(term);
+        a.target = "_blank"; a.rel = "noopener";
+        row.append(chk, meta, pr, a);
+        const key = itemKey(name, note);
+        if (tickState.get(key)) {
+          row.classList.add("done");
+          chk.classList.add("on");
+          chk.textContent = "✓";
+          total += price; added++;
+        }
+        chk.onclick = function() {
+          const on = row.classList.toggle("done");
+          chk.classList.toggle("on", on);
+          chk.textContent = on ? "✓" : "";
+          if (on) { total += price; added++; } else { total -= price; added--; }
+          renderTotals();
+        };
+        insertAfter.after(row);
+        insertAfter = row;
+        itemRows.push({ section: g.after, name: name, note: note, row: row });
+      });
+    });
+    renderTotals();
+    updateFilterUi();
+    updateZoneVisibility();
+    persistFilters();
+  }
+
+  function updateZoneVisibility() {
+    cats.forEach(function(catEl) {
+      let el = catEl.nextElementSibling;
+      let hasItems = false;
+      while (el && !el.classList.contains("cat")) {
+        if (el.classList.contains("item")) { hasItems = true; break; }
+        el = el.nextElementSibling;
+      }
+      catEl.style.display = hasItems ? "" : "none";
+    });
+  }
+
+  document.querySelectorAll("[data-shop-cat]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const id = btn.dataset.shopCat;
+      if (id === "all") {
+        activeCats = new Set(SHOP_CATEGORY_IDS);
+      } else if (activeCats.has(id)) {
+        if (activeCats.size === 1) return;
+        activeCats.delete(id);
+      } else {
+        activeCats.add(id);
+      }
+      renderList();
+    });
+  });
+
+  document.querySelectorAll("[data-breakfast-set]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      if (!activeCats.has("breakfast")) return;
+      breakfastSet = btn.dataset.breakfastSet;
+      renderList();
+    });
+  });
+
+  renderList();
+
+  return {
+    getItemRows: function() { return itemRows; },
+    getBreakfastSet: function() { return breakfastSet; },
+    getActiveCategories: function() { return [...activeCats]; },
+    rebuild: renderList,
+  };
+}
