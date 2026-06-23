@@ -587,6 +587,69 @@ HR_HEAT_PROTOCOL: dict = {
     ),
 }
 
+# ── Lessons from the failed 2012 Haute Route attempt ──────────────────────────
+# Derived from analysis of the athlete's own 2012 TCX files (inaugural Haute
+# Route Alps, Geneva→Nice). He was pulled by the broom wagon on Day 3 after the
+# first climb — a depletion blow-up — and rested Day 4 (Alpe d'Huez TT). The HR
+# data is the trustworthy axis (the 2012 "power" was strap-estimated virtual
+# power). Surfaced as a banner on /haute-route AND injected into coach context so
+# pacing/fuelling advice is anchored to what actually went wrong last time.
+LESSONS_2012: dict = {
+    "title": "Lessons from 2012 (DNF — broom wagon, Day 3)",
+    "summary": (
+        "Failed the inaugural Haute Route in 2012: pulled by the broom wagon on Day 3 "
+        "after the first climb, then forced to rest Day 4 (the Alpe d'Huez TT). The "
+        "ride files show it was an executional failure, not a fitness ceiling."
+    ),
+    "evidence": [
+        "Day 1 raced like a one-day event — 54% of 6+ hours above 80% of max HR, "
+        "9% above 90%. The whole week's matches spent on the opening stage.",
+        "Day 2 the top end vanished (time above 90% HRmax fell 9%→0%) — an unread "
+        "fatigue warning.",
+        "Day 3 depletion blow-up, visible in HR alone: avg HR only 129 on a climbing "
+        "stage, couldn't get above 178 (vs 193/185 earlier). 'Nothing in me.'",
+        "The rest day proved capacity was intact — Day 4 climbed 3,425 m with the "
+        "engine fully back. The failure was management, not fitness.",
+        "Day 5 paced right (negative decoupling, HR drifting down) — same rider, "
+        "opposite outcome, purely a function of how he rode.",
+        "Gearing forced grinding: 50-34 / 12-25 left only 47 rpm at 8 km/h in the "
+        "easiest gear — hardware locked him into glycogen-heavy cadence.",
+    ],
+    "lessons": [
+        "PACING: Day 1 must feel almost too easy — cap well below threshold "
+        "(Z2, only steepest pitches into Z3). On race climbs power is a cap, not a "
+        "target (~70–80% FTP early stages).",
+        "FUELLING: target 80–90 g carbs/hour (~500 g on the big days). In 2012 he "
+        "'had no idea about fuelling' — the Day-3 collapse is what that debt looks "
+        "like when it comes due. Train the gut for it.",
+        "GEARING + CADENCE: fit 11-36 cassette (36×36 spins ~63 rpm at 8 km/h vs 47 "
+        "in 2012) and train climbing at 75–85 rpm — low cadence burns glycogen faster "
+        "at 50+.",
+        "WEIGHT: 78 kg was his proven 2012 race weight — the blow-up was pacing and "
+        "fuelling, not spare kilos. Target ~80 kg walking weight, ~78 kg for the event.",
+        "MONITOR FATIGUE: the Day-2 signal (top-end HR disappearing) was readable and "
+        "ignored. Heed amber on the HRV traffic light / back-to-back fatigue logs.",
+    ],
+    "build_targets": [
+        "Engine: realistic FTP 270–280 W at 78 kg (3.46–3.59 W/kg) beats chasing "
+        "the old 301 W strap estimate — finish the week fuelled and paced, not watt-maxxed.",
+        "Power meter: watts for pacing ceilings on climbs; HR + HRV for readiness. "
+        "See /haute-route/power-protocol for FTP test protocol.",
+    ],
+}
+
+
+def hr_2012_lessons_context() -> list[str]:
+    """Markdown-ish lines injecting the 2012 lessons into the coach chat context."""
+    lines = [f"## {LESSONS_2012['title']}", LESSONS_2012["summary"], "  What the data showed:"]
+    lines += [f"  - {e}" for e in LESSONS_2012["evidence"]]
+    lines.append("  Carry into 2027:")
+    lines += [f"  - {l}" for l in LESSONS_2012["lessons"]]
+    lines.append("  Build targets:")
+    lines += [f"  - {t}" for t in LESSONS_2012.get("build_targets", [])]
+    return lines
+
+
 _HR_PLAN_DAYS = len(HR_TRAINING_WEEKS) * 7  # 322
 
 

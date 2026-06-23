@@ -19,7 +19,7 @@ from fastapi.requests import Request
 from pydantic import BaseModel, Field
 
 from .alerts import check_fatigue_alerts
-from .analysis import generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, refresh_power_backfill, retrieve_relevant_analyses
+from .analysis import default_fuelling_plan, generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, refresh_power_backfill, retrieve_relevant_analyses
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
@@ -29,7 +29,7 @@ from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_w
                    CAMP_START, CAMP_END)
 from .hr_plan import (HR_PHASES, HR_PLAN_START, HR_TRAINING_WEEKS,
                       build_hr_calendar_weeks, build_hr_event_weeks,
-                      HR_EVENT_START, HR_EVENT_END, HR_HEAT_PROTOCOL)
+                      HR_EVENT_START, HR_EVENT_END, HR_HEAT_PROTOCOL, LESSONS_2012)
 from .mersea_routes import MERSEA_TARGET_DATE
 from .report import generate_advice, generate_body_analysis, generate_dashboard_explainer, generate_pmc_analysis, generate_pmc_explainer, generate_sleep_analysis
 from .body import bp_classification, fetch_body_composition, fetch_blood_pressure
@@ -725,28 +725,48 @@ def analysis_view(request: Request):
     rpe_rows = load_session_rpe(30)
     rpe_by_activity = {str(r["activity_id"]): r for r in rpe_rows if r.get("activity_id") is not None}
 
-    # Fuelling compliance: attach the cached in-ride plan + any logged actuals
-    # to qualifying endurance rides (bike types, ≥75 min planned sessions).
+    # Fuelling compliance: attach in-ride plan target + any logged actuals to
+    # qualifying endurance rides (bike types, ≥75 min). Uses cached AI plans
+    # when available; otherwise a duration-based default so the log widget
+    # always appears (prefetch was never wired up before).
     try:
-        from .analysis import _load_fuelling_plans, fuelling_session_key
+        from .analysis import fuelling_session_key
         from .plan import session_for_date_extended
         _BIKE_TYPES = {"road_biking", "cycling", "virtual_ride", "indoor_cycling", "mountain_biking"}
-        fuel_plans = _load_fuelling_plans()
-        fuel_logs = {str(r["activity_id"]): r for r in load_fuelling_logs(90)
-                     if r.get("activity_id") is not None}
+        _FUEL_MIN_SECS = 75 * 60
+        prefetch_sessions: set[tuple[str, int]] = set()
         for a in activities:
             if a.get("type_key") not in _BIKE_TYPES:
                 continue
-            if (a.get("duration_seconds") or 0) < 75 * 60:
+            if (a.get("duration_seconds") or 0) < _FUEL_MIN_SECS:
                 continue
             try:
                 sess = session_for_date_extended(date.fromisoformat(a["date"]))
             except Exception:
                 sess = None
+            if sess and sess[0] != "rest" and sess[2] >= 75:
+                prefetch_sessions.add((sess[0], sess[2]))
+        fuel_plans = prefetch_fuelling_plans(list(prefetch_sessions)) if prefetch_sessions else {}
+        fuel_logs = {str(r["activity_id"]): r for r in load_fuelling_logs(90)
+                     if r.get("activity_id") is not None}
+        for a in activities:
+            if a.get("type_key") not in _BIKE_TYPES:
+                continue
+            if (a.get("duration_seconds") or 0) < _FUEL_MIN_SECS:
+                continue
+            actual_min = int((a.get("duration_seconds") or 0) / 60)
+            ref_min = actual_min
+            try:
+                sess = session_for_date_extended(date.fromisoformat(a["date"]))
+            except Exception:
+                sess = None
             if sess and sess[0] != "rest" and sess[2]:
+                ref_min = sess[2]
                 plan = fuel_plans.get(fuelling_session_key(sess[0], sess[2]))
                 if plan:
                     a["planned_fuel"] = plan
+            if not a.get("planned_fuel"):
+                a["planned_fuel"] = default_fuelling_plan(ref_min)
             a["fuel_log"] = fuel_logs.get(str(a.get("activity_id")))
     except Exception:
         pass
@@ -1744,6 +1764,7 @@ def haute_route_view(request: Request):
 
     ctx = {
         "active_tab":    "haute_route",
+        "hr_subnav":     "plan",
         "phases":        HR_PHASES,
         "weeks":         weeks,
         "event_weeks":   build_hr_event_weeks(),
@@ -1753,11 +1774,30 @@ def haute_route_view(request: Request):
         "hr_start_ctl":  round(hr_start_ctl, 1) if hr_start_ctl is not None else None,
         "hr_event_ctl":  round(hr_event_ctl, 1) if hr_event_ctl is not None else None,
         "heat_protocol": HR_HEAT_PROTOCOL,
+        "lessons_2012":  LESSONS_2012,
         "stage_plans":   stage_plans,
         "peak_decoupling_flags": peak_decoupling_flags,
         "power_meter_active": power_meter_active(),
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
+
+
+@app.get("/haute-route/2012-postmortem", response_class=HTMLResponse)
+def haute_route_2012_postmortem(request: Request):
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="hr_2012_postmortem.html",
+        context={"active_tab": "haute_route", "hr_subnav": "postmortem"},
+    )
+
+
+@app.get("/haute-route/power-protocol", response_class=HTMLResponse)
+def haute_route_power_protocol(request: Request):
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="hr_power_protocol.html",
+        context={"active_tab": "haute_route", "hr_subnav": "power"},
+    )
 
 
 

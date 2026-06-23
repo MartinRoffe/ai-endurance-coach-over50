@@ -40,8 +40,8 @@ All ride hydration — **no carb powder in the bottles**.
 - Half banana ≈ **12 g** carbs
 
 **Recovery overnight oats jar:**
-- **50–70 g** carbs depending on recipe
-- **≥30 g protein** every variant (1 scoop whey + 100 g Greek yogurt baseline; see Recipes)
+- **50–70 g** carbs depending on recipe (~132 g for Banoffee)
+- **≥30 g protein** on EF Pro / Strawberries / Classic (whey + Greek yogurt shared base); **Banoffee** is Emma's standalone GCN recipe (~29 g from yogurt — no whey)
 
 **Recovery stack (rides >2 h):**
 1. **Within 20 min:** recovery chocolate milk (~30 g C / ~10 g P) — drink before shower; pre-cool in the car
@@ -87,7 +87,7 @@ Repeat A/B fortnightly, or mix and match once you know which combos sit best at 
 
 ## Batch-cook schedule & right-sizing portions
 
-Make the **recovery oats jar the night before each ride** — stir whey in at prep time so every jar hits ≥30 g protein.
+Make the **recovery oats jar the night before each ride** — stir whey into the shared-base variants at prep time (Banoffee uses the standalone GCN recipe instead).
 
 The 24-hour fridge-set time for rice cakes is fixed regardless of batch size — making less saves ingredients, not time. Worth doing where shelf life is short and the full recipe yields more than you'll get through solo.
 
@@ -101,13 +101,13 @@ The 24-hour fridge-set time for rice cakes is fixed regardless of batch size —
 | Flapjack | 12 bars | 1–2 weeks airtight, freezes well | Not necessary — long shelf life covers the full batch |
 | Energy balls | 10 balls (~35 g each) | 10 days fridge / 3 weeks frozen | Not necessary — same reason |
 
-**Friday / Saturday eve prep checklist:** wrap rice cakes in foil · mix **E1/E2** electrolyte bottles · pack flapjack + balls in jersey · pre-cool chocolate milk · build tomorrow's oats jar with whey.
+**Friday / Saturday eve prep checklist:** wrap rice cakes in foil · mix **E1/E2** electrolyte bottles · pack flapjack + balls in jersey · pre-cool chocolate milk · build tomorrow's oats jar (whey in base variants; Banoffee layered per recipe).
 
 ---
 
 ## Lidl Shopping List
 
-Organised by where you'll find things in store. Lidl's own-brand ranges that fit best: **Crownfield** (oats, flour, baking sugars), **Milbona** (dairy/chilled), **Vemondo** (plant milks/yoghurts), **Alesto** (nuts, seeds, dried fruit).
+Organised by where you'll find things in store. The interactive list at **Nutrition → Lidl** uses the same walk order (produce → bakery → chiller → freezer → ambient → Alesto). Lidl's own-brand ranges that fit best: **Crownfield** (oats, flour, baking sugars), **Milbona** (dairy/chilled), **Vemondo** (plant milks/yoghurts), **Alesto** (nuts, seeds, dried fruit).
 
 Electrolyte sundries (**Lo-Salt**, table salt, coconut water, lemons) are also on the main **Nutrition → Lidl** sundries list — top up there rather than duplicating every week.
 
@@ -117,7 +117,7 @@ Electrolyte sundries (**Lo-Salt**, table salt, coconut water, lemons) are also o
 - [ ] Blueberries (1 punnet)
 - [ ] Avocados x2
 - [ ] Lemon x1
-- [ ] Medjool dates, fresh (1 pack — covers both the oats and the energy balls)
+- [ ] Medjool dates, fresh (1 pack — emergency on-bike fuel; energy balls use soft pitted dates)
 
 ### Dairy & chilled
 - [ ] Oat milk, 1L (Vemondo)
@@ -138,6 +138,8 @@ Electrolyte sundries (**Lo-Salt**, table salt, coconut water, lemons) are also o
 - [ ] Risotto/arborio rice, 500g — only if you want the authentic texture for the Team Sky cakes; the sushi rice above works fine as a substitute
 
 ### Middle aisle / baking & condiments
+- [ ] Muscovado sugar (500 g — Banoffee overnight oats; dark brown sugar works in a pinch)
+- [ ] Dark chocolate bar (optional — grate on Banoffee oats before eating)
 - [ ] Maple syrup
 - [ ] Golden syrup
 - [ ] Agave nectar

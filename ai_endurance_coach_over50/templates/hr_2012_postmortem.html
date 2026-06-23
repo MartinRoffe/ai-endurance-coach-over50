@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔</text></svg>">
+<title>Haute Route 2012 — Failure Post-Mortem & Lessons for 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#09090b; --panel:#0a0a0d; --panel2:#111114; --border:#27272a;
+    --ink:#fafafa; --mut:#a1a1aa; --dim:#71717a;
+    --rose:#fb7185; --rose-bd:#4c0519; --rose-st:#f43f5e;
+    --amber:#fb923c; --amber-bd:#431407;
+    --green:#34d399; --green-bd:#052e16;
+    --blue:#60a5fa; --blue-bd:#1e3a5f;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;margin:0;line-height:1.65}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 120px}
+  .mono{font-family:'DM Mono',monospace}
+  .kicker{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(34px,6vw,60px);letter-spacing:0.04em;line-height:0.98;margin:0 0 8px}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(22px,4vw,30px);letter-spacing:0.05em;color:var(--ink);margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 8px}
+  p{color:#d4d4d8;margin:0 0 14px}
+  .lead{font-size:17px;color:#e4e4e7}
+  strong{color:#fff;font-weight:600}
+  a{color:var(--blue);text-decoration:none;border-bottom:1px solid #1d4ed8}
+  a:hover{filter:brightness(1.2)}
+  .sub{font-family:'DM Mono',monospace;font-size:12px;color:var(--mut);margin-top:6px}
+
+  .callout{border:1px solid var(--border);border-radius:6px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .callout.rose{border-left:3px solid var(--rose-st)}
+  .callout.amber{border-left:3px solid var(--amber)}
+  .callout.green{border-left:3px solid #059669}
+  .callout.blue{border-left:3px solid #3b82f6}
+  .callout .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 6px}
+  .callout.rose .lbl{color:var(--rose)} .callout.amber .lbl{color:var(--amber)}
+  .callout.green .lbl{color:var(--green)} .callout.blue .lbl{color:var(--blue)}
+  .callout p:last-child{margin-bottom:0}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 6px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #1c1c20}
+  th{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+  td{color:#d4d4d8}
+  td.num,th.num{text-align:right;font-family:'DM Mono',monospace}
+  tr.hot td{color:#fda4af}
+  tr.good td{color:#86efac}
+  .tnote{font-size:11.5px;color:var(--dim);margin:2px 0 0}
+
+  ul{margin:0 0 16px;padding-left:20px}
+  li{color:#d4d4d8;margin-bottom:7px}
+  li strong{color:#fff}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .card{border:1px solid var(--border);border-radius:6px;padding:16px 18px;background:var(--panel2)}
+  .card .big{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.03em;line-height:1}
+  .card .cap{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+  .rose-t{color:var(--rose)} .green-t{color:var(--green)} .blue-t{color:var(--blue)} .amber-t{color:var(--amber)}
+
+  .foot{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--dim)}
+  .foot a{color:var(--mut);border-bottom-color:#3f3f46}
+
+  .pagebreak{margin:64px 0 0;border:0;border-top:2px dashed var(--border)}
+  .partlabel{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--dim);margin:40px 0 10px}
+  .quote{border-left:3px solid var(--amber);padding:6px 0 6px 18px;margin:18px 0;font-size:16px;color:#e4e4e7;font-style:italic}
+  blockquote{margin:0}
+</style>
+</head>
+<body>
+{% include 'nav.html' %}
+{% include 'hr_subnav.html' %}
+<div class="wrap">
+
+  <p class="kicker">Coach Post-Mortem · Inaugural Haute Route Alps, Geneva → Nice · 19–25 Aug 2012</p>
+  <h1>Why 2012 Blew Up — and How to Fix It for 2027</h1>
+  <p class="sub">Analysis of the 5 ride files from your failed attempt: pulled by the broom wagon on Day&nbsp;3, forced to rest Day&nbsp;4 (the Alpe&nbsp;d'Huez TT). Read as a cycling endurance coach specialising in over-50 performance.</p>
+
+  <div class="callout amber">
+    <p class="lbl">⚠ Data-quality note</p>
+    <p>The "power" in these files came from an <strong>HR-strap-based estimator, not a strain-gauge meter</strong> — treat it as <em>virtual power</em>. Absolute watts and kJ are indicative only. The <strong>heart-rate data is the trustworthy axis</strong>, and every conclusion here rests on it. Where power is used, it's for <em>shape and direction</em> (e.g. effort holding while HR can't respond), never precise numbers.</p>
+  </div>
+
+  <h2>What the data shows</h2>
+  <table>
+    <thead>
+      <tr><th>Day</th><th>Date</th><th class="num">Time</th><th class="num">Dist</th><th class="num">Climb</th><th class="num">Avg HR</th><th class="num">&gt;80% HRmax</th><th class="num">&gt;90% HRmax</th><th class="num">Decoupling</th></tr>
+    </thead>
+    <tbody>
+      <tr class="hot"><td>1</td><td>Aug 19</td><td class="num">6.4h</td><td class="num">126 km</td><td class="num">2,787 m</td><td class="num">158</td><td class="num">54%</td><td class="num">9%</td><td class="num">+7%</td></tr>
+      <tr><td>2</td><td>Aug 20</td><td class="num">5.6h</td><td class="num">107 km</td><td class="num">2,508 m</td><td class="num">150</td><td class="num">43%</td><td class="num">0%</td><td class="num">+9%</td></tr>
+      <tr class="hot"><td>3</td><td>Aug 21</td><td class="num">2.4h</td><td class="num">40 km</td><td class="num">919 m</td><td class="num">129</td><td class="num">10%</td><td class="num">0%</td><td class="num">+43%</td></tr>
+      <tr><td>—</td><td>Aug 22</td><td class="num" colspan="7" style="text-align:left;color:var(--dim)">Rest — Alpe d'Huez TT skipped</td></tr>
+      <tr><td>4</td><td>Aug 23</td><td class="num">6.9h</td><td class="num">138 km</td><td class="num">3,425 m</td><td class="num">154</td><td class="num">50%</td><td class="num">0%</td><td class="num">+3%</td></tr>
+      <tr class="good"><td>5</td><td>Aug 24</td><td class="num">6.4h</td><td class="num">109 km</td><td class="num">2,960 m</td><td class="num">143</td><td class="num">11%</td><td class="num">0%</td><td class="num">−12%</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">HRmax taken as 201 — your true physiological max from HR records around this period (the peak actually reached <em>within these five files</em> was 193, on Day 1, which itself tells you how depleted you were by the back half of the week). The two HR-zone columns are pure heart-rate data — fully reliable. "Decoupling" = how far your effort-per-heartbeat drifted from the first quarter of the ride to the last (the standard durability marker); it uses virtual power, so read it for pattern, not precision. The day numbers are the event stages — the files labelled "Day 4/5" are actually stages on Aug 23–24, <em>after</em> the rest day.</p>
+
+  <h2>The story these numbers tell</h2>
+
+  <h3>Day 1 — the mistake that cost the week</h3>
+  <p>On the opening stage of a seven-day race you spent <strong>more than half the ride — 54% of six-plus hours — above 80% of max HR, with 9% above 90%</strong>. That's a one-day-hard-ride strategy executed on Day&nbsp;1 of 7 — you essentially time-trialled the first stage. You wrote a cheque on Monday the rest of the week had to cash.</p>
+
+  <h3>Day 2 — the ceiling drops</h3>
+  <p>Still a hard day (43% above 80% HRmax) but time above 90% collapsed from 9% to <strong>zero</strong> — your body wouldn't <em>let</em> you reach the top end any more. The engine was being rationed. That was a readable warning, and it went unread.</p>
+
+  <h3>Day 3 — a textbook depletion blow-up</h3>
+  <p>You can see it in heart rate alone. On a <strong>climbing</strong> stage your average HR was only <strong>129</strong>, and it never got above <strong>178</strong> (it had been 193 and 185 on Days 1–2). On the steepest part of the day the engine simply would not rev — the signature of a depleted, parasympathetically-suppressed system: empty glycogen, "nothing in me," exactly as you remember it. The virtual-power trace agrees with the direction: effort going in on the first climb while HR stayed stubbornly low, then output bleeding away until the broom wagon caught you at 40 km.</p>
+
+  <h3>The rest day proves the diagnosis</h3>
+  <p>After 24 hours off, Day 4 came back at 50% above 80% HRmax over your <strong>biggest climbing day of the week (3,425 m)</strong>, decoupling just +3%. The engine was never the problem. The failure was <strong>management, not capacity</strong>.</p>
+
+  <h3>Day 5 — what good pacing looks like</h3>
+  <p>Negative decoupling (<strong>−12%</strong>): your heart rate drifted <em>down</em> while power went <em>up</em> across the ride. That's a rider working inside himself, fuelled and controlled. The contrast with Day 1 is the whole lesson in one row.</p>
+
+  <h2>Why you felt unfit on Day 1 but unstoppable on Day 5</h2>
+  <p>It's a paradox of perception, and the data resolves it cleanly.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="cap">Day 1 — "felt unfit"</div>
+      <div class="big rose-t">Riding OVER the limit</div>
+      <p style="margin:10px 0 0;font-size:13.5px">More than half the ride above 80% HRmax, 9% over 90%. Riding that hard floods you with lactate, ragged breathing, burning legs — and the brain reads all of that as "I'm not fit enough." It wasn't fitness. It was pacing. Fresh legs, start-line adrenaline and ego is the exact recipe for going out too hot.</p>
+    </div>
+    <div class="card">
+      <div class="cap">Day 5 — "felt great"</div>
+      <div class="big green-t">Riding WITHIN the limit</div>
+      <p style="margin:10px 0 0;font-size:13.5px">Just 11% above 80% HRmax, nothing above 90%, HR drifting <em>down</em> as the ride went on. Staying aerobic feels smooth, sustainable, strong. Same engine — ridden correctly.</p>
+    </div>
+  </div>
+  <p>Two genuine physiological tailwinds helped too: the rest day let you recover and <strong>refuel</strong>, clearing some of the glycogen debt; and there's the classic stage-race <strong>"legs opening up"</strong> effect — Day 1 of a tour often feels flat and heavy (taper legs, travel, nerves, a cold start), and the body comes around over the following days. The lesson hiding in your own question: <strong>the day you felt unfit, you were going too hard; the day you felt unstoppable, you were riding right.</strong> For 2027, that "almost embarrassingly easy" feeling on Day 1 <em>is</em> the target.</p>
+
+  <h2>Root causes, ranked</h2>
+  <ul>
+    <li><strong>Pacing — by a mile the biggest factor.</strong> You raced Day 1 like a sportive PB. In a stage race Day 1 should feel almost too easy. You inverted the rule.</li>
+    <li><strong>Fuelling — the accelerant.</strong> Six-plus hours of hard mountain riding needs roughly <strong>80–90 g of carbohydrate per hour (~500 g on a big day)</strong>. By your own account you "had no idea about fuelling" in 2012 — so you were taking a fraction of that. A too-hard pace burns a higher fraction of carbohydrate, and under-fuelling on top builds a glycogen debt that compounds daily until Day 3 forecloses on it.</li>
+    <li><strong>Cadence / grinding.</strong> You averaged 59–65 rpm on Days 1–3 and rode best at 73 rpm when fresh. Grinding big gears recruits more fast-twitch fibre and burns glycogen faster — costly for a masters rider. (And it was partly forced by your gearing — see below.)</li>
+    <li><strong>No fatigue monitoring.</strong> The Day-2 signal (top-end HR vanishing) was clear and ignored.</li>
+  </ul>
+
+  <h2>The cadence problem was largely a gearing problem</h2>
+  <p>In 2012 you ran a <strong>50-34 chainset with a 12-25 cassette</strong>. Your easiest climbing gear was therefore 34×25 — racer's gearing. Here's the cadence that actually forces, in your easiest gear, at realistic Alpine climbing speeds:</p>
+  <table>
+    <thead>
+      <tr><th>Setup</th><th>Lowest gear</th><th class="num">Gear inches</th><th class="num">@ 8 km/h</th><th class="num">@ 10 km/h</th></tr>
+    </thead>
+    <tbody>
+      <tr class="hot"><td>2012 — 50-34 / 12-25</td><td>34 × 25</td><td class="num">35.9</td><td class="num">47 rpm</td><td class="num">58 rpm</td></tr>
+      <tr><td>Now — 52-36 / 11-34</td><td>36 × 34</td><td class="num">28.0</td><td class="num">60 rpm</td><td class="num">75 rpm</td></tr>
+      <tr class="good"><td>Proposed — 52-36 / 11-36</td><td>36 × 36</td><td class="num">26.4</td><td class="num">63 rpm</td><td class="num">79 rpm</td></tr>
+    </tbody>
+  </table>
+  <p>Read the 2012 row: on a steep sustained pitch where you're crawling at 8 km/h — exactly where you'd be late in a stage — your <strong>easiest available gear forced you down to 47 rpm</strong>. To spin even 80 rpm you'd have had to climb at ~13.7 km/h, which is fantasy when tired. The 59–65 rpm grind in your data wasn't only habit; <strong>you literally didn't have the gears to spin</strong>, and the low cadence then accelerated the glycogen burn and leg fatigue that ended your week.</p>
+
+  <h2>The fix: an 11-36 cassette (cheaper than a new chainset)</h2>
+  <p>Your bike runs <strong>Shimano 105 Di2 — the 12-speed R7150 electronic group</strong>. That makes this the cleanest possible upgrade:</p>
+  <div class="callout green">
+    <p class="lbl">✓ Fully in spec — near bolt-on</p>
+    <p>The <strong>RD-R7150 rear derailleur is natively rated to a 36T max cog and 41T total capacity</strong> — which, with your 52-36 chainset, is exactly what an 11-36 needs. No hanger extender, no over-spec fudging.</p>
+  </div>
+  <p>The cassette to buy is the <strong>Shimano 105/GRX CS-HG710-12, 11-36T</strong> (sprockets 11-12-13-14-15-17-19-21-24-28-32-36). Two things make it ideal:</p>
+  <ul>
+    <li>It mounts on a <strong>standard 11-speed HG freehub</strong> as well as the 12-speed one — so your Vision wheels almost certainly take it with <strong>no freehub swap</strong>.</li>
+    <li>The top eight cogs keep <strong>single-tooth jumps</strong> (smooth cadence on flat and rolling terrain); only the bottom four spread wider for the climbs — so you gain the 36T bailout without losing tight steps where you ride most.</li>
+  </ul>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="cap">Shopping list</div>
+      <p style="margin:8px 0 0;font-size:13.5px">
+        • CS-HG710-12 11-36 cassette — ~£55–70<br>
+        • New 12-speed chain, sized a touch longer for the 36T — ~£25–35<br>
+        <span style="color:var(--dim)">(a bigger cog needs slightly more chain — fit a fresh one rather than stretch the old length)</span>
+      </p>
+    </div>
+    <div class="card">
+      <div class="cap">Bottom line</div>
+      <div class="big blue-t">~£80–100</div>
+      <p style="margin:8px 0 0;font-size:13.5px">vs £200+ for a chainset — and you keep your 52T for descents. A ~20-minute job. End result: <strong>36×36 = 26.4 gear inches</strong>, spinning ~63 rpm at 8 km/h instead of the 47 rpm that buried you in 2012.</p>
+    </div>
+  </div>
+  <p class="tnote">Confirm before ordering: your current cassette is on a Shimano HG freehub (it will be if it's the 12-speed road cassette), then the HG710 drops straight on.</p>
+
+  <h3>Gearing alone won't fix cadence — train the habit</h3>
+  <p>The hardware now <em>allows</em> you to spin; you still have to groove the pattern so it's automatic under race fatigue. Do <strong>high-cadence climbing drills</strong> — sustained climbs held deliberately at 80–85 rpm even when it feels too easy, plus seated low-gear spin-ups. Make spinning your default so that grinding feels wrong.</p>
+
+  <h2>The 2027 playbook</h2>
+  <p>The encouraging headline: your 2012 problem was almost entirely <strong>executional, not physiological</strong> — the fixable kind. Carry these into the Haute Route Alpes 2027 build:</p>
+  <ul>
+    <li><strong>Pace off a hard ceiling, not off feel.</strong> Day 1 of 2027, cap yourself well below threshold — Z2, only the steepest pitches nudging Z3. Use the durability/decoupling chart as your discipline check: drift creeping past ~5% on long rides means you went too hard or under-fuelled.</li>
+    <li><strong>Train the gut and rehearse 80–90 g carbs/hour.</strong> Carbohydrate tolerance is trainable and non-negotiable for a stage race. In 2012 fuelling was the gap; in 2027 it should be your edge — treat the per-stage fuelling plans and in-ride compliance logs as a primary deliverable.</li>
+    <li><strong>Fit the 11-36 and lift your climbing cadence to 75–85 rpm.</strong> Spinning protects your legs and your glycogen — both of which recover more slowly at 50+ than they did at 36.</li>
+    <li><strong>Respect cumulative load and over-50 recovery.</strong> Your body can absorb a 3,400 m climbing day — <em>if</em> it isn't already in debt. Heed amber on the HRV traffic light and back-to-back fatigue logs.</li>
+  </ul>
+  <div class="callout rose">
+    <p class="lbl">Bottom line</p>
+    <p>2012 didn't fail because you weren't strong enough. It failed because you spent the whole week's matches in the first six hours, never put fuel back in the tank, and were gear-locked into grinding. Fix pacing and fuelling — the two things your 2027 plan is built around — fit a £60 cassette so you can finally spin, and the engine that climbed 3,425 m on a recovered Day 4 is more than enough to finish.</p>
+  </div>
+
+  <hr class="pagebreak">
+
+  <p class="partlabel">Part 2 · Power, Weight & the Engine — Building the 2027 Rider</p>
+  <h1 style="margin-bottom:14px">From Diagnosis to Build</h1>
+  <p class="sub">Everything we worked through after the ride-file post-mortem: how a power meter changes both training and racing, what your real body-composition data says about a safe target weight, the 78&nbsp;kg revelation, and whether the old engine is coming back.</p>
+
+  <!-- ═══ POWER METERS ═══ -->
+  <h2>Power meters — for training and the race</h2>
+  <p>Almost every 2012 failure mode is something a real (strain-gauge) power meter is built to solve. The one-liner: <strong>heart rate told us what went wrong after the fact; power would have stopped it in real time.</strong> HR is the effect; power is the cause — instant, objective, immune to adrenaline.</p>
+
+  <div class="callout blue">
+    <p class="lbl">The single biggest win — a pacing guardrail</p>
+    <p>HR lags 30–60s and drifts; by the time it says you're overcooking it, the match is spent. Power responds instantly, so on a climb you hold a hard <strong>ceiling</strong> — "do not exceed X watts" — and it simply won't let you repeat Day&nbsp;1 of 2012. On race climbs, power is a <strong>cap, not a target</strong>: you're not chasing a number, you're refusing to exceed one.</p>
+  </div>
+
+  <h3>In training</h3>
+  <ul>
+    <li><strong>Real zones from a real FTP.</strong> Replaces the app's coarse VO₂max-based W/kg estimate, and gives a true, repeatable training load (TSS) feeding CTL/ATL/TSB instead of HR-derived units.</li>
+    <li><strong>Enforced easy/hard separation.</strong> Power makes Z2 honestly easy (protecting recovery) and makes quality work hit the number — the discipline tool your "ride to feel" days lack, and the classic over-50 fix.</li>
+    <li><strong>Train and measure durability.</strong> Your Day-3 blow-up was +43% decoupling — fade is your weakness. Power lets you quantify Pw:Hr decoupling and train it directly: put quality <em>late</em> in long rides, track power-at-given-HR after 2,000–3,000 kJ.</li>
+    <li><strong>Calibrate fuelling against actual burn.</strong> Power gives kJ burned in real time, so you fuel 80–90&nbsp;g/h against measured expenditure instead of guessing. Turns fuelling from vibes into arithmetic.</li>
+    <li><strong>Prove the cadence cost.</strong> Ride the same watts at 60 vs 80 rpm and watch the HR/efficiency penalty of grinding — the concrete case for the 11-36 and the spin habit.</li>
+  </ul>
+
+  <h3>In the race</h3>
+  <ul>
+    <li><strong>Pace every climb to a ceiling</strong>, Day 1 especially — long climbs well below threshold (~70–80% FTP), Intensity Factor deliberately low on the front half of the week.</li>
+    <li><strong>Kill the surges.</strong> Power makes spikes visible; steady power spares glycogen, repeated over-threshold efforts quietly empty the tank.</li>
+    <li><strong>The Alpe d'Huez TT is pure power-meter gold</strong> — a 21-hairpin TT is a pacing problem with one right answer: even watts, slight negative split.</li>
+    <li><strong>Power is your anchor when HR lies.</strong> At Col d'Agnel (2,744&nbsp;m) and in late-stage heat, HR drifts and stops meaning what it usually does — exactly the scenario your dashboard already warns about. Power doesn't care about altitude or heat.</li>
+    <li><strong>Decoupling as a live early-warning siren.</strong> If HR is climbing while power is flat or falling, you're fading — now you've got a 30-minute warning to back off and eat <em>before</em> a Day-3-style collapse.</li>
+  </ul>
+
+  <div class="callout amber">
+    <p class="lbl">Over-50 caveat — power WITH heart rate, not instead</p>
+    <p>Power tells you nothing about readiness or recovery; HRV, resting HR and sleep do. Ideal setup: <strong>power for pacing &amp; intensity, HR + RPE for fatigue &amp; readiness, Pw:Hr decoupling as the bridge.</strong> Even a single-sided crank meter (~£250–350) gets you ~90% of the benefit.</p>
+  </div>
+
+  <!-- ═══ TARGET WEIGHT ═══ -->
+  <h2>Body composition &amp; a safe target weight</h2>
+  <p>Pulled from the app (21 Jun 2026). The useful goal isn't "lightest survivable" — it's the <strong>lightest weight that still holds your power, recovery, hormones and bone health.</strong> Anchored to body composition, not a scale number. <em>(Coach guidance, not medical advice — bloods and big deficits should involve your GP.)</em></p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="cap">Current state (app data)</div>
+      <p style="margin:8px 0 0;font-size:13.5px">
+        Weight <strong>91.5 kg</strong> · Body-fat <strong>26.3%</strong> (scale, ±3–5%)<br>
+        Lean mass <strong>~67.4 kg</strong> · BMI 29.9 · ~175 cm<br>
+        90-day trend: <strong>96.0 → 91.5 kg</strong> (~0.37 kg/wk)<br>
+        Intake ~1,920 kcal vs ~2,650 adjusted goal (~700 kcal deficit)<br>
+        Protein 126 g · Carbs 204 g · Resting HR 61
+      </p>
+    </div>
+    <div class="card">
+      <div class="cap">The read</div>
+      <p style="margin:8px 0 0;font-size:13.5px">Trajectory is already textbook — fast enough to matter, slow enough to spare muscle. Nothing to fix, just continue. Your <strong>lean mass (~67 kg) is the anchor</strong>: it sets the floor, not willpower. Losing fat from here is health-positive — you're moving out of the overweight band toward athletic.</p>
+    </div>
+  </div>
+
+  <p>Target ladder, anchored to lean mass and adjusted for the reality that ~15–20% of any loss is lean tissue:</p>
+  <table>
+    <thead>
+      <tr><th>Realistic target</th><th class="num">Est. true BF%</th><th class="num">W/kg @ 179 W</th><th>Read</th></tr>
+    </thead>
+    <tbody>
+      <tr class="good"><td>80 kg</td><td class="num">~18%</td><td class="num">2.24</td><td>Sustainable, healthy, strong — primary goal</td></tr>
+      <tr class="good"><td>78 kg</td><td class="num">~17%</td><td class="num">2.29</td><td>Lean &amp; race-ready — event-peak target</td></tr>
+      <tr><td>76 kg</td><td class="num">~15%</td><td class="num">2.36</td><td>Stretch / short-term race lean — hold briefly</td></tr>
+      <tr class="hot"><td>&lt;75 kg</td><td class="num">~12% or below</td><td class="num">—</td><td>Floor — don't go here without DEXA + bloods</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Recommendation:</strong> ~80 kg as a durable walking-around weight, sharpening to ~78 kg for the event. That's ~11–13 kg off — entirely achievable by Aug 2027 at your current rate, with a big buffer and no aggression. Do <strong>not</strong> chase single-digit body fat: at 50+ the hormonal, bone and immune costs climb steeply and it's miserable to hold.</p>
+
+  <h3>Three health flags from the data</h3>
+  <ul>
+    <li><strong>Protein is a touch low</strong> — 126 g ≈ 1.4 g/kg. In a deficit at 50+ aim <strong>1.6–2.0 g/kg ≈ 150–165 g/day</strong>. The lever that keeps loss coming from fat, not the lean mass that anchors everything.</li>
+    <li><strong>No blood pressure logged in 90 days</strong> — at BMI ~30 that's the one vital I'd want a baseline on. You've got the kit; start logging.</li>
+    <li><strong>Periodise the deficit</strong> — given the 2012 fuelling lesson, don't train hard or long depleted. Carbs around the quality rides, deficit on easy/rest days. Watch resting HR, HRV, sleep and mood as RED-S sentinels.</li>
+  </ul>
+
+  <!-- ═══ 78KG REVELATION ═══ -->
+  <h2>The 78 kg revelation</h2>
+  <p>You raced the 2012 Haute Route at <strong>78 kg</strong> — and believed you were too heavy and needed ≤75 kg. The data flips that on its head.</p>
+  <div class="callout green">
+    <p class="lbl">You weren't too heavy — you were already there</p>
+    <p>At 78 kg and 175 cm you were BMI 25.5, ~14–16% body fat — a lean, legitimate racing weight. The instinct that you needed 75 kg was a <strong>misdiagnosis of why you blew up</strong>. You didn't fail because of three spare kilos up the climb; you failed from going out too hard and running the tank dry. Three kilos lighter changes none of that.</p>
+  </div>
+  <p>Worse: if you were chasing 75 kg in the run-up, you may have arrived <strong>under-fuelled and glycogen-depleted before the start</strong> — making the weight-cutting mindset a possible <em>cause</em> of the Day-3 collapse, not a missing fix. You were solving a weight problem you didn't have, and the fix quietly created the fuelling problem you did.</p>
+  <p><strong>The 2027 reframe:</strong> 78 kg is your proven race weight — validated by your own body, and exactly where the independent target math landed. The job is to get <em>back</em> to 78 from 91.5, but arriving <strong>fuelled, paced and geared</strong> the way 2012-you wasn't. Same weight, completely different bike rider. And leave 75 kg alone — the W/kg gain from 78→75 is ~4%, trivial, and swamped many times over by turning up well-fed and pacing Stage 1 sensibly.</p>
+
+  <!-- ═══ FTP / ENGINE ═══ -->
+  <h2>Is the old engine coming back?</h2>
+  <p>Your 2015 strap estimator put you at <strong>FTP 301 W</strong>. Two honest answers, pulling different ways.</p>
+
+  <h3>Was 301 W accurate?</h3>
+  <p>Treat it as a soft ballpark, probably flattering, with a wide error bar — it came from the same family of HR-strap estimators we've already flagged as unreliable in absolute terms (±10–15% easily, so "true" was anywhere ~255–310 W). What it reliably tells you: at 78 kg, even a discounted 301 W is 3.86 W/kg, so you were once a genuinely strong rider. But never set zones off it — only a real meter and a proper test give a trainable number.</p>
+
+  <h3>Can you get back there in ~14 months?</h3>
+  <p>Hitting a <em>true</em> 300 W at 53 is ambitious — that number was set ~12 years and an age-bracket ago, and your base is well down (VO₂max 33.4, est. FTP ~179–210 W). But two things work for you: <strong>retraining previously-built fitness is far faster than building from scratch</strong>, and you're detrained enough that early gains come quickly. A realistic 14-month target is a true FTP around <strong>260–285 W</strong>, with 300 as the stretch if everything clicks.</p>
+
+  <div class="callout green">
+    <p class="lbl">The reframe — you don't need 301 W</p>
+    <p>For a climbing stage race, W/kg is what counts, and the weight loss does much of the work for free: returning to 78 kg lifts your W/kg ~17% at the <em>same</em> watts. A realistic build to ~270–280 W at 78 kg = <strong>3.46–3.59 W/kg</strong> — a genuinely solid Haute Route engine. A flat-out 300 W (3.85) is the icing, not the requirement.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>FTP</th><th class="num">@ 78 kg</th><th>Haute Route read</th></tr></thead>
+    <tbody>
+      <tr><td>250 W</td><td class="num">3.21 W/kg</td><td>Finish, mid/back pack</td></tr>
+      <tr class="good"><td>270 W</td><td class="num">3.46 W/kg</td><td>Solid age-grouper</td></tr>
+      <tr class="good"><td>280 W</td><td class="num">3.59 W/kg</td><td>Solid age-grouper, climbing well</td></tr>
+      <tr><td>300 W</td><td class="num">3.85 W/kg</td><td>Strong — the stretch goal</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">Finisher guide (threshold W/kg, rough): ~3.0–3.3 finish mid/back · ~3.4–3.8 solid age-grouper · 3.8+ strong.</p>
+
+  <h3>Where your targets sit on the 50s-male reference range</h3>
+  <p>W/kg is the meaningful lens (absolute-watts charts ignore weight, which is exactly what matters on a climb). These are crowd-sourced platform benchmarks — power-meter owners who train, so the "averages" skew high vs the general public — treat as orientation, not gospel. Typical trained-but-not-racing masters riders in their 50s cluster around <strong>2.5–3.0 W/kg</strong>.</p>
+  <table>
+    <thead><tr><th>FTP W/kg</th><th>Level — 50s male</th><th>You</th></tr></thead>
+    <tbody>
+      <tr><td>~2.0–2.5</td><td>Recreational / beginner</td><td class="rose-t">← now ~1.96 (off VO₂max estimate, +13 kg, detrained)</td></tr>
+      <tr><td>~2.75–3.3</td><td>Good recreational, regular club rider</td><td></td></tr>
+      <tr class="good"><td>~3.5–3.8</td><td>Strong amateur</td><td class="green-t">← 2027 realistic: 270–280 W @ 78 kg (3.46–3.59)</td></tr>
+      <tr><td>~4.0–4.2</td><td>Cat 3-equivalent</td><td class="blue-t">← stretch: 300 W @ 78 kg (3.85)</td></tr>
+      <tr><td>4.5+</td><td>Cat 2 and up</td><td></td></tr>
+    </tbody>
+  </table>
+  <p>So the 2027 goals aren't fantasy against population data — they sit <strong>above the typical 50-something club rider</strong>, not at some unicorn level. And the age science is on your side: FTP/VO₂max decline ~1%/yr in active riders, but consistent masters trainers preserve <strong>~85–90% of peak into their mid-50s</strong>, and <strong>threshold power holds up better than sprint/max power</strong> because it rests on lactate threshold and aerobic efficiency — the qualities that keep responding to training latest in life. FTP is exactly the thing that rewards the work ahead.</p>
+
+  <div class="callout rose">
+    <p class="lbl">The hard truth, kept in</p>
+    <blockquote class="quote">A 301-watt rider who paces Day 1 like a lunatic and forgets to eat still gets in the broom wagon. A 275-watt rider who's fuelled, paced and geared right finishes the week.</blockquote>
+    <p style="margin-top:12px">The watts were never what beat you. Build the engine as far as your body will give it over the next year — but keep the fuelling, the pacing and the 78 kg as the real wins. Same hill, same rider, completely different bike rider arriving at the bottom of the Lombarde in 2027.</p>
+  </div>
+
+  <h3>Immediate next step</h3>
+  <p>Fit a power meter and do a proper FTP test — replace the shaky 301 with a real baseline, then build the 2027 target off something true. See the <a href="/haute-route/power-protocol">Power Meter &amp; FTP Protocol</a> for setup and testing steps. Outstanding inputs for the weight plan: confirm age &amp; sex, and ideally a DEXA (body-fat + bone density) and basic bloods (ferritin, testosterone, thyroid, vitamin D) before going below ~80 kg.</p>
+
+  <div class="foot">
+    <p>Sources — Shimano specs:
+      <a href="https://bike.shimano.com/en-UK/products/components/pdp.P-RD-R7150.html">RD-R7150 derailleur</a> ·
+      <a href="https://bike.shimano.com/products/components/pdp.P-CS-HG710-12.html">CS-HG710-12 cassette</a> ·
+      <a href="https://www.bike24.com/p2658306.html">CS-HG710 11-36T detail</a>.
+      Ride metrics derived from your own 2012 .tcx files (source: <code>data/haute-route-2012/</code> in the repo — not bundled in the dashboard). Cadence figures assume a 700×25c wheel.</p>
+    <p style="margin-top:8px">FTP benchmark / age-decline data:
+      <a href="https://www.cyclinganalytics.com/blog/2018/06/how-does-your-cycling-power-output-compare">Cycling Analytics power distribution</a> ·
+      <a href="https://roadmancycling.com/blog/age-group-ftp-benchmarks-2026">Roadman Cycling age-group benchmarks</a> ·
+      <a href="https://sportcoaching.com.au/average-ftp-by-age/">Sport Coaching — average FTP by age</a> ·
+      <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8784358/">Master-athletes longitudinal study (NIH/PMC)</a>.
+      Benchmark charts are crowd-sourced from training-platform users (self-selected), so read as orientation, not population epidemiology.</p>
+  </div>
+
+</div>
+</body>
+</html>

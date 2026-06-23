@@ -37,7 +37,7 @@ from .history import (
     sleep_history,
     weekly_monotony_strain,
 )
-from .hr_plan import HR_PHASES, HR_PLAN_START, hr_session_for_date
+from .hr_plan import HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
 from .metrics import DailyMetrics
 from .plan import (
     PLAN_START,
@@ -885,6 +885,8 @@ def build_coach_context() -> str:
                       if cur_hr_week and ph["week_start"] <= cur_hr_week <= ph["week_end"] else "")
             hr_phase_parts.append(f"  {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}{marker}")
         hr_phase_parts.append("  Full week-by-week sessions available via the get_hr_plan tool.")
+        hr_phase_parts.append("")
+        hr_phase_parts += hr_2012_lessons_context()
     except Exception:
         pass
 

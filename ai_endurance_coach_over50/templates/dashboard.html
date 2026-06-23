@@ -492,7 +492,7 @@
   {% if gut_training %}
   {% set gt = gut_training %}
   <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #a78bfa;background:rgba(167,139,250,0.06)">
-    <p class="eyebrow" style="margin-bottom:10px;color:#a78bfa">Gut Training <button type="button" class="gr-tip-trigger" data-tip="Rehearse 80–90 g carbs/hr on long rides now so your gut is ready for the two charity days. Log actual intake on the Analysis tab after each qualifying ride." aria-label="More info" aria-expanded="false">?</button></p>
+    <p class="eyebrow" style="margin-bottom:10px;color:#a78bfa">Gut Training <button type="button" class="gr-tip-trigger" data-tip="Rehearse 80–90 g carbs/hr on long rides now so your gut is ready for the two charity days. After each ride ≥75 min, open Analysis → scroll to the Fuelling block on that activity card → enter actual g/h and Save." aria-label="More info" aria-expanded="false">?</button></p>
     <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
       <div>
         <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">
@@ -520,7 +520,7 @@
       {% endif %}
     </div>
     {% if gt.total_logged == 0 %}
-    <p style="font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5">No fuelling logs yet — log actual carbs g/h on the Analysis tab after long rides.</p>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5">No fuelling logs yet — on the <a href="/analysis" style="color:#a78bfa">Analysis</a> tab, open any ride ≥75 min and scroll to the <strong style="color:var(--text)">Fuelling</strong> block (below Session Feel).</p>
     {% elif gt.weekly_adherence_pct is not none and gt.weekly_adherence_pct < 70 %}
     <p style="font-size:12px;color:#fbbf24;margin-top:10px;line-height:1.5">Below 70% this week — prioritise hitting planned carbs on your next long ride.</p>
     {% endif %}

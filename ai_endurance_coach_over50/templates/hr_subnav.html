@@ -1,0 +1,52 @@
+{# hr_subnav: plan | postmortem | power #}
+<style>
+  .hr-subnav {
+    background: rgba(17, 17, 20, 0.92);
+    border-bottom: 1px solid #27272a;
+    position: sticky;
+    top: var(--gr-nav-height, 44px);
+    z-index: 99;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .hr-subnav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hr-subnav-inner::-webkit-scrollbar { display: none; }
+  .hr-subnav a {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #71717a;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .hr-subnav a:hover { color: #fafafa; }
+  .hr-subnav a.active {
+    color: #7dd3fc;
+    border-bottom-color: #7dd3fc;
+  }
+  @media (max-width: 640px) {
+    .hr-subnav-inner { padding: 0 14px; }
+    .hr-subnav a { padding: 10px 12px; font-size: 10px; }
+  }
+</style>
+<nav class="hr-subnav" aria-label="Haute Route sections">
+  <div class="hr-subnav-inner">
+    <a href="/haute-route" class="{% if hr_subnav == 'plan' %}active{% endif %}">Training Plan</a>
+    <a href="/haute-route/2012-postmortem" class="{% if hr_subnav == 'postmortem' %}active{% endif %}">2012 Post-Mortem</a>
+    <a href="/haute-route/power-protocol" class="{% if hr_subnav == 'power' %}active{% endif %}">Power &amp; FTP</a>
+  </div>
+</nav>

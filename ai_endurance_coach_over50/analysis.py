@@ -1472,6 +1472,17 @@ def fuelling_session_key(stype: str, dur_min: int) -> str:
     return f"{stype}_{dur_min}"
 
 
+def default_fuelling_plan(dur_min: int) -> dict:
+    """Rule-based carbs/hr target when no cached AI fuelling plan exists."""
+    if dur_min >= 240:
+        carbs = 90
+    elif dur_min >= 150:
+        carbs = 80
+    else:
+        carbs = 60
+    return {"carbs_g_per_hr": carbs, "fluid_ml_per_hr": 600}
+
+
 def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional[float] = None) -> dict[str, dict]:
     """Return {f"{type}_{dur}": fuelling_plan} for qualifying endurance sessions.
 

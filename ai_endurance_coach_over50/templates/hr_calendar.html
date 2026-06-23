@@ -55,6 +55,7 @@
 <body>
 
   {% include 'nav.html' %}
+  {% include 'hr_subnav.html' %}
 
   <div style="max-width:1080px;margin:0 auto;padding:40px 24px 100px">
 
@@ -116,6 +117,48 @@
       </div>
     </div>
     {% endif %}
+
+    <!-- ── 2027 Build Intel + lessons from 2012 ─────────────────────────────── -->
+    <div style="margin-bottom:24px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:10px">2027 Build Intel</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:16px">
+        <a href="/haute-route/2012-postmortem" style="text-decoration:none;border:1px solid #4c0519;border-left:3px solid #f43f5e;border-radius:4px;padding:14px 18px;background:#0a0a0d;display:block">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#fb7185;margin:0 0 6px 0">2012 Post-Mortem</p>
+          <p style="font-size:13px;color:#d4d4d8;line-height:1.5;margin:0">Ride data from the failed attempt — pacing, fuelling, gearing (11-36), 78 kg race weight, engine targets.</p>
+        </a>
+        <a href="/haute-route/power-protocol" style="text-decoration:none;border:1px solid #1e3a5f;border-left:3px solid #60a5fa;border-radius:4px;padding:14px 18px;background:#0a0a0d;display:block">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#60a5fa;margin:0 0 6px 0">
+            Power Meter &amp; FTP Protocol
+            {% if power_meter_active %}<span style="margin-left:6px;color:#34d399">· active</span>{% endif %}
+          </p>
+          <p style="font-size:13px;color:#d4d4d8;line-height:1.5;margin:0">Favero Assioma setup, ramp/20-min FTP test, training zones — cap climbs at 70–80% FTP on race week.</p>
+        </a>
+      </div>
+
+    {% if lessons_2012 %}
+    <details style="border:1px solid #4c0519;border-left:3px solid #f43f5e;border-radius:4px;padding:14px 20px;background:#0a0a0d">
+      <summary style="cursor:pointer;list-style:none">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#fb7185">⚠ {{ lessons_2012.title }}</span>
+        <span style="font-size:11px;color:#71717a;margin-left:8px">— tap to expand</span>
+      </summary>
+      <p style="font-size:13px;color:#d4d4d8;line-height:1.6;margin:12px 0 14px 0">{{ lessons_2012.summary }}</p>
+
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;margin:0 0 6px 0">What the data showed</p>
+      <ul style="margin:0 0 14px 0;padding-left:18px">
+        {% for e in lessons_2012.evidence %}
+        <li style="font-size:12px;color:#a1a1aa;line-height:1.6;margin-bottom:4px">{{ e }}</li>
+        {% endfor %}
+      </ul>
+
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#34d399;margin:0 0 6px 0">Carry into 2027</p>
+      <ul style="margin:0;padding-left:18px">
+        {% for l in lessons_2012.lessons %}
+        <li style="font-size:12px;color:#d4d4d8;line-height:1.6;margin-bottom:5px">{{ l }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+    </div>
 
     <!-- ── CTL chart ─────────────────────────────────────────────────────────── -->
     {% if hr_proj_data %}

@@ -80,7 +80,7 @@
 <header>
   <div class="wrap" style="padding:0;">
     <h1>🛒 Lidl Shopping List</h1>
-    <p>Tap <b>Find&nbsp;▸</b> to look up that item at Lidl, then tick the box as you put it in your basket. The bar at the bottom keeps a running total of what you've ticked. Prices are targets; check the real price in store — Lidl prices vary by week and location.</p>
+    <p>Organised in <b>store walk order</b> — work down the list as you move through Lidl. Tap <b>Find&nbsp;▸</b> to look up an item, then tick the box as it goes in your basket. Prices are targets; check in store — Lidl prices vary by week and location.</p>
     <a href="/nutrition/shopping-list" class="compare-link">Compare: Asda list →</a>
     <div class="export-row">
       <button type="button" class="export-btn primary" id="exportNotes">Copy for Notes</button>
@@ -92,18 +92,26 @@
 
 <div class="wrap" id="list">
 
+  <div class="banner"><b>Walk order:</b> produce → bakery → chiller → freezer → ambient aisles → Alesto. A guide only — refitted stores may swap frozen and dairy positions.</div>
   <div class="banner"><b>Tip:</b> Lidl has no online grocery trolley like Asda — each link opens a Google search for that Lidl product. Check the Lidl Plus app or weekly leaflet for current offers before you shop.</div>
-  <div class="banner"><b>Gousto</b> covers Mon–Thu dinners (not on this list). <b>Week 2 breakfasts</b> need the Skyr pots and extra eggs in section 1.</div>
+  <div class="banner"><b>Gousto</b> covers Mon–Thu dinners (not on this list). <b>Week 2 breakfasts</b> need Skyr pots and extra eggs in the chiller zone.</div>
   <div class="banner"><b>Griddle treat weeks</b> (burgers, full English, chorizo paella): add sausages, back bacon, beef mince, brioche and cheese that week only.</div>
+  <div class="banner"><b>Frequency:</b> zones 1–4 are buy most weeks; zones 5–6 are mostly top-up-when-low (check the cupboard first).</div>
 
-  <div class="cat"><h2>Breakfast &amp; Lunch</h2><span class="sub">batch prep · weekday meals · snacks</span></div>
+  <div class="cat"><h2>1 · Fresh Produce</h2><span class="sub">walk zone 1 · start here</span></div>
   <!-- items injected -->
 
-  <div class="cat blue"><h2>Weekend Evening Meals</h2><span class="sub">Fri / Sat / Sun griddle nights</span></div>
+  <div class="cat"><h2>2 · Bakery &amp; Bread</h2><span class="sub">walk zone 2 · in-store bakery</span></div>
 
-  <div class="cat amber"><h2>Sundries</h2><span class="sub">larder · spices · ride fuel · top-ups</span></div>
+  <div class="cat"><h2>3 · Chilled</h2><span class="sub">walk zone 3 · dairy, eggs, meat &amp; fish</span></div>
 
-  <div class="cat purple"><h2>Separate Online Order</h2><span class="sub">sports nutrition — not stocked at Lidl</span></div>
+  <div class="cat blue"><h2>4 · Frozen</h2><span class="sub">walk zone 4 · freezer aisle</span></div>
+
+  <div class="cat amber"><h2>5 · World Foods &amp; Ambient</h2><span class="sub">walk zone 5 · rice, tins, baking, spices, ride fuel</span></div>
+
+  <div class="cat amber"><h2>6 · Alesto — Nuts, Seeds &amp; Dried Fruit</h2><span class="sub">walk zone 6 · top up when low</span></div>
+
+  <div class="cat purple"><h2>7 · Separate Online Order</h2><span class="sub">not stocked at Lidl</span></div>
   <div class="banner p"><b>Heads-up:</b> maltodextrin and fructose come from sports-nutrition shops (Bulk, Peak Supps, Amacx), not Lidl. These links open a web search — order them separately, they last several weeks.</div>
 
 </div>
@@ -120,92 +128,100 @@ const LIDL = t => "https://www.google.com/search?q=" + encodeURIComponent("lidl 
 const WEB  = t => "https://www.google.com/search?q=" + encodeURIComponent(t);
 
 const GROUPS = [
-  {after:"Breakfast & Lunch", items:[
+  {after:"1 · Fresh Produce", items:[
     ["Apples or oranges ×6","evening snack",1.00,"apples"],
-    ["Arla Skyr / Greek yogurt pots ×4","Week B Mon/Wed/Fri — with oat bars",2.50,"skyr yogurt pots"],
     ["Bananas (loose) ×12","breakfast, snacks + on-bike fuel",0.99,"bananas loose"],
-    ["Basmati rice 1kg","batch-cooked lunches Mon–Sun",1.49,"basmati rice 1kg"],
-    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",4.95,"chicken thigh fillets"],
-    ["Chia seeds 200g","overnight oats — Set A",1.49,"chia seeds"],
-    ["Cooked & peeled prawns 150g","Thursday paprika rice lunch",1.49,"cooked peeled prawns"],
-    ["Dried pasta 500g","Wednesday tuna pasta lunch",0.39,"pasta"],
-    ["Eggs (15-pack)","breakfast rotation + oat bars + recovery",2.00,"eggs 15 pack"],
-    ["Frozen berries 500g","overnight oats + yoghurt pots",1.99,"frozen berries"],
-    ["Frozen peas 900g","rice variations + Thursday paella lunch",1.29,"frozen peas"],
-    ["Granola 500g","yoghurt pots — Set B Tue/Thu",1.49,"granola"],
-    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",2.78,"greek style yogurt 1kg"],
+    ["Chestnut mushrooms 250g","griddle full English + stir fry",0.99,"chestnut mushrooms"],
+    ["Fresh ginger","Sunday stir-fry griddle night",0.59,"fresh ginger"],
     ["Lemons ×3","tuna pasta + prawn rice lunch",0.69,"lemons"],
     ["Mixed peppers","egg muffins + lunch rice",0.99,"mixed peppers"],
-    ["Muffin cases (12-pack)","egg muffins — Set A Tue/Thu",0.65,"muffin cases"],
-    ["Porridge oats 1kg","porridge + oat bars + energy balls",0.89,"porridge oats 1kg"],
-    ["Salad leaves or mixed salad","chicken rice bowls",0.99,"mixed salad leaves"],
-    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.25,"semi skimmed milk 2l"],
-    ["Smoked bacon or ham 200g","egg muffin tray (Set A)",1.79,"smoked bacon"],
-    ["Spinach 200g","egg muffin tray (Set A Tue/Thu)",0.89,"spinach"],
-    ["Tinned sweetcorn (2-pack)","tuna pasta + Mexican rice lunch",0.79,"sweetcorn tin"],
-    ["Tuna chunks (4-pack)","Wednesday pasta lunch",2.36,"tuna chunks spring water"],
-    ["White potatoes (1.5kg bag)","egg muffins + savoury potato bites",1.19,"white potatoes"],
-    ["Wholemeal bread loaf","Sunday pre-ride toast + recovery",0.89,"wholemeal bread"],
-  ]},
-  {after:"Weekend Evening Meals", items:[
-    ["Chestnut mushrooms 250g","griddle full English + stir fry",0.99,"chestnut mushrooms"],
-    ["Flatbreads / wraps","fajitas + griddle carb base",0.65,"flatbreads"],
-    ["Fresh ginger","Sunday stir-fry griddle night",0.59,"fresh ginger"],
-    ["Frying / lean steak","griddle night — Sun recovery",2.99,"frying steak"],
     ["Onions & courgettes","griddle veg",1.50,"courgette"],
     ["Red onions ×3","Friday fajitas + rice seasonings",0.79,"red onions"],
-    ["Salmon fillets (2-pack)","griddle night — Fri or Sun",2.99,"salmon fillets"],
+    ["Salad leaves or mixed salad","chicken rice bowls",0.99,"mixed salad leaves"],
+    ["Spinach 200g","egg muffin tray (Set A Tue/Thu)",0.89,"spinach"],
+    ["White potatoes (1.5kg bag)","egg muffins + savoury potato bites",1.19,"white potatoes"],
   ]},
-  {after:"Sundries", items:[
-    ["Baking powder","griddle pancakes — top up",0.79,"baking powder"],
-    ["Black pepper grinder","general cooking — top up",1.49,"black pepper grinder"],
-    ["Brown sugar 500g","bacon rice cakes + ride flapjack — top up",0.65,"brown sugar"],
+  {after:"2 · Bakery & Bread", items:[
+    ["Wholemeal bread loaf","Sunday pre-ride toast + recovery",0.89,"wholemeal bread"],
+  ]},
+  {after:"3 · Chilled", items:[
+    ["Semi-skimmed milk 2L","porridge, shakes, recovery",1.25,"semi skimmed milk 2l"],
+    ["Eggs (15-pack)","breakfast rotation + oat bars + recovery",2.00,"eggs 15 pack"],
+    ["Greek style yogurt 1kg ×2","breakfast + lunch top-ups",2.78,"greek style yogurt 1kg"],
+    ["Arla Skyr / Greek yogurt pots ×4","Week B Mon/Wed/Fri — with oat bars",2.50,"skyr yogurt pots"],
     ["Butter 250g","batch rice + griddle + recovery toast",1.69,"butter"],
-    ["Chicken stock cubes (8-pack)","griddle paella — top up",0.79,"chicken stock cubes"],
-    ["Chilli flakes","Mexican rice + fajitas — top up",0.79,"chilli flakes"],
-    ["Chopped tomatoes (tin)","griddle paella sofrito — top up",0.45,"chopped tomatoes tin"],
-    ["Clear honey","oat bars + gel + toast — top up",1.19,"clear honey"],
-    ["Cocoa powder","recovery chocolate milk — top up",1.09,"cocoa powder"],
-    ["Coconut oil 500g","Team Sky rice cakes — top up",2.49,"coconut oil"],
-    ["Coconut water (4-pack)","electrolyte drink base — optional",1.99,"coconut water"],
     ["Cream cheese","Team Sky cinnamon rice cakes — top up",0.99,"cream cheese"],
-    ["Cornflour 500g","stir-fry velvet beef — top up",0.65,"cornflour"],
+    ["Parmesan (small block)","savoury rice cakes — optional",1.79,"parmesan"],
+    ["Smoked bacon or ham 200g","egg muffin tray (Set A)",1.79,"smoked bacon"],
+    ["Chicken thigh fillets","~1.5kg — batch roast for lunches",4.95,"chicken thigh fillets"],
+    ["Cooked & peeled prawns 150g","Thursday paprika rice lunch",1.49,"cooked peeled prawns"],
+    ["Salmon fillets (2-pack)","griddle night — Fri or Sun",2.99,"salmon fillets"],
+    ["Frying / lean steak","griddle night — Sun recovery",2.99,"frying steak"],
+  ]},
+  {after:"4 · Frozen", items:[
+    ["Frozen berries 500g","overnight oats + yoghurt pots",1.99,"frozen berries"],
+    ["Frozen peas 900g","rice variations + Thursday paella lunch",1.29,"frozen peas"],
+  ]},
+  {after:"5 · World Foods & Ambient", items:[
+    ["Basmati rice 1kg","batch-cooked lunches Mon–Sun",1.49,"basmati rice 1kg"],
+    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes — top up",1.29,"sushi rice"],
+    ["Dried pasta 500g","Wednesday tuna pasta lunch",0.39,"pasta"],
+    ["Porridge oats 1kg","porridge + oat bars + Banoffee oats + energy balls",0.89,"porridge oats 1kg"],
+    ["Plain flour 1kg","griddle pancakes — top up",0.55,"plain flour 1kg"],
+    ["Flatbreads / wraps","fajitas + griddle carb base",0.65,"flatbreads"],
+    ["Granola 500g","yoghurt pots — Set B Tue/Thu",1.49,"granola"],
+    ["Tuna chunks (4-pack)","Wednesday pasta lunch",2.36,"tuna chunks spring water"],
+    ["Tinned sweetcorn (2-pack)","tuna pasta + Mexican rice lunch",0.79,"sweetcorn tin"],
+    ["Kidney beans (tin)","Mexican-spiced batch rice — top up",0.45,"kidney beans tin"],
+    ["Chopped tomatoes (tin)","griddle paella sofrito — top up",0.45,"chopped tomatoes tin"],
+    ["Olive oil 500ml","batch chicken + griddle + tuna — top up",2.99,"olive oil"],
+    ["Rapeseed / veg oil 1L","griddle high-heat + egg muffins — top up",1.49,"rapeseed oil"],
+    ["Sesame oil","Sunday stir-fry + beef velvet — top up",1.49,"sesame oil"],
+    ["Soy sauce","savoury rice cakes + stir fry — top up",0.89,"soy sauce"],
+    ["Oyster sauce","Sunday stir-fry — top up",0.99,"oyster sauce"],
+    ["Rice vinegar","Sunday stir-fry sauce — top up",0.89,"rice vinegar"],
+    ["Tomato purée tube","Mexican rice variation — top up",0.59,"tomato puree"],
+    ["Black pepper grinder","general cooking — top up",1.49,"black pepper grinder"],
+    ["Chilli flakes","Mexican rice + fajitas — top up",0.79,"chilli flakes"],
     ["Dried oregano","DIY fajita seasoning — top up",0.79,"dried oregano"],
-    ["Fig rolls","emergency jersey pockets",0.99,"fig rolls"],
     ["Garlic granules","chicken + stir-fry + fajitas — top up",0.79,"garlic granules"],
-    ["Golden syrup","ride flapjack + oat bars — top up",1.19,"golden syrup"],
     ["Ground cinnamon","banana oat bars + sweet rice cakes — top up",0.79,"cinnamon"],
     ["Ground cumin","Mexican rice + fajitas — top up",0.79,"ground cumin"],
-    ["Jelly babies","late-ride carb top-ups",0.79,"jelly babies"],
-    ["Kidney beans (tin)","Mexican-spiced batch rice — top up",0.45,"kidney beans tin"],
-    ["Lo-Salt (lite salt)","potassium in electrolyte drinks — top up",1.19,"lo salt"],
     ["Mixed dried herbs","batch chicken roast — top up",0.79,"mixed herbs"],
-    ["Olive oil 500ml","batch chicken + griddle + tuna — top up",2.99,"olive oil"],
-    ["Oyster sauce","Sunday stir-fry — top up",0.99,"oyster sauce"],
-    ["Parmesan (small block)","savoury rice cakes — optional",1.79,"parmesan"],
-    ["Peanut butter (large jar)","oat bars + rice cakes + toast — top up",1.29,"peanut butter"],
-    ["Pitted dates 500g","date & oat energy balls — top up",1.49,"pitted dates"],
-    ["Plain flour 1kg","griddle pancakes — top up",0.55,"plain flour 1kg"],
-    ["Pumpkin seeds 150g","post-ride magnesium + snacks — top up",1.49,"pumpkin seeds"],
-    ["Rapeseed / veg oil 1L","griddle high-heat + egg muffins — top up",1.49,"rapeseed oil"],
-    ["Raisins or dried cranberries 500g","oat bars + baked ride bars — top up",1.29,"raisins"],
-    ["Rice vinegar","Sunday stir-fry sauce — top up",0.89,"rice vinegar"],
-    ["Sesame oil","Sunday stir-fry + beef velvet — top up",1.49,"sesame oil"],
-    ["Sesame seeds","stir-fry finish — top up",0.89,"sesame seeds"],
     ["Smoked paprika","chicken, prawn rice, fajitas — top up",0.79,"smoked paprika"],
-    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.00,"soreen malt loaf"],
-    ["Soy sauce","savoury rice cakes + stir fry — top up",0.89,"soy sauce"],
-    ["Squash / cordial","homemade carb drink flavour — top up",0.99,"squash cordial"],
-    ["Sunflower or mixed seeds 150g","yoghurt pots + oat bars — top up",1.29,"sunflower seeds"],
-    ["Sushi / short-grain rice 500g","savoury & sweet rice cakes — top up",1.29,"sushi rice"],
-    ["Table salt 750g","cooking + potato bites + electrolytes — top up",0.35,"table salt"],
-    ["Tomato purée tube","Mexican rice variation — top up",0.59,"tomato puree"],
     ["Turmeric","golden rice + Thursday paella — top up",0.79,"turmeric"],
-    ["Vanilla extract","baked ride bars + pancakes — top up",1.29,"vanilla extract"],
-    ["Whey protein 1kg tub","breakfasts + shakes (~every 4 wks)",20.00,"whey protein 1kg"],
+    ["Brown sugar 500g","bacon rice cakes + ride flapjack — top up",0.65,"brown sugar"],
+    ["Muscovado sugar 500g","Banoffee overnight oats — top up",1.29,"muscovado sugar"],
     ["White sugar 1kg","energy drinks + electrolytes — top up",0.65,"white sugar"],
+    ["Golden syrup","ride flapjack + oat bars — top up",1.19,"golden syrup"],
+    ["Clear honey","oat bars + gel + toast — top up",1.19,"clear honey"],
+    ["Dark chocolate 100g","Banoffee overnight oats — optional grate",1.29,"dark chocolate 100g"],
+    ["Baking powder","griddle pancakes — top up",0.79,"baking powder"],
+    ["Muffin cases (12-pack)","egg muffins — Set A Tue/Thu",0.65,"muffin cases"],
+    ["Cocoa powder","recovery chocolate milk — top up",1.09,"cocoa powder"],
+    ["Vanilla extract","Banoffee oats + baked ride bars + pancakes — top up",1.29,"vanilla extract"],
+    ["Chicken stock cubes (8-pack)","griddle paella — top up",0.79,"chicken stock cubes"],
+    ["Cornflour 500g","stir-fry velvet beef — top up",0.65,"cornflour"],
+    ["Lo-Salt (lite salt)","potassium in electrolyte drinks — top up",1.19,"lo salt"],
+    ["Table salt 750g","cooking + potato bites + electrolytes — top up",0.35,"table salt"],
+    ["Jelly babies","late-ride carb top-ups",0.79,"jelly babies"],
+    ["Fig rolls","emergency jersey pockets",0.99,"fig rolls"],
+    ["Soreen malt loaf (2-pack)","pre-sliced on-bike slabs + emergency fuel",2.00,"soreen malt loaf"],
+    ["Coconut water (4-pack)","electrolyte drink base — optional",1.99,"coconut water"],
+    ["Squash / cordial","homemade carb drink flavour — top up",0.99,"squash cordial"],
+    ["Whey protein 1kg tub","breakfasts + shakes (~every 4 wks)",20.00,"whey protein 1kg"],
   ]},
-  {after:"Separate Online Order", ext:true, items:[
+  {after:"6 · Alesto — Nuts, Seeds & Dried Fruit", items:[
+    ["Chia seeds 200g","overnight oats — Set A",1.49,"chia seeds"],
+    ["Pumpkin seeds 150g","post-ride magnesium + snacks — top up",1.49,"pumpkin seeds"],
+    ["Sunflower or mixed seeds 150g","yoghurt pots + oat bars — top up",1.29,"sunflower seeds"],
+    ["Sesame seeds","stir-fry finish — top up",0.89,"sesame seeds"],
+    ["Pitted dates 500g","date & oat energy balls — top up",1.49,"pitted dates"],
+    ["Raisins or dried cranberries 500g","oat bars + baked ride bars — top up",1.29,"raisins"],
+    ["Peanut butter (large jar)","oat bars + rice cakes + toast — top up",1.29,"peanut butter"],
+    ["Coconut oil 500g","Team Sky rice cakes — top up",2.49,"coconut oil"],
+  ]},
+  {after:"7 · Separate Online Order", ext:true, items:[
     ["Maltodextrin 1kg","energy drinks + homemade gel",10.00,"maltodextrin 1kg buy uk"],
     ["Fructose 1kg","dual-source carb drinks (1:0.8)",8.00,"fructose powder 1kg buy uk"],
   ]},
@@ -259,7 +275,7 @@ function render(){
 render();
 
 function buildNotesText(uncheckedOnly){
-  const lines=['LIDL SHOPPING LIST','','1 Breakfast & Lunch · 2 Weekend Evening Meals · 3 Sundries (check cupboard) · 4 Online order',''];
+  const lines=['LIDL SHOPPING LIST — STORE WALK ORDER','','1 Fresh produce · 2 Bakery · 3 Chilled · 4 Frozen · 5 Ambient · 6 Alesto · 7 Online order',''];
   let section='';
   itemRows.forEach(({section:sec,name,note,row})=>{
     if(uncheckedOnly && row && row.classList.contains('done')) return;

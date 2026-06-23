@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<title>Power Meter Setup + FTP Test Protocol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#09090b; --panel:#0a0a0d; --panel2:#111114; --border:#27272a;
+    --ink:#fafafa; --mut:#a1a1aa; --dim:#71717a;
+    --rose:#fb7185; --amber:#fb923c; --green:#34d399; --blue:#60a5fa; --violet:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;margin:0;line-height:1.6}
+  .wrap{max-width:880px;margin:0 auto;padding:48px 24px 120px}
+  .kicker{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,6vw,54px);letter-spacing:0.04em;line-height:1;margin:0 0 8px}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(22px,4vw,30px);letter-spacing:0.05em;margin:42px 0 6px}
+  .step{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue)}
+  h3{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim);margin:22px 0 8px}
+  p{color:#d4d4d8;margin:0 0 12px}
+  .sub{font-family:'DM Mono',monospace;font-size:12px;color:var(--mut);margin-top:6px}
+  strong{color:#fff;font-weight:600}
+  ul,ol{margin:0 0 14px;padding-left:22px}
+  li{color:#d4d4d8;margin-bottom:7px}
+  li strong{color:#fff}
+  .check{list-style:none;padding-left:0}
+  .check li{position:relative;padding-left:30px;margin-bottom:9px}
+  .check li::before{content:"☐";position:absolute;left:0;top:-1px;color:var(--dim);font-size:16px}
+
+  .callout{border:1px solid var(--border);border-radius:6px;padding:15px 18px;margin:16px 0;background:var(--panel)}
+  .callout.amber{border-left:3px solid var(--amber)} .callout.rose{border-left:3px solid #f43f5e}
+  .callout.green{border-left:3px solid #059669} .callout.blue{border-left:3px solid #3b82f6}
+  .callout .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 6px}
+  .callout.amber .lbl{color:var(--amber)} .callout.rose .lbl{color:var(--rose)}
+  .callout.green .lbl{color:var(--green)} .callout.blue .lbl{color:var(--blue)}
+  .callout p:last-child{margin-bottom:0}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #1c1c20}
+  th{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+  td{color:#d4d4d8}
+  td.num,th.num{text-align:right;font-family:'DM Mono',monospace}
+  .card{border:1px solid var(--border);border-radius:6px;padding:16px 18px;background:var(--panel2);margin:12px 0}
+  .card .cap{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+  .pick{color:var(--green);font-weight:600}
+  .foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--dim)}
+  .foot a{color:var(--mut)}
+</style>
+</head>
+<body>
+{% include 'nav.html' %}
+{% include 'hr_subnav.html' %}
+<div class="wrap">
+
+  <p class="kicker">Favero Assioma PRO RL-1 · Setup → First Rides → Clean Baseline</p>
+  <h1>Power Meter Setup &amp; FTP Test Protocol</h1>
+  <p class="sub">Don't test on day one. A baseline is only worth having if it's clean and repeatable — rush the setup and every number after it is built on sand. Three phases: dial it in, learn to trust it, then test.</p>
+
+  <div class="callout rose">
+    <p class="lbl">The one rule that ruins baselines</p>
+    <p>The same mistake that buried you in 2012 ruins FTP tests: <strong>going out too hard.</strong> Start the test effort controlled and build — a test you blow up 8 minutes into is a junk number. Pace it like a climber, not a lunatic.</p>
+  </div>
+
+  <!-- PHASE 1 -->
+  <h2><span class="step">Phase 1</span><br>Setup — before the first pedal stroke</h2>
+
+  <h3>Fit the pedals</h3>
+  <ul class="check">
+    <li><strong>Charge both pedals fully</strong> first (magnetic charger clips on; LED tells you when done).</li>
+    <li><strong>Grease the threads</strong> and screw in with an 8mm hex or pedal spanner. <strong>Right pedal = normal thread; left pedal = reverse thread</strong> (turns toward the back of the bike to tighten). Snug, ~35–40 Nm — firm but don't gorilla it.</li>
+    <li><strong>Fit Look-compatible cleats</strong> (ships with Favero's). Match your <em>old</em> cleat position exactly — fore/aft, rotation, float — so your knees feel no change.</li>
+  </ul>
+
+  <div class="callout amber">
+    <p class="lbl">⚠ Two things that silently corrupt every number</p>
+    <p><strong>1. Crank length.</strong> In the Favero app, set your exact crank length — it's stamped on the inside of the crank arm (likely <strong>170 or 172.5&nbsp;mm</strong>). Wrong length = wrong power, permanently. <strong>2. Saddle height.</strong> Power pedals have a slightly different stack height than your old pedals; re-measure saddle height and match it, or you've quietly changed your fit. At 50+, protect the knees — if unsure, grab a quick bike-fit check.</p>
+  </div>
+
+  <h3>App + head unit</h3>
+  <ul class="check">
+    <li>Install the <strong>Favero Assioma app</strong>, pair the pedals, <strong>update firmware</strong>, and confirm/enter <strong>crank length</strong>.</li>
+    <li>Pair to your <strong>Garmin over ANT+</strong> (Sensors → Add → Power). Set crank length on the Garmin too if it asks. Enable <strong>auto-zero</strong>.</li>
+    <li>Add a <strong>3-second power</strong> data field to your screen (raw 1-second power is too jumpy to pace by; more on this below).</li>
+  </ul>
+
+  <!-- PHASE 2 -->
+  <h2><span class="step">Phase 2</span><br>First 1–2 rides — bed in, don't test</h2>
+  <p>Resist the urge to test immediately. Use a ride or two to confirm the data is clean and your fit is right, so the eventual baseline is trustworthy.</p>
+  <ul>
+    <li><strong>Do a manual zero-offset (calibration) before each ride.</strong> Bike level, pedals unclipped and stationary, spin the cranks backward a couple of turns, then trigger calibrate in the Favero app or on the Garmin. Takes 5 seconds.</li>
+    <li><strong>Ride easy 60–90 min</strong> and just watch the numbers. Power should respond instantly and sensibly, no dropouts, no crazy spikes. Get used to the new pedals' clip-in and release tension.</li>
+    <li><strong>Throw in 2–3 short efforts</strong> (30–60s harder) just to see the meter react across the range. Not a test — a sanity check.</li>
+    <li>Note how it <em>feels</em> vs the watts — start building the link between effort and number. Check your knees feel exactly as before (fit confirmation).</li>
+  </ul>
+  <div class="callout blue">
+    <p class="lbl">Why 3-second power, not 1-second</p>
+    <p>Raw power jumps around every pedal stroke and is impossible to pace by. A 3-second average smooths it enough to hold a target steadily — the field you'll live by on race climbs. Keep raw/1s off the main screen.</p>
+  </div>
+
+  <!-- PHASE 3 -->
+  <h2><span class="step">Phase 3</span><br>The FTP test — getting a number worth keeping</h2>
+
+  <h3>Prep (get this right or re-test)</h3>
+  <ul class="check">
+    <li><strong>Fresh legs</strong> — test the day after a rest or easy day, never after a hard block.</li>
+    <li><strong>Fuelled &amp; hydrated</strong> — normal carbs that day, a snack 1–2h before. (Don't test in a deficit-induced hole — the 2012 fuelling lesson applies.)</li>
+    <li><strong>Indoors on the turbo if possible</strong> — no coasting, no traffic, no descents, controlled temperature. Far more repeatable than outdoors, which is what makes future comparisons valid.</li>
+    <li><strong>Calibrate (zero-offset) immediately before.</strong> Have a fan on indoors.</li>
+  </ul>
+
+  <h3>Pick your test</h3>
+  <div class="card">
+    <p class="cap">Option A — Ramp test <span class="pick">← recommended for your first one</span></p>
+    <p style="margin:0 0 8px">No pacing skill needed (you literally can't go out too hard), and it's over quicker. Ideal given your pacing history.</p>
+    <ol style="margin:0">
+      <li>Warm up 10–15 min easy with 2–3 short spin-ups.</li>
+      <li>Start at <strong>~100&nbsp;W</strong>, increase <strong>+20&nbsp;W every minute</strong>, hold cadence ~85–95.</li>
+      <li>Keep going until you <strong>cannot hold the next step</strong> (legs fail / cadence collapses). Note your <strong>best 1-minute power</strong>.</li>
+      <li><strong>FTP ≈ 75% of that best 1-minute power.</strong></li>
+      <li>Spin easy 10 min to cool down.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <p class="cap">Option B — 20-minute test (classic, do this one next time)</p>
+    <p style="margin:0 0 8px">More accurate but needs pacing discipline — best saved for once you have a ballpark from the ramp.</p>
+    <ol style="margin:0">
+      <li>Warm up ~20 min: easy building, include 3×1 min fast (1 min easy between), then 5 min easy.</li>
+      <li>One <strong>5-min hard opener</strong> at a strong effort, then 10 min very easy.</li>
+      <li><strong>20 min all-out, evenly paced.</strong> Aim for the highest average you can <em>hold the whole way</em> — first 5 min should feel almost too controlled, build slightly into the back half. Eyes on 3s power.</li>
+      <li><strong>FTP = 95% of your 20-minute average power.</strong></li>
+      <li>Cool down 10–15 min easy.</li>
+    </ol>
+  </div>
+
+  <div class="callout green">
+    <p class="lbl">After the test</p>
+    <p>Enter the FTP in the Favero app, your Garmin, and the coach app. Then <strong>lock in your protocol</strong> — same test, same warm-up, indoors — and <strong>re-test every 4–6 weeks</strong>. The trend matters more than any single number; only same-protocol tests are comparable. Seed your ramp start sensibly next time (your current estimated FTP is ~180–210&nbsp;W, so 100&nbsp;W start gives plenty of runway).</p>
+  </div>
+
+  <h2>Your training zones (once you have FTP)</h2>
+  <p>Standard Coggan 7-zone model — fill in the watts once tested. These become your pacing ceilings and your easy/hard guardrails.</p>
+  <table>
+    <thead><tr><th>Zone</th><th>% of FTP</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>Z1 Recovery</td><td class="num">&lt;55%</td><td>Easy spin, between-efforts</td></tr>
+      <tr><td>Z2 Endurance</td><td class="num">56–75%</td><td>The bread-and-butter — most Haute Route climbing lives here early in a stage</td></tr>
+      <tr><td>Z3 Tempo</td><td class="num">76–90%</td><td>Sustained climbing pace, steady stages</td></tr>
+      <tr><td>Z4 Threshold</td><td class="num">91–105%</td><td>FTP work; your test sits here</td></tr>
+      <tr><td>Z5 VO₂max</td><td class="num">106–120%</td><td>Short hard intervals, top-end builder</td></tr>
+      <tr><td>Z6 Anaerobic</td><td class="num">121–150%</td><td>Punchy efforts, &lt;2 min</td></tr>
+      <tr><td>Z7 Neuromuscular</td><td class="num">Max</td><td>Sprints</td></tr>
+    </tbody>
+  </table>
+  <p class="sub">Climbing-pace tip for 2027: early-stage climbs you'll cap around <strong>70–80% of FTP (upper Z2 / low Z3)</strong> — well below your test effort. That ceiling is the single discipline that wins a seven-day race.</p>
+
+  <div class="foot">
+    <p>Companion to the <a href="/haute-route/2012-postmortem">2012 Post-Mortem</a> · <a href="/haute-route">Haute Route plan</a>. Test formulas: ramp FTP ≈ 75% of best 1-min; 20-min FTP = 95% of 20-min average (Coggan). Always calibrate (zero-offset) before testing, and keep the protocol identical between tests for valid comparison.</p>
+  </div>
+
+</div>
+</body>
+</html>
