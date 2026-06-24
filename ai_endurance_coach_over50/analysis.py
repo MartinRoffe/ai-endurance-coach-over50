@@ -331,14 +331,84 @@ def _power_summary_from_dto(s: dict) -> dict:
     max_p = s.get("maxPower")
     np = s.get("normativePower") or s.get("normalizedPower")
     has_pm = s.get("hasPowerMeter")
-    if has_pm is None and avg is not None:
-        has_pm = float(avg) > 0
+    if has_pm is None:
+        if avg is not None:
+            has_pm = float(avg) > 0
+        elif max_p is not None:
+            has_pm = float(max_p) > 0
     return {
         "avg_power_w":     round(float(avg)) if avg is not None else None,
         "max_power_w":     round(float(max_p)) if max_p is not None else None,
         "norm_power_w":    round(float(np)) if np is not None else None,
         "has_power_meter": bool(has_pm),
     }
+
+
+def activity_has_power_signal(act: dict) -> bool:
+    return bool(act.get("has_power_meter") or act.get("avg_power_w") or act.get("max_power_w"))
+
+
+def activity_needs_power_enrichment(act: dict) -> bool:
+    if act.get("type_key") not in _CYCLING_TYPES:
+        return False
+    if not activity_has_power_signal(act):
+        return False
+    return (
+        act.get("avg_power_w") is None
+        or act.get("norm_power_w") is None
+        or not act.get("has_power_meter")
+    )
+
+
+def _fetch_power_summary_from_api(api: Any, activity_id: int) -> dict:
+    summary_raw = api.get_activity(activity_id)
+    return _power_summary_from_dto(summary_raw.get("summaryDTO", {}))
+
+
+def enrich_activities_power(api: Any, activities: list[dict]) -> int:
+    """Fill missing avg/NP from Garmin detail API; patch analysis power zones."""
+    from .history import patch_activity_power
+
+    enriched = 0
+    for act in activities:
+        if not activity_needs_power_enrichment(act):
+            continue
+        act_id = act["activity_id"]
+        try:
+            power = _fetch_power_summary_from_api(api, act_id)
+            if not power.get("has_power_meter") and not power.get("avg_power_w"):
+                continue
+            patch_fields = {
+                "avg_power_w": power.get("avg_power_w"),
+                "max_power_w": power.get("max_power_w") or act.get("max_power_w"),
+                "norm_power_w": power.get("norm_power_w"),
+                "has_power_meter": 1 if power.get("has_power_meter") else act.get("has_power_meter"),
+            }
+            if not patch_activity_power(act_id, patch_fields):
+                continue
+            act.update(patch_fields)
+            enriched += 1
+
+            existing = load_analysis(act_id)
+            if existing and existing.get("power_zones_json"):
+                continue
+            detail = fetch_activity_detail(
+                api, act_id, activity=act, session_label=_session_label_for_activity(act),
+            )
+            if existing and detail.get("power_zones"):
+                patch_analysis_power(act_id, detail)
+        except Exception:
+            pass
+    return enriched
+
+
+def sync_power_data(api: Any, days: int = 14) -> dict:
+    """Enrich incomplete power fields and backfill zones on recent cycling rides."""
+    from .history import load_recent_activities
+
+    activities = load_recent_activities(days=days)
+    enriched = enrich_activities_power(api, activities)
+    return {"enriched": enriched, "checked": len(activities)}
 
 
 def _fetch_power_zones(api: Any, activity_id: int) -> list[dict]:
@@ -404,6 +474,11 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
             "hr_zones":              hr_zones,
         }
         result.update(_power_summary_from_activity(activity))
+        if activity_needs_power_enrichment(activity):
+            try:
+                result.update(_fetch_power_summary_from_api(api, activity_id))
+            except Exception:
+                pass
         if result.get("has_power_meter"):
             result["power_zones"] = _fetch_power_zones(api, activity_id)
         if session_label in _FTP_SESSION_LABELS:
@@ -578,12 +653,13 @@ def refresh_power_backfill(api: Any, days: int = 30) -> dict:
     acts = fetch_activities(api, days=days)
     save_activities(acts)
     stats["activities_fetched"] = len(acts)
+    enrich_activities_power(api, acts)
 
     start = date.today() - timedelta(days=days - 1)
     power_acts: list[dict] = []
     for _d, day_acts in load_activities_by_date(start, date.today()).items():
         for act in day_acts:
-            if act.get("has_power_meter") and act.get("type_key") in _CYCLING_TYPES:
+            if activity_has_power_signal(act) and act.get("type_key") in _CYCLING_TYPES:
                 power_acts.append(act)
     stats["power_rides"] = len(power_acts)
 
@@ -638,14 +714,39 @@ _CYCLING_TYPES = {"road_biking", "cycling", "virtual_ride", "indoor_cycling", "m
 _RUNNING_TYPES = {"running", "trail_running", "treadmill_running"}
 _RUCK_TYPES    = {"hiking", "walking", "load_carry", "rucking"}
 
+_DUAL_CHANNEL_SYSTEM = (
+    "Dual-channel coaching (2012 Haute Route lessons — now with real strain-gauge power): "
+    "power for instant objective intensity, pacing ceilings on climbs (cap, not target), and "
+    "interval execution; HR + readiness for fatigue, heat, altitude, and cardiac drift. "
+    "Pw:HR decoupling matters — HR rising while power is flat or falling is an early fade warning. "
+    "When HR and power disagree, say which channel you trust and why. "
+    "If HR data looks corrupt (flat avg=max, or 0% in all HR zones) but power zones are present, "
+    "base intensity assessment on power and flag the HR sensor issue."
+)
 
-def _coach_system_prompt(type_key: str, activity_name: str = "") -> str:
+
+def _activity_has_power_data(activity: dict, detail: dict) -> bool:
+    if detail.get("has_power_meter") or activity.get("has_power_meter"):
+        return True
+    return bool(
+        detail.get("avg_power_w") or activity.get("avg_power_w")
+        or detail.get("norm_power_w") or activity.get("norm_power_w")
+    )
+
+
+def _coach_system_prompt(
+    type_key: str,
+    activity_name: str = "",
+    *,
+    has_power: Optional[bool] = None,
+) -> str:
     from .history import power_meter_active
-    has_power = power_meter_active()
+    if has_power is None:
+        has_power = power_meter_active()
     if has_power and type_key in _CYCLING_TYPES:
         tail = (
-            "The athlete has a power meter — discuss interval and climb intensity with watts when "
-            "power data is present; keep HR primary for aerobic base, readiness and variable conditions. "
+            _DUAL_CHANNEL_SYSTEM + " "
+            "Discuss both watts and HR when both are available. "
             "Be direct, specific, and evidence-based. Reference the numbers. "
             "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
         )
@@ -700,11 +801,12 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
     prompt = _build_analysis_prompt(activity, detail, companion=companion)
     type_key = activity.get("type_key", "")
     name = activity.get("name") or ""
+    has_power = _activity_has_power_data(activity, detail)
     try:
         msg = client.messages.create(
             model=MODEL_SMART,
-            max_tokens=500,
-            system=_coach_system_prompt(type_key, name),
+            max_tokens=600 if has_power else 500,
+            system=_coach_system_prompt(type_key, name, has_power=has_power),
             messages=[{"role": "user", "content": prompt}],
         )
         return msg.content[0].text
@@ -761,6 +863,56 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         bar = "█" * max(1, z["pct"] // 5)
         bpm_str = f"≥{z['low_bpm']}bpm" if z.get("low_bpm") else f"Zone {z['zone']}"
         zone_lines.append(f"  Z{z['zone']} ({bpm_str}): {bar} {z['pct']}%  {_fmt_secs(z['secs'])}")
+
+    has_power = _activity_has_power_data(activity, detail)
+    avg_pwr = detail.get("avg_power_w") or activity.get("avg_power_w")
+    np_pwr = detail.get("norm_power_w") or activity.get("norm_power_w")
+    max_pwr = detail.get("max_power_w") or activity.get("max_power_w")
+    power_zones = detail.get("power_zones") or []
+    power_zone_lines: list[str] = []
+    for z in power_zones:
+        bar = "█" * max(1, z["pct"] // 5)
+        w_str = f"≥{z['low_w']}W" if z.get("low_w") else f"Zone {z['zone']}"
+        power_zone_lines.append(f"  Z{z['zone']} ({w_str}): {bar} {z['pct']}%  {_fmt_secs(z['secs'])}")
+
+    ftp_w = None
+    if has_power:
+        try:
+            from .history import load_ftp_tests
+            ftp_w = next((t["ftp_w"] for t in reversed(load_ftp_tests()) if t.get("ftp_w")), None)
+        except Exception:
+            pass
+
+    hr_zone_secs = sum(z.get("secs") or 0 for z in hr_zones)
+    hr_suspect = (
+        hr_zone_secs == 0
+        or (avg_hr is not None and max_hr is not None and avg_hr == max_hr and dur_secs > 20 * 60)
+    )
+    data_quality_lines: list[str] = []
+    if has_power and hr_suspect and power_zone_lines:
+        data_quality_lines.append(
+            "Data quality: HR zone data is missing or implausible on this file — "
+            "treat power zones and watts as the primary intensity evidence; "
+            "note the HR strap/recording issue briefly."
+        )
+    elif has_power and hr_zone_secs > 0 and power_zone_lines:
+        data_quality_lines.append(
+            "Dual-channel read: cross-check HR zones against power zones — "
+            "note any meaningful divergence (cardiac drift, heat, fatigue, or pacing surges)."
+        )
+
+    power_summary_lines: list[str] = []
+    if has_power and (avg_pwr or np_pwr or max_pwr):
+        pwr_parts = []
+        if avg_pwr:
+            pwr_parts.append(f"avg {int(avg_pwr)} W")
+        if np_pwr:
+            pwr_parts.append(f"NP {int(np_pwr)} W")
+        if max_pwr:
+            pwr_parts.append(f"max {int(max_pwr)} W")
+        if ftp_w and np_pwr:
+            pwr_parts.append(f"{round(np_pwr / ftp_w * 100)}% FTP")
+        power_summary_lines.append("Power: " + ", ".join(pwr_parts))
 
     te = detail.get("training_effect")
     te_label = _te_label(detail.get("training_effect_label"))
@@ -869,7 +1021,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             dur_fmt_rep = f"{dur_s // 60}m{dur_s % 60:02d}s"
             avg = f"avg HR {rep['avg_hr']} bpm" if rep.get("avg_hr") else ""
             mx  = f", max {rep['max_hr']} bpm" if rep.get("max_hr") else ""
-            interval_lines.append(f"  {rep['name']} {rep['rep']}: {avg}{mx} ({dur_fmt_rep})")
+            pwr = f", avg {rep['avg_power_w']} W" if rep.get("avg_power_w") else ""
+            interval_lines.append(f"  {rep['name']} {rep['rep']}: {avg}{mx}{pwr} ({dur_fmt_rep})")
         if len(interval_reps) >= 2:
             first_hr = interval_reps[0].get("avg_hr") or 0
             last_hr  = interval_reps[-1].get("avg_hr") or 0
@@ -880,15 +1033,37 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                 + ("expected accumulation" if drift > 0 else "HR stayed flat or dropped")
             )
 
+    if has_power and power_zone_lines:
+        ask_lines = [
+            "Please provide:",
+            "1. A one-sentence headline: how well was this session executed?",
+            "2. Two or three sentences cross-reading HR and power — zone distributions, "
+            "any HR↔power divergence, and whether intensity matched the planned session.",
+            "3. One sentence on the training effect and what it means for fitness adaptation.",
+            "4. One sentence on recovery — how demanding was this relatively?",
+            "Keep it under 180 words. Plain paragraphs, no headers or bullets.",
+        ]
+    else:
+        ask_lines = [
+            "Please provide:",
+            "1. A one-sentence headline: how well was this session executed?",
+            "2. Two or three sentences on the HR zone distribution — was it appropriate for this session type?",
+            "3. One sentence on the training effect and what it means for fitness adaptation.",
+            "4. One sentence on recovery — how demanding was this relatively?",
+            "Keep it under 150 words. Plain paragraphs, no headers or bullets.",
+        ]
+
     lines = [
         f"Activity: {name}",
         f"Date: {act_date}",
         f"Duration: {dur_fmt}  Distance: {dist_km} km" + (f"  Avg speed: {avg_speed_kmh} km/h" if avg_speed_kmh else ""),
         f"Avg HR: {avg_hr} bpm  Max HR: {max_hr} bpm",
+        *power_summary_lines,
         f"Calories: {calories}  Elevation gain: {elev} m",
         f"Aerobic training effect: {te} ({te_label}) — {aerobic_msg}",
         f"Training load: {tl}",
         f"Avg respiration: {resp} breaths/min" if resp else "",
+        *data_quality_lines,
         equipment_note,
         target_zone_line,
         ftp_note,
@@ -897,15 +1072,11 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         "",
         "Heart rate zone distribution:",
         *zone_lines,
+        *([""] + ["Power zone distribution:"] + power_zone_lines if power_zone_lines else []),
         plan_line,
         *compound_lines,
         "",
-        "Please provide:",
-        "1. A one-sentence headline: how well was this session executed?",
-        "2. Two or three sentences on the HR zone distribution — was it appropriate for this session type?",
-        "3. One sentence on the training effect and what it means for fitness adaptation.",
-        "4. One sentence on recovery — how demanding was this relatively?",
-        "Keep it under 150 words. Plain paragraphs, no headers or bullets.",
+        *ask_lines,
     ]
     return "\n".join(l for l in lines if l is not None)
 
@@ -914,10 +1085,21 @@ def _rule_based_analysis(activity: dict, detail: dict) -> str:
     te = detail.get("training_effect") or 0
     te_label = _te_label(detail.get("training_effect_label"))
     hr_zones = detail.get("hr_zones", [])
+    has_power = _activity_has_power_data(activity, detail)
+    np_pwr = detail.get("norm_power_w") or activity.get("norm_power_w")
 
     z2_pct = next((z["pct"] for z in hr_zones if z["zone"] == 2), 0)
     z3_pct = next((z["pct"] for z in hr_zones if z["zone"] == 3), 0)
     high_zone_pct = sum(z["pct"] for z in hr_zones if z["zone"] >= 4)
+    hr_zone_secs = sum(z.get("secs") or 0 for z in hr_zones)
+
+    if has_power and hr_zone_secs == 0 and np_pwr:
+        return (
+            f"Power data looks usable (NP {int(np_pwr)} W) but HR zones are missing or corrupt on this file — "
+            f"intensity should be judged from power, not heart rate. "
+            f"Aerobic training effect: {te:.1f} ({te_label}). "
+            "Check the HR strap before the next ride."
+        )
 
     if high_zone_pct > 20:
         intensity = "high-intensity session with significant time in zones 4-5"

@@ -217,7 +217,7 @@
     <h2>DAILY MENUS</h2>
 
     <div class="week-banner" style="margin-bottom:16px">
-      <p><strong>Breakfast rotation:</strong> Weeks 1 &amp; 3 = Set A (overnight oats Mon/Wed/Fri · egg muffins Tue/Thu) · Week 2 = Set B (oat bar + Skyr Mon/Wed/Fri · yoghurt + eggs Tue/Thu) · Week 4 = Set A recovery portions. Two recipes batch on Sunday — <a href="/nutrition/recipes#sunday-prep" style="color:var(--accent)">see prep guide</a>.</p>
+      <p><strong>Fixed weekday pattern:</strong> overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu (egg muffins Tue/Thu in recovery week only). Batch on Sunday — <a href="/nutrition/recipes#sunday-prep" style="color:var(--accent)">prep guide</a>. Weeks 1–3 are identical; week 4 is recovery.</p>
     </div>
 
     <div class="week-tabs">
@@ -236,202 +236,19 @@
 </div><!-- /container -->
 
 <script>
-
 const AUTO_WEEK = {{ cycle_week }};
+const WEEKS = {{ weeks | tojson }};
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
-
-function macro(kcal,p,c,f){ return `<span class="macro m-kcal">${kcal} kcal</span><span class="macro m-p">P: ${p}g</span><span class="macro m-c">C: ${c}g</span>${f?`<span class="macro m-f">F: ${f}g</span>`:''}` }
-
-const BREAKFASTS = {
-  a_mwf: {name:'High-Protein Overnight Oats', detail:'Per jar: 60g oats + 1 scoop whey + 200ml milk + 100g Greek yogurt + 1 tbsp chia + 100g berries + 1 tsp honey. Spoon, pour, seal — no cooking. Mon/Wed/Fri.', macros:macro('480','38','50','14'), prot:38},
-  a_tuth: {name:'Egg & Veg Muffins ×2', detail:'10-egg tray bake with potato, pepper, spinach and bacon/ham. Bake Sunday; 2 muffins per breakfast Tue/Thu. Freezes well.', macros:macro('340','28','12','20'), prot:28},
-  b_mwf: {name:'Banana Oat Bar + Skyr Pot', detail:'1 baked banana oat bar + 200g Skyr pot. Bar alone is carb-only — Skyr is required for protein on Week B Mon/Wed/Fri.', macros:macro('420','34','44','12'), prot:34},
-  b_tuth: {name:'Yoghurt Pot + 2 Boiled Eggs', detail:'250g Greek yogurt or Skyr + 40g granola + berries + honey + 2 boiled eggs on the side. Granola kept separate until eating.', macros:macro('410','32','38','15'), prot:32},
-};
-
-function breakfastKey(cycleWeekIdx, dayIdx) {
-  const rot = cycleWeekIdx === 1 ? 'b' : 'a';
-  const slot = [0, 2, 4].includes(dayIdx) ? 'mwf' : 'tuth';
-  return rot + '_' + slot;
+function macroHtml(m) {
+  const f = m.f ? `<span class="macro m-f">F: ${m.f}g</span>` : '';
+  return `<span class="macro m-kcal">${m.kcal} kcal</span><span class="macro m-p">P: ${m.p}g</span><span class="macro m-c">C: ${m.c}g</span>${f}`;
 }
 
-function skipAmSnack(cycleWeekIdx, dayIdx) {
-  return breakfastKey(cycleWeekIdx, dayIdx) === 'a_mwf';
-}
-
-function calcPreDinP(meals) {
-  if (!meals.length) return 0;
-  return meals.slice(0, -1).reduce((s, m) => s + (m.prot || 0), 0);
-}
-
-function applyBreakfastRotation(days, cycleWeekIdx) {
-  return days.map((day, dayIdx) => {
-    if (dayIdx >= 5) return day;
-    const d = JSON.parse(JSON.stringify(day));
-    const bk = BREAKFASTS[breakfastKey(cycleWeekIdx, dayIdx)];
-    const tail = d.meals.filter(m => m.type !== 'Breakfast' && !(skipAmSnack(cycleWeekIdx, dayIdx) && m.type === 'AM Snack'));
-    d.meals = [{type:'Breakfast', name:bk.name, detail:bk.detail, macros:bk.macros, prot:bk.prot}, ...tail];
-    d.preDinP = calcPreDinP(d.meals);
-    if (dayIdx === 3 && cycleWeekIdx !== 1) {
-      d.note = '⚠ ~112g pre-dinner (Set A) — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.';
-      d.noteWarn = true;
-    } else if (dayIdx === 3 && cycleWeekIdx === 1) {
-      d.note = '⚠ ~116g pre-dinner (Set B) — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.';
-      d.noteWarn = true;
-    }
-    return d;
-  });
-}
-
-function swapLunchRice(days, swap) {
-  if (swap.mon) {
-    const lunch = days[0].meals.find(m => m.type === 'Lunch');
-    if (lunch) lunch.name = `${swap.mon} + Chicken 240g + Greek Yogurt`;
-  }
-  if (swap.tue) {
-    const lunch = days[1].meals.find(m => m.type === 'Lunch');
-    if (lunch) lunch.name = `${swap.tue} + Chicken 240g + Greek Yogurt`;
-  }
-  if (swap.fri) {
-    const lunch = days[4].meals.find(m => m.type === 'Lunch');
-    if (lunch) lunch.name = `${swap.fri} + Chicken 240g`;
-  }
-}
-
-const WEEKS = {
-
-w1:{
-  banner:'<strong>Week 1 — Set A breakfasts.</strong> Overnight oats Mon/Wed/Fri (no separate AM oat bar those days); egg muffins Tue/Thu. Greek-yogurt portion at lunch Mon–Thu. Whey shake Wed/Thu/Fri/Sat. Saturday: chicken lunch (not eggs) + yogurt post-ruck + shake. Sunday: whey in recovery meal + 240g chicken at lunch. Dinners: Gousto Mon–Thu, Blackstone griddle Fri/Sat/Sun.',
-  days:[
-    {name:'Monday', badge:'badge-rest', type:'Rest day', kcal:'~2,050 kcal',
-     meals:[
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Batch-baked flapjack (oats + PB + honey + whey). Skipped on overnight-oats mornings (Mon/Wed/Fri Set A).', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Batch-cooked basmati + 240g batch-roasted chicken, Greek-yogurt portion alongside for the protein top-up.', macros:macro('680','73','70','10'), prot:73},
-       {type:'PM Snack', name:'Banana', detail:'Afternoon energy.', macros:macro('90','1','23',''), prot:1},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Light evening snack.', macros:macro('70','1','18',''), prot:1},
-       {type:'Dinner', name:'Gousto — 60g+ protein pick', detail:'~660 kcal, 60g+ protein. Weekday Gousto night. Rest day — any strong pick (chicken, beef, salmon). Veggie or pasta-only dishes don\'t hit target.', macros:macro('660','60','55','18'), prot:60}
-     ],
-     preDinP:113, note:'~113g pre-dinner (Set A Mon); any 60g+ Gousto closes the day at 185g.'},
-
-    {name:'Tuesday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
-     meals:[
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Full 240g batch-roasted chicken + Greek-yogurt portion. Yogurt added on training days too — lunch protein needs to reach 73g to hit 185g/day.', macros:macro('700','73','70','10'), prot:73},
-       {type:'PM Snack', name:'Banana', detail:'45 min before evening session.', macros:macro('90','1','23',''), prot:1},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18',''), prot:1},
-       {type:'Dinner', name:'Gousto — 65g protein pick', detail:'~730 kcal, 65g protein. Weekday Gousto night. Chicken thighs, beef ragu or salmon. Training day — recovery depends on this meal.', macros:macro('730','65','70','20'), prot:65}
-     ],
-     preDinP:113, note:'~113g pre-dinner (Set A Tue). Gousto at 65g closes the day at 185g.'},
-
-    {name:'Wednesday', badge:'badge-ride', type:'Outdoor Bike 60 min', kcal:'~2,350 kcal',
-     meals:[
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning. Skipped on overnight-oats mornings (Set A Mon/Wed/Fri).', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Bulk Pasta + Tuna + Greek Yogurt', extras:'<span class="getpro-tag">+YOGURT</span>', detail:'Bulk dried pasta with a stir-through tin of tuna; Greek-yogurt portion alongside. Good carbs for the afternoon ride, far cheaper than the sachet pasta.', macros:macro('600','53','78','8'), prot:53},
-       {type:'PM Snack', name:'Banana', detail:'45 min before riding.', macros:macro('90','1','23',''), prot:1},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'One scoop from the 1kg tub, post-ride or between PM snack and dinner. Closes the protein gap on ride days where lunch is tuna/pasta rather than chicken.', macros:macro('150','25','5',''), prot:25},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18',''), prot:1},
-       {type:'Dinner', name:'Gousto — 65g protein pick, carb-friendly', detail:'~730 kcal, 65g protein. Weekday Gousto night. Pasta, rice or noodle Gousto works on ride evenings if the protein source is chicken, fish or beef.', macros:macro('730','65','72','18'), prot:65}
-     ],
-     preDinP:128, note:'~128g pre-dinner (includes whey shake). Gousto at 65g closes the day at 190g.'},
-
-    {name:'Thursday', badge:'badge-train', type:'Kettlebell + MaxiClimber', kcal:'~2,350 kcal',
-     meals:[
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning.', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Paprika Batch Rice + Prawns 150g + Greek Yogurt', extras:'<span class="fav-tag">★ PAELLA</span><span class="getpro-tag">+YOGURT</span>', detail:'Homemade "paella" — batch rice with paprika and peas, cold prawns stirred in, Greek-yogurt portion alongside. Replaces the Ben\'s pouch; same carb base for evening kettlebell.', macros:macro('480','47','62','12'), prot:47},
-       {type:'PM Snack', name:'Banana', detail:'45 min before session. Carbs matter tonight.', macros:macro('90','1','23',''), prot:1},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Between session and dinner — closes the protein gap left by the lower-protein rice-and-prawn lunch. Non-negotiable on Thursdays.', macros:macro('150','25','5',''), prot:25},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-session.', macros:macro('70','1','18',''), prot:1},
-       {type:'Dinner', name:'Gousto — strongest pick of the week, ≥65g protein', detail:'~730 kcal, 65g protein. Weekday Gousto night. Lowest pre-dinner protein day — Gousto must deliver. Chicken, beef or salmon. NOT a pasta-only or veggie dish.', macros:macro('730','65','68','22'), prot:65}
-     ],
-     preDinP:112, note:'⚠ ~112g pre-dinner (Set A) — lowest pre-dinner day. Gousto MUST be ≥65g protein. No exceptions.', noteWarn:true},
-
-    {name:'Friday', badge:'badge-ride', type:'Outdoor Bike 60 min — Griddle night', kcal:'~2,350 kcal',
-     meals:[
-       {type:'AM Snack', name:'Homemade Oat Bar', detail:'Mid-morning. Skipped on overnight-oats mornings (Set A Mon/Wed/Fri).', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Batch Rice + Chicken 240g', detail:'Full batch-roasted chicken pack. Strong protein lunch — rice+chicken gives 58g without needing the yogurt top-up.', macros:macro('550','58','58','10'), prot:58},
-       {type:'PM Snack', name:'Banana', detail:'45 min before ride.', macros:macro('90','1','23',''), prot:1},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Post-ride or between PM snack and dinner. Brings pre-dinner total to 128g so any 65g+ griddle dinner hits 193g.', macros:macro('150','25','5',''), prot:25},
-       {type:'Eve Snack', name:'Apple or orange', detail:'Post-ride.', macros:macro('70','1','18',''), prot:1},
-       {type:'Dinner', name:'Blackstone griddle — 65g protein, end-of-week', detail:'~730 kcal, 65g protein. First griddle night of the weekend. Griddled chicken, lean steak or salmon + veg + flatbreads or rice. You\'ve earned the Friday cook.', macros:macro('730','65','65','18'), prot:65}
-     ],
-     preDinP:128, note:'~128g pre-dinner (shake included, strong chicken lunch). 65g griddle = 193g total. First griddle night.'},
-
-    {name:'Saturday', badge:'badge-ruck', type:'Rucking 60–90 min', kcal:'~2,500 kcal',
-     meals:[
-       {type:'On Waking', name:'Banana out the door (or fasted)', detail:'Very early start — at easy pace, fasted is fine. Banana if you want fuel.', macros:macro('150','3','30','5'), prot:3},
-       {type:'Post-Ruck', name:'Porridge 80g + Milk + 2 Eggs + Banana + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — the recovery meal. 80g oats, semi-skimmed milk, 2 eggs, banana, Greek-yogurt portion. The yogurt is essential here — without it Saturday protein collapses.', macros:macro('680','37','72','14'), prot:37},
-       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'Full 240g batch-roasted chicken — NOT eggs on toast (22g vs 58g protein). This single swap adds 36g protein to Saturday. Non-negotiable.', macros:macro('550','58','46','8'), prot:58},
-       {type:'PM Snack', name:'Banana + Apple + Homemade Oat Bar', detail:'Afternoon. Add the oat bar on Saturday to keep the total moving.', macros:macro('360','12','56',''), prot:12},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Evening, before dinner. Saturday\'s structure makes it hard to hit 185g without a shake — treat this as a planned meal, not optional.', macros:macro('150','25','5',''), prot:25},
-       {type:'Dinner', name:'Blackstone griddle — carb-rich pick (tomorrow\'s pre-ride meal)', detail:'~730 kcal, 62g protein. Saturday griddle night, biased carb-rich: griddled chicken thighs or steak + flatbreads or rice + griddled veg. This dinner fuels Sunday\'s ride.', macros:macro('730','62','82','20'), prot:62}
-     ],
-     preDinP:135, note:'Saturday was the biggest protein gap in the old plan. Chicken lunch + yogurt post-ruck + shake are all required. 135g pre-dinner + 62g griddle = 197g.'},
-
-    {name:'Sunday', badge:'badge-long', type:'Long Ride — Building to 3h30', kcal:'~2,700 kcal',
-     meals:[
-       {type:'On Waking', name:'Half banana or rice cake square', detail:'15–40 g fast carbs only, 10–15 min before rolling. Last night\'s carb-rich griddle dinner was the real pre-ride meal. Overnight oats jar is for post-ride recovery — don\'t eat it now.', macros:macro('120','2','28','1'), prot:2},
-       {type:'On-Bike', name:'Rice cakes + flapjack + energy balls + electrolyte bottles (from minute 0)', detail:'Summer solids-only: 60 g/hr for 2–2.5 h, 70–80 g/hr beyond 2.5 h. ~2 pieces/hour on long days. E1 + E2 electrolyte bottles (500–750 ml/hr, salt + lite salt) — no carb drink mix. Start fuelling min 15.', macros:macro('420','8','98','6'), prot:8},
-       {type:'Recovery', name:'Chocolate Milk → Protein Overnight Oats Jar',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Tier 1: chocolate milk in car (~10 g P). Tier 2 within 60 min: full recovery oats jar with 1 scoop whey + Greek yogurt (≥30 g protein, ~55 g carbs). Jar built the night before.', macros:macro('720','42','75','12'), prot:42},
-       {type:'Lunch', name:'Chicken 240g + Batch Rice + Salad', detail:'A few hours after the ride. Increased from 150g to 240g chicken — adds 10g protein and improves afternoon recovery before the next training day.', macros:macro('550','58','56','10'), prot:58},
-       {type:'Dinner', name:'Blackstone griddle — 65g protein recovery pick', detail:'~700 kcal, 65g protein. Sunday griddle night. Griddled salmon, chicken or lean steak + veg + potatoes or rice. Strong protein close to a big ride day.', macros:macro('700','65','64','16'), prot:65}
-     ],
-     preDinP:122, note:'122g pre-dinner (whey in recovery oats + 240g chicken at lunch). Griddle at 65g = 187g total. Chocolate milk → oats jar within 60 min of finishing.'}
-  ]
-},
-
-w2:{
-  banner:'<strong>Week 2 — Set B breakfasts + rice variety.</strong> Oat bar + Skyr Mon/Wed/Fri; yoghurt pot + 2 eggs Tue/Thu. Monday and Friday batch rice seasoned differently for variety (same bulk basmati, same macros). All protein targets and calorie tiers identical to Week 1.',
-  riceSwap:{mon:'Mexican-Spiced Batch Rice', fri:'Golden Turmeric Batch Rice'}
-},
-
-w3:{
-  banner:'<strong>Week 3 — Set A breakfasts + further rice rotation.</strong> Back to overnight oats + egg muffins. Monday takes Golden Turmeric, Tuesday takes Mexican-Spiced, Friday returns to plain batch rice.',
-  riceSwap:{mon:'Golden Turmeric Batch Rice', tue:'Mexican-Spiced Batch Rice', fri:'Batch Rice'}
-},
-
-w4:{
-  banner:'<strong>Week 4 — Recovery Week.</strong> Set A breakfasts (same recipes, recovery portions). Lower volume, lighter food. Calorie targets drop 150–200 kcal. Snacks reduce to 1–2 per day. Lighter dinner (Gousto Mon–Thu / lighter griddle Fri, under 600 kcal). Protein holds at 185g minimum — the shake stays in. Cut comes from carbs and fat only.',
-  recovery:true,
-  days:[
-    {name:'Mon–Fri', badge:'badge-recovery', type:'Recovery week — reduced training', kcal:'~2,000–2,100 kcal',
-     meals:[
-       {type:'Snack', name:'Oat bar on training days, skip on rest days', detail:'Keep protein snacks. Drop fruit snacks on rest days. Oat bar on training days only.', macros:macro('200','10','15','9'), prot:10},
-       {type:'Lunch', name:'Same lunch choices — no change', detail:'Lunch stays identical to Weeks 1–3 (batch rice + chicken). The calorie cut comes from a lighter dinner and snack reduction, not lunch.', macros:macro('500','45','60','10'), prot:45},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Keep the shake even in recovery week — protein target doesn\'t drop.', macros:macro('150','25','5',''), prot:25},
-       {type:'Dinner', name:'Lighter pick (Gousto Mon–Thu / griddle Fri) — 55g+ protein', detail:'~560 kcal, 55g protein. Thai prawn salad, baked cod with greens, or a light griddled chicken-and-veg bowl. Lean protein, less carb. Don\'t pick a low-protein option just because it\'s recovery week.', macros:macro('560','55','48','14'), prot:55}
-     ],
-     preDinP:110, note:'Recovery week: protein holds at 185g minimum — shake stays in. The calorie cut comes from carbs/fat. Body adapts during rest.'},
-
-    {name:'Saturday', badge:'badge-ruck', type:'Easy 60 min ruck — recovery pace', kcal:'~2,150 kcal',
-     meals:[
-       {type:'On Waking', name:'Fasted or banana', detail:'Easy recovery ruck — fasted at easy pace is fine.', macros:macro('90','1','23','')},
-       {type:'Post-Ruck', name:'60g Porridge + 2 Eggs + Greek Yogurt',extras:'<span class="getpro-tag">+YOGURT</span>', detail:'On return — smaller than a build week (60g oats vs 80g) but the yogurt stays in. Same protein rules apply even in recovery week.', macros:macro('570','43','48','14')},
-       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Chicken not eggs on toast — same rule as build Saturday. 150g chicken (not 240g) reflects the lighter recovery day.', macros:macro('450','40','42','8')},
-       {type:'Protein Shake', name:'Whey shake — 25g protein (home-mixed)', detail:'Saturday protein gap exists even in recovery week. Shake stays in.', macros:macro('150','25','5','')},
-       {type:'Dinner', name:'Blackstone griddle — lighter recovery pick, 58g+ protein', detail:'~650 kcal, 58g protein. Saturday griddle night. Bias carbs if Sunday is still a ride.', macros:macro('650','58','58','18')}
-     ],
-     preDinP:109, note:'Recovery Saturday: same protein rules as build week — chicken lunch and yogurt at breakfast are required. 109g pre-dinner + 58g griddle = 167g.'},
-
-    {name:'Sunday', badge:'badge-long', type:'Shorter ride — 75–90 min recovery pace', kcal:'~2,150 kcal',
-     meals:[
-       {type:'On Waking', name:'Half banana, 10–20 min before', detail:'Small fast carbs only. Recovery oats jar comes after the ride.', macros:macro('90','1','23','')},
-       {type:'On-Bike', name:'Rice cake or energy balls + electrolyte (from the start)', detail:'Recovery-pace ride still practises the solids + electrolyte habit. ~40–60 g/hr if ≥75 min.', macros:macro('120','3','28','2')},
-       {type:'Recovery', name:'Chocolate Milk → Protein Overnight Oats Jar',extras:'<span class="getpro-tag">+WHEY</span>', detail:'Same two-tier stack as build-week Sunday — chocolate milk first, then whey-enriched oats jar (≥30 g protein).', macros:macro('650','38','68','10'), prot:38},
-       {type:'Lunch', name:'Chicken 150g + Batch Rice + Salad', detail:'Recovery ride: 150g chicken (lighter than build week 240g). Still essential to get protein in post-ride.', macros:macro('480','42','46','8')},
-       {type:'Dinner', name:'Blackstone griddle — end-of-cycle pick, 62g+ protein', detail:'~680 kcal, 62g protein. Sunday griddle night, final meal before the cycle repeats. Salmon, chicken or lean steak. Raise the target vs old plan (was 48g, now 62g).', macros:macro('680','62','62','16')}
-     ],
-     preDinP:99, note:'End of 4-week cycle. Whey now in recovery meal. 99g pre-dinner + 62g griddle = 161g — acceptable for recovery week. Sunday morning: weight check.'}
-  ]
-}
-};
-
-// ── RENDER WEEKS ─────────────────────────────────────────────────────────────
-
-function renderDay(day){
-  const barPct = Math.min(100, Math.round(day.preDinP/185*100));
+function renderDay(day) {
+  const barPct = Math.min(100, Math.round(day.preDinP / 185 * 100));
   const barColor = day.preDinP >= 120 ? 'var(--accent)' : day.preDinP >= 100 ? 'var(--protein)' : 'var(--accent2)';
   const noteClass = day.noteWarn ? 'pb-note pb-warn' : 'pb-note';
+  const bannerClass = day.badge === 'badge-recovery' ? ' recovery' : '';
   return `
 <div class="day-card" onclick="toggleDay(this)">
   <div class="day-header">
@@ -446,13 +263,13 @@ function renderDay(day){
   </div>
   <div class="day-body">
     <table class="meal-table">
-      ${day.meals.map(m=>`
+      ${day.meals.map(m => `
       <tr>
         <td class="meal-type-cell">${m.type}</td>
         <td>
-          <div class="meal-name">${m.name}${m.extras||''}</div>
+          <div class="meal-name">${m.name}</div>
           <div class="meal-detail">${m.detail}</div>
-          <div class="meal-macros">${m.macros}</div>
+          <div class="meal-macros">${macroHtml(m.macros)}</div>
         </td>
       </tr>`).join('')}
     </table>
@@ -466,44 +283,17 @@ function renderDay(day){
 </div>`;
 }
 
-function buildWeek1(){
-  const days = applyBreakfastRotation(WEEKS.w1.days, 0);
-  return `<div class="week-banner"><p>${WEEKS.w1.banner}</p></div>${days.map(renderDay).join('')}`;
+function buildWeekPanel(weekData) {
+  const cls = weekData.recovery ? 'week-banner recovery' : 'week-banner';
+  return `<div class="${cls}"><p>${weekData.banner}</p></div>${weekData.days.map(renderDay).join('')}`;
 }
 
-function buildWeek2(){
-  let days = applyBreakfastRotation(JSON.parse(JSON.stringify(WEEKS.w1.days)), 1);
-  swapLunchRice(days, WEEKS.w2.riceSwap);
-  return `<div class="week-banner"><p>${WEEKS.w2.banner}</p></div>${days.map(renderDay).join('')}`;
-}
+['w1', 'w2', 'w3', 'w4'].forEach((id, i) => {
+  document.getElementById(id).innerHTML = buildWeekPanel(WEEKS[i]);
+});
 
-function buildWeek3(){
-  let days = applyBreakfastRotation(JSON.parse(JSON.stringify(WEEKS.w1.days)), 2);
-  swapLunchRice(days, WEEKS.w3.riceSwap);
-  return `<div class="week-banner"><p>${WEEKS.w3.banner}</p></div>${days.map(renderDay).join('')}`;
-}
-
-function buildWeek4(){
-  const w = WEEKS.w4;
-  const recoveryDays = w.days.map((day, i) => {
-    if (i !== 0) return day;
-    const d = JSON.parse(JSON.stringify(day));
-    const bk = BREAKFASTS.a_mwf;
-    d.meals = [{type:'Breakfast', name:bk.name + ' (recovery portions)', detail:'Same Set A recipes — calorie cut comes from lighter dinner and fewer snacks, not breakfast.', macros:bk.macros, prot:bk.prot}, ...d.meals];
-    d.preDinP = calcPreDinP(d.meals);
-    return d;
-  });
-  return `<div class="week-banner recovery"><p>${w.banner}</p></div>${recoveryDays.map(renderDay).join('')}`;
-}
-
-document.getElementById('w1').innerHTML = buildWeek1();
-document.getElementById('w2').innerHTML = buildWeek2();
-document.getElementById('w3').innerHTML = buildWeek3();
-document.getElementById('w4').innerHTML = buildWeek4();
-
-// Auto-select the correct week of the 4-week cycle
 if (AUTO_WEEK > 0) {
-  const _allTabs   = document.querySelectorAll('.wtab');
+  const _allTabs = document.querySelectorAll('.wtab');
   const _allPanels = document.querySelectorAll('.week-panel');
   _allTabs[0].classList.remove('active');
   _allPanels[0].classList.remove('active');
@@ -511,17 +301,16 @@ if (AUTO_WEEK > 0) {
   if (_allPanels[AUTO_WEEK]) { _allPanels[AUTO_WEEK].classList.add('active'); }
 }
 
-function showWeek(id, btn){
-  document.querySelectorAll('.week-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.wtab').forEach(b=>b.classList.remove('active'));
+function showWeek(id, btn) {
+  document.querySelectorAll('.week-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.wtab').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
 }
 
-function toggleDay(card){
+function toggleDay(card) {
   card.classList.toggle('open');
 }
-
 </script>
 </body>
 </html>

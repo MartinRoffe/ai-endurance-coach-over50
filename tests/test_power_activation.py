@@ -27,6 +27,7 @@ def _power_act(aid: int, d: str | None = None):
         "type_key": "road_biking",
         "has_power_meter": 1,
         "avg_power_w": 200,
+        "norm_power_w": 210,
         "duration_seconds": 5400,
     }
 

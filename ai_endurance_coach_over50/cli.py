@@ -181,6 +181,8 @@ def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
     try:
         acts = fetch_activities(api, days=7)
         save_activities(acts)
+        from .analysis import enrich_activities_power
+        enrich_activities_power(api, acts)
     except Exception:
         pass
     from .hr_profile import refresh_hr_profile_if_needed

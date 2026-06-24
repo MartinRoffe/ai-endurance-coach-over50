@@ -386,8 +386,12 @@ def map_activity_power(raw: dict) -> dict:
     max_p = raw.get("maxPower")
     np = raw.get("normativePower") or raw.get("normalizedPower")
     has_pm = raw.get("hasPowerMeter")
-    if has_pm is None and avg is not None:
-        has_pm = float(avg) > 0
+    if has_pm is None:
+        if avg is not None:
+            has_pm = float(avg) > 0
+        elif max_p is not None:
+            # Garmin list API often omits averagePower but still reports maxPower.
+            has_pm = float(max_p) > 0
     return {
         "avg_power_w":     float(avg) if avg is not None else None,
         "max_power_w":     float(max_p) if max_p is not None else None,

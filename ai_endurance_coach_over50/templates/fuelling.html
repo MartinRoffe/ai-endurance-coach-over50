@@ -152,7 +152,7 @@
   <div class="container">
     <div class="hero-eyebrow">Homemade sports nutrition · Masters athlete</div>
     <h1>RIDE<br><span>FUELLING</span></h1>
-    <p class="hero-sub">Summer weekend long rides: <b>solids on the bike</b> (rice cakes, flapjack, energy balls) and <b>electrolyte-heavy bottles</b> for fluid + salt — no carb drink mix. Weekday evenings stay lighter. Maltodextrin bottles remain optional for winter and event-day gut training.</p>
+    <p class="hero-sub">In-ride solids are for <b>weekend long rides only</b> — rice cakes + electrolyte bottles (no carb powder). Weekday 60 min rides: banana before, nothing on the bike. Maltodextrin bottles optional for winter / event gut training.</p>
     <div class="page-toc">
       <a href="#context"><span>Start here</span>Two ride types</a>
       <a href="#physiology"><span>Why it matters</span>Over-50 physiology</a>
@@ -167,6 +167,36 @@
 </div>
 
 <div class="container">
+
+  {% if sunday_fuel %}
+  <section style="padding-top:32px;padding-bottom:0">
+    <div class="callout carbs" style="margin-bottom:0">
+      <p><b>This week's Sunday ride (~{{ sunday_fuel.ride_hours }} h):</b> make <b>{{ sunday_fuel.rice_cakes }} standard rice cakes</b> Friday eve, mix bottles <b>{{ sunday_fuel.bottles | join(' + ') }}</b>{% if sunday_fuel.flapjack %} · pack 1 flapjack bar{% endif %}. Build recovery oats jar the night before.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="calculator">
+    <div class="sec-label">Batch calculator</div>
+    <h2>HOW MANY RICE CAKES?</h2>
+    <p class="lead">One rule: <b>~2 rice cakes per ride-hour + 1 spare</b> (~27 g carbs each → ~55 g/hr). Prep Friday evening — rice cakes need ~24 h in the fridge.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Planned ride</th><th>Rice cakes to make</th><th>Electrolyte bottles</th><th>Also pack</th></tr>
+      </thead>
+      <tbody>
+        {% for tier in fuel_tiers %}
+        <tr{% if sunday_fuel and tier.duration_min == sunday_ride_min %} style="background:rgba(200,241,53,.08)"{% endif %}>
+          <td>{% if tier.ride_hours <= 1.5 %}≤1.5 h{% elif tier.ride_hours <= 2.25 %}2 h{% elif tier.ride_hours <= 3.25 %}2.5–3 h{% elif tier.ride_hours <= 4.25 %}3.5–4 h{% elif tier.ride_hours <= 5.25 %}4.5–5 h{% else %}5.5–6 h{% endif %}</td>
+          <td class="hi">{{ tier.rice_cakes }}</td>
+          <td>{{ tier.bottles | join(' + ') }}</td>
+          <td>{% if tier.flapjack %}1 flapjack bar{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--muted);margin-top:12px">One <a href="/nutrition/recipes/weekend-fuel#standard-rice-cake">standard rice cake recipe</a> — alternate savoury vs sweet batch every other weekend if you want variety.</p>
+  </section>
 
   <!-- TWO RIDE TYPES -->
   <section id="context">
@@ -183,7 +213,7 @@
           <dl>
             <div><dt>Start time</dt><dd>Very early — quiet roads, little time to eat</dd></div>
             <div><dt>Pre-ride challenge</dt><dd>Can't do a proper breakfast. Saturday's carb-rich griddle dinner is the real pre-fuel.</dd></div>
-            <div><dt>During priority</dt><dd><b>Summer:</b> all carbs from solids from minute 0; electrolyte bottles for hydration. Train toward 80–90 g/hr on the longest rides via frequent small bites.</dd></div>
+            <div><dt>During priority</dt><dd><b>Weekends only:</b> rice cakes from minute 0; electrolyte bottles for hydration. Weekday 60 min: banana before, nothing on the bike.</dd></div>
             <div><dt>Post priority</dt><dd>Chocolate milk first, then protein overnight oats jar (≥30 g protein). Saturday rucks use the porridge stack in Daily Menus instead.</dd></div>
           </dl>
         </div>
@@ -197,14 +227,14 @@
           <dl>
             <div><dt>Start time</dt><dd>Post-lunch, pre-dinner — typically 3–5 h after lunch</dd></div>
             <div><dt>Pre-ride challenge</dt><dd>Lunch is your main fuel. Light top-up only if needed — don't over-eat.</dd></div>
-            <div><dt>During priority</dt><dd>Water only under 60 min. One carb bottle or banana for 75–90 min sessions.</dd></div>
+            <div><dt>During priority</dt><dd>Water or electrolyte only under 60 min. Banana 45 min before — no on-bike solids needed.</dd></div>
             <div><dt>Post priority</dt><dd>Recovery bridge to dinner — chocolate milk, not a second dinner.</dd></div>
           </dl>
         </div>
       </div>
     </div>
     <div class="callout carbs" style="margin-top:16px">
-      <p><b>Gut training:</b> weeks 1–4 practise <b>60 g/hr</b> on every ride ≥75 min; weeks 5–8 push long rides to <b>70–80 g/hr</b>; weeks 9+ rehearse <b>90 g/hr</b>. <b>Summer weekends:</b> hit those targets with rice cakes, flapjack and energy balls + electrolyte bottles — train the gut on the solids you'll actually eat. <b>Event prep (charity ride / Haute Route):</b> add maltodextrin bottles to rehearse 1:0.8 dual-source if needed. Nothing new on event day. The deficit belongs to rest days, not the key ride.</p>
+      <p><b>Weekend long rides:</b> hit carb targets with rice cakes + electrolyte bottles. Pack count from the calculator above. <b>Event prep (charity / Haute Route):</b> add maltodextrin bottles for gut training if needed.</p>
     </div>
   </section>
 
@@ -260,7 +290,7 @@
     <p class="lead">You cannot rely on a proper pre-ride breakfast. The fix: <b>night-before loading + a small pre-roll bite + solids on the bike from minute one + electrolyte bottles for fluid and salt.</b> Build tomorrow's protein overnight oats jar the night before — that's recovery, not breakfast.</p>
 
     <div class="callout carbs" style="margin-bottom:20px">
-      <p><b>A/B rotation:</b> full weekend meal sequences (which rice cake when, which oats jar after) live in <a href="/nutrition/recipes/weekend-fuel">Recipes → Weekend ride fuel</a>.</p>
+      <p><b>Recipe:</b> one <a href="/nutrition/recipes/weekend-fuel#standard-rice-cake">standard rice cake</a> batch — pick any recovery oats flavour post-ride. No rotation schedule to track.</p>
     </div>
 
     <h3 style="font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;">Night before</h3>
@@ -422,9 +452,9 @@
       </div>
       <div class="recipe-mini">
         <h4>Recovery oats jar</h4>
-        <div class="macros">~55 g C · ≥30 g P post-ride</div>
+        <div class="macros">~50 g C · ~42 g P post-ride</div>
         <ul>
-          <li>1 scoop whey + 100 g Greek yogurt base</li>
+          <li>350 ml jar: full whey scoop + 90 g yogurt (berries separate)</li>
           <li>Make night before; eat full jar after ride</li>
           <li>4 flavour variants in Recipes</li>
         </ul>

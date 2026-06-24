@@ -5,13 +5,17 @@ from ai_endurance_coach_over50.analysis import (
     _fetch_power_zones,
     _power_summary_from_activity,
     _power_summary_from_dto,
+    activity_needs_power_enrichment,
+    enrich_activities_power,
     fetch_activity_detail,
 )
 from ai_endurance_coach_over50.history import (
+    patch_activity_power,
     power_meter_active,
     save_activities,
     save_ftp_test,
     load_ftp_tests,
+    load_recent_activities,
 )
 from ai_endurance_coach_over50.metrics import map_activity_power
 
@@ -43,6 +47,13 @@ def test_map_activity_power_normative_key_variant():
 def test_map_activity_power_infers_meter_from_avg():
     assert map_activity_power({"averagePower": 150})["has_power_meter"] == 1
     assert map_activity_power({})["has_power_meter"] == 0
+
+
+def test_map_activity_power_infers_meter_from_max_when_avg_missing():
+    out = map_activity_power({"maxPower": 707})
+    assert out["has_power_meter"] == 1
+    assert out["max_power_w"] == 707.0
+    assert out["avg_power_w"] is None
 
 
 def test_map_activity_power_zero_avg_not_meter():
@@ -163,3 +174,57 @@ def test_ftp_tests_ftp_w_column():
     save_ftp_test("2026-06-01", 100, 155, 168, ftp_w=240)
     rows = load_ftp_tests()
     assert rows[0]["ftp_w"] == 240
+
+
+def test_activity_needs_power_enrichment_list_api_gap():
+    act = {
+        "activity_id": 99,
+        "type_key": "road_biking",
+        "max_power_w": 707,
+        "avg_power_w": None,
+        "norm_power_w": None,
+        "has_power_meter": 1,
+    }
+    assert activity_needs_power_enrichment(act) is True
+
+
+def test_enrich_activities_power_fills_from_detail_api():
+    save_activities([{
+        "activity_id": 23360776470,
+        "date": date.today().isoformat(),
+        "type_key": "road_biking",
+        "max_power_w": 707,
+        "has_power_meter": 1,
+    }])
+
+    class _Api:
+        def get_activity(self, activity_id):
+            return {"summaryDTO": {
+                "averagePower": 128,
+                "maxPower": 707,
+                "normalizedPower": 147,
+            }}
+
+        def get_activity_power_in_timezones(self, activity_id):
+            return [{"zoneNumber": 2, "secsInZone": 900, "zoneLowBoundary": 154}]
+
+    acts = load_recent_activities(7)
+    n = enrich_activities_power(_Api(), acts)
+    assert n == 1
+    updated = next(a for a in load_recent_activities(7) if a["activity_id"] == 23360776470)
+    assert updated["avg_power_w"] == 128
+    assert updated["norm_power_w"] == 147
+
+
+def test_patch_activity_power_updates_row():
+    save_activities([{
+        "activity_id": 50,
+        "date": date.today().isoformat(),
+        "type_key": "cycling",
+        "max_power_w": 400,
+        "has_power_meter": 1,
+    }])
+    assert patch_activity_power(50, {"avg_power_w": 210, "norm_power_w": 220}) is True
+    row = next(a for a in load_recent_activities(7) if a["activity_id"] == 50)
+    assert row["avg_power_w"] == 210
+    assert row["norm_power_w"] == 220

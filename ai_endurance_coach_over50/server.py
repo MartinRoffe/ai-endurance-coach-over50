@@ -19,7 +19,7 @@ from fastapi.requests import Request
 from pydantic import BaseModel, Field
 
 from .alerts import check_fatigue_alerts
-from .analysis import default_fuelling_plan, generate_recovery_suggestion, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, refresh_power_backfill, retrieve_relevant_analyses
+from .analysis import default_fuelling_plan, generate_recovery_suggestion, enrich_activities_power, load_analyses_for_activities, prefetch_fuelling_plans, prefetch_nutrition_targets, prefetch_workout_descriptions, refresh_analyses, refresh_power_backfill, retrieve_relevant_analyses, sync_power_data
 from .client import get_api
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import (PLAN_START as _PLAN_START, build_calendar_weeks, build_camp_weeks,
@@ -371,6 +371,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                     api = get_api(email_addr, password)
                 acts_raw = fetch_activities(api, days=7)
                 save_activities(acts_raw)
+                enrich_activities_power(api, acts_raw)
             except Exception:
                 pass
     activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
@@ -528,31 +529,30 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
 
     power_snapshot = None
     try:
-        if power_meter_active():
-            tests = load_ftp_tests()
-            ftp_w = next((t["ftp_w"] for t in reversed(tests) if t.get("ftp_w")), None)
-            if ftp_w:
-                for act in load_recent_activities(14):
-                    if act.get("type_key") not in _BIKE_TYPE_KEYS:
-                        continue
-                    np_w = act.get("norm_power_w")
-                    if not np_w:
-                        continue
-                    try:
-                        sess = session_for_date_extended(date.fromisoformat(act["date"]))
-                    except Exception:
-                        sess = None
-                    label = sess[1] if sess else ""
-                    if label not in QUALITY_BIKE_LABELS:
-                        continue
-                    power_snapshot = {
-                        "label": label,
-                        "date": act["date"],
-                        "norm_power_w": round(np_w),
-                        "ftp_w": ftp_w,
-                        "pct_ftp": round(np_w / ftp_w * 100),
-                    }
-                    break
+        tests = load_ftp_tests()
+        ftp_w = next((t["ftp_w"] for t in reversed(tests) if t.get("ftp_w")), None)
+        if ftp_w:
+            for act in load_recent_activities(14):
+                if act.get("type_key") not in _BIKE_TYPE_KEYS:
+                    continue
+                np_w = act.get("norm_power_w")
+                if not np_w:
+                    continue
+                try:
+                    sess = session_for_date_extended(date.fromisoformat(act["date"]))
+                except Exception:
+                    sess = None
+                label = sess[1] if sess else ""
+                if label not in QUALITY_BIKE_LABELS:
+                    continue
+                power_snapshot = {
+                    "label": label,
+                    "date": act["date"],
+                    "norm_power_w": round(np_w),
+                    "ftp_w": ftp_w,
+                    "pct_ftp": round(np_w / ftp_w * 100),
+                }
+                break
     except Exception:
         pass
 
@@ -717,6 +717,14 @@ def _merge_compound_activities(activities: list[dict]) -> list[dict]:
 
 @app.get("/analysis", response_class=HTMLResponse)
 def analysis_view(request: Request):
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        try:
+            api = get_api(email_addr, password)
+            sync_power_data(api, days=14)
+        except Exception:
+            pass
     activities_raw = load_recent_activities(days=14)
     activities = load_analyses_for_activities(
         [enrich_activity(a) for a in activities_raw]
@@ -874,8 +882,13 @@ def analysis_refresh():
                 from .metrics import fetch_activities
                 acts_raw = fetch_activities(api, days=14)
                 save_activities(acts_raw)
+                enrich_activities_power(api, acts_raw)
             except Exception:
                 pass
+        try:
+            sync_power_data(api, days=14)
+        except Exception:
+            pass
         try:
             refresh_analyses(api, days=14)
         except Exception:
@@ -1642,13 +1655,18 @@ async def compliance_view(request: Request):
 @app.get("/nutrition", response_class=HTMLResponse)
 async def nutrition_plan(request: Request):
     today = _today()
-    days_since_start = (today - _PLAN_START).days
-    cycle_week = max(0, days_since_start // 7) % 4  # 0-indexed: 0=w1, 1=w2, 2=w3, 3=w4
+    from .nutrition_plan import (
+        SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g,
+        SIMPLE_RULES, today_checklist, cycle_week_index,
+        fuel_prep_for_ride, _sunday_planned_ride_min,
+    )
 
     recent = raw_history(3)
     today_nut = next((r for r in reversed(recent) if r.get("calories_consumed") is not None), None)
-
-    from .nutrition_plan import SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g
+    cycle_week = cycle_week_index(_PLAN_START, today)
+    checklist = today_checklist(_PLAN_START, today)
+    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
+    sunday_fuel = fuel_prep_for_ride(sunday_ride_min) if sunday_ride_min else None
 
     return TEMPLATES.TemplateResponse(
         request=request,
@@ -1656,6 +1674,10 @@ async def nutrition_plan(request: Request):
         context={
             "today": today.isoformat(),
             "cycle_week": cycle_week,
+            "simple_rules": SIMPLE_RULES,
+            "checklist": checklist,
+            "sunday_fuel": sunday_fuel,
+            "sunday_ride_min": sunday_ride_min,
             "cal_today":     int(today_nut["calories_consumed"])    if today_nut and today_nut.get("calories_consumed")    else None,
             "tdee_today":    int(today_nut["calorie_goal_adjusted"]) if today_nut and today_nut.get("calorie_goal_adjusted") else None,
             "carbs_today":   round(today_nut["carbs_consumed"])     if today_nut and today_nut.get("carbs_consumed")       else None,
@@ -1670,18 +1692,32 @@ async def nutrition_plan(request: Request):
 @app.get("/nutrition/meals", response_class=HTMLResponse)
 async def nutrition_meals(request: Request):
     today = _today()
-    days_since_start = (today - _PLAN_START).days
-    cycle_week = max(0, days_since_start // 7) % 4
+    from .nutrition_plan import build_meal_week, cycle_week_index
+    cycle_week = cycle_week_index(_PLAN_START, today)
+    weeks = [build_meal_week(i) for i in range(4)]
     return TEMPLATES.TemplateResponse(
         request=request,
         name="meals.html",
-        context={"cycle_week": cycle_week},
+        context={"cycle_week": cycle_week, "weeks": weeks},
     )
 
 
 @app.get("/nutrition/fuelling", response_class=HTMLResponse)
 async def nutrition_fuelling(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="fuelling.html", context={})
+    today = _today()
+    from .nutrition_plan import fuel_prep_for_ride, _sunday_planned_ride_min
+    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
+    sunday_fuel = fuel_prep_for_ride(sunday_ride_min) if sunday_ride_min else None
+    fuel_tiers = [fuel_prep_for_ride(m) for m in (90, 120, 180, 240, 300, 360)]
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="fuelling.html",
+        context={
+            "sunday_fuel": sunday_fuel,
+            "sunday_ride_min": sunday_ride_min,
+            "fuel_tiers": fuel_tiers,
+        },
+    )
 
 
 @app.get("/nutrition/recipes", response_class=HTMLResponse)
@@ -1700,20 +1736,19 @@ async def nutrition_recipes_griddle(request: Request):
 
 
 def _shopping_list_context() -> dict:
-    """Cycle week + default breakfast set for nutrition shopping lists."""
+    """Cycle week for nutrition shopping lists."""
     today = _today()
-    days_since_start = (today - _PLAN_START).days
-    cycle_week = max(0, days_since_start // 7) % 4
+    from .nutrition_plan import cycle_week_index
+    cycle_week = cycle_week_index(_PLAN_START, today)
     labels = [
-        "Week 1 — Set A",
-        "Week 2 — Set B",
-        "Week 3 — Set A",
-        "Week 4 — Set A recovery",
+        "Week 1 — build",
+        "Week 2 — build",
+        "Week 3 — build",
+        "Week 4 — recovery",
     ]
     return {
         "cycle_week": cycle_week,
         "cycle_week_label": labels[cycle_week],
-        "default_breakfast_set": "b" if cycle_week == 1 else "a",
     }
 
 
@@ -2215,6 +2250,9 @@ def _coach_system() -> str:
         "plan), get_compliance_detail, get_workout_description, get_fuelling_plan, get_event_plans "
         "(charity & Haute Route pacing). You have full visibility — never tell the athlete you can't see "
         "their data; if you need depth, fetch it with a read tool.\n\n"
+        "Nutrition: lead with the SIMPLE RULES and Today's Nutrition Checklist in context when discussing "
+        "food; only cite full meal-level detail if asked. Weekend in-ride solids are for long rides only — "
+        "use fuel_prep_for_ride batch counts (rice cakes + electrolyte bottles) keyed to planned ride length.\n\n"
         "Training plan context: 12-week plan runs 18 May – 9 Aug 2026, followed by Tenerife cycling camp "
         "(13–27 Aug) and event prep block (Aug 31 – Sep 12). Builds from Zone 2 base to back-to-back long "
         "rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests (wks 3/7/12), hill repeats "

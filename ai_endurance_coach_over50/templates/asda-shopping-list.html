@@ -54,6 +54,7 @@
   .totbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);border-top:1px solid var(--border);color:var(--text);padding:13px 18px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.4);}
   .totbar .lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;}
   .totbar .big{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent);letter-spacing:0.02em;}
+  .totbar .mid{text-align:center;}
   .totbar .right{text-align:right;}
   .totbar .count{font-size:12px;color:var(--muted);margin-top:2px;}
   footer{text-align:center;font-size:11px;color:var(--muted);padding:18px;}
@@ -83,8 +84,9 @@
   <div class="banner"><b>Tip:</b> sign in to Asda first so items drop straight into your trolley. Each link opens an Asda search in a new tab.</div>
   <div class="banner"><b>Gousto</b> covers Mon–Thu dinners (not on this list).</div>
   <div class="banner"><b>Griddle treat weeks</b> (burgers, full English, chorizo paella): add sausages, back bacon, beef mince, brioche and cheese that week only.</div>
-  <div class="banner"><b>Summer rides:</b> on-bike fuel is rice cakes, flapjack and energy balls — not carb drink mix. Maltodextrin/fructose below are for winter and event-day gut training only.</div>
-  <div class="banner"><b>Frequency:</b> “Buy Every Week” is fresh/chilled/frozen; “Top Up When Low” is cupboard staples — check before you shop.</div>
+  <div class="banner"><b>Default view:</b> breakfast + lunches only — target <b>≈£26–30/week</b> (Gousto dinners ordered separately). Toggle <b>Weekend ride</b> when you need rice-cake ingredients.</div>
+  <div class="banner"><b>Summer rides:</b> rice cakes + electrolyte bottles only — no carb powder. Maltodextrin/fructose are winter/event prep only.</div>
+  <div class="banner"><b>Frequency:</b> “Buy Every Week” is the core shop; “Top Up When Low” is cupboard staples — check before you buy.</div>
 
   <div class="cat"><h2>Buy Every Week</h2><span class="sub">fresh produce, bakery, chilled &amp; frozen</span></div>
   <!-- items injected -->
@@ -98,7 +100,8 @@
 
 <div class="totbar">
   <div><div class="lbl">Ticked so far</div><div class="big" id="tickedTotal">£0.00</div></div>
-  <div class="right"><div class="lbl">Full list target</div><div class="big" id="fullTotal">£0.00</div><div class="count" id="count">0 of 0 added</div></div>
+  <div class="mid"><div class="lbl">Weekly core</div><div class="big" id="weeklyCoreTotal">£0.00</div></div>
+  <div class="right"><div class="lbl">List total</div><div class="big" id="fullTotal">£0.00</div><div class="count" id="count">0 ticked · 0 shown</div></div>
 </div>
 
 <footer>Companion to your weekly meal plan &amp; tracker · prices are targets, June 2026 · Gousto (Mon–Thu dinners) ordered separately.</footer>
@@ -116,7 +119,6 @@ initShoppingList({
   linkFn: ASDA,
   webFn: WEB,
   addLabel: "Add ▸",
-  defaultSet: "{{ default_breakfast_set }}",
   cycleLabel: "{{ cycle_week_label }}",
 });
 </script>

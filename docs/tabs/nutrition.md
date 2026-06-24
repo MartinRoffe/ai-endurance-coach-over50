@@ -11,9 +11,13 @@ Ride Fuelling · Recipes · Asda · Lidl.
 
 **Route:** `/nutrition`
 
-Principles, calorie tiers by day type, Garmin logged-intake summary, and hub
-cards linking to the other nutrition pages. Also covers masters-athlete
-supplements.
+**Follow This** section at the top: five simple rules + today's checklist (breakfast,
+lunch, pre-session fuel, dinner, weekend rice-cake prep). Calorie tiers, Garmin
+logged-intake summary, and hub cards to sub-pages.
+
+Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
+(egg muffins Tue/Thu in recovery week only). Weeks 1–3 are identical; week 4 is
+recovery.
 
 ---
 
@@ -21,9 +25,8 @@ supplements.
 
 **Route:** `/nutrition/meals`
 
-The full **4-week repeatable meal-plan cycle** — nine day types (rest, training,
-bike, Thursday session, ruck, long ride, recovery-week variants) with meals,
-macros, and protein checkpoints. Auto-selects the current week of the cycle.
+4-week cycle (weeks 1–3 build, week 4 recovery). Server-rendered from
+`nutrition_plan.py` — no Set A/B breakfast rotation.
 
 ---
 
@@ -31,16 +34,14 @@ macros, and protein checkpoints. Auto-selects the current week of the cycle.
 
 **Route:** `/nutrition/fuelling`
 
-Homemade in-bike and post-ride nutrition protocols:
+**Weekends only** for in-ride solids:
 
-- **Weekend long rides** (2–6 h, early start, minimal breakfast) — night-before
-  loading, wake-up carbs, hour-by-hour on-bike timelines
-- **Evening rides** (post-lunch, pre-dinner) — lunch as pre-fuel, lighter
-  during-ride rules
-- **Post-ride recovery** — chocolate milk window and tiered recovery targets
-- **Friday prep checklist** — bottle mixing, rice cakes, gel flask
+- **Batch calculator** — rice cakes + electrolyte bottles keyed to planned ride length
+- **Weekday rides ≤90 min** — banana before, nothing on the bike
+- **Post-ride recovery** — chocolate milk → protein overnight oats jar
+- **Friday prep** — rice cakes (24 h fridge set) + electrolyte bottles
 
-Formulations link through to the Recipes page for step-by-step methods.
+Maltodextrin drink protocols remain optional for winter / event gut training.
 
 ---
 
@@ -48,23 +49,17 @@ Formulations link through to the Recipes page for step-by-step methods.
 
 **Route:** `/nutrition/recipes`
 
-Batch chicken, rice, oat bars, yogurt pots, griddle dinners, and homemade sports
-drinks / rice cakes / gels.
+Sunday batch: chicken, rice, overnight oats, scotch eggs, protein oat bars (Tue/Thu
+snack), yogurt pots. Friday eve: weekend rice cakes per calculator.
 
 ---
 
 ## Shopping
 
-**Route:** `/nutrition/shopping-list`
+**Route:** `/nutrition/shopping-list` and `/nutrition/lidl-shopping-list`
 
-Click-to-add Asda shopping list with a running total. Maltodextrin and fructose
-are ordered separately from sports-nutrition suppliers.
-
-**Route:** `/nutrition/lidl-shopping-list`
-
-Same weekly list with Lidl target prices. Links open Google search for in-store
-shopping (Lidl has no online grocery trolley). Maltodextrin and fructose are
-ordered separately from sports-nutrition suppliers.
+Category filters (breakfast, lunch, weekend ride, griddle, staples). No Set A/B
+toggle.
 
 ---
 
@@ -75,7 +70,6 @@ Carbs and protein logged in your Garmin food diary appear on:
 - The **Readiness** tab nutrition card
 - The **Nutrition** overview banner
 - The **Body** tab macro tiles (today + 14-day averages)
-- **Coach** context for fuelling and recovery advice
+- **Coach** context (simple rules + checklist lead the nutrition block)
 
-Protein targets in the meal plan aim for roughly **2.0–2.2 g per kg** body
-weight for the over-50 athlete.
+Protein targets use lean-mass-based floors from `protein_target_g()`.

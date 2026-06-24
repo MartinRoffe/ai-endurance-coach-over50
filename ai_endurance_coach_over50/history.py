@@ -203,6 +203,27 @@ def load_advice(target_date: date) -> Optional[str]:
     return row["advice"] if row else None
 
 
+def patch_activity_power(activity_id: int, fields: dict) -> bool:
+    """Update power columns on an existing activity row. Returns True if patched."""
+    allowed = ("avg_power_w", "max_power_w", "norm_power_w", "has_power_meter")
+    updates = {k: fields[k] for k in allowed if k in fields and fields[k] is not None}
+    if not updates:
+        return False
+    sets = ", ".join(f"{k} = ?" for k in updates)
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        row = con.execute(
+            "SELECT 1 FROM activities WHERE activity_id = ?", (activity_id,)
+        ).fetchone()
+        if not row:
+            return False
+        con.execute(
+            f"UPDATE activities SET {sets} WHERE activity_id = ?",
+            (*updates.values(), activity_id),
+        )
+    return True
+
+
 def save_activities(activities: list[dict]) -> None:
     cols = [name for name, _ in _ACTIVITY_COLS]
     placeholders = ", ".join("?" for _ in cols)

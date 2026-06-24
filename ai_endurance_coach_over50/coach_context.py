@@ -893,8 +893,16 @@ def build_coach_context() -> str:
     # Training interference flags (next 14 days)
     interference_parts = _interference_flags(14)
 
-    # Nutrition plan — today's prescribed meals + this week's overview
-    from .nutrition_plan import nutrition_coach_context, nutrition_week_context
+    # Nutrition plan — simple rules + today's meals + week overview
+    from .nutrition_plan import (
+        SIMPLE_RULES, today_checklist, nutrition_coach_context, nutrition_week_context,
+    )
+    simple_rules_lines = ["## Nutrition — Follow This (simple rules)"] + [
+        f"  • {r}" for r in SIMPLE_RULES
+    ]
+    checklist_lines = ["## Today's Nutrition Checklist"] + [
+        f"  • {item}" for item in today_checklist(PLAN_START, today)
+    ]
     nutrition_ctx = nutrition_coach_context(PLAN_START, today)
     nutrition_week_ctx = nutrition_week_context(PLAN_START, today)
 
@@ -925,6 +933,10 @@ def build_coach_context() -> str:
         *([*monotony_parts, ""] if monotony_parts else []),
         *([*zone_parts, ""] if zone_parts else []),
         *([*compliance_parts, ""] if compliance_parts else []),
+        *simple_rules_lines,
+        "",
+        *checklist_lines,
+        "",
         nutrition_ctx,
         "",
         nutrition_week_ctx,

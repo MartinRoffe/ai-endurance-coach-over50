@@ -217,7 +217,7 @@
   <div class="container">
     <div class="hero-eyebrow">Nutrition Plan · Bulk-Staple Rebuild · 4-Week Repeatable Cycle</div>
     <h1>FUEL TO<br><span>PERFORM</span></h1>
-    <p class="hero-sub">A 4-week repeatable plan rebuilt around bulk staples — batch-roasted chicken, eggs, a Greek-yogurt tub, a whey tub and bulk oats and rice. <strong>A/B breakfast rotation</strong> (Set A weeks 1 &amp; 3, Set B week 2) keeps mornings varied without extra prep. Same 185g+ protein, carbs timed to training, ~£18/week cheaper.</p>
+    <p class="hero-sub">One fixed weekday pattern, Sunday batch prep, and a simple weekend fuel calculator. Bulk staples — chicken, scotch eggs, yogurt, whey, oats and rice. Protein floor {{ protein_target.low }}–{{ protein_target.high }} g/day.</p>
     <div class="hero-stats">
       <div class="stat"><div class="stat-val">185g+</div><div class="stat-label">Daily Protein</div></div>
       <div class="stat"><div class="stat-val">60–90</div><div class="stat-label">g carbs/hr long rides</div></div>
@@ -265,6 +265,40 @@
 
 <div class="container">
 
+  <!-- FOLLOW THIS -->
+  <section>
+    <div class="section-label">Start here</div>
+    <h2>FOLLOW THIS</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:18px 20px;border-radius:0 4px 4px 0">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px">5 simple rules</div>
+        <ol style="margin:0;padding-left:18px;color:#b0b39a;font-size:13px;line-height:1.7">
+          {% for rule in simple_rules[:5] %}
+          <li style="margin-bottom:8px">{{ rule }}</li>
+          {% endfor %}
+        </ol>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent3);padding:18px 20px;border-radius:0 4px 4px 0">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px">Today's checklist</div>
+        <ul style="margin:0;padding-left:18px;color:#b0b39a;font-size:13px;line-height:1.7;list-style:none">
+          {% for item in checklist %}
+          <li style="margin-bottom:6px;padding-left:0">→ {{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% if sunday_fuel %}
+    <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);padding:12px 18px;border-radius:4px;font-size:13px;color:#b0b39a">
+      <strong style="color:var(--accent2)">This Sunday (~{{ sunday_fuel.ride_hours }} h):</strong>
+      make <strong style="color:var(--text)">{{ sunday_fuel.rice_cakes }} rice cakes</strong> Friday eve,
+      mix bottles <strong style="color:var(--text)">{{ sunday_fuel.bottles | join(' + ') }}</strong>
+      {% if sunday_fuel.flapjack %}· pack 1 flapjack{% endif %}.
+      <a href="/nutrition/fuelling" style="color:var(--accent);margin-left:6px">Full calculator →</a>
+    </div>
+    {% endif %}
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)">Need meal-level detail? <a href="/nutrition/meals" style="color:var(--accent)">Daily menus</a> · <a href="/nutrition/recipes" style="color:var(--accent)">Batch recipes</a></p>
+  </section>
+
   <!-- PRINCIPLES -->
   <section>
     <div class="section-label">How This Plan Works</div>
@@ -293,12 +327,12 @@
       <div class="principle-card pc-sunday">
         <div class="principle-icon">☀️</div>
         <div class="principle-title">Sunday = Max Fuel</div>
-        <p>Carb-rich Saturday griddle dinner is the real pre-ride meal. Small pre-roll bite on waking. <b>Summer:</b> all ride carbs from rice cakes, flapjack and energy balls; electrolyte bottles for fluid + salt. Post-ride: chocolate milk, then protein overnight oats jar (≥30 g). Full protocols in the <a href="/nutrition/fuelling" style="color:var(--accent2)">Ride Fuelling guide</a> and <a href="/nutrition/recipes/weekend-fuel" style="color:var(--accent2)">weekend recipes</a>.</p>
+        <p>Carb-rich Saturday griddle dinner fuels Sunday. Weekday rides: banana only. <b>Weekend long rides:</b> rice cakes + electrolyte bottles — batch count from ride length. Post-ride: chocolate milk → protein overnight oats. <a href="/nutrition/fuelling" style="color:var(--accent2)">Ride Fuelling guide</a>.</p>
       </div>
       <div class="principle-card pc-cost">
-        <div class="principle-icon">🔄</div>
-        <div class="principle-title">Two Weeks, Still Simple</div>
-        <p>Two breakfasts batched each Sunday (~60–75 min) — Set A: overnight oats + egg muffins; Set B: oat bars + Skyr + yoghurt/eggs. Week 2 alternates for variety; weeks 1, 3 &amp; 4 use Set A. Full methods in the <a href="/nutrition/recipes#sunday-prep" style="color:var(--accent)">Sunday prep guide</a>.</p>
+        <div class="principle-icon">🥚</div>
+        <div class="principle-title">Fixed Breakfasts</div>
+        <p>Overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu (egg muffins in recovery week only). One Sunday batch — no A/B rotation to track.</p>
       </div>
     </div>
 
