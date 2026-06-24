@@ -2791,7 +2791,7 @@ _VALID_SESSION_TYPES = {"bike", "ftp", "long", "rest", "ruck", "strength", "temp
 
 class _ApplyChangeRequest(BaseModel):
     date: str
-    duration_min: int = Field(..., gt=0, le=600)
+    duration_min: int = Field(..., ge=0, le=600)  # rest days use 0 in plan.py
     reason: str = Field("", max_length=500)
     session_type: Optional[str] = None  # if provided, overrides the plan session type
     label: Optional[str] = Field(None, max_length=100)  # overrides the plan session label

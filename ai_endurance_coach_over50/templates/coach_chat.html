@@ -143,21 +143,34 @@
           label: proposal.session_label || null,
         }),
       });
-      const data = await res.json();
-      if (data.ok) {
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.ok && data.ok) {
         if (typeof idx === 'number') dismissProposal(idx);
         else dismissProposal();
         const g = data.garmin || {};
         const sync = g.pushed
           ? ' Pushed to Garmin Connect.'
           : ' Saved locally — Garmin sync failed, it will reconcile on the next full sync.';
-        renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to **${data.duration_min} min**.${sync}`);
+        const durText = data.duration_min ? `**${data.duration_min} min**` : '**rest day**';
+        renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to ${durText}.${sync}`);
+      } else {
+        if (btn) {
+          btn.textContent = 'FAILED — RETRY';
+          btn.disabled = false;
+        }
+        const detail = data.detail;
+        const msg = typeof detail === 'string' ? detail
+          : Array.isArray(detail) && detail[0]?.msg ? detail[0].msg
+          : 'Could not apply that change.';
+        renderMessage('assistant', `Could not apply the plan change: ${msg}`);
       }
     } catch(e) {
       if (btn) {
-        btn.textContent = 'APPLY CHANGE';
+        btn.textContent = 'FAILED — RETRY';
         btn.disabled = false;
       }
+      renderMessage('assistant', 'Connection error applying the plan change. Please try again.');
     }
   };
 
