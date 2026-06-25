@@ -108,18 +108,26 @@ function itemForCategories(item, activeCats) {
   return item.cats.some(function(c) { return activeCats.has(c); });
 }
 
-function itemVisible(item, activeCats) {
-  return itemForCategories(item, activeCats);
+// Recovery-week-only items (freq:"recovery" — egg muffins, spinach, potatoes)
+// are hidden in build weeks (1–3) and only surface in recovery-week mode.
+function itemVisibleForWeek(item, weekMode) {
+  if (item.freq === "recovery") return weekMode === "recovery";
+  return true;
+}
+
+function itemVisible(item, activeCats, weekMode) {
+  return itemForCategories(item, activeCats) && itemVisibleForWeek(item, weekMode);
 }
 
 function itemCountsWeekly(item) {
   return item.freq === "weekly";
 }
 
-function shopGroupsFor(store, activeCats) {
+function shopGroupsFor(store, activeCats, weekMode) {
   if (!activeCats || !activeCats.size) {
     activeCats = new Set(DEFAULT_SHOP_CATS);
   }
+  weekMode = weekMode === "recovery" ? "recovery" : "build";
   const zones = store === "lidl" ? LIDL_ZONES : ASDA_ZONES;
   const zoneKey = store === "lidl" ? "lidl" : "asda";
   const onlineZone = store === "lidl" ? "7 · Separate Online Order" : "Separate Online Order";
@@ -128,7 +136,7 @@ function shopGroupsFor(store, activeCats) {
       after: zone,
       ext: zone === onlineZone,
       items: SHOP_ITEMS.filter(function(i) {
-        return i[zoneKey] === zone && itemVisible(i, activeCats);
+        return i[zoneKey] === zone && itemVisible(i, activeCats, weekMode);
       }).map(function(i) {
         return [i.name, i.note, store === "lidl" ? i.lidlPrice : i.asdaPrice, i.term, i.freq || "pantry"];
       }),

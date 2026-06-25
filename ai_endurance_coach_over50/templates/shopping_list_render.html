@@ -7,6 +7,7 @@ function initShoppingList(opts) {
   const cycleLabel = opts.cycleLabel || "";
 
   let activeCats = new Set(DEFAULT_SHOP_CATS);
+  let weekMode = opts.weekMode === "recovery" ? "recovery" : "build";
 
   const params = new URLSearchParams(location.search);
   const urlCats = params.get("cats");
@@ -25,6 +26,14 @@ function initShoppingList(opts) {
     }
   }
 
+  const urlWeek = params.get("week");
+  if (urlWeek === "build" || urlWeek === "recovery") {
+    weekMode = urlWeek;
+  } else {
+    const savedWeek = localStorage.getItem("shopWeekMode");
+    if (savedWeek === "build" || savedWeek === "recovery") weekMode = savedWeek;
+  }
+
   const list = document.getElementById("list");
   const cats = [...list.querySelectorAll(".cat h2")].map(function(h) { return h.parentElement; });
   const itemRows = [];
@@ -39,15 +48,18 @@ function initShoppingList(opts) {
 
   function persistFilters() {
     localStorage.setItem("shopCategories", JSON.stringify([...activeCats]));
+    localStorage.setItem("shopWeekMode", weekMode);
     const u = new URL(location.href);
     u.searchParams.delete("set");
     u.searchParams.set("cats", [...activeCats].join(","));
+    u.searchParams.set("week", weekMode);
     history.replaceState(null, "", u);
     document.querySelectorAll("a.compare-link").forEach(function(a) {
       try {
         const link = new URL(a.getAttribute("href"), location.origin);
         link.searchParams.delete("set");
         link.searchParams.set("cats", [...activeCats].join(","));
+        link.searchParams.set("week", weekMode);
         a.href = link.pathname + "?" + link.searchParams.toString();
       } catch (e) { /* ignore */ }
     });
@@ -87,6 +99,9 @@ function initShoppingList(opts) {
       }
       btn.classList.toggle("active", activeCats.has(btn.dataset.shopCat));
     });
+    document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
+      btn.classList.toggle("active", btn.dataset.weekMode === weekMode);
+    });
 
     const hint = document.getElementById("setHint");
     if (!hint) return;
@@ -94,16 +109,17 @@ function initShoppingList(opts) {
     const catText = catLabels.length === SHOP_CATEGORY_IDS.length
       ? "all categories"
       : catLabels.join(", ");
+    const weekLabel = weekMode === "recovery" ? "recovery week" : "build week";
     const coreNote = activeCats.size <= 2 && activeCats.has("breakfast") && activeCats.has("lunch")
       ? " — <b>≈£26–30</b> core shop (batch chicken, oats, scotch eggs, lunches). Toggle <b>Weekend ride</b> only when you need rice cakes."
       : "";
-    hint.innerHTML = "Showing <b>" + catText + "</b>" +
-      (cycleLabel ? " · " + cycleLabel : "") + coreNote;
+    hint.innerHTML = "Showing <b>" + catText + "</b> for the <b>" + weekLabel + "</b>" +
+      (cycleLabel ? " · currently " + cycleLabel : "") + coreNote;
   }
 
   function renderList() {
     clearItems();
-    const GROUPS = shopGroupsFor(STORE, activeCats);
+    const GROUPS = shopGroupsFor(STORE, activeCats, weekMode);
     GROUPS.forEach(function(g) {
       const anchor = catByName(g.after);
       if (!anchor) return;
@@ -173,6 +189,15 @@ function initShoppingList(opts) {
       } else {
         activeCats.add(id);
       }
+      renderList();
+    });
+  });
+
+  document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const mode = btn.dataset.weekMode === "recovery" ? "recovery" : "build";
+      if (mode === weekMode) return;
+      weekMode = mode;
       renderList();
     });
   });

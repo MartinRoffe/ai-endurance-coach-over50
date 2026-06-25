@@ -16,6 +16,22 @@
 </style>
 
 <div class="filter-block">
+  <div class="set-bar" role="group" aria-label="Plan week">
+    <span class="set-bar-label">Plan week</span>
+    <div class="set-btns" id="weekBtns">
+      <button type="button" class="set-btn{% if week_mode != 'recovery' %} active{% endif %}" data-week-mode="build">
+        Build week
+        <span class="set-sub">Weeks 1–3 · standard shop</span>
+      </button>
+      <button type="button" class="set-btn{% if week_mode == 'recovery' %} active{% endif %}" data-week-mode="recovery">
+        Recovery week
+        <span class="set-sub">Week 4 · adds egg-muffin items</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="filter-block">
   <div class="set-bar" role="group" aria-label="Shop categories">
     <span class="set-bar-label">Show</span>
     <div class="set-btns" id="categoryBtns">
