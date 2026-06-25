@@ -1768,6 +1768,7 @@ def _shopping_list_context() -> dict:
     return {
         "cycle_week": cycle_week,
         "cycle_week_label": labels[cycle_week],
+        "week_mode": "recovery" if cycle_week == 3 else "build",
     }
 
 
@@ -2029,11 +2030,17 @@ def _body_context() -> dict[str, Any]:
 
     # TDEE per day = Katch-McArdle BMR (body comp) + measured active calories.
     _tdee_by_date = {}
+    _bmr_by_date = {}
+    _active_by_date = {}
+    _active_est_by_date = {}
     try:
         for _t in tdee_history(14):
             _d = _t["date"]
             _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
             _tdee_by_date[_di] = _t.get("tdee")
+            _bmr_by_date[_di] = _t.get("bmr")
+            _active_by_date[_di] = _t.get("active_calories")
+            _active_est_by_date[_di] = _t.get("active_estimated")
     except Exception:
         pass
 
@@ -2058,13 +2065,37 @@ def _body_context() -> dict[str, Any]:
     # Today's specific values (most recent row with data)
     today_nut = next((r for r in reversed(recent_metrics) if r.get("calories_consumed") is not None), None)
     if today_nut:
+        _today_iso = _row_iso(today_nut)
         cal_ctx["today_consumed"] = today_nut.get("calories_consumed")
-        cal_ctx["today_tdee"]     = _tdee_by_date.get(_row_iso(today_nut))
+        cal_ctx["today_tdee"]     = _tdee_by_date.get(_today_iso)
+        cal_ctx["today_bmr"]      = _bmr_by_date.get(_today_iso)
+        cal_ctx["today_active"]   = _active_by_date.get(_today_iso)
+        cal_ctx["today_active_estimated"] = _active_est_by_date.get(_today_iso)
         cal_ctx["today_goal"]     = today_nut.get("calorie_goal")
         if today_nut.get("carbs_consumed") is not None:
             cal_ctx["today_carbs"] = round(today_nut["carbs_consumed"])
         if today_nut.get("protein_consumed") is not None:
             cal_ctx["today_protein"] = round(today_nut["protein_consumed"])
+        # Activities that rolled up into today's Garmin active-calorie total
+        try:
+            from datetime import date as _date
+            _td = _date.fromisoformat(_today_iso)
+            _acts = load_activities_by_date(_td, _td).get(_today_iso, [])
+            _contrib = []
+            for a in _acts:
+                if a.get("calories") is None:
+                    continue
+                _e = enrich_activity(a)
+                _contrib.append({
+                    "name": a.get("name") or _e.get("type_label") or "Activity",
+                    "icon": _e.get("icon", "🏅"),
+                    "calories": int(round(a["calories"])),
+                })
+            _contrib.sort(key=lambda x: x["calories"], reverse=True)
+            if _contrib:
+                cal_ctx["today_activities"] = _contrib
+        except Exception:
+            pass
     # 14-day macro averages
     carbs_vals   = [r["carbs_consumed"]   for r in recent_metrics if r.get("carbs_consumed")   is not None]
     protein_vals = [r["protein_consumed"] for r in recent_metrics if r.get("protein_consumed") is not None]

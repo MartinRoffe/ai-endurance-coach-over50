@@ -80,6 +80,12 @@ def needs_metrics_refetch(m: DailyMetrics) -> bool:
         return True
     if m.avg_stress is not None and m.rest_stress is None:
         return True
+    # Daily-summary gap: rows saved while the broken get_daily_summary call was
+    # in use have resting_hr (filled via the get_rhr_day fallback) but no steps
+    # or active calories. The summary endpoint supplies all three together, so
+    # resting_hr present + total_steps missing means a stale/broken fetch.
+    if m.resting_hr is not None and m.total_steps is None:
+        return True
     return False
 
 
@@ -280,17 +286,28 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
         logger.debug("Training status fetch failed: %s", e)
 
     # --- Daily summary (steps + active calories / NEAT + resting HR) ---
-    try:
-        daily = api.get_daily_summary(date_str)
-        if isinstance(daily, dict):
-            m.total_steps = daily.get("totalSteps")
-            cals = daily.get("activeKilocalories") or daily.get("activeCalories")
-            m.active_calories = float(cals) if cals is not None else None
-            rhr = daily.get("restingHeartRate")
-            if rhr is not None:
-                m.resting_hr = float(rhr)
-    except Exception as e:
-        logger.debug("Daily summary fetch failed: %s", e)
+    # The garminconnect library exposes this as get_user_summary (alias
+    # get_stats); there is no get_daily_summary. Try both names so the data is
+    # still picked up if the library renames the method again.
+    daily = None
+    for _method in ("get_user_summary", "get_stats"):
+        fn = getattr(api, _method, None)
+        if fn is None:
+            continue
+        try:
+            resp = fn(date_str)
+            if isinstance(resp, dict) and resp:
+                daily = resp
+                break
+        except Exception as e:
+            logger.debug("%s fetch failed: %s", _method, e)
+    if isinstance(daily, dict):
+        m.total_steps = daily.get("totalSteps")
+        cals = daily.get("activeKilocalories") or daily.get("activeCalories")
+        m.active_calories = float(cals) if cals is not None else None
+        rhr = daily.get("restingHeartRate")
+        if rhr is not None:
+            m.resting_hr = float(rhr)
 
     # --- Resting HR fallback (dedicated RHR endpoint) ---
     if m.resting_hr is None:

@@ -1447,10 +1447,21 @@ def tdee_history(days: int = 14) -> list[dict]:
     with _conn() as con:
         _ensure_schema(con)
         _ensure_body_metrics_schema(con)
+        _ensure_activities_schema(con)
         comp_rows = con.execute(
             "SELECT date, weight_kg, fat_pct FROM body_metrics "
             "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL ORDER BY date",
         ).fetchall()
+        # Sum of recorded-activity calories per day — used as a fallback for the
+        # day's active burn when Garmin's daily-summary activeKilocalories is
+        # missing (e.g. not yet synced). When the daily summary IS present it
+        # already includes activities + NEAT, so we don't add on top of it.
+        act_rows = con.execute(
+            "SELECT date, COALESCE(SUM(calories), 0) AS act_cal FROM activities "
+            "WHERE date >= ? AND date <= ? GROUP BY date",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    activity_cal_by_date = {r["date"]: r["act_cal"] for r in act_rows}
     comps = [(r["date"], float(r["weight_kg"]), float(r["fat_pct"])) for r in comp_rows]
 
     def _bmr_on(d_iso: str) -> Optional[float]:
@@ -1469,12 +1480,20 @@ def tdee_history(days: int = 14) -> list[dict]:
         d = row["date"]
         d_iso = d.isoformat() if hasattr(d, "isoformat") else str(d)
         bmr = _bmr_on(d_iso)
+        active = row.get("active_calories")
+        active_estimated = False
+        if active is None:
+            fallback = activity_cal_by_date.get(d_iso)
+            if fallback:
+                active = fallback
+                active_estimated = True
         result.append({
             "date": d,
             "bmr": round(bmr) if bmr is not None else None,
-            "active_calories": row.get("active_calories"),
+            "active_calories": active,
+            "active_estimated": active_estimated,
             "tdee": (
-                round(_tdee(row.get("active_calories"), bmr=bmr))
+                round(_tdee(active, bmr=bmr))
                 if bmr is not None else None
             ),
         })

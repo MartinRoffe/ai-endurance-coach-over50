@@ -243,7 +243,11 @@
       <div>
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">TDEE Today</p>
         <p style="font-family:var(--font-d);font-size:28px;color:var(--text);letter-spacing:0.04em;line-height:1">{{ cal_ctx.today_tdee | int | format_thousands }}</p>
+        {% if cal_ctx.today_bmr and cal_ctx.today_active is not none %}
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">{{ cal_ctx.today_bmr | int | format_thousands }} BMR + {{ cal_ctx.today_active | int | format_thousands }} active</p>
+        {% else %}
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal (activity-adjusted)</p>
+        {% endif %}
       </div>
       {% endif %}
 
@@ -302,8 +306,41 @@
 
     </div>
 
+    {% if cal_ctx.today_active is not none and cal_ctx.today_bmr %}
+    <div style="margin-top:18px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.02)">
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Today's Active Calories — Contributors</p>
+      {% if cal_ctx.today_activities %}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        {% for a in cal_ctx.today_activities %}
+        <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-m);font-size:13px">
+          <span style="color:var(--text-dim)">{{ a.icon }} {{ a.name }}</span>
+          <span style="color:var(--text)">{{ a.calories | format_thousands }} kcal</span>
+        </div>
+        {% endfor %}
+        {% set act_sum = cal_ctx.today_activities | sum(attribute='calories') %}
+        {% set neat = cal_ctx.today_active | int - act_sum %}
+        {% if neat > 0 %}
+        <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-m);font-size:13px;opacity:0.7">
+          <span style="color:var(--text-dim)">🚶 Daily movement (NEAT)</span>
+          <span style="color:var(--text)">~{{ neat | format_thousands }} kcal</span>
+        </div>
+        {% endif %}
+        <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-m);font-size:13px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border)">
+          <span style="color:var(--muted)">Total active{% if not cal_ctx.today_active_estimated %} (Garmin){% endif %}</span>
+          <span style="color:var(--text)">{{ cal_ctx.today_active | int | format_thousands }} kcal</span>
+        </div>
+      </div>
+      {% if cal_ctx.today_active_estimated %}
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">Garmin's all-day active total hasn't synced yet, so this is the sum of recorded workouts only — daily movement (NEAT) is not yet included and will raise TDEE once the watch syncs.</p>
+      {% endif %}
+      {% else %}
+      <p style="font-family:var(--font-m);font-size:12px;color:var(--text-dim)">No recorded activities today — the {{ cal_ctx.today_active | int | format_thousands }} kcal active total is all-day movement (NEAT). Recorded workouts roll into this figure once synced from your watch.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if cal_values %}
-    <div style="position:relative;height:140px">
+    <div style="position:relative;height:140px;margin-top:18px">
       <canvas id="calChart"></canvas>
     </div>
     {% endif %}
