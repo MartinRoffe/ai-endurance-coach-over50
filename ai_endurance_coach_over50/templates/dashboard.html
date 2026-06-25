@@ -674,6 +674,7 @@
     'Sleep Score':          "Garmin's composite sleep quality. Below 70 = recovery compromised. Below 60 = seriously consider skipping any intensity today.",
     'Sleep Duration':       'Most endurance athletes need 8–9 hours. Below 7 hours consistently impairs glycogen restoration, growth hormone release, and next-day performance.',
     'Body Battery':         "Garmin's energy reserve estimate (0–100). Below 30 means recovery is the priority. A fully charged body battery overnight means you're ready for a hard session.",
+    'Resting HR':           'Your overnight resting heart rate. Lower is better — a value 3–5+ bpm above your baseline often precedes illness, signals incomplete recovery, or accumulated fatigue. Scored lower-is-better but excluded from the composite.',
     'Avg Stress':           'Daily average stress score. Chronically elevated stress (50+) suppresses training adaptation even if workouts feel fine. High stress days count against your recovery budget.',
     'Rest Stress':          'Your stress level during rest periods specifically. Elevated rest stress (above 35) even with normal average stress can indicate the nervous system is not fully recovering.',
     'Acute:Chronic Ratio':  'ACWR — compares your last 7 days of training load to your 28-day average. The sweet spot is 0.8–1.3. Above 1.3 = elevated injury risk. Above 1.5 = reduce volume now.',
@@ -713,6 +714,19 @@
     </div>
     {% endfor %}
   </div>
+
+  <!-- ── Resting HR history ───────────────────────────────────────────── -->
+  {% if resting_hr_history and resting_hr_history['values'] | reject('none') | list | length > 1 %}
+  <div class="card" style="padding:20px 24px;margin-bottom:32px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
+      <p class="eyebrow" style="margin-bottom:0">Resting HR · 30-day history <button type="button" class="gr-tip-trigger" data-tip="Overnight resting heart rate over the last 30 days. The dashed line is your 30-day baseline. A sustained rise of 3–5+ bpm above baseline is an early fatigue or illness signal." aria-label="More info" aria-expanded="false">?</button></p>
+      {% if resting_hr_history.baseline %}<span style="font-family:var(--font-m);font-size:11px;color:var(--muted)">baseline {{ resting_hr_history.baseline }} bpm</span>{% endif %}
+    </div>
+    <div style="height:136px;position:relative">
+      <canvas id="restingHrChart"></canvas>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- ── Recovery sparklines ──────────────────────────────────────────── -->
   {% if sparklines %}
@@ -849,6 +863,55 @@
       }
     }
   });
+
+  {% if resting_hr_history %}
+  (function() {
+    const rhr = {{ resting_hr_history | tojson }};
+    const canvas = document.getElementById('restingHrChart');
+    if (!canvas || !rhr || !rhr.values) return;
+    const baseline = rhr.baseline;
+    const baselineLine = baseline ? rhr.values.map(() => baseline) : null;
+    const datasets = [{
+      data: rhr.values,
+      borderColor: '#f87171',
+      backgroundColor: 'rgba(248,113,113,0.10)',
+      borderWidth: 2,
+      pointRadius: 2,
+      pointBackgroundColor: '#f87171',
+      tension: 0.3,
+      spanGaps: true,
+      fill: true,
+    }];
+    if (baselineLine) {
+      datasets.push({
+        data: baselineLine,
+        borderColor: '#a1a1aa',
+        borderWidth: 1,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+      });
+    }
+    new Chart(canvas, {
+      type: 'line',
+      data: { labels: rhr.labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: ctx => ctx.datasetIndex === 0 && ctx.raw !== null,
+            callbacks: { label: ctx => ctx.raw === null ? 'no data' : ctx.raw.toFixed(0) + ' bpm' }
+          }
+        },
+        scales: {
+          x: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 }, maxTicksLimit: 10 } },
+          y: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 }, callback: v => v + '' } }
+        }
+      }
+    });
+  })();
+  {% endif %}
 
   {% if sparklines %}
   (function() {

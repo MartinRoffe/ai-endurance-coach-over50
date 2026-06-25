@@ -51,7 +51,7 @@ HIGHER_IS_BETTER = {
     "body_battery_morning", "total_steps", "active_calories",
 }
 LOWER_IS_BETTER = {
-    "avg_stress", "rest_stress", "acwr", "training_load_acute",
+    "avg_stress", "rest_stress", "acwr", "training_load_acute", "resting_hr",
 }
 
 
@@ -370,6 +370,38 @@ def baseline_stats(
             (start, end),
         ).fetchall()
     return _stats_from_rows(rows)
+
+
+def field_baseline(
+    field: str,
+    reference_date: date,
+    window_days: int = 30,
+) -> Optional[tuple[float, float]]:
+    """(mean, std) for any single numeric field over the baseline window.
+
+    Unlike ``baseline_stats`` this also works for ``_UNSCORED`` fields (e.g.
+    ``resting_hr``) so they can be displayed with a baseline without being
+    pulled into the composite readiness score.
+    """
+    if field not in NUMERIC_FIELDS:
+        return None
+    start = (reference_date - timedelta(days=window_days)).isoformat()
+    end = (reference_date - timedelta(days=1)).isoformat()
+    with _conn() as con:
+        _ensure_schema(con)
+        rows = con.execute(
+            f"SELECT {field} AS v FROM daily_metrics WHERE date >= ? AND date <= ? ORDER BY date",
+            (start, end),
+        ).fetchall()
+    values = [row["v"] for row in rows if row["v"] is not None]
+    if len(values) < 3:
+        return None
+    mean = sum(values) / len(values)
+    variance = sum((v - mean) ** 2 for v in values) / len(values)
+    std = math.sqrt(variance)
+    if std <= 0:
+        return None
+    return (mean, std)
 
 
 def z_score(value: float, mean: float, std: float, field: str) -> float:

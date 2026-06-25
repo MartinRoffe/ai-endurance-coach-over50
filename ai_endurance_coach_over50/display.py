@@ -11,6 +11,7 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
     "hrv_last_night":        ("HRV Last Night",       " ms"),
     "hrv_weekly_avg":        ("HRV Weekly Avg",       " ms"),
     "body_battery_morning":  ("Body Battery",         "/100"),
+    "resting_hr":            ("Resting HR",           " bpm"),
     "avg_stress":            ("Avg Stress",           "/100"),
     "rest_stress":           ("Rest Stress",          "/100"),
     "acwr":                  ("Acute:Chronic Ratio",  ""),
@@ -27,7 +28,7 @@ def fmt_value(field: str, value: Optional[float]) -> str:
         h, rem = divmod(int(value), 3600)
         m = rem // 60
         return f"{h}h {m:02d}m"
-    if field in ("sleep_score", "body_battery_morning", "avg_stress", "rest_stress"):
+    if field in ("sleep_score", "body_battery_morning", "avg_stress", "rest_stress", "resting_hr"):
         return f"{value:.0f}"
     if field in ("hrv_last_night", "hrv_weekly_avg", "vo2_max"):
         return f"{value:.1f}"

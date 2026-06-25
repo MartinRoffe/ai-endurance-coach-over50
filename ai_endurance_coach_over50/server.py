@@ -37,6 +37,7 @@ from .history import (
     ACTIVITY_MATCH,
     acclimation_latest,
     baseline_stats,
+    field_baseline,
     clear_coach_history,
     composite_score,
     delete_advice,
@@ -303,6 +304,12 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 refresh_hr_profile_if_needed(api, force=False)
 
     stats = baseline_stats(target)
+    # Resting HR is intentionally excluded from the composite (SCORED_FIELDS), but
+    # we still want a baseline + z-score for its dashboard tile. Inject it here for
+    # display only — composite_score() iterates SCORED_FIELDS, so this is a no-op there.
+    _rhr_base = field_baseline("resting_hr", target)
+    if _rhr_base:
+        stats["resting_hr"] = _rhr_base
     comp_z = composite_score(m, stats)
     comp_label, comp_colour = readiness_label(comp_z)
 
@@ -362,6 +369,14 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "sleep":  [r["sleep_score"]    for r in spark_rows],
         "stress": [r["avg_stress"]     for r in spark_rows],
         "labels": [r["date"].strftime("%-d %b") for r in spark_rows],
+    }
+
+    # Resting HR history — last 30 days for the trend chart under the metrics grid
+    rhr_rows = raw_history(30)
+    resting_hr_history = {
+        "labels": [r["date"].strftime("%-d %b") for r in rhr_rows],
+        "values": [r["resting_hr"] for r in rhr_rows],
+        "baseline": round(_rhr_base[0], 1) if _rhr_base else None,
     }
 
     # Activities — last 7 days, fetch fresh if force_fetch
@@ -585,6 +600,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "week_summary": _ws,
         "metric_explainer": generate_dashboard_explainer(),
         "sparklines": sparklines,
+        "resting_hr_history": resting_hr_history,
         "today_plan": today_plan,
         "swap_suggestion": swap_suggestion,
         "event_tracker": event_tracker,
