@@ -48,8 +48,10 @@ from .history import (
     history_for_chart,
     intensity_distribution_by_week,
     intensity_distribution_by_week_power,
+    latest_bmr,
     latest_estimated_wkg,
     latest_measured_wkg,
+    tdee_history,
     list_plan_overrides,
     load,
     load_activities_by_date,
@@ -89,6 +91,7 @@ from .history import (
     set_cached_text,
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS, needs_metrics_refetch
+from .energy import tdee as compute_tdee
 from .coach_context import ATHLETE_CONSTRAINTS, build_coach_context as _build_coach_context
 from .llm import MODEL_FAST, MODEL_SMART
 
@@ -511,9 +514,16 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     # Nutrition snapshot for readiness tab
     nutrition_today = None
     if m.calories_consumed is not None:
+        # TDEE = Katch-McArdle BMR (from body comp) + measured active calories.
+        _bmr = None
+        try:
+            _bmr = latest_bmr()
+        except Exception:
+            pass
+        _tdee = compute_tdee(m.active_calories, bmr=_bmr) if _bmr else None
         nutrition_today = {
             "calories": int(m.calories_consumed),
-            "tdee":     int(m.calorie_goal_adjusted) if m.calorie_goal_adjusted else None,
+            "tdee":     int(round(_tdee)) if _tdee else None,
             "goal":     int(m.calorie_goal) if m.calorie_goal else None,
             "carbs":    round(m.carbs_consumed) if m.carbs_consumed is not None else None,
             "protein":  round(m.protein_consumed) if m.protein_consumed is not None else None,
@@ -1663,6 +1673,15 @@ async def nutrition_plan(request: Request):
 
     recent = raw_history(3)
     today_nut = next((r for r in reversed(recent) if r.get("calories_consumed") is not None), None)
+    _bmr = None
+    try:
+        _bmr = latest_bmr()
+    except Exception:
+        pass
+    _tdee_today = (
+        compute_tdee(today_nut.get("active_calories"), bmr=_bmr)
+        if today_nut and _bmr else None
+    )
     cycle_week = cycle_week_index(_PLAN_START, today)
     checklist = today_checklist(_PLAN_START, today)
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
@@ -1679,7 +1698,7 @@ async def nutrition_plan(request: Request):
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
             "cal_today":     int(today_nut["calories_consumed"])    if today_nut and today_nut.get("calories_consumed")    else None,
-            "tdee_today":    int(today_nut["calorie_goal_adjusted"]) if today_nut and today_nut.get("calorie_goal_adjusted") else None,
+            "tdee_today":    int(round(_tdee_today)) if _tdee_today else None,
             "carbs_today":   round(today_nut["carbs_consumed"])     if today_nut and today_nut.get("carbs_consumed")       else None,
             "protein_today": round(today_nut["protein_consumed"])   if today_nut and today_nut.get("protein_consumed")     else None,
             "supplements":   [{"name": n, "dose": d, "why": w} for n, d, w in SUPPLEMENTS],
@@ -2008,9 +2027,27 @@ def _body_context() -> dict[str, Any]:
     recent_metrics = raw_history(14)
     body_analysis = generate_body_analysis(body_rows, latest_body or {}, pmc_today, recent_metrics)
 
+    # TDEE per day = Katch-McArdle BMR (body comp) + measured active calories.
+    _tdee_by_date = {}
+    try:
+        for _t in tdee_history(14):
+            _d = _t["date"]
+            _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+            _tdee_by_date[_di] = _t.get("tdee")
+    except Exception:
+        pass
+
+    def _row_iso(r):
+        _d = r["date"]
+        return _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+
     # Calorie intake from food log (last 14 days of data)
     con_vals = [r.get("calories_consumed")     for r in recent_metrics if r.get("calories_consumed")     is not None]
-    adj_vals = [r.get("calorie_goal_adjusted") for r in recent_metrics if r.get("calorie_goal_adjusted") is not None]
+    adj_vals = [
+        _tdee_by_date.get(_row_iso(r))
+        for r in recent_metrics
+        if r.get("calories_consumed") is not None and _tdee_by_date.get(_row_iso(r)) is not None
+    ]
     cal_ctx: dict = {}
     if con_vals:
         cal_ctx["avg_consumed"]   = round(sum(con_vals) / len(con_vals))
@@ -2022,7 +2059,7 @@ def _body_context() -> dict[str, Any]:
     today_nut = next((r for r in reversed(recent_metrics) if r.get("calories_consumed") is not None), None)
     if today_nut:
         cal_ctx["today_consumed"] = today_nut.get("calories_consumed")
-        cal_ctx["today_tdee"]     = today_nut.get("calorie_goal_adjusted")
+        cal_ctx["today_tdee"]     = _tdee_by_date.get(_row_iso(today_nut))
         cal_ctx["today_goal"]     = today_nut.get("calorie_goal")
         if today_nut.get("carbs_consumed") is not None:
             cal_ctx["today_carbs"] = round(today_nut["carbs_consumed"])
@@ -2040,7 +2077,7 @@ def _body_context() -> dict[str, Any]:
     _cal_rows   = [r for r in recent_metrics if r.get("calories_consumed") is not None]
     _cal_isos   = [r["date"].isoformat() if hasattr(r["date"], "isoformat") else str(r["date"]) for r in _cal_rows]
     cal_values  = [r["calories_consumed"] for r in _cal_rows]
-    tdee_values = [r.get("calorie_goal_adjusted") for r in _cal_rows]
+    tdee_values = [_tdee_by_date.get(_row_iso(r)) for r in _cal_rows]
     cal_labels  = _short(_cal_isos)
 
     est_wkg = None

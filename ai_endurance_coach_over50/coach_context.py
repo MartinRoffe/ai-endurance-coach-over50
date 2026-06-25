@@ -35,6 +35,7 @@ from .history import (
     power_meter_active,
     raw_history,
     sleep_history,
+    tdee_history,
     weekly_monotony_strain,
 )
 from .hr_plan import HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
@@ -556,8 +557,26 @@ def build_coach_context() -> str:
             ]
         # Calorie intake from Garmin food log
         history_14 = raw_history(14)
-        con_vals = [r.get("calories_consumed")     for r in history_14 if r.get("calories_consumed")     is not None]
-        adj_vals = [r.get("calorie_goal_adjusted") for r in history_14 if r.get("calorie_goal_adjusted") is not None]
+        # TDEE = Katch-McArdle BMR (body comp) + measured active calories, per day.
+        _tdee_by_date = {}
+        try:
+            for _t in tdee_history(14):
+                _d = _t["date"]
+                _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+                _tdee_by_date[_di] = _t.get("tdee")
+        except Exception:
+            pass
+
+        def _row_iso(r):
+            _d = r["date"]
+            return _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+
+        con_vals = [r.get("calories_consumed") for r in history_14 if r.get("calories_consumed") is not None]
+        adj_vals = [
+            _tdee_by_date.get(_row_iso(r))
+            for r in history_14
+            if r.get("calories_consumed") is not None and _tdee_by_date.get(_row_iso(r)) is not None
+        ]
         if con_vals:
             avg_consumed = round(sum(con_vals) / len(con_vals))
             avg_tdee     = round(sum(adj_vals) / len(adj_vals)) if adj_vals else None
@@ -581,7 +600,8 @@ def build_coach_context() -> str:
                 today_c = int(today_nut_c["calories_consumed"])
                 today_carbs_c = round(today_nut_c["carbs_consumed"]) if today_nut_c.get("carbs_consumed") is not None else None
                 today_prot_c  = round(today_nut_c["protein_consumed"]) if today_nut_c.get("protein_consumed") is not None else None
-                today_tdee_c  = int(today_nut_c["calorie_goal_adjusted"]) if today_nut_c.get("calorie_goal_adjusted") else None
+                _tt = _tdee_by_date.get(_row_iso(today_nut_c))
+                today_tdee_c  = int(round(_tt)) if _tt else None
                 parts = [f"Today logged: {today_c:,} kcal"]
                 if today_tdee_c:
                     parts.append(f"TDEE {today_tdee_c:,} ({today_tdee_c - today_c:+,})")

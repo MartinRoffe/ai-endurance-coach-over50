@@ -987,8 +987,27 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
         ]
 
     # Calorie intake (food log — available once user logs meals in Garmin Connect)
-    con_vals = [r.get("calories_consumed")      for r in recent_metrics if r.get("calories_consumed")      is not None]
-    adj_vals = [r.get("calorie_goal_adjusted")  for r in recent_metrics if r.get("calorie_goal_adjusted")  is not None]
+    # TDEE = Katch-McArdle BMR (body comp) + measured active calories, per day.
+    from .history import tdee_history as _tdee_history
+    _tdee_by_date = {}
+    try:
+        for _t in _tdee_history(len(recent_metrics) or 14):
+            _d = _t["date"]
+            _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+            _tdee_by_date[_di] = _t.get("tdee")
+    except Exception:
+        pass
+
+    def _row_iso(r):
+        _d = r.get("date")
+        return _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
+
+    con_vals = [r.get("calories_consumed") for r in recent_metrics if r.get("calories_consumed") is not None]
+    adj_vals = [
+        _tdee_by_date.get(_row_iso(r))
+        for r in recent_metrics
+        if r.get("calories_consumed") is not None and _tdee_by_date.get(_row_iso(r)) is not None
+    ]
     if con_vals:
         avg_consumed = round(sum(con_vals) / len(con_vals))
         avg_tdee     = round(sum(adj_vals) / len(adj_vals)) if adj_vals else None
@@ -999,7 +1018,7 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
         lines += [
             "Calorie intake (logged in Garmin Connect, last 14 days):",
             f"  Avg consumed: {avg_consumed:,} kcal/day",
-            f"  Avg TDEE (activity-adjusted): {avg_tdee:,} kcal/day" if avg_tdee else "",
+            f"  Avg TDEE (BMR + active cals): {avg_tdee:,} kcal/day" if avg_tdee else "",
             deficit_note,
             "  Note: a sustained deficit of ~500 kcal/day ≈ 0.5 kg/week fat loss."
             " If deficit exceeds 700 kcal/day on training days, flag risk of under-fuelling.",

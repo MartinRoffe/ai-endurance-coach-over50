@@ -1415,6 +1415,72 @@ def latest_lean_mass_kg() -> Optional[float]:
     return None
 
 
+# ── BMR / TDEE (Katch-McArdle from body composition) ─────────────────────────
+
+def latest_bmr() -> Optional[float]:
+    """Resting metabolic rate (kcal/day) from the most recent body-comp reading
+    that has both weight and body-fat %, via Katch-McArdle. None if unavailable.
+    """
+    from .energy import bmr_katch_mcardle
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        row = con.execute(
+            "SELECT weight_kg, fat_pct FROM body_metrics "
+            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL "
+            "ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    if not row:
+        return None
+    return bmr_katch_mcardle(row["weight_kg"], row["fat_pct"])
+
+
+def tdee_history(days: int = 14) -> list[dict]:
+    """Per-day TDEE for the last `days` days (oldest first).
+
+    TDEE = Katch-McArdle BMR (weight + fat% carried forward from the most
+    recent body-comp reading on or before each day) + that day's measured
+    Garmin active calories. Days without enough data carry ``tdee = None``.
+    """
+    from .energy import bmr_katch_mcardle, tdee as _tdee
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    with _conn() as con:
+        _ensure_schema(con)
+        _ensure_body_metrics_schema(con)
+        comp_rows = con.execute(
+            "SELECT date, weight_kg, fat_pct FROM body_metrics "
+            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL ORDER BY date",
+        ).fetchall()
+    comps = [(r["date"], float(r["weight_kg"]), float(r["fat_pct"])) for r in comp_rows]
+
+    def _bmr_on(d_iso: str) -> Optional[float]:
+        chosen = None
+        for cd, w, f in comps:
+            if cd <= d_iso:
+                chosen = (w, f)
+            else:
+                break
+        if chosen is None:
+            return None
+        return bmr_katch_mcardle(chosen[0], chosen[1])
+
+    result = []
+    for row in raw_history(days):
+        d = row["date"]
+        d_iso = d.isoformat() if hasattr(d, "isoformat") else str(d)
+        bmr = _bmr_on(d_iso)
+        result.append({
+            "date": d,
+            "bmr": round(bmr) if bmr is not None else None,
+            "active_calories": row.get("active_calories"),
+            "tdee": (
+                round(_tdee(row.get("active_calories"), bmr=bmr))
+                if bmr is not None else None
+            ),
+        })
+    return result
+
+
 # ── Heat / altitude acclimation ──────────────────────────────────────────────
 
 def acclimation_latest() -> Optional[dict]:

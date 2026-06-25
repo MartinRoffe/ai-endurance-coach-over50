@@ -69,7 +69,7 @@ class DailyMetrics:
     # Nutrition (Garmin food log)
     calories_consumed: Optional[float] = None     # kcal logged by user
     calorie_goal: Optional[float] = None          # Garmin base daily goal
-    calorie_goal_adjusted: Optional[float] = None # goal adjusted for activity (TDEE)
+    calorie_goal_adjusted: Optional[float] = None # Garmin intake GOAL adjusted for activity (NOT expenditure; real TDEE computed in energy.py)
     carbs_consumed: Optional[float] = None        # grams of carbohydrate logged
     protein_consumed: Optional[float] = None      # grams of protein logged
 
