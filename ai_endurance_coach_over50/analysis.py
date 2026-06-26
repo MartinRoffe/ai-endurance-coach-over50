@@ -69,18 +69,57 @@ _CLIMBING_INTERVAL_LABELS = {"MaxiClimber", "Easy MaxiClimber", "KB + MaxiClimbe
 _CLIMBING_TYPES = {"stair_climbing", "indoor_cardio"}
 
 
-def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
-    """Pick out only the work-interval laps using structured-workout step tags.
+# Garmin lap intensityType tags. Work reps are ACTIVE/INTERVAL; the rest mark
+# warm-up, recovery, and cool-down.
+_WORK_INTENSITIES = {"ACTIVE", "INTERVAL"}
+_NONWORK_INTENSITIES = {"WARMUP", "COOLDOWN", "RECOVERY", "REST"}
 
-    Plan workouts uploaded to Garmin mark warm-up / work / recovery as distinct
-    repeating steps (``wktStepIndex``). The work step is the repeated step with
-    the highest mean HR — distinguishing it from recovery (repeated, lower HR)
-    and warm-up/cool-down (typically single occurrence). Returns None when laps
-    carry no usable step tags so the caller can fall back to a duration band.
-    """
-    from collections import defaultdict
+
+def _drop_stubs(work_laps: list[dict]) -> list[dict]:
+    """Remove truncated stub laps (e.g. a 7 s tail from an accidental lap press)
+    that are far shorter than the typical work rep."""
     import statistics
 
+    if not work_laps:
+        return work_laps
+    med = statistics.median([_lap_dur(l) for l in work_laps])
+    return [l for l in work_laps if _lap_dur(l) >= 0.5 * med]
+
+
+def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
+    """Pick out only the work-interval laps from a structured workout.
+
+    Prefers Garmin's per-lap ``intensityType`` tag (WARMUP / ACTIVE / RECOVERY /
+    COOLDOWN), which correctly identifies the work reps even when each interval
+    carries its own sequential ``wktStepIndex`` (i.e. the workout was built as
+    sequential steps rather than a single repeat block — in which case the
+    "repeated step with highest HR" heuristic would only catch one rep).
+
+    Falls back to the repeated-step heuristic when intensity tags are absent.
+    Returns None when laps carry no usable structure so the caller can fall back
+    to a duration band.
+    """
+    from collections import defaultdict
+
+    # ── Primary: Garmin intensityType tags ──────────────────────────────────
+    intensities = {(l.get("intensityType") or "").upper() for l in hr_laps}
+    # Only trust the tags when at least one non-work marker is present — that
+    # confirms the laps are meaningfully intensity-tagged (a manually ridden
+    # session with every lap defaulting to ACTIVE carries no real signal).
+    if intensities & _NONWORK_INTENSITIES:
+        # When step indices exist, restrict to the structured part so extra
+        # laps ridden after the workout (step index None) aren't counted.
+        stepped = [l for l in hr_laps if l.get("wktStepIndex") is not None]
+        pool = stepped or hr_laps
+        work_laps = [
+            l for l in pool
+            if (l.get("intensityType") or "").upper() in _WORK_INTENSITIES
+        ]
+        work_laps = _drop_stubs(work_laps)
+        if work_laps:
+            return work_laps
+
+    # ── Fallback: repeated-step-with-highest-HR heuristic ───────────────────
     step_vals = {l.get("wktStepIndex") for l in hr_laps if l.get("wktStepIndex") is not None}
     if len(step_vals) < 2:
         return None
@@ -95,12 +134,7 @@ def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
     pool = repeated or groups
     work_step = max(pool, key=lambda si: sum(l["averageHR"] for l in pool[si]) / len(pool[si]))
     work_laps = [l for l in hr_laps if l.get("wktStepIndex") == work_step]
-
-    # Drop truncated stubs (e.g. a 7 s tail lap that shares the work step index).
-    if work_laps:
-        med = statistics.median([_lap_dur(l) for l in work_laps])
-        work_laps = [l for l in work_laps if _lap_dur(l) >= 0.5 * med]
-    return work_laps or None
+    return _drop_stubs(work_laps) or None
 
 
 def _lap_dur(l: dict) -> float:
