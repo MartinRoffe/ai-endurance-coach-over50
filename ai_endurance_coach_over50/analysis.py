@@ -876,12 +876,35 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         power_zone_lines.append(f"  Z{z['zone']} ({w_str}): {bar} {z['pct']}%  {_fmt_secs(z['secs'])}")
 
     ftp_w = None
+    ftp_stale = False
     if has_power:
         try:
-            from .history import load_ftp_tests
+            from .history import load_ftp_tests, ftp_retest_due
+            from .plan import PLAN_START
             ftp_w = next((t["ftp_w"] for t in reversed(load_ftp_tests()) if t.get("ftp_w")), None)
+            ftp_stale = ftp_retest_due(d_obj or date.today(), plan_start=PLAN_START) is not None
         except Exception:
             pass
+
+    # Garmin computes the power time-in-zone buckets against the FTP in the
+    # athlete's Garmin *profile*, which this app never sets, reads, or reconciles
+    # with the measured FTP in ftp_tests. Two failure modes make those zone
+    # percentages untrustworthy and must override the coach's reading of them:
+    #   (1) uncalibrated — no measured FTP on record (or it's stale), so the
+    #       buckets run against an unverified/default profile FTP;
+    #   (2) mismatch — the FTP implied by the zone boundaries diverges sharply
+    #       from the measured FTP (Coggan Z4/threshold low boundary ≈ 91% FTP).
+    power_uncalibrated = bool(power_zone_lines) and (ftp_w is None or ftp_stale)
+    power_zone_mismatch = False
+    implied_ftp = None
+    z4_low_w = None
+    if ftp_w and power_zones:
+        z4 = next((z for z in power_zones if z.get("zone") == 4 and z.get("low_w")), None)
+        if z4 and z4.get("low_w"):
+            z4_low_w = z4["low_w"]
+            implied_ftp = z4_low_w / 0.91
+            if abs(implied_ftp - ftp_w) / ftp_w > 0.15:
+                power_zone_mismatch = True
 
     hr_zone_secs = sum(z.get("secs") or 0 for z in hr_zones)
     hr_suspect = (
@@ -895,10 +918,34 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             "treat power zones and watts as the primary intensity evidence; "
             "note the HR strap/recording issue briefly."
         )
+    elif has_power and power_uncalibrated:
+        data_quality_lines.append(
+            "Data quality: power zones are UNCALIBRATED — no recent measured FTP is on "
+            "record, so Garmin built the power time-in-zone buckets against an unverified "
+            "profile FTP (often a stale/high default). Do NOT narrate the power-zone "
+            "percentages as the effort distribution, and do NOT conclude the ride was "
+            "easy/soft-pedalled from a high share of low zones — that is almost always a "
+            "too-high FTP, not the athlete coasting. Treat HR and RPE as the primary "
+            "intensity evidence (e.g. read interval efforts from peak watts vs HR, not "
+            "zone shares). Recommend setting an FTP or running an FTP test to calibrate."
+        )
+    elif has_power and power_zone_mismatch:
+        data_quality_lines.append(
+            f"Data quality: the Garmin power zones imply an FTP of ~{int(implied_ftp)} W "
+            f"(threshold/Z4 boundary {int(z4_low_w)} W ≈ 91% FTP), but the measured FTP on "
+            f"record is {int(ftp_w)} W — a >15% divergence. The power-zone percentages are "
+            "likely miscalibrated; prioritise HR/RPE and absolute watts over power-zone "
+            "shares, and do not read the zone distribution as the true effort distribution."
+        )
     elif has_power and hr_zone_secs > 0 and power_zone_lines:
         data_quality_lines.append(
-            "Dual-channel read: cross-check HR zones against power zones — "
-            "note any meaningful divergence (cardiac drift, heat, fatigue, or pacing surges)."
+            "Dual-channel read: cross-check HR zones against power zones. If they diverge, "
+            "weigh BOTH candidate explanations before concluding: (a) physiology/pacing — "
+            "cardiac drift, heat, fatigue, or surges; and (b) data — miscalibrated power "
+            "zones from an uncalibrated profile FTP. Do not default to the physiology "
+            "story. A whole-ride HR-runs-hot-vs-power skew usually means the power zones "
+            "are off; a divergence isolated to late reps points to genuine leg/metabolic "
+            "fatigue."
         )
 
     power_summary_lines: list[str] = []
