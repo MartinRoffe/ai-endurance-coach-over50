@@ -122,11 +122,25 @@ def _load_day_state(target: date):
     return m, stats, comp_z, traffic_light, modulation, today_pmc
 
 
-def _section_pmc(today_pmc: dict) -> list[str]:
-    return [
-        "## Training Load (PMC)",
+def _acwr_line(m: Optional["DailyMetrics"]) -> Optional[str]:
+    """Garmin's own acute:chronic ratio (unitless — comparable to standard thresholds)."""
+    acwr = getattr(m, "acwr", None) if m else None
+    if acwr is None:
+        return None
+    status = getattr(m, "acwr_status", None)
+    status_txt = f" ({status.replace('_', ' ').lower()})" if status else ""
+    return f"ACWR (acute:chronic, unitless): {acwr:.2f}{status_txt}"
+
+
+def _section_pmc(today_pmc: dict, m: Optional["DailyMetrics"] = None) -> list[str]:
+    lines = [
+        "## Training Load (PMC)  (Garmin training-load units, NOT Coggan TSS — absolute values not comparable to standard thresholds)",
         f"CTL (fitness): {today_pmc.get('ctl')}  |  ATL (fatigue): {today_pmc.get('atl')}  |  TSB (form): {today_pmc.get('tsb')}",
     ]
+    acwr_line = _acwr_line(m)
+    if acwr_line:
+        lines.append(acwr_line)
+    return lines
 
 
 def _section_traffic_light(traffic_light: dict, modulation: Optional[dict]) -> list[str]:
@@ -285,7 +299,7 @@ def build_advice_context(target: date) -> str:
     parts: list[str] = [
         "",
         "## Coaching Context",
-        *_section_pmc(today_pmc),
+        *_section_pmc(today_pmc, m),
         "",
         *_section_traffic_light(traffic_light, modulation),
         "",
@@ -929,8 +943,7 @@ def build_coach_context() -> str:
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
         "",
-        "## Training Load (PMC)",
-        f"CTL (fitness): {today_pmc.get('ctl')}  |  ATL (fatigue): {today_pmc.get('atl')}  |  TSB (form): {today_pmc.get('tsb')}",
+        *_section_pmc(today_pmc, m),
         "",
         "## Today's Readiness",
         f"Composite z-score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'n/a'}",

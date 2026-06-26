@@ -566,6 +566,35 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
 
 # ── PMC analysis ─────────────────────────────────────────────────────────────
 
+_DELOAD_WEEKS = {4, 8}
+
+
+def _current_block_phase(today: date) -> str:
+    """Human-readable training-block phase so the analysis judges overreaching against intent."""
+    try:
+        from .plan import PLAN_START, TRAINING_WEEKS
+        plan_weeks = len(TRAINING_WEEKS)
+        plan_end = PLAN_START + timedelta(days=plan_weeks * 7)
+        if PLAN_START <= today < plan_end:
+            week = (today - PLAN_START).days // 7 + 1
+            if week in _DELOAD_WEEKS:
+                return f"12-week charity-prep plan, week {week}/{plan_weeks} — DELOAD/recovery week (lower load is intended)"
+            if week >= plan_weeks - 1:
+                return f"12-week charity-prep plan, week {week}/{plan_weeks} — late build/peak"
+            return f"12-week charity-prep plan, week {week}/{plan_weeks} — BUILD phase (functional overreaching is intended)"
+
+        from .hr_plan import HR_PLAN_START, HR_PHASES
+        if today < HR_PLAN_START:
+            return "Charity event-prep / Tenerife camp block — BUILD/overload toward the 13–14 Sep event"
+        hr_week = (today - HR_PLAN_START).days // 7 + 1
+        for ph in HR_PHASES:
+            if ph["week_start"] <= hr_week <= ph["week_end"]:
+                return f"Haute Route 2027 plan, week {hr_week} — {ph['label']} phase"
+        return f"Haute Route 2027 plan, week {hr_week}"
+    except Exception:
+        return "unknown (assume a build block unless body signals say otherwise)"
+
+
 def _build_pmc_prompt(history: list[dict], m=None, comp_z: Optional[float] = None) -> str:
     today = date.today()
     recent = [h for h in history if h["ctl"] is not None]
@@ -611,6 +640,8 @@ def _build_pmc_prompt(history: list[dict], m=None, comp_z: Optional[float] = Non
                 lines.append(f"  ACWR: {m.acwr:.2f}" + (f" ({m.acwr_status.replace('_',' ').lower()})" if getattr(m, "acwr_status", None) else ""))
 
     lines += ["", "Upcoming 7 days (planned sessions):"]
+    rest_days: list[str] = []
+    key_sessions: list[str] = []
     for i in range(7):
         d = today + timedelta(days=i)
         session = session_for_date_extended(d)
@@ -618,20 +649,50 @@ def _build_pmc_prompt(history: list[dict], m=None, comp_z: Optional[float] = Non
             stype, label, dur = session
             dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"
             lines.append(f"  {d.isoformat()} ({d.strftime('%a')})  {label} [{stype}] {dur_str}")
+            day_tag = d.strftime("%a %-d %b")
+            if stype == "rest" or (dur == 0 and "rest" in label.lower()):
+                rest_days.append(day_tag)
+            elif stype in ("long", "tempo", "ftp"):
+                key_sessions.append(f"{day_tag} {label} ({dur_str})")
         else:
             lines.append(f"  {d.isoformat()} ({d.strftime('%a')})  outside plan")
 
+    # Precompute the facts the model is most likely to misread (which days are
+    # rest, which are the key efforts) so it references them rather than
+    # re-deriving them from the list above — that inference step is where it
+    # previously mislabelled the rest days.
+    lines += ["", "Precomputed schedule facts (use these verbatim — do NOT re-derive from the list above):"]
+    lines.append(f"  Rest days in the next 7: {', '.join(rest_days) if rest_days else 'none'}")
+    lines.append(f"  Key/quality sessions in the next 7: {'; '.join(key_sessions) if key_sessions else 'none'}")
+
+    # Current block phase so the model judges overreaching against intent, not in a vacuum
+    block_phase = _current_block_phase(today)
+
     lines += [
+        "",
+        f"Current training block phase: {block_phase}",
         "",
         "Note: CTL uses 28-day window (not classic 42-day), so it responds faster than TrainingPeaks.",
         "      TSB thresholds are relative to zero only — do not apply Coggan absolute zones.",
+        "      ACWR is a unitless ratio (acute ÷ chronic), so it IS comparable to standard thresholds; "
+        "the absolute CTL/ATL/TSB values are NOT (Garmin units).",
+        "      Build-phase framing: in a BUILD block, a deeply negative TSB and ACWR above ~1.3 are the "
+        "INTENDED stimulus, not a red flag — deliberately driving acute load above chronic (functional "
+        "overreaching) is HOW CTL grows. Do not call planned overload a mistake or 'fitness being outpaced'. "
+        "The real risk signal is CTL ramp rate (CTL gain per week) plus corroborating suppressed body signals "
+        "(HRV down, readiness negative, resting HR up) — not the absolute TSB number, and ramp matters more at "
+        "50+. If readiness/HRV are balanced or positive, treat the overload as still functional. Only an "
+        "imminent FTP/LTHR retest justifies pulling load back regardless of build intent.",
         "      The daily train/rest recommendation is handled separately — do not repeat it here.",
         "",
         "Please provide a concise training-load analysis covering:",
-        "1. Current form: is TSB in a sustainable zone or showing signs of overreaching?",
+        "1. Current form: given the block phase above, is the load an INTENDED build stimulus or "
+        "genuine non-functional overreaching (judged by ramp rate + body signals, not absolute TSB)?",
         "2. Fitness trajectory: is CTL building as expected for this stage of the block?",
         "3. One week-level or block-level suggestion (e.g. load distribution, recovery timing) "
         "that accounts for both the PMC numbers AND today's recovery context if provided.",
+        "If you mention rest days or a key/quality session, use ONLY the days listed under "
+        "'Precomputed schedule facts' above — never infer them from the day-by-day list yourself.",
         "Keep it under 130 words. Plain paragraphs, no headers or bullets. Address the athlete as 'you'.",
     ]
     return "\n".join(lines)
@@ -662,7 +723,7 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
     Cached in text_cache keyed by date so restarts don't produce a different answer.
     Accepts today's DailyMetrics and comp_z so the analysis is consistent with readiness advice.
     """
-    cache_key = f"pmc_analysis_v2_{date.today().isoformat()}"
+    cache_key = f"pmc_analysis_v3_{date.today().isoformat()}"
     cached = get_cached_text(cache_key)
     if cached:
         return cached
@@ -685,6 +746,12 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
                 "Be direct, specific, and evidence-based. Reference the actual numbers. "
                 "Your role here is to assess the WEEKLY training load trajectory and block periodization — "
                 "not to repeat today's daily train/rest recommendation (that is handled separately). "
+                "Judge overreaching against the training-block phase given in the data: in a BUILD block, "
+                "negative TSB and ACWR > ~1.3 are the intended stimulus, not a fault — functional overreaching "
+                "is how fitness (CTL) grows. The real risk signal is CTL ramp rate plus suppressed body signals "
+                "(HRV/readiness/resting HR), not the absolute TSB; ACWR is a unitless ratio comparable to "
+                "standard thresholds, but CTL/ATL/TSB absolute values are Garmin units and are NOT. The athlete "
+                "is 50+, so respect ramp rate. "
                 "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
             ),
             messages=[{"role": "user", "content": prompt}],

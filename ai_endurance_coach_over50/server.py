@@ -925,7 +925,14 @@ def analysis_refresh():
 @app.get("/performance", response_class=HTMLResponse)
 async def performance_view(request: Request):
     history = pmc_history(days=90)
-    today_entry = history[-1] if history else {}
+    # Prefer the most recent entry with real CTL/ATL: today's Garmin data often
+    # hasn't synced yet (early morning), leaving history[-1] null which would
+    # otherwise blank out the CTL/ATL/TSB tiles and drop the projection.
+    today_entry = next(
+        (e for e in reversed(history)
+         if e.get("ctl") is not None and e.get("atl") is not None),
+        history[-1] if history else {},
+    )
     date_key = date.today().isoformat()
     with _ai_cache_lock:
         if date_key not in _pmc_cache:
@@ -2343,6 +2350,17 @@ def _coach_system() -> str:
         "and tempo from wk 5, progressive rucking (Mersea Coastal Spur build in wks 9–10), KB + MaxiClimber strength.\n\n"
         "PMC note: Garmin TSB units differ from Coggan TSS. Rough bands: "
         "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250.\n\n"
+        "Build-phase framing: during a build block, a deeply negative TSB and ACWR above ~1.3 are the "
+        "INTENDED stimulus, not a red flag — deliberately driving acute load above chronic (functional "
+        "overreaching) is how CTL grows. Do not treat planned overreaching as a mistake or call it 'load "
+        "outpacing fitness'. The real risk signal is CTL ramp rate (CTL gain per week) plus suppressed "
+        "body signals (HRV down, readiness negative, resting HR up), not the absolute TSB number — and "
+        "ramp matters more at 50+ where recovery capacity is lower. If readiness/HRV are balanced or "
+        "positive, the overload is still functional; only flag non-functional overreaching when the body "
+        "signals corroborate the load. ACWR is a unitless ratio (acute ÷ chronic), so it IS comparable to "
+        "standard thresholds; the absolute CTL/ATL/TSB values are NOT (Garmin units). A practical exception: "
+        "an imminent FTP/LTHR retest needs a genuine recovery window regardless of build intent, since a "
+        "fatigued test suppresses the result and mis-anchors zones.\n\n"
     )
     if power_meter_active():
         return base + (
