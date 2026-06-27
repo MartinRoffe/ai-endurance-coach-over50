@@ -741,6 +741,105 @@ def _delete_existing_plan_workouts(api: Any, dry_run: bool = False) -> None:
         print(f"  {deleted} existing plan workout(s) removed")
 
 
+def _iter_months(start: date, end: date):
+    """Yield (year, month) tuples spanning [start, end] inclusive."""
+    y, m = start.year, start.month
+    while (y, m) <= (end.year, end.month):
+        yield y, m
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+
+
+def _normalise_scheduled(sched: Any) -> list[dict]:
+    """Pull the calendar-item list out of Garmin's (loosely-typed) month response."""
+    if isinstance(sched, dict):
+        return sched.get("calendarItems") or sched.get("scheduledWorkouts") or sched.get("workouts") or []
+    if isinstance(sched, list):
+        return sched
+    return []
+
+
+def _scheduled_workout_sid(it: dict) -> Any | None:
+    """Return the unschedule id for a genuine scheduled *workout* calendar item, else None.
+
+    Garmin's month calendar interleaves scheduled workouts, completed activities, and
+    body-weight entries (distinguished by `itemType`). For a 'workout' item the item's
+    own `id` is the schedule id (the dedicated `scheduledWorkoutId` field is usually
+    null); an 'activity' item reuses `id` as the *activityId*, so it must never be
+    unscheduled. Anything that isn't explicitly a workout is rejected.
+    """
+    itype = it.get("itemType")
+    if itype is not None and itype != "workout":
+        return None
+    return it.get("scheduledWorkoutId") or it.get("workoutScheduleId") or it.get("id")
+
+
+def _plan_scheduled_items_in_range(api: Any, start: date, end: date) -> list[tuple[Any, str, str]]:
+    """Return [(scheduledWorkoutId, title, date_str)] for plan-generated calendar items in [start, end].
+
+    Only items whose title matches `_NAME_PREFIXES` are returned, so the athlete's
+    own (non-plan) workouts are never touched.
+    """
+    out: list[tuple[Any, str, str]] = []
+    seen: set = set()  # Garmin month grids overflow into adjacent months, so the
+    # same scheduled item can appear in two month responses — dedupe by sid.
+    for year, month in _iter_months(start, end):
+        try:
+            sched = api.get_scheduled_workouts(year, month)
+        except Exception as exc:
+            print(f"  [warn] could not fetch scheduled workouts for {year}-{month:02d}: {exc}")
+            continue
+        for it in _normalise_scheduled(sched):
+            if not isinstance(it, dict):
+                continue
+            logger.debug("scheduled item: %s", it)
+            idate = (it.get("date") or it.get("scheduledDate")
+                     or it.get("calendarDate") or it.get("itemDate"))
+            if not idate:
+                continue
+            try:
+                d = date.fromisoformat(str(idate)[:10])
+            except ValueError:
+                continue
+            if not (start <= d <= end):
+                continue
+            sid = _scheduled_workout_sid(it)
+            if not sid:
+                continue
+            title = it.get("title") or it.get("workoutName") or it.get("name") or ""
+            if not any(title.startswith(p) for p in _NAME_PREFIXES):
+                continue
+            if sid not in seen:
+                seen.add(sid)
+                out.append((sid, title, str(idate)[:10]))
+    return out
+
+
+def unschedule_plan_workouts_in_range(api: Any, start: date, end: date, dry_run: bool = False) -> dict:
+    """Unschedule every plan-generated calendar entry in [start, end] (templates untouched).
+
+    Used both by the bulk re-sync (to clear the calendar before re-scheduling, so a
+    re-sync can't stack duplicates) and by the standalone cleanup script.
+
+    Returns {found, unscheduled, errors}.
+    """
+    items = _plan_scheduled_items_in_range(api, start, end)
+    print(f"Found {len(items)} plan-scheduled workout(s) in {start.isoformat()}..{end.isoformat()}")
+    unscheduled = 0
+    errors = 0
+    for sid, title, d in sorted(items, key=lambda x: (x[2], x[1])):
+        if dry_run:
+            print(f"  [dry]  would unschedule {d} '{title}' (sid={sid})")
+            continue
+        try:
+            api.unschedule_workout(sid)
+            unscheduled += 1
+            print(f"  [unscheduled] {d} '{title}' (sid={sid})")
+        except Exception as exc:
+            errors += 1
+            print(f"  [warn] unschedule {sid} ({d}) failed: {exc}")
+    return {"found": len(items), "unscheduled": unscheduled, "errors": errors}
+
+
 def _schedule_dates(api: Any, workout_id: Any, dates: list[str],
                     summary: dict, failed: list[tuple[Any, str]]) -> None:
     for date_str in dates:
@@ -761,6 +860,15 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
 
     Returns a summary dict: {templates, scheduled, errors, failed_dates}.
     """
+    # Clear existing plan calendar entries first. Deleting a template does NOT remove
+    # its already-scheduled calendar items (Garmin keeps the schedule and the template
+    # as independent objects), so without this pass a re-sync stacks a fresh copy on
+    # top of the existing one and every plan day doubles up.
+    plan_end = PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1)
+    unsched = unschedule_plan_workouts_in_range(api, PLAN_START, plan_end, dry_run=dry_run)
+    print(f"  {unsched['unscheduled']} existing plan calendar entr(y/ies) cleared "
+          f"({unsched['found']} found, {unsched['errors']} error(s))")
+
     _delete_existing_plan_workouts(api, dry_run=dry_run)
     failed_schedules: list[tuple[Any, str]] = []
 
@@ -869,27 +977,22 @@ def _scheduled_items_on(sched: Any, date_str: str) -> list[tuple[Any, str]]:
     Only items whose title matches `_NAME_PREFIXES` are returned, so the athlete's
     own (non-plan) workouts are never touched.
     """
-    if isinstance(sched, dict):
-        items = sched.get("calendarItems") or sched.get("scheduledWorkouts") or sched.get("workouts") or []
-    elif isinstance(sched, list):
-        items = sched
-    else:
-        items = []
     out: list[tuple[Any, str]] = []
-    for it in items:
+    for it in _normalise_scheduled(sched):
         if not isinstance(it, dict):
             continue
         logger.debug("scheduled item: %s", it)
         idate = (it.get("date") or it.get("scheduledDate")
                  or it.get("calendarDate") or it.get("itemDate"))
-        if idate != date_str:
+        if str(idate)[:10] != date_str:
+            continue
+        sid = _scheduled_workout_sid(it)
+        if not sid:
             continue
         title = it.get("title") or it.get("workoutName") or it.get("name") or ""
         if not any(title.startswith(p) for p in _NAME_PREFIXES):
             continue
-        sid = (it.get("scheduledWorkoutId") or it.get("workoutScheduleId") or it.get("id"))
-        if sid:
-            out.append((sid, title))
+        out.append((sid, title))
     return out
 
 
