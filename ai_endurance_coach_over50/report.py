@@ -28,6 +28,7 @@ from .history import (
 )
 from .metrics import DailyMetrics
 from .llm import MODEL_FAST, MODEL_SMART
+from .coach_voice import COACH_VOICE
 from .coach_context import build_advice_context, coach_persona_brief
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
@@ -742,8 +743,8 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
             model=MODEL_SMART,
             max_tokens=320,
             system=(
-                "You are an experienced endurance coach reviewing an athlete's training load and recovery data. "
-                "Be direct, specific, and evidence-based. Reference the actual numbers. "
+                COACH_VOICE + "\n\n"
+                "Right now: review the athlete's training load and recovery data. "
                 "Your role here is to assess the WEEKLY training load trajectory and block periodization — "
                 "not to repeat today's daily train/rest recommendation (that is handled separately). "
                 "Judge overreaching against the training-block phase given in the data: in a BUILD block, "
@@ -951,8 +952,8 @@ def generate_sleep_analysis(data: list[dict], avgs_7: dict, avgs_30: dict) -> st
             model=MODEL_SMART,
             max_tokens=400,
             system=(
-                "You are an experienced endurance coach reviewing an athlete's 30-night sleep data. "
-                "Be direct, specific, and evidence-based — reference actual numbers from the data. "
+                COACH_VOICE + "\n\n"
+                "Right now: review the athlete's 30-night sleep data. Reference actual numbers from the data. "
                 "No bullet points or markdown headers. Short paragraphs only. Address the athlete as 'you'."
             ),
             messages=[{"role": "user", "content": prompt}],
@@ -1219,9 +1220,9 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
             "keep HR/RPE primary for readiness and variable conditions.\n"
         )
         coach_system = (
-            "You are a concise endurance coach writing a Monday morning briefing for an amateur "
-            "cyclist with a power meter. Be specific, actionable, and direct. "
-            "Use watts for interval/climb cues; HR/RPE for aerobic base and readiness."
+            COACH_VOICE + "\n\n"
+            "Right now: write a concise, motivating Monday morning briefing. Be specific and "
+            "actionable. Use watts for interval/climb cues; HR/RPE for aerobic base and readiness."
         )
     else:
         intensity_cue = (
@@ -1229,9 +1230,9 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
             "in terms of HR zones / RPE / perceived effort, NEVER watts or power targets.\n"
         )
         coach_system = (
-            "You are a concise endurance coach writing a Monday morning briefing for an amateur "
-            "cyclist who trains on heart rate (no power meter). Be specific, actionable, and "
-            "direct. Express all intensity cues as HR zones / RPE, never watts."
+            COACH_VOICE + "\n\n"
+            "Right now: write a concise, motivating Monday morning briefing. Be specific and "
+            "actionable. Express all intensity cues as HR zones / RPE, never watts."
         )
 
     prompt = (
@@ -1284,9 +1285,9 @@ def generate_body_analysis(body_rows: list[dict], latest: dict, pmc_today: dict,
             model=MODEL_SMART,
             max_tokens=450,
             system=(
-                "You are an experienced endurance coach and sports nutritionist reviewing an athlete's "
-                "90-day body composition data alongside their training load. "
-                "Be direct, specific, and reference actual numbers from the data. "
+                COACH_VOICE + "\n\n"
+                "Right now: acting also as a sports nutritionist, review the athlete's 90-day body "
+                "composition data alongside their training load. Reference actual numbers from the data. "
                 "No bullet points or markdown headers — short paragraphs only. Address the athlete as 'you'."
             ),
             messages=[{"role": "user", "content": prompt}],

@@ -93,7 +93,8 @@ from .history import (
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS, needs_metrics_refetch
 from .energy import tdee as compute_tdee
-from .coach_context import ATHLETE_CONSTRAINTS, build_coach_context as _build_coach_context
+from .coach_context import build_coach_context as _build_coach_context
+from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
 from .llm import MODEL_FAST, MODEL_SMART
 
 load_dotenv()
@@ -2321,13 +2322,10 @@ def date_fromisoformat_safe(s: str) -> date:
 
 def _coach_system() -> str:
     base = (
-        "You are an experienced endurance coach working with an amateur athlete preparing for "
-        "a 2-day charity cycling event (Ghent to Amsterdam, ~310 km total, 13–14 Sep 2026). "
-        "The athlete is 50+, training 6+ hours/week mixing cycling, kettlebells, rucking, and MaxiClimber. "
-        "They also have a longer-term goal: Haute Route Alpes 2027 (7 stages, ~900 km, ~25,000 m elevation).\n\n"
+        COACH_VOICE + "\n\n"
         "You have access to their live Garmin data in the context block below. "
         "Use it to give specific, evidence-based advice referencing actual numbers.\n\n"
-        "Response style: direct and concise (2–4 short paragraphs). Use **bold** for key numbers/points.\n\n"
+        "Response style: 2–4 short paragraphs. Use **bold** for key numbers/points.\n\n"
         "When you recommend modifying a planned session, call propose_plan_change once per date — "
         "each call renders its own confirmation card. For multi-day swaps (e.g. defer quality to tomorrow), "
         "call the tool separately for every date that changes. After the tool call(s), briefly explain "
@@ -2362,24 +2360,7 @@ def _coach_system() -> str:
         "an imminent FTP/LTHR retest needs a genuine recovery window regardless of build intent, since a "
         "fatigued test suppresses the result and mis-anchors zones.\n\n"
     )
-    if power_meter_active():
-        return base + (
-            "HR-vs-power note: the athlete has a power meter and trains on BOTH channels. "
-            "Use watts for climb and interval execution feedback; keep HR primary for readiness, "
-            "fatigue, heat, altitude and variable conditions. HR drifts with heat, dehydration, sleep "
-            "and altitude — on hot days or above 2000 m, defer to the HR cap when HR exceeds "
-            "power-predicted effort. The measured FTP/W/kg in context is the primary number; "
-            "the VO2max-derived estimate is a secondary cross-check only."
-            + "\n\n" + ATHLETE_CONSTRAINTS
-        )
-    return base + (
-        "HR-vs-power note: this athlete trains and races on HEART RATE, not power. HR drifts with heat, "
-        "dehydration, fatigue, sleep, caffeine and altitude, and rises late in long climbs (cardiac drift) "
-        "at steady effort — so treat HR zones as a guide, not a hard ceiling, and cross-check with perceived "
-        "effort, especially on hot days and mountain stages. The estimated W/kg is a coarse VO2max-derived "
-        "proxy (no power meter) — discuss it as a trend, never as a measured number."
-        + "\n\n" + ATHLETE_CONSTRAINTS
-    )
+    return base + hr_channel_note(power_meter_active()) + "\n\n" + ATHLETE_CONSTRAINTS
 
 _COACH_TOOL = {
     "name": "propose_plan_change",

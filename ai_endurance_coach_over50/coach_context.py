@@ -38,6 +38,7 @@ from .history import (
     tdee_history,
     weekly_monotony_strain,
 )
+from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
 from .hr_plan import HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
 from .metrics import DailyMetrics
 from .plan import (
@@ -60,14 +61,6 @@ QUALITY_BIKE_LABELS = {
     "Threshold Ride", "FTP Test", "FTP Re-test", "Final FTP Test",
 }
 
-ATHLETE_CONSTRAINTS = (
-    "Athlete constraints (NEVER violate): preparing for a charity cycling event; "
-    "programme is cycling, kettlebells, MaxiClimber, and rucking ONLY. "
-    "NO RUNNING — running causes injury and is excluded entirely. "
-    "Never suggest running, jogging, or trail running as training or as a workout modification. "
-    "When modifying a session, swap within the same discipline (e.g. hard bike -> easy bike)."
-)
-
 _DISCIPLINE_MAP = {
     "bike": "cycling", "tempo": "cycling", "ftp": "cycling", "long": "cycling",
     "strength": "strength", "ruck": "rucking / load-carry",
@@ -89,21 +82,13 @@ def session_discipline(stype: str) -> str:
 
 
 def coach_persona_brief(has_power: bool) -> str:
-    base = (
-        "You are an experienced endurance coach for an amateur athlete preparing for "
-        "a 2-day charity cycling event (Ghent to Amsterdam, ~310 km, 13–14 Sep 2026). "
-        "The athlete is 50+, training on cycling, kettlebells, MaxiClimber, and rucking only. "
-        + ATHLETE_CONSTRAINTS + " "
-        "Give a concise train/rest/modify-today recommendation for the morning email dashboard. "
-        "Reference actual numbers from the context. Never be vague."
-    )
-    if has_power:
-        return base + (
-            " The athlete has a power meter — use watts for interval cues when relevant; "
-            "keep HR primary for readiness."
-        )
-    return base + (
-        " The athlete trains on heart rate (no power meter) — cue intensity in HR zones / RPE, never watts."
+    return (
+        COACH_VOICE + "\n\n"
+        + ATHLETE_CONSTRAINTS + "\n\n"
+        "Right now: give a concise train/rest/modify-today recommendation for the morning email "
+        "dashboard. Keep it specific and grounded in the actual numbers from the context — warm "
+        "and motivating, but never vague.\n\n"
+        + hr_channel_note(has_power)
     )
 
 
@@ -323,6 +308,12 @@ def build_advice_context(target: date) -> str:
     rag = _section_rag(session_type, limit=2)
     if rag:
         parts += ["", *rag]
+    # Share the same 2012 Haute Route lessons the chat coach gets, so daily advice
+    # is anchored to what actually went wrong last time.
+    try:
+        parts += ["", *hr_2012_lessons_context()]
+    except Exception:
+        pass
     parts += ["", ATHLETE_CONSTRAINTS]
     return "\n".join(parts)
 

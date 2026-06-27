@@ -12,6 +12,7 @@ from typing import Any, Optional
 from .history import DB_PATH, _conn, get_cached_text, set_cached_text
 from .plan import COMPOUND_SESSIONS, maxi_target_zone, session_for_date, session_for_date_extended
 from .llm import MODEL_FAST, MODEL_SMART
+from .coach_voice import COACH_VOICE, hr_channel_note
 
 # ── DB schema ────────────────────────────────────────────────────────────────
 
@@ -780,24 +781,25 @@ def _coach_system_prompt(
     if has_power and type_key in _CYCLING_TYPES:
         tail = (
             _DUAL_CHANNEL_SYSTEM + " "
-            "Discuss both watts and HR when both are available. "
-            "Be direct, specific, and evidence-based. Reference the numbers. "
+            "Discuss both watts and HR when both are available. Reference the numbers. "
             "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
         )
     else:
         tail = (
-            "The athlete trains on heart rate and has no power meter — discuss intensity in HR zones / RPE, never watts. "
-            "Be direct, specific, and evidence-based. Reference the numbers. "
+            hr_channel_note(False) + " "
+            "Reference the numbers. "
             "No bullet markdown — short paragraphs only. Address the athlete as 'you'."
         )
     is_ruck = type_key in _RUCK_TYPES or "load carry" in activity_name.lower()
     if type_key in _CYCLING_TYPES:
         return (
-            "You are an experienced cycling coach and endurance specialist reviewing a completed ride. " + tail
+            COACH_VOICE + "\n\n"
+            "Right now: you're reviewing one of Martin's completed cycling rides. " + tail
         )
     if type_key == "stair_climbing":
         return (
-            "You are an experienced cardio interval coach reviewing a completed MaxiClimber session. "
+            COACH_VOICE + "\n\n"
+            "Right now: you're reviewing a completed MaxiClimber session. "
             "The MaxiClimber is a full-body vertical climbing machine (arms AND legs simultaneously) "
             "used here as a structured cardio interval tool — not a strength exercise. "
             "Treat it like a cardio interval session: evaluate HR zone execution, interval quality, "
@@ -805,21 +807,22 @@ def _coach_system_prompt(
         )
     if type_key == "strength_training":
         return (
-            "You are an experienced strength and conditioning coach reviewing a completed "
-            "kettlebell and strength session. " + tail
+            COACH_VOICE + "\n\n"
+            "Right now: you're reviewing a completed kettlebell and strength session. " + tail
         )
     if is_ruck:
         return (
-            "You are an experienced military fitness and load-carrying coach reviewing a "
-            "completed ruck session. " + tail
+            COACH_VOICE + "\n\n"
+            "Right now: you're reviewing a completed ruck (weighted load-carry) session. " + tail
         )
     if type_key in _RUNNING_TYPES:
         return (
-            "You are an experienced running coach reviewing a completed run. " + tail
+            COACH_VOICE + "\n\n"
+            "Right now: you're reviewing a completed run. " + tail
         )
     return (
-        "You are an experienced endurance and conditioning coach reviewing a completed "
-        "training session. " + tail
+        COACH_VOICE + "\n\n"
+        "Right now: you're reviewing a completed training session. " + tail
     )
 
 
@@ -1413,9 +1416,10 @@ def generate_recovery_suggestion(
             model=MODEL_FAST,
             max_tokens=350,
             system=(
-                "You are an experienced endurance and strength coach advising an athlete who missed "
-                "a planned training session. Give a clear recommendation: make it up, skip it, or "
-                "adjust the rest of the week. Be specific and practical. Two short paragraphs "
+                COACH_VOICE + "\n\n"
+                "Right now: Martin missed a planned training session. Give a clear, reassuring "
+                "recommendation: make it up, skip it, or adjust the rest of the week. Be specific "
+                "and practical — and don't let a single miss become guilt. Two short paragraphs "
                 "maximum. No bullet points. Address the athlete as 'you'."
             ),
             messages=[{"role": "user", "content": "\n".join(prompt_lines)}],
@@ -2003,8 +2007,10 @@ def generate_hr_stage_plans() -> dict[int, dict]:
             model=MODEL_SMART,
             max_tokens=3000,
             system=(
-                "You are an experienced Haute Route coach who has guided many amateur "
-                "riders through multi-day alpine stage races. Be specific and practical."
+                COACH_VOICE + "\n\n"
+                "Right now: drawing on deep experience guiding amateur riders through multi-day "
+                "alpine stage races, build Martin's per-stage Haute Route pacing and fuelling "
+                "plans. Be specific and practical."
             ),
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
@@ -2147,8 +2153,9 @@ def generate_charity_day_plans() -> dict[int, dict]:
             model=MODEL_SMART,
             max_tokens=2000,
             system=(
-                "You are an experienced endurance cycling coach fuelling an amateur "
-                "through their first 2-day, 310 km charity ride. Be specific and practical."
+                COACH_VOICE + "\n\n"
+                "Right now: build Martin's per-day pacing and fuelling plans for his first "
+                "2-day, 310 km charity ride (Ghent to Amsterdam). Be specific and practical."
             ),
             messages=[{"role": "user", "content": "\n".join(lines)}],
         )
