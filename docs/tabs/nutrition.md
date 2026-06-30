@@ -49,8 +49,9 @@ Maltodextrin drink protocols remain optional for winter / event gut training.
 
 **Route:** `/nutrition/recipes`
 
-Sunday batch: chicken, rice, overnight oats, scotch eggs, protein oat bars (Tue/Thu
-snack), yogurt pots. Friday eve: weekend rice cakes per calculator.
+Sunday batch: chicken, rice, overnight oats, scotch eggs, yogurt pots. Tue/Thu (+ Sat)
+mid-morning snack is a shop-bought Nature Valley Protein bar by default (home-baked oat
+bars are an optional alternative — recipe #03). Friday eve: weekend rice cakes per calculator.
 
 ---
 

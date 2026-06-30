@@ -171,7 +171,7 @@
   {% if sunday_fuel %}
   <section style="padding-top:32px;padding-bottom:0">
     <div class="callout carbs" style="margin-bottom:0">
-      <p><b>This week's Sunday ride (~{{ sunday_fuel.ride_hours }} h):</b> make <b>{{ sunday_fuel.rice_cakes }} standard rice cakes</b> Friday eve, mix bottles <b>{{ sunday_fuel.bottles | join(' + ') }}</b>{% if sunday_fuel.flapjack %} · pack 1 flapjack bar{% endif %}. Build recovery oats jar the night before.</p>
+      <p><b>This week's Sunday ride (~{{ sunday_fuel.ride_hours }} h):</b> make <b>{{ sunday_fuel.rice_cakes }} standard rice cakes</b> Friday eve, mix bottles <b>{{ sunday_fuel.bottles | join(' + ') }}</b>{% if sunday_fuel.flapjack %} · pack 1 protein bar (or flapjack){% endif %}. Build recovery oats jar the night before.</p>
     </div>
   </section>
   {% endif %}
@@ -190,7 +190,7 @@
           <td>{% if tier.ride_hours <= 1.5 %}≤1.5 h{% elif tier.ride_hours <= 2.25 %}2 h{% elif tier.ride_hours <= 3.25 %}2.5–3 h{% elif tier.ride_hours <= 4.25 %}3.5–4 h{% elif tier.ride_hours <= 5.25 %}4.5–5 h{% else %}5.5–6 h{% endif %}</td>
           <td class="hi">{{ tier.rice_cakes }}</td>
           <td>{{ tier.bottles | join(' + ') }}</td>
-          <td>{% if tier.flapjack %}1 flapjack bar{% else %}—{% endif %}</td>
+          <td>{% if tier.flapjack %}1 protein bar (or flapjack){% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -365,7 +365,7 @@
     <div id="d5" class="dur-panel">
       <table class="timeline">
         <tr><td>Hours 1–2</td><td><b>2 solids/hour</b> — savoury rice cakes while appetite holds. E1 + E2 electrolyte bottles</td></tr>
-        <tr><td>Hours 3–5</td><td><b>2–3 solids/hour</b> — switch to cinnamon/PB&amp;J cakes + energy balls; flapjack as bonk insurance. Never &gt;30 min without a bite</td></tr>
+        <tr><td>Hours 3–5</td><td><b>2–3 solids/hour</b> — switch to cinnamon/PB&amp;J cakes + energy balls; protein bar (or flapjack) as bonk insurance. Never &gt;30 min without a bite</td></tr>
         <tr><td>Hour 3+</td><td>Savoury rice cakes add <b>5–10 g protein/hr</b> (egg/bacon) alongside carb solids</td></tr>
         <tr><td>Heat</td><td><b>600–800 ml/hr</b> electrolyte; both bottles electrolyte-only — zero carb powder</td></tr>
         <tr class="total-row"><td>Total</td><td>~400–450 g over 5 h (~80–90 g/hr from solids) · 2.5–4 L electrolyte</td></tr>
@@ -402,7 +402,7 @@
     <table class="data-table">
       <thead><tr><th>Timing</th><th>What to do</th></tr></thead>
       <tbody>
-        <tr><td>60–90 min before</td><td>Light top-up only if lunch was &gt;4 h ago: banana, 2 oatcakes + honey, or half oat bar (~15–25 g). Skip if lunch was ≤3 h ago.</td></tr>
+        <tr><td>60–90 min before</td><td>Light top-up only if lunch was &gt;4 h ago: banana, 2 oatcakes + honey, or half a protein/oat bar (~15–25 g). Skip if lunch was ≤3 h ago.</td></tr>
         <tr><td>≤60 min easy</td><td><b>Water only</b> — no food needed</td></tr>
         <tr><td>60–75 min Z2</td><td>Water; optional half banana at 45 min if hungry</td></tr>
         <tr><td>75–90 min tempo</td><td>1 standard bottle (60 g over the ride) OR bottle + half rice cake at 45 min</td></tr>
