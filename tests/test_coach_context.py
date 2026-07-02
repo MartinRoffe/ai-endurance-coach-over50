@@ -25,6 +25,7 @@ def test_build_advice_context_includes_constraints_and_today_session():
     assert "cycling" in ctx
     assert "## HRV Traffic Light" in ctx
     assert "## Training Load (PMC)" in ctx
+    assert "## Time & Session Status" in ctx
 
 
 def test_build_advice_context_includes_hrv_section_with_metrics():

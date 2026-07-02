@@ -1,4 +1,4 @@
-{# recipes_section: recipes | recipes_weekend | recipes_griddle #}
+{# recipes_section: recipes | recipes_oats | recipes_weekend | recipes_griddle | recipes_travel #}
 <style>
   .rec-hero-tabs {
     margin-top: 24px;
@@ -51,7 +51,9 @@
   <div class="rec-hero-tabs-label">Recipe guides</div>
   <div class="rec-hero-tabs-group">
     <a href="/nutrition/recipes" class="{% if recipes_section == 'recipes' %}active{% endif %}">Cook Once · Week</a>
+    <a href="/nutrition/recipes/overnight-oats" class="{% if recipes_section == 'recipes_oats' %}active{% endif %}">Overnight Oats</a>
     <a href="/nutrition/recipes/weekend-fuel" class="{% if recipes_section == 'recipes_weekend' %}active{% endif %}">Weekend Ride Fuel</a>
     <a href="/nutrition/recipes/griddle" class="{% if recipes_section == 'recipes_griddle' %}active{% endif %}">Blackstone Griddle</a>
+    <a href="/nutrition/recipes/travel" class="{% if recipes_section == 'recipes_travel' %}active{% endif %}">Weekend Away</a>
   </div>
 </div>

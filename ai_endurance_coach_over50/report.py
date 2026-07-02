@@ -29,17 +29,32 @@ from .history import (
 from .metrics import DailyMetrics
 from .llm import MODEL_FAST, MODEL_SMART
 from .coach_voice import COACH_VOICE
-from .coach_context import build_advice_context, coach_persona_brief
+from .coach_context import build_advice_context, build_advice_timing, coach_persona_brief
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
+_ADVICE_MODE_KEY = "advice_mode_v1_{}"
 
 
-def _build_advice_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+def _advice_mode_cache_key(target: date) -> str:
+    return _ADVICE_MODE_KEY.format(target.isoformat())
+
+
+def _build_advice_prompt(
+    m: DailyMetrics,
+    stats: dict,
+    comp_z: Optional[float],
+    timing: Optional[dict] = None,
+) -> str:
     target = m.date
+    timing = timing or build_advice_timing(target)
     label, _ = readiness_label(comp_z)
 
     lines = [
         f"Date: {target.strftime('%A, %-d %B %Y')}",
+    ]
+    if timing["is_today"] and timing.get("local_time"):
+        lines.append(f"Local time now: {timing['local_time']} ({timing['part_of_day']})")
+    lines += [
         f"Composite readiness score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'no baseline yet'} ({label})",
         "",
         "Metric details (z-score = deviation from personal 30-day baseline, positive = better):",
@@ -64,36 +79,56 @@ def _build_advice_prompt(m: DailyMetrics, stats: dict, comp_z: Optional[float]) 
         lines.append(f"ACWR: {m.acwr:.2f} ({m.acwr_status.replace('_', ' ').lower()})")
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
-    lines += [build_advice_context(target)]
-    lines += [
-        "",
-        "Based on these metrics and coaching context, please provide:",
-        "1. A clear one-line recommendation: Train / Rest / Active Recovery",
-        "2. Two or three sentences explaining the key signals driving that recommendation",
-        "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification within the same discipline (never running)",
-        "4. One watchout if any metric is concerning",
-        "",
-        "Keep the response concise — it will appear in a morning email. "
-        "Use plain language, no bullet markdown, just short paragraphs. "
-        "Address the user as 'you'.",
-    ]
+    lines += [build_advice_context(target, timing)]
+    if timing["post_workout"]:
+        lines += [
+            "",
+            "Based on these metrics and coaching context, please provide:",
+            "1. A clear one-line headline debriefing today's completed session (not a train/rest decision for this morning)",
+            "2. Two or three sentences on how the session went and what the key result means (cite FTP/LTHR/power if relevant)",
+            "3. Recovery guidance for the rest of today and how to approach the next scheduled session",
+            "4. One watchout if any metric or load signal needs attention",
+            "",
+            "CRITICAL: Today's workout is already done. Readiness numbers above are pre-workout morning "
+            "snapshots — do NOT call them post-workout or 'the morning after' the test. Do NOT say "
+            "'yesterday' for anything that happened today.",
+            "",
+            "Keep the response concise for the dashboard. Use plain language, no bullet markdown, "
+            "just short paragraphs. Address the user as 'you'.",
+        ]
+    else:
+        lines += [
+            "",
+            "Based on these metrics and coaching context, please provide:",
+            "1. A clear one-line recommendation: Train / Rest / Active Recovery",
+            "2. Two or three sentences explaining the key signals driving that recommendation",
+            "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification within the same discipline (never running)",
+            "4. One watchout if any metric is concerning",
+            "",
+            "Keep the response concise for the morning readiness dashboard. "
+            "Use plain language, no bullet markdown, just short paragraphs. "
+            "Address the user as 'you'.",
+        ]
     return "\n".join(lines)
 
 
 def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+    timing = build_advice_timing(m.date)
+    mode = "post" if timing["post_workout"] else "pre"
+    mode_key = _advice_mode_cache_key(m.date)
     cached = load_advice(m.date)
-    if cached:
+    if cached and get_cached_text(mode_key) == mode:
         return cached
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return _rule_based_advice(m, stats, comp_z)
+        return _rule_based_advice(m, stats, comp_z, timing=timing)
 
     from .history import power_meter_active
-    system = coach_persona_brief(power_meter_active())
+    system = coach_persona_brief(power_meter_active(), post_workout=timing["post_workout"])
 
     client = anthropic.Anthropic(api_key=api_key)
-    prompt = _build_advice_prompt(m, stats, comp_z)
+    prompt = _build_advice_prompt(m, stats, comp_z, timing=timing)
 
     try:
         message = client.messages.create(
@@ -105,15 +140,30 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
         )
         text = message.content[0].text
         save_advice(m.date, text)
+        set_cached_text(mode_key, mode)
         return text
     except anthropic.APIStatusError as e:
         import logging
         logging.getLogger(__name__).warning("Anthropic API error (%s), using rule-based advice", e.status_code)
-        return _rule_based_advice(m, stats, comp_z)
+        return _rule_based_advice(m, stats, comp_z, timing=timing)
 
 
-def _rule_based_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+def _rule_based_advice(
+    m: DailyMetrics,
+    stats: dict,
+    comp_z: Optional[float],
+    timing: Optional[dict] = None,
+) -> str:
     """Fallback when no Anthropic API key is set."""
+    timing = timing or build_advice_timing(m.date)
+    if timing["post_workout"]:
+        session = timing.get("session")
+        label = session[1] if session else "session"
+        return (
+            f"Session complete: {label}\n\n"
+            "Good work today. Focus on recovery for the rest of the day — fuel, hydrate, "
+            "and keep any extra movement easy. Readiness metrics on this page are from this morning."
+        )
     if comp_z is None:
         return "Still building your baseline — keep logging data for a few more days."
 

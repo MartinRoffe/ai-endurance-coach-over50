@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+<title>Overnight Oats — Base + Flavour Variants</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:60px 40px 44px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,8vw,84px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:620px;margin-top:18px;}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  .toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:32px 0 8px;}
+  .toc a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 14px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s,background .15s;}
+  .toc a:hover{border-color:var(--accent);background:var(--surface2);}
+  .toc a span{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+
+  section{padding:40px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;margin-bottom:6px;}
+  h2 .num{color:var(--muted);margin-right:10px;}
+  h3{font-family:'Bebas Neue',sans-serif;font-size:24px;margin:28px 0 12px;letter-spacing:0.03em;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .note{margin:14px 20px 18px;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+
+  .sched{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .sched th{background:var(--surface2);text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:11px 14px;border-bottom:1px solid var(--border);}
+  .sched td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;color:#cdd0bb;}
+  .sched tr:last-child td{border-bottom:none;}
+  .sched td:first-child{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);white-space:nowrap;width:80px;}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+
+  @media(max-width:680px){
+    .hero{padding:40px 20px 30px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'recipes' %}
+{% set recipes_section = 'recipes_oats' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · High-Protein · Desk Breakfast &amp; Post-Ride Recovery</div>
+    <h1>OVERNIGHT<br><span>OATS</span></h1>
+    <p>One shared whey + yogurt base, six flavour options. Batch three jars on Sunday for Mon/Wed/Fri desk breakfasts — or build a single jar the night before a long ride for post-ride recovery (≥30 g protein).</p>
+    {% include 'recipes_subnav.html' %}
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#base"><span>Start here</span>Shared Base Jar</a>
+    <a href="#weekday"><span>Mon / Wed / Fri</span>Sunday Batch Rotation</a>
+    <a href="#efpro"><span>Flavour 1</span>EF Pro · Berries</a>
+    <a href="#strawberries"><span>Flavour 2</span>Strawberries 'n' Cream</a>
+    <a href="#classic"><span>Flavour 3</span>Cycling Labs Classic</a>
+    <a href="#banoffee-quick"><span>Flavour 4</span>Quick Banoffee (add-to-base)</a>
+    <a href="#banoffee-gcn"><span>Flavour 5</span>GCN Banoffee (standalone)</a>
+    <a href="#berry-default"><span>Default</span>Mixed Berry Pot</a>
+    <a href="/nutrition/recipes#overnight-oats"><span>Batch prep</span>Sunday schedule (#05) →</a>
+    <a href="/nutrition/fuelling"><span>Protocols</span>Post-ride recovery stack →</a>
+  </div>
+
+  <!-- BASE -->
+  <section id="base">
+    <div class="sec-label">The engine — same jar every time</div>
+    <h2><span class="num">·</span>Shared Protein Base</h2>
+    <p class="lead">Every flavour below starts from this mix in a <b>350 ml</b> jar (except the standalone GCN Banoffee). Berries and fruit toppings go in a <b>separate small pot</b> — that keeps the full whey scoop and 90 g yogurt in the jar (~42 g protein). Full Sunday batch steps live on the <a href="/nutrition/recipes#overnight-oats">Cook Once page (#05)</a>.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">High-Protein Overnight Oats — Base Mix</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~42g P</span><span class="tag t-time">2 min</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Per 350 ml jar</div>
+          <ul>
+            <li><b>50 g</b> porridge oats</li>
+            <li><b>1 scoop</b> whey or casein (~30 g powder) — keep full scoop</li>
+            <li><b>120 ml</b> milk</li>
+            <li><b>90 g</b> Greek yogurt</li>
+            <li><b>1 tbsp</b> chia seeds</li>
+            <li><b>1 tsp</b> honey</li>
+            <li>Pinch of salt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Mix oats, protein powder and chia in the jar; stir to distribute the powder.</li>
+            <li>Add milk, yogurt, honey and salt; stir until no dry patches remain (thick but pourable).</li>
+            <li>Seal and refrigerate. Add fruit from a separate topping pot when you eat.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Post-ride:</b> eat the <b>full jar</b> within 45–60 min of finishing (after chocolate milk). <b>Weekday desk:</b> stir topping through at your desk — not a pre-ride breakfast on long-ride mornings.</div>
+    </div>
+  </section>
+
+  <!-- WEEKDAY ROTATION -->
+  <section id="weekday">
+    <div class="sec-label">Sunday batch — Mon / Wed / Fri</div>
+    <h2><span class="num">·</span>Three Jars, Three Flavours</h2>
+    <p class="lead">On Sunday, build <b>3 base jars</b> + <b>3 separate topping pots</b> (~8 min hands-on). No schedule to track on recovery rides — but for weekday variety, this rotation works well:</p>
+    <table class="sched">
+      <thead><tr><th>Day</th><th>Topping pot</th><th>Variant</th></tr></thead>
+      <tbody>
+        <tr><td>Mon</td><td>Mixed berries + almond butter + ½ banana</td><td><a href="#efpro">EF Pro</a></td></tr>
+        <tr><td>Wed</td><td>Fresh strawberries + vanilla + extra yogurt</td><td><a href="#strawberries">Strawberries 'n' Cream</a></td></tr>
+        <tr><td>Fri</td><td>Banana + peanut butter + cinnamon + raisins</td><td><a href="#classic">Cycling Labs Classic</a></td></tr>
+      </tbody>
+    </table>
+    <div class="note">Swap any flavour to any day — macros stay the same. The default <a href="#berry-default">mixed berry pot</a> is fine for all three if you want zero decision fatigue.</div>
+  </section>
+
+  <!-- EF PRO -->
+  <section id="efpro">
+    <div class="sec-label">Flavour variant · add to base</div>
+    <h2>EF Pro Cycling Athlete</h2>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">EF Pro — Berries &amp; Almond Butter</div>
+        <div class="tags"><span class="tag t-makes">1 topping pot</span><span class="tag t-prot">~42g P with base</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Separate topping pot</div>
+          <ul>
+            <li><b>100 g</b> mixed berries (frozen fine)</li>
+            <li><b>1 tbsp</b> almond butter</li>
+            <li><b>½</b> banana, sliced (add morning or night)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Portion into a small pot or bag on Sunday; keep separate from the oat jar.</li>
+            <li>Stir through the base at your desk (Mon) or after a long ride (recovery).</li>
+            <li>Berries + almond butter add flavour without dropping protein — base whey + yogurt covers the 30 g threshold.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STRAWBERRIES -->
+  <section id="strawberries">
+    <div class="sec-label">Flavour variant · add to base</div>
+    <h2>Strawberries 'n' Cream</h2>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Strawberries 'n' Cream</div>
+        <div class="tags"><span class="tag t-makes">1 topping pot</span><span class="tag t-prot">~42g P with base</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Separate topping pot</div>
+          <ul>
+            <li><b>100 g</b> fresh strawberries, sliced</li>
+            <li><b>1 tbsp</b> vanilla extract</li>
+            <li><b>50 g</b> extra Greek yogurt (creaminess — stir through when eating)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Wednesday desk breakfast in the suggested rotation — or any post-ride recovery day.</li>
+            <li>Extra yogurt boosts creaminess; keep the whey scoop in the base jar.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLASSIC -->
+  <section id="classic">
+    <div class="sec-label">Flavour variant · add to base</div>
+    <h2>Cycling Labs Classic</h2>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Classic — PB, Banana &amp; Cinnamon</div>
+        <div class="tags"><span class="tag t-makes">1 topping pot</span><span class="tag t-prot">~42g P with base</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Separate topping pot</div>
+          <ul>
+            <li><b>1</b> banana, sliced</li>
+            <li><b>1 tbsp</b> peanut butter</li>
+            <li><b>1 tsp</b> cinnamon</li>
+            <li><b>1 tbsp</b> raisins</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Friday desk breakfast in the suggested rotation — or the simplest post-ride variant.</li>
+            <li>Classic flavours; protein comes entirely from the shared base.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK BANOFFEE -->
+  <section id="banoffee-quick">
+    <div class="sec-label">Flavour variant · add to base</div>
+    <h2>Quick Banoffee</h2>
+    <p class="lead">The simpler high-protein banoffee — uses the shared base + whey scoop (unlike the full GCN layered recipe below). Dates and maple syrup in the topping pot.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Quick Banoffee — Add to Base</div>
+        <div class="tags"><span class="tag t-makes">1 topping pot</span><span class="tag t-prot">~42g P with base</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Separate topping pot</div>
+          <ul>
+            <li><b>1</b> ripe banana, mashed or sliced</li>
+            <li><b>1 tbsp</b> maple syrup or golden syrup</li>
+            <li><b>2</b> Medjool dates, chopped</li>
+            <li>Pinch cinnamon</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Sweet but still high-protein — don't drop the whey scoop for extra banana.</li>
+            <li>Good when you want banoffee flavour without building the standalone GCN jar.</li>
+            <li>Stir topping through the base at your desk or post-ride.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GCN BANOFFEE -->
+  <section id="banoffee-gcn">
+    <div class="sec-label">Standalone dessert-style · post-ride treat</div>
+    <h2>GCN Banoffee Pie Overnight Oats</h2>
+    <p class="lead">Emma's layered banoffee from <a href="https://www.youtube.com/watch?v=5nWsV0Be-vI" target="_blank" rel="noopener">GCN</a> — no shared base or whey scoop. Higher carbs, lower protein (~29 g from yogurt). Best as an occasional post-ride treat, not a weekday desk default.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Banoffee Overnight Oats — GCN</div>
+        <div class="tags"><span class="tag t-makes">1 jar</span><span class="tag t-prot">~29g P</span><span class="tag t-time">5 min prep</span><span class="tag t-batch">GCN recipe</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients</div>
+          <ul>
+            <li><b>90 g</b> quick oats (about 1 cup)</li>
+            <li>Pinch of salt</li>
+            <li>Few drops of vanilla essence</li>
+            <li><b>30 g</b> muscovado sugar (2 tbsp — 1 tbsp in oats, 1 tbsp in yogurt)</li>
+            <li><b>1</b> espresso (~50 ml)</li>
+            <li><b>200 ml</b> skimmed milk</li>
+            <li><b>1</b> medium ripe banana (~100 g peeled), sliced</li>
+            <li><b>150 g</b> natural low-fat Greek-style yogurt</li>
+            <li><b>10 g</b> dark chocolate, grated (1 square — optional)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Add oats, salt, espresso, vanilla and <b>1 tbsp</b> muscovado to a jar or tall glass; stir in the milk.</li>
+            <li>Layer sliced banana on top — <b>do not stir</b> (you want distinct banoffee layers).</li>
+            <li>Mix the remaining <b>1 tbsp</b> muscovado into the yogurt; pour over the banana — again, don't stir.</li>
+            <li>Seal and fridge overnight. Oats soak up the liquid and go creamy; yogurt sets as a toffee topping.</li>
+            <li>Grate dark chocolate on top before eating. Eat the <b>full jar</b> within 45–60 min of finishing (after chocolate milk).</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note protein"><b>Standalone recipe</b> — ~760 kcal · ~132 g carbs. Pair with chocolate milk first; add a whey shake if you need to hit 30 g+ protein after a long ride.</div>
+    </div>
+  </section>
+
+  <!-- DEFAULT BERRY -->
+  <section id="berry-default">
+    <div class="sec-label">Simplest option</div>
+    <h2>Mixed Berry Pot (Default)</h2>
+    <p class="lead">What the batch-prep page (#05) uses by default — one flavour for all three weekday jars if you don't want to rotate.</p>
+    <div class="recipe">
+      <div class="recipe-head">
+        <div class="recipe-title">Mixed Berries — 100 g per pot</div>
+        <div class="tags"><span class="tag t-makes">3 pots</span><span class="tag t-prot">~42g P with base</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Per breakfast</div>
+          <ul>
+            <li><b>100 g</b> frozen mixed berries (portion on Sunday into 3 small pots or bags)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Use</div>
+          <ol>
+            <li>Portion berries into separate pots while building the three base jars on Sunday.</li>
+            <li>Eat cold — stir berries through at the desk. Keeps 4–5 days.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  <a href="/nutrition/recipes">← Cook Once · Eat All Week</a> · <a href="/nutrition/recipes/weekend-fuel">Weekend Ride Fuel</a> · <a href="/nutrition/fuelling">Ride Fuelling protocols</a>
+</div>
+
+</body>
+</html>

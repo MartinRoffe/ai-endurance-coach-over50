@@ -2,7 +2,7 @@
 
 In-ride solids are for **weekend long rides only**. Weekday 60 min rides: **banana 45 min before, nothing on the bike.**
 
-Full methods: **Nutrition → Ride Fuelling** (`/nutrition/fuelling`) and **Recipes → Weekend Ride Fuel** (`/nutrition/recipes/weekend-fuel`).
+Full methods: **Nutrition → Ride Fuelling** (`/nutrition/fuelling`), **Recipes → Overnight Oats** (`/nutrition/recipes/overnight-oats`) and **Weekend Ride Fuel** (`/nutrition/recipes/weekend-fuel`).
 
 ## How many rice cakes?
 
@@ -43,4 +43,4 @@ Label **E1**, **E2**, etc. Friday eve.
 - Energy balls as standing prep (optional for 5 h+ only)
 - Weekday on-bike fuel (banana pre-ride is enough for 60 min)
 
-Pick any recovery overnight oats flavour post-ride — no schedule to follow.
+Pick any recovery overnight oats flavour post-ride — see `/nutrition/recipes/overnight-oats` (EF Pro, Strawberries, Classic, Quick Banoffee, GCN Banoffee, or plain berries).

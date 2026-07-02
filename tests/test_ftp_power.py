@@ -40,3 +40,20 @@ def test_extract_ftp_effort_picks_highest_hr_lap():
     out = _extract_ftp_effort(_SplitsApi(laps), 1)
     assert out["ftp_effort_avg_w"] == 245
     assert out["ftp_w"] == round(245 * 0.95)
+
+
+def test_extract_ftp_effort_structured_workout_laps():
+    """Warm-up lap must not win over split 20-min effort (real 2026-07-02 shape)."""
+    laps = [
+        {"duration": 712, "averageHR": 142, "maxHR": 161, "averagePower": 124, "normalizedPower": 147},
+        {"duration": 801, "averageHR": 151, "maxHR": 167, "averagePower": 125, "normalizedPower": 143},
+        {"duration": 579, "averageHR": 178, "maxHR": 183, "averagePower": 207, "normalizedPower": 210},
+        {"duration": 573, "averageHR": 184, "maxHR": 188, "averagePower": 210, "normalizedPower": 216},
+        {"duration": 48, "averageHR": 183, "maxHR": 183, "averagePower": 206, "normalizedPower": 212},
+        {"duration": 797, "averageHR": 150, "maxHR": 183, "averagePower": 61, "normalizedPower": 85},
+    ]
+    out = _extract_ftp_effort(_SplitsApi(laps), 1)
+    assert out["ftp_effort_avg_w"] == 213
+    assert out["ftp_w"] == round(213 * 0.95)
+    assert out["ftp_effort_avg_hr"] == 181
+    assert out["ftp_effort_max_hr"] == 188

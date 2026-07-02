@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>">
+<title>Weekend Away — Food Checklist</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --purple:#9b59b6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',system-ui,sans-serif;font-weight:300;background:var(--bg);color:var(--text);line-height:1.6;padding-bottom:90px;min-height:100vh;}
+  a{color:var(--accent);}
+
+  header{position:relative;padding:48px 24px 36px;border-bottom:1px solid var(--border);overflow:hidden;}
+  header::before{content:'';position:absolute;top:-60px;right:-80px;width:420px;height:420px;background:radial-gradient(circle,rgba(53,200,241,0.08) 0%,transparent 70%);pointer-events:none;}
+  header .wrap{position:relative;max-width:720px;margin:0 auto;}
+  header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(34px,7vw,56px);line-height:0.95;letter-spacing:0.03em;color:var(--text);}
+  header p{font-size:14px;color:var(--muted);margin-top:14px;max-width:640px;line-height:1.7;}
+
+  .export-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+  .export-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,background .15s;}
+  .export-btn:hover{border-color:var(--accent);}
+  .export-btn.primary{background:var(--accent);color:#0e0f0c;border-color:var(--accent);font-weight:500;}
+  .export-btn.primary:hover{opacity:.92;}
+  .export-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:10px 16px;border-radius:6px;font-size:13px;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .export-toast.show{opacity:1;}
+
+  .filter-block{margin-top:18px;}
+  .filter-block + .filter-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .set-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;}
+  .set-bar-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:10px;min-width:72px;}
+  .set-btns{display:flex;flex-wrap:wrap;gap:8px;flex:1;}
+  .set-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;padding:9px 14px;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s,color .15s;line-height:1.35;text-align:left;}
+  .set-btn:hover{border-color:#4a4d42;}
+  .set-btn.active{border-color:var(--accent3);background:rgba(53,200,241,.1);color:var(--accent3);}
+  .set-btn .set-sub{display:block;font-size:11px;color:var(--muted);font-weight:300;margin-top:2px;}
+  .set-btn.active .set-sub{color:#7ab8d4;}
+  .set-hint{font-size:12px;color:var(--muted);margin-top:12px;max-width:680px;line-height:1.55;}
+  .set-hint b{color:var(--accent2);font-weight:500;}
+
+  .wrap{max-width:720px;margin:0 auto;padding:16px 14px;}
+  .cat{display:flex;align-items:baseline;gap:8px;margin:28px 4px 10px;}
+  .cat h2{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:500;}
+  .cat .sub{font-size:11px;color:var(--muted);font-weight:300;text-transform:none;letter-spacing:0;}
+  .cat.amber h2{color:var(--accent2);}
+  .cat.blue h2{color:var(--accent3);}
+  .cat.purple h2{color:var(--purple);}
+
+  .item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px 13px;margin-bottom:8px;transition:opacity .15s,border-color .15s;}
+  .item:hover{border-color:#3a3d33;}
+  .item.done{opacity:.45;}
+  .check{flex-shrink:0;width:26px;height:26px;border:2px solid var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#0e0f0c;background:transparent;user-select:none;transition:background .15s;}
+  .check.on{background:var(--accent);}
+  .item.done .name{text-decoration:line-through;}
+  .meta{flex:1;min-width:0;}
+  .name{font-weight:400;font-size:15px;color:var(--text);}
+  .note{font-size:11.5px;color:var(--muted);margin-top:1px;}
+
+  .banner{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:0 4px 4px 0;padding:11px 14px;margin:10px 4px 4px;font-size:12.5px;color:#b0b39a;}
+  .banner b{color:var(--accent2);}
+  .banner.blue{border-left-color:var(--accent3);} .banner.blue b{color:var(--accent3);}
+
+  .totbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);border-top:1px solid var(--border);color:var(--text);padding:13px 18px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.4);}
+  .totbar .lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;}
+  .totbar .big{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--accent);letter-spacing:0.02em;}
+  .totbar .count{font-size:12px;color:var(--muted);margin-top:2px;}
+  footer{text-align:center;font-size:11px;color:var(--muted);padding:18px;}
+  .print-pill{display:inline-block;margin-top:8px;padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+
+  @media print{
+    .totbar,.export-row,.filter-block,.export-toast,nav{display:none!important;}
+    body{padding-bottom:0;background:#fff;color:#111;}
+    .item,.banner,.cat h2{break-inside:avoid;}
+    .check{border-color:#333;}
+  }
+</style>
+</head>
+<body>
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'recipes' %}
+{% set recipes_section = 'recipes_travel' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+{% include 'recipes_subnav.html' %}
+
+<header>
+  <div class="wrap">
+    <h1>🧳 WEEKEND AWAY<br><span style="color:var(--accent3)">FOOD CHECKLIST</span></h1>
+    <p>Bike + ruck weekend away from the batch-prep kitchen. Tick items as you pack — <b>Copy for Notes</b> exports a <code>- [ ]</code> checklist that Apple Notes turns into tappable boxes. Adjust Sunday ride length if your route differs from the plan.</p>
+    <div class="export-row">
+      <button type="button" class="export-btn primary" id="exportNotes">Copy for Notes</button>
+      <button type="button" class="export-btn" id="exportRemaining">Copy unchecked only</button>
+      <button type="button" class="export-btn" id="resetTicks">Reset ticks</button>
+    </div>
+
+    <div class="filter-block">
+      <div class="set-bar" role="group" aria-label="Sunday ride length">
+        <span class="set-bar-label">Sun ride</span>
+        <div class="set-btns">
+          <button type="button" class="set-btn{% if sunday_ride_min == 90 %} active{% endif %}" data-ride-min="90">90 min<span class="set-sub">2 rice cakes · E1</span></button>
+          <button type="button" class="set-btn{% if sunday_ride_min == 120 %} active{% endif %}" data-ride-min="120">2 h<span class="set-sub">4 rice cakes · E1</span></button>
+          <button type="button" class="set-btn{% if sunday_ride_min == 180 %} active{% endif %}" data-ride-min="180">3 h<span class="set-sub">6 rice cakes · E1+E2</span></button>
+          <button type="button" class="set-btn{% if sunday_ride_min == 240 %} active{% endif %}" data-ride-min="240">4 h<span class="set-sub">8 rice cakes · E2 + bar</span></button>
+          <button type="button" class="set-btn{% if sunday_ride_min == 300 %} active{% endif %}" data-ride-min="300">5 h<span class="set-sub">10 rice cakes · E2+E3</span></button>
+          <button type="button" class="set-btn{% if sunday_ride_min == 360 %} active{% endif %}" data-ride-min="360">6 h<span class="set-sub">12 rice cakes · E3+E4</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-block">
+      <div class="set-bar" role="group" aria-label="Plan week">
+        <span class="set-bar-label">Plan week</span>
+        <div class="set-btns">
+          <button type="button" class="set-btn{% if week_mode != 'recovery' %} active{% endif %}" data-week-mode="build">Build week<span class="set-sub">240 g chicken · 80 g oats post-ruck</span></button>
+          <button type="button" class="set-btn{% if week_mode == 'recovery' %} active{% endif %}" data-week-mode="recovery">Recovery week<span class="set-sub">150 g chicken · 60 g oats post-ruck</span></button>
+        </div>
+      </div>
+    </div>
+
+    <p class="set-hint" id="travelHint"></p>
+  </div>
+</header>
+<div class="export-toast" id="exportToast" role="status" aria-live="polite"></div>
+
+<div class="wrap" id="list">
+
+  <div class="banner blue"><b>This weekend:</b> {{ sat_label }}{% if sat_dur_min %} (~{{ sat_dur_min }} min){% endif %} · Sunday {{ sun_label }}{% if sunday_ride_min %} (~{{ sunday_ride_min }} min){% endif %}. No Blackstone — buy or self-cater carb-rich Sat dinner.</div>
+  <div class="banner"><b>Rice cakes</b> need ≥24 h in the fridge after making — bake Thursday/Friday for a Sunday ride. <a href="/nutrition/recipes/weekend-fuel#standard-rice-cake">Recipe →</a></div>
+  <div class="banner"><b>Saturday post-ruck:</b> big porridge stack + eggs + <em>Greek yogurt</em> — the yogurt is non-negotiable for protein. <b>Sunday:</b> chocolate milk first, then recovery oats jar — not before the ride.</div>
+
+  <div class="cat" data-section="prep"><h2>Before you leave</h2><span class="sub">Wed–Fri at home</span></div>
+
+  <div class="cat amber" data-section="pack"><h2>Pack from home</h2><span class="sub">cool bag + bike bag + ruck</span></div>
+
+  <div class="cat blue" data-section="buy"><h2>Buy on arrival</h2><span class="sub">if not packed · fridge shop first</span></div>
+
+  <div class="cat" data-section="gear"><h2>Gear &amp; containers</h2><span class="sub">don't leave without</span></div>
+
+  <div class="cat purple" data-section="remind"><h2>Don't forget</h2><span class="sub">common misses</span></div>
+
+</div>
+
+<div class="totbar">
+  <div>
+    <div class="lbl">Ticked</div>
+    <div class="big"><span id="tickedCount">0</span> / <span id="totalCount">0</span></div>
+  </div>
+  <div style="text-align:right">
+    <div class="lbl">Status</div>
+    <div class="count" id="count">0 ticked · 0 items</div>
+  </div>
+</div>
+
+<footer>
+  Weekend away checklist · companion to <a href="/nutrition/recipes">Cook Once</a> &amp; <a href="/nutrition/fuelling">Ride Fuelling</a>
+  <div class="print-pill">Print or Save as PDF — File ▸ Print</div>
+</footer>
+
+<script>
+{% include 'travel_checklist_data.html' %}
+{% include 'travel_checklist_render.html' %}
+
+const travel = initTravelChecklist({
+  rideMin: {{ sunday_ride_min or 120 }},
+  weekMode: "{{ week_mode }}",
+  cycleLabel: "{{ cycle_week_label }}",
+  satLabel: {{ sat_label | tojson }},
+  satDurMin: {{ sat_dur_min | tojson }},
+});
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("exportToast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove("show"); }, 2500);
+}
+
+async function copyTravelNotes(uncheckedOnly) {
+  const text = buildTravelNotesText(
+    travel.getItemRows(),
+    uncheckedOnly,
+    travel.getRideMin(),
+    travel.getWeekMode()
+  );
+  try {
+    if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      await navigator.share({ title: "Weekend away food", text: text });
+      showToast("Shared — pick Notes to save");
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    showToast("Copied — paste into Notes");
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast("Copied — paste into Notes");
+    } catch (e2) {
+      prompt("Copy this list:", text);
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+}
+
+document.getElementById("exportNotes").onclick = function() { copyTravelNotes(false); };
+document.getElementById("exportRemaining").onclick = function() { copyTravelNotes(true); };
+</script>
+</body>
+</html>

@@ -83,8 +83,9 @@ SIMPLE_RULES = [
     "Breakfast is fixed — overnight oats Mon/Wed/Fri; scotch egg + 200 g yogurt Tue/Thu "
     "(egg muffins Tue/Thu in recovery week only).",
     "Weekday rides ≤90 min — banana 45 min before, nothing on the bike. Whey shake after as planned.",
-    "Lunch = Sunday batch — batch rice + chicken + yogurt Mon–Thu; Friday is a ready-made "
-    "paella pouch + prawns; weekend is chicken + salad with griddle leftovers. Assemble in 2 min.",
+    "Lunch = Sunday batch — batch rice + chicken + yogurt Mon/Tue/Thu; Wednesday Chinese chicken "
+    "+ egg fried rice (day-old batch rice); Friday is a ready-made paella pouch + prawns; weekend "
+    "is chicken + salad with griddle leftovers. Assemble in 2 min (Wed: fry rice Tue night, microwave Wed).",
     "Dinner — Gousto Mon–Thu (pick ≥65 g protein), Blackstone griddle Fri–Sun.",
     "Protein bar (Nature Valley or home-baked #03) — Tue/Thu mid-morning only.",
     "Weekend long rides — rice cakes + electrolyte bottles only (no carb powder). "
@@ -99,8 +100,8 @@ PRINCIPLES = [
     "long-ride day stays close to energy balance — never under-fuel the key endurance session.",
     "Protein target: lean-mass based (≈2.2 g/kg fat-free mass). Greek yogurt at lunch Mon–Thu; "
     "whey shake Wed/Thu/Fri/Sat/Sun as prescribed.",
-    "Carbs around training: batch rice + chicken lunches Mon–Thu (one Sunday rice batch covers "
-    "the week, no weekend rice); banana 45 min pre-session on weekdays. "
+    "Carbs around training: batch rice + chicken lunches Mon/Tue/Thu; Wednesday Chinese chicken "
+    "+ egg fried rice from day-old batch rice; banana 45 min pre-session on weekdays. "
     "Saturday griddle dinner fuels Sunday — not breakfast.",
     "Dinners: Gousto Mon–Thu; Blackstone griddle Fri/Sat/Sun (≥65 g protein).",
     "Sunday long ride: half banana before rolling; rice cakes on the bike from minute 0; "
@@ -246,11 +247,12 @@ DAY_TYPES: dict[str, dict] = {
         "label": "Outdoor Bike 60 min",
         "calorie_tier": "training",
         "pre_dinner_protein_g": 142,
-        "protein_note": "~142g pre-dinner (rice + chicken lunch + whey shake). Gousto at 65g closes the day.",
+        "protein_note": "~154g pre-dinner (Chinese lunch + whey shake). Gousto at 65g closes the day.",
         "meals": [
-            ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
-             "Full 240g batch-roasted chicken on batch basmati; Greek-yogurt portion alongside. "
-             "Same rice base as Mon/Tue — no separate pasta cook. Good carbs for the afternoon ride.", 700, 73, 70),
+            ("Lunch", "Chinese Chicken + Egg Fried Rice + Greek Yogurt",
+             "Soy-glazed batch chicken (#01b) with egg fried rice from cold batch basmati — "
+             "fried Tuesday night at home, reheated Wednesday at the office (microwave only). "
+             "Same carb base as Mon/Tue — good fuel for the afternoon ride.", 720, 85, 72),
             ("PM Snack", "Banana", "45 min before riding — nothing on the bike for a 60 min weekday ride.", 90, 1, 23),
             ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
              "Post-ride or between PM snack and dinner. One scoop from the 1kg tub. Aids recovery "
@@ -292,7 +294,7 @@ DAY_TYPES: dict[str, dict] = {
             ("AM Snack", "Protein Bar (Nature Valley)", "Grab-and-go (or home-baked #03). Thu mid-morning only.", 200, 10, 15),
             ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
              "Full 240g batch-roasted chicken on batch basmati; Greek-yogurt portion alongside. "
-             "Same rice base as Mon/Tue/Wed — solid carbs for the evening kettlebell.", 700, 73, 70),
+             "Same rice base as Mon/Tue — solid carbs for the evening kettlebell.", 700, 73, 70),
             ("PM Snack", "Banana", "45 min before session. Carbs matter tonight.", 90, 1, 23),
             ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
              "Optional top-up between session and dinner — the chicken lunch already carries the "

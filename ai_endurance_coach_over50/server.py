@@ -93,7 +93,7 @@ from .history import (
 )
 from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, TEXT_FIELDS, needs_metrics_refetch
 from .energy import tdee as compute_tdee
-from .coach_context import build_coach_context as _build_coach_context
+from .coach_context import build_advice_timing, build_coach_context as _build_coach_context
 from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
 from .llm import MODEL_FAST, MODEL_SMART
 
@@ -398,8 +398,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     date_key = target.isoformat()
     with _ai_cache_lock:
         if force_fetch:
-            # Pop in-process cache so advice is re-read from SQLite, but keep the
-            # SQLite row — re-generating advice on every refresh causes inconsistency.
+            _advice_cache.pop(date_key, None)
+        timing = build_advice_timing(target)
+        expected_mode = "post" if timing["post_workout"] else "pre"
+        if get_cached_text(f"advice_mode_v1_{date_key}") != expected_mode:
             _advice_cache.pop(date_key, None)
         if date_key not in _advice_cache:
             _advice_cache[date_key] = generate_advice(m, stats, comp_z)
@@ -1773,9 +1775,55 @@ async def nutrition_recipes_weekend_fuel(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes-weekend-fuel.html", context={})
 
 
+@app.get("/nutrition/recipes/overnight-oats", response_class=HTMLResponse)
+async def nutrition_recipes_overnight_oats(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes-overnight-oats.html", context={})
+
+
 @app.get("/nutrition/recipes/griddle", response_class=HTMLResponse)
 async def nutrition_recipes_griddle(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes-griddle.html", context={})
+
+
+def _travel_checklist_context() -> dict:
+    """Upcoming weekend sessions + fuel counts for the away checklist."""
+    today = _today()
+    from .nutrition_plan import cycle_week_index, fuel_prep_for_ride, _sunday_planned_ride_min
+    from .plan import session_for_date_extended
+
+    cycle_week = cycle_week_index(_PLAN_START, today)
+    labels = [
+        "Week 1 — build",
+        "Week 2 — build",
+        "Week 3 — build",
+        "Week 4 — recovery",
+    ]
+    week_mode = "recovery" if cycle_week == 3 else "build"
+
+    days_to_sat = (5 - today.weekday()) % 7
+    saturday = today if days_to_sat == 0 else today + timedelta(days=days_to_sat)
+    sunday = saturday + timedelta(days=1)
+
+    sat_sess = session_for_date_extended(saturday)
+    sun_sess = session_for_date_extended(sunday)
+    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today) or 120
+
+    return {
+        "cycle_week": cycle_week,
+        "cycle_week_label": labels[cycle_week],
+        "week_mode": week_mode,
+        "sunday_ride_min": sunday_ride_min,
+        "sunday_fuel": fuel_prep_for_ride(sunday_ride_min),
+        "sat_label": sat_sess[1] if sat_sess else "Saturday ruck",
+        "sat_dur_min": sat_sess[2] if sat_sess else None,
+        "sun_label": sun_sess[1] if sun_sess else "Sunday long ride",
+    }
+
+
+@app.get("/nutrition/recipes/travel", response_class=HTMLResponse)
+async def nutrition_recipes_travel(request: Request):
+    ctx = _travel_checklist_context()
+    return TEMPLATES.TemplateResponse(request=request, name="recipes-travel.html", context=ctx)
 
 
 def _shopping_list_context() -> dict:

@@ -185,6 +185,10 @@ def save_advice(target_date: date, text: str) -> None:
 def delete_advice(target_date: date) -> None:
     with _conn() as con:
         con.execute("DELETE FROM daily_advice WHERE date = ?", (target_date.isoformat(),))
+    try:
+        set_cached_text(f"advice_mode_v1_{target_date.isoformat()}", "")
+    except Exception:
+        pass
 
 
 def load_advice(target_date: date) -> Optional[str]:

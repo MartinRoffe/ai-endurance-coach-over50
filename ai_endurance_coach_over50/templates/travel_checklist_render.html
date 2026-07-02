@@ -1,0 +1,179 @@
+{# Shared tick-list builder — include after travel_checklist_data.html #}
+function initTravelChecklist(opts) {
+  const list = document.getElementById("list");
+  const tickState = new Map();
+  let rideMin = opts.rideMin || 120;
+  let weekMode = opts.weekMode === "recovery" ? "recovery" : "build";
+  let itemRows = [];
+
+  const savedTicks = localStorage.getItem("travelTicks");
+  if (savedTicks) {
+    try {
+      JSON.parse(savedTicks).forEach(function(id) { tickState.set(id, true); });
+    } catch (e) { /* ignore */ }
+  }
+
+  const url = new URL(location.href);
+  const urlRide = parseInt(url.searchParams.get("ride"), 10);
+  if (TRAVEL_RIDE_OPTIONS.indexOf(urlRide) >= 0) rideMin = urlRide;
+  const urlWeek = url.searchParams.get("week");
+  if (urlWeek === "build" || urlWeek === "recovery") weekMode = urlWeek;
+
+  function persist() {
+    localStorage.setItem("travelTicks", JSON.stringify([...tickState.keys()]));
+    const u = new URL(location.href);
+    u.searchParams.set("ride", String(rideMin));
+    u.searchParams.set("week", weekMode);
+    history.replaceState(null, "", u);
+  }
+
+  function renderTotals() {
+    const total = itemRows.length;
+    const done = itemRows.filter(function(r) { return r.row.classList.contains("done"); }).length;
+    document.getElementById("tickedCount").textContent = String(done);
+    document.getElementById("totalCount").textContent = String(total);
+    const countEl = document.getElementById("count");
+    if (countEl) countEl.textContent = done + " ticked · " + total + " items";
+    const hint = document.getElementById("travelHint");
+    if (hint) {
+      const fuel = fuelPrepFor(rideMin);
+      const weekLabel = weekMode === "recovery" ? "recovery week" : "build week";
+      hint.innerHTML = "Sunday ride <b>~" + fuel.ride_hours + " h</b> → <b>" + fuel.rice_cakes +
+        " rice cakes</b>, bottles <b>" + fuel.bottles.join(" + ") + "</b> · <b>" + weekLabel + "</b>" +
+        (opts.cycleLabel ? " · " + opts.cycleLabel : "");
+    }
+  }
+
+  function clearItems() {
+    list.querySelectorAll(".item").forEach(function(el) { el.remove(); });
+    itemRows = [];
+  }
+
+  function sectionAnchor(sectionId) {
+    return list.querySelector('.cat[data-section="' + sectionId + '"]');
+  }
+
+  function renderList() {
+    clearItems();
+    const items = buildTravelItems({
+      rideMin: rideMin,
+      weekMode: weekMode,
+      satLabel: opts.satLabel || "Saturday ruck",
+      satDurMin: opts.satDurMin || null,
+    });
+
+    let lastSection = "";
+    items.forEach(function(item) {
+      const anchor = sectionAnchor(item.section);
+      if (!anchor) return;
+      let insertAfter = anchor;
+      if (insertAfter.nextElementSibling && insertAfter.nextElementSibling.classList.contains("banner")) {
+        insertAfter = insertAfter.nextElementSibling;
+      }
+
+      const row = document.createElement("div");
+      row.className = "item";
+      row.dataset.id = item.id;
+
+      const chk = document.createElement("div");
+      chk.className = "check";
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = item.name;
+      const note = document.createElement("div");
+      note.className = "note";
+      note.textContent = item.note;
+      meta.appendChild(name);
+      meta.appendChild(note);
+      row.appendChild(chk);
+      row.appendChild(meta);
+
+      if (tickState.get(item.id)) {
+        row.classList.add("done");
+        chk.classList.add("on");
+        chk.textContent = "✓";
+      }
+
+      chk.onclick = function() {
+        const on = row.classList.toggle("done");
+        chk.classList.toggle("on", on);
+        chk.textContent = on ? "✓" : "";
+        if (on) tickState.set(item.id, true);
+        else tickState.delete(item.id);
+        persist();
+        renderTotals();
+      };
+
+      insertAfter.after(row);
+      insertAfter = row;
+      itemRows.push({ section: TRAVEL_SECTION_LABELS[item.section] || item.section, name: item.name, note: item.note, row: row, id: item.id });
+      lastSection = item.section;
+    });
+
+    document.querySelectorAll("[data-ride-min]").forEach(function(btn) {
+      btn.classList.toggle("active", parseInt(btn.dataset.rideMin, 10) === rideMin);
+    });
+    document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
+      btn.classList.toggle("active", btn.dataset.weekMode === weekMode);
+    });
+
+    renderTotals();
+    persist();
+  }
+
+  document.querySelectorAll("[data-ride-min]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const m = parseInt(btn.dataset.rideMin, 10);
+      if (m === rideMin) return;
+      rideMin = m;
+      renderList();
+    });
+  });
+
+  document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const mode = btn.dataset.weekMode === "recovery" ? "recovery" : "build";
+      if (mode === weekMode) return;
+      weekMode = mode;
+      renderList();
+    });
+  });
+
+  document.getElementById("resetTicks")?.addEventListener("click", function() {
+    tickState.clear();
+    localStorage.removeItem("travelTicks");
+    renderList();
+  });
+
+  renderList();
+
+  return {
+    getItemRows: function() { return itemRows; },
+    getRideMin: function() { return rideMin; },
+    getWeekMode: function() { return weekMode; },
+    rebuild: renderList,
+  };
+}
+
+function buildTravelNotesText(itemRows, uncheckedOnly, rideMin, weekMode) {
+  const fuel = fuelPrepFor(rideMin);
+  const lines = [
+    "WEEKEND AWAY — FOOD CHECKLIST",
+    "Sunday ride ~" + fuel.ride_hours + " h · " + fuel.rice_cakes + " rice cakes · " + fuel.bottles.join(" + "),
+    weekMode === "recovery" ? "Recovery week portions" : "Build week portions",
+    "",
+  ];
+  let section = "";
+  itemRows.forEach(function(r) {
+    if (uncheckedOnly && r.row.classList.contains("done")) return;
+    if (r.section !== section) {
+      section = r.section;
+      lines.push(section.toUpperCase(), "");
+    }
+    const tick = r.row.classList.contains("done") ? "- [x]" : "- [ ]";
+    lines.push(tick + " " + r.name + (r.note ? " — " + r.note : ""));
+  });
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}

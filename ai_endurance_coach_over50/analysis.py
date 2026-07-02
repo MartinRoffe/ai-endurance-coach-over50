@@ -142,6 +142,14 @@ def _lap_dur(l: dict) -> float:
     return l.get("duration") or l.get("elapsedDuration") or 0
 
 
+def _lap_power(l: dict) -> Optional[float]:
+    np = l.get("normativePower") or l.get("normalizedPower")
+    if np is not None:
+        return float(np)
+    ap = l.get("averagePower")
+    return float(ap) if ap is not None else None
+
+
 def _extract_interval_data(api: Any, activity_id: int, session_label: str,
                            activity_type: Optional[str] = None) -> dict:
     """Return per-rep HR data for structured interval sessions using lap splits.
@@ -191,34 +199,117 @@ def _extract_interval_data(api: Any, activity_id: int, session_label: str,
         return {}
 
 
-def _extract_ftp_effort(api: Any, activity_id: int) -> dict:
-    """Call get_activity_splits and return avg/max HR for the best ~20-min lap.
+def _ftp_effort_from_summary(api: Any, activity_id: int) -> dict:
+    """Fallback: Garmin's best 20-min average power from the activity summary."""
+    try:
+        s = api.get_activity(activity_id).get("summaryDTO") or {}
+        max20 = s.get("maxPowerTwentyMinutes")
+        if not max20:
+            return {}
+        result: dict = {
+            "ftp_effort_avg_w": round(float(max20)),
+            "ftp_w": round(float(max20) * 0.95),
+        }
+        avg_hr = s.get("averageHR")
+        if avg_hr:
+            result["ftp_effort_avg_hr"] = round(float(avg_hr))
+        max_hr = s.get("maxHR")
+        if max_hr:
+            result["ftp_effort_max_hr"] = round(float(max_hr))
+        return result
+    except Exception:
+        return {}
 
-    Looks for the lap >= 10 minutes with the highest avg HR — that's the
-    all-out 20-min test effort. Returns empty dict on any failure.
+
+def _extract_ftp_effort(api: Any, activity_id: int) -> dict:
+    """Return avg/max HR and power for the best ~20-min contiguous lap window.
+
+    Structured FTP workouts often split the all-out effort across several laps
+    (each under 10 min), with a longer warm-up lap that can carry a misleadingly
+    high average HR. Scan contiguous lap windows totalling 17–23 minutes and pick
+    the highest duration-weighted normalized power (average power if NP absent).
+  HR-only rides maximise duration-weighted average HR over the same window.
+    Falls back to Garmin summary maxPowerTwentyMinutes when lap windows fail.
     """
+    _TARGET_SECS = 1200.0
+    _TOLERANCE_SECS = 180.0  # 17–23 min
+
+    def _window_stats(window: list[dict]) -> Optional[tuple[float, float, float, float]]:
+        secs = sum(_lap_dur(l) for l in window)
+        if secs <= 0:
+            return None
+        hr_vals = [(float(l["averageHR"]), _lap_dur(l)) for l in window if l.get("averageHR")]
+        if not hr_vals:
+            return None
+        w_hr = sum(hr * d for hr, d in hr_vals) / sum(d for _, d in hr_vals)
+        max_hr = max(l.get("maxHR") or 0 for l in window) or None
+        pwr_vals = [(_lap_power(l), _lap_dur(l)) for l in window if _lap_power(l)]
+        w_pwr = None
+        if pwr_vals:
+            psec = sum(d for _, d in pwr_vals)
+            w_pwr = sum(p * d for p, d in pwr_vals) / psec if psec > 0 else None
+        return w_hr, max_hr, w_pwr, secs
+
     try:
         splits = api.get_activity_splits(activity_id)
         laps = splits.get("lapDTOs") or splits.get("laps") or []
-        candidates = [
+        if not laps:
+            return _ftp_effort_from_summary(api, activity_id)
+
+        has_power = any(_lap_power(l) for l in laps)
+        best: Optional[tuple[float, float, Optional[float], float]] = None
+        best_score = -1.0
+
+        for i in range(len(laps)):
+            total_dur = 0.0
+            for j in range(i, len(laps)):
+                total_dur += _lap_dur(laps[j])
+                if total_dur < _TARGET_SECS - _TOLERANCE_SECS:
+                    continue
+                if total_dur > _TARGET_SECS + _TOLERANCE_SECS:
+                    break
+                stats = _window_stats(laps[i : j + 1])
+                if not stats:
+                    continue
+                w_hr, max_hr, w_pwr, secs = stats
+                score = w_pwr if has_power and w_pwr is not None else w_hr
+                if score > best_score:
+                    best_score = score
+                    best = (w_hr, max_hr, w_pwr, secs)
+
+        if best:
+            w_hr, max_hr, w_pwr, _secs = best
+            result: dict = {
+                "ftp_effort_avg_hr": round(w_hr),
+                "ftp_effort_max_hr": round(max_hr) if max_hr else None,
+            }
+            if w_pwr is not None:
+                result["ftp_effort_avg_w"] = round(w_pwr)
+                result["ftp_w"] = round(w_pwr * 0.95)
+            return result
+
+        # Single lap ~20 min (classic manual lap)
+        single = [
             l for l in laps
-            if (l.get("duration") or l.get("elapsedDuration") or 0) >= 600
+            if _TARGET_SECS - _TOLERANCE_SECS <= _lap_dur(l) <= _TARGET_SECS + _TOLERANCE_SECS
+            and l.get("averageHR")
         ]
-        if not candidates:
-            return {}
-        best = max(candidates, key=lambda l: l.get("averageHR") or 0)
-        avg_hr = best.get("averageHR")
-        if not avg_hr:
-            return {}
-        result = {
-            "ftp_effort_avg_hr": round(avg_hr),
-            "ftp_effort_max_hr": round(best["maxHR"]) if best.get("maxHR") else None,
-        }
-        avg_w = best.get("averagePower")
-        if avg_w:
-            result["ftp_effort_avg_w"] = round(avg_w)
-            result["ftp_w"] = round(avg_w * 0.95)
-        return result
+        if single:
+            pick = max(
+                single,
+                key=lambda l: _lap_power(l) or 0 if has_power else l.get("averageHR") or 0,
+            )
+            result = {
+                "ftp_effort_avg_hr": round(pick["averageHR"]),
+                "ftp_effort_max_hr": round(pick["maxHR"]) if pick.get("maxHR") else None,
+            }
+            pwr = _lap_power(pick)
+            if pwr is not None:
+                result["ftp_effort_avg_w"] = round(pwr)
+                result["ftp_w"] = round(pwr * 0.95)
+            return result
+
+        return _ftp_effort_from_summary(api, activity_id)
     except Exception:
         return {}
 

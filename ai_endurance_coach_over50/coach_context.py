@@ -1,8 +1,8 @@
 """Shared coaching context for daily advice and coach chat."""
 from __future__ import annotations
 
-from datetime import date, timedelta
-from typing import Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Optional
 
 from .alerts import check_fatigue_alerts
 from .analysis import retrieve_relevant_analyses
@@ -46,6 +46,7 @@ from .plan import (
     build_calendar_weeks,
     CAMP_END,
     CAMP_GRID_WORKOUTS,
+    COMPOUND_SESSIONS,
     EVENT_PREP_DAYS,
     TENERIFE_DAYS,
     session_for_date,
@@ -81,13 +82,26 @@ def session_discipline(stype: str) -> str:
     return stype
 
 
-def coach_persona_brief(has_power: bool) -> str:
+def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
+    if post_workout:
+        task = (
+            "Right now: the athlete has ALREADY completed today's planned workout (or trained on a "
+            "rest day). Give a concise post-workout debrief and recovery guidance for the dashboard — "
+            "NOT a morning pre-session briefing. Readiness metrics in context are from this morning "
+            "before the session; do not describe them as post-workout or 'the morning after'. "
+            "Never refer to today's session as yesterday. Keep it specific and grounded in the "
+            "actual numbers — warm and motivating, but never vague."
+        )
+    else:
+        task = (
+            "Right now: give a concise train/rest/modify-today recommendation for the morning "
+            "readiness dashboard. Keep it specific and grounded in the actual numbers from the "
+            "context — warm and motivating, but never vague."
+        )
     return (
         COACH_VOICE + "\n\n"
         + ATHLETE_CONSTRAINTS + "\n\n"
-        "Right now: give a concise train/rest/modify-today recommendation for the morning email "
-        "dashboard. Keep it specific and grounded in the actual numbers from the context — warm "
-        "and motivating, but never vague.\n\n"
+        + task + "\n\n"
         + hr_channel_note(has_power)
     )
 
@@ -160,24 +174,120 @@ def _section_alerts(target: date) -> list[str]:
     return []
 
 
-def _section_today_session(target: date) -> list[str]:
+def resolve_today_session(target: date) -> Optional[tuple[str, str, int]]:
+    """Planned session for `target` with overrides applied; None if rest or out of plan."""
     session = session_for_date_extended(target)
-    if not session:
-        return ["## Today's Planned Workout", "  Not in plan period"]
+    if not session or session[0] == "rest":
+        return None
     stype, label, dur = session
     ov = get_plan_override(target.isoformat())
     if ov:
         stype = ov.get("session_type") or stype
         label = ov.get("label") or label
         dur = ov["duration_min"]
-        note = f" [override: {ov.get('note', '')}]" if ov.get("note") else " [override active]"
+    return stype, label, dur
+
+
+def session_logged_for_plan(target: date, stype: str, label: str) -> tuple[bool, list[dict]]:
+    """True when today's Garmin activities satisfy the planned session type."""
+    day_acts = load_activities_by_date(target, target).get(target.isoformat(), [])
+    if not day_acts:
+        return False, []
+    compound = COMPOUND_SESSIONS.get(label)
+    if compound:
+        matched = [a for a in day_acts if any(a["type_key"] == s["garmin_key"] for s in compound)]
     else:
-        note = ""
+        valid_keys = ACTIVITY_MATCH.get(stype, set())
+        matched = [a for a in day_acts if a["type_key"] in valid_keys]
+    return bool(matched), matched
+
+
+def build_advice_timing(
+    target: date,
+    *,
+    now: Optional[datetime] = None,
+    today: Optional[date] = None,
+) -> dict[str, Any]:
+    """Clock time + whether today's planned workout is already logged."""
+    now = now or datetime.now()
+    today = today or date.today()
+    is_today = target == today
+    session = resolve_today_session(target)
+    completed = False
+    matched: list[dict] = []
+    if session:
+        completed, matched = session_logged_for_plan(target, session[0], session[1])
+
+    day_acts = load_activities_by_date(target, target).get(target.isoformat(), []) if is_today else []
+    post_workout = bool(is_today and ((session and completed) or (not session and day_acts)))
+
+    part_of_day = None
+    local_time = None
+    if is_today:
+        local_time = now.strftime("%H:%M")
+        hour = now.hour
+        if hour < 12:
+            part_of_day = "morning"
+        elif hour < 17:
+            part_of_day = "afternoon"
+        else:
+            part_of_day = "evening"
+
+    return {
+        "is_today": is_today,
+        "local_time": local_time,
+        "part_of_day": part_of_day,
+        "session": session,
+        "completed": completed,
+        "matched_activities": matched or day_acts,
+        "post_workout": post_workout,
+    }
+
+
+def _section_timing(timing: dict[str, Any], target: date) -> list[str]:
+    lines = ["## Time & Session Status"]
+    if timing["is_today"] and timing["local_time"]:
+        lines.append(f"  Now: {timing['local_time']} local ({timing['part_of_day']})")
+    else:
+        lines.append("  Historical view (not today)")
+    if timing["post_workout"]:
+        lines.append("  Status: POST-WORKOUT — training already logged today")
+        lines.append(
+            "  Readiness metrics below are from THIS MORNING before the session — "
+            "they do NOT reflect post-workout fatigue"
+        )
+        for a in timing["matched_activities"][:3]:
+            dur = int((a.get("duration_seconds") or 0) / 60)
+            name = a.get("name") or a.get("type_key")
+            lines.append(f"  Logged today: {name} — {dur}min")
+    elif timing["session"]:
+        _stype, label, _dur = timing["session"]
+        lines.append(f"  Status: PRE-WORKOUT — {label} not yet logged today")
+    else:
+        lines.append("  Status: rest day (no session scheduled)")
+    return lines
+
+
+def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None) -> list[str]:
+    session = resolve_today_session(target)
+    if not session:
+        if timing and timing.get("post_workout"):
+            return ["## Today's Planned Workout", "  Rest day — athlete trained anyway (see logged activities)"]
+        return ["## Today's Planned Workout", "  Rest / not in plan period"]
+    stype, label, dur = session
+    ov = get_plan_override(target.isoformat())
+    note = f" [override: {ov.get('note', '')}]" if ov and ov.get("note") else (" [override active]" if ov else "")
     dur_str = f"{dur}m" if dur and dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur and dur % 60 else f"{dur // 60}h") if dur else "—"
     discipline = session_discipline(stype)
+    status = ""
+    if timing:
+        if timing.get("completed"):
+            status = " — COMPLETED today"
+        elif timing.get("is_today"):
+            status = " — not yet logged"
     return [
         "## Today's Planned Workout",
-        f"  {label} — {discipline} ({stype}, {dur_str}){note}",
+        f"  {label} — {discipline} ({stype}, {dur_str}){note}{status}",
     ]
 
 
@@ -275,22 +385,25 @@ def _section_rag(session_type: Optional[str], limit: int = 2) -> list[str]:
     return lines
 
 
-def build_advice_context(target: date) -> str:
+def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) -> str:
     """Focused context for daily readiness advice (today's decision)."""
+    timing = timing or build_advice_timing(target)
     m, _, _, traffic_light, modulation, today_pmc = _load_day_state(target)
-    session = session_for_date_extended(target)
-    session_type = session[0] if session and session[0] != "rest" else None
+    session = timing.get("session")
+    session_type = session[0] if session else None
 
     parts: list[str] = [
         "",
         "## Coaching Context",
+        *_section_timing(timing, target),
+        "",
         *_section_pmc(today_pmc, m),
         "",
         *_section_traffic_light(traffic_light, modulation),
         "",
         *_section_alerts(target),
         "",
-        *_section_today_session(target),
+        *_section_today_session(target, timing),
         "",
         *_section_week_ahead(target),
         "",

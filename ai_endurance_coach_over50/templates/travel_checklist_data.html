@@ -1,0 +1,119 @@
+{# Weekend away food checklist — shared data + fuel maths for recipes-travel.html #}
+function fuelPrepFor(durationMin) {
+  const h = durationMin / 60;
+  let cakes, bottles, flapjack;
+  if (h <= 1.5) { cakes = 2; bottles = ["E1"]; flapjack = false; }
+  else if (h <= 2.25) { cakes = 4; bottles = ["E1"]; flapjack = false; }
+  else if (h <= 3.25) { cakes = 6; bottles = ["E1", "E2"]; flapjack = false; }
+  else if (h <= 4.25) { cakes = 8; bottles = ["E2"]; flapjack = true; }
+  else if (h <= 5.25) { cakes = 10; bottles = ["E2", "E3"]; flapjack = true; }
+  else { cakes = 12; bottles = ["E3", "E4"]; flapjack = true; }
+  return {
+    duration_min: durationMin,
+    ride_hours: Math.round(h * 10) / 10,
+    rice_cakes: cakes,
+    bottles: bottles,
+    flapjack: flapjack,
+  };
+}
+
+const TRAVEL_RIDE_OPTIONS = [90, 120, 180, 240, 300, 360];
+
+function buildTravelItems(opts) {
+  const fuel = fuelPrepFor(opts.rideMin);
+  const chicken = opts.weekMode === "recovery" ? 150 : 240;
+  const oatsPostRuck = opts.weekMode === "recovery" ? 60 : 80;
+  const bottleStr = fuel.bottles.join(" + ");
+  const satLine = opts.satLabel + (opts.satDurMin ? " · ~" + opts.satDurMin + " min planned" : "");
+
+  return [
+    { id: "prep-rice-cakes", section: "prep", name: "Rice cakes × " + fuel.rice_cakes,
+      note: "Make ≥24 h before Sunday ride (~" + fuel.ride_hours + " h). Foil-wrap each." },
+    { id: "prep-foil", section: "prep", name: "Foil-wrap rice cakes + stage in jersey bag",
+      note: "Pack Fri night for Sunday pockets." },
+    { id: "prep-electrolyte", section: "prep", name: "Mix electrolyte bottles " + bottleStr,
+      note: "500 ml each — fridge or cool bag. See weekend-fuel drink recipes." },
+    { id: "prep-defrost", section: "prep", name: "Defrost 2 weekend chicken tubs (Sat + Sun lunch)",
+      note: "Freezer → fridge Friday night." },
+    { id: "prep-oats-jar", section: "prep", name: "Sat night: build recovery overnight oats jar",
+      note: "Oats + milk + full whey scoop + yogurt + topping — for Sunday post-ride only, not breakfast." },
+    { id: "prep-choc-milk", section: "prep", name: "Pre-cool recovery chocolate milk (300 ml)",
+      note: "Semi-skimmed + cocoa + honey — insulated bottle in car for Sunday." },
+
+    { id: "pack-whey", section: "pack", name: "Whey — 2–3 scoops in bags or travel shaker",
+      note: "Sat evening shake + Sun recovery." },
+    { id: "pack-oats-dry", section: "pack", name: "Oats ~" + (oatsPostRuck + 50) + " g (porridge + recovery jar)",
+      note: "Post-ruck porridge + spare." },
+    { id: "pack-chia", section: "pack", name: "Chia + honey sachet",
+      note: "For recovery oats jar if building Sat night." },
+    { id: "pack-bars", section: "pack", name: "Protein bars × " + (fuel.flapjack ? 2 : 1),
+      note: "Sat PM snack" + (fuel.flapjack ? " + on-bike bonk insurance." : ".") },
+    { id: "pack-bananas", section: "pack", name: "Bananas × 4–5",
+      note: "Sat optional pre-ruck, post-ruck, PM, Sun pre-ride, spare." },
+    { id: "pack-apples", section: "pack", name: "Apples × 2", note: "Saturday afternoon snack." },
+    { id: "pack-chicken", section: "pack", name: "Chicken tubs × 2 (~" + chicken + " g each)",
+      note: "Batch roast from Sunday prep — Sat + Sun lunch." },
+    { id: "pack-yogurt", section: "pack", name: "Greek yogurt grab pot(s)",
+      note: "Sat post-ruck essential — pack or buy on arrival." },
+    { id: "pack-eggs", section: "pack", name: "Eggs × 2–4",
+      note: "Sat post-ruck scramble — or buy on arrival." },
+    { id: "pack-sat-water", section: "pack", name: "Water bottle for ruck (1 L)",
+      note: satLine },
+
+    { id: "pack-sun-rice-cakes", section: "pack", name: "Sunday rice cakes × " + fuel.rice_cakes + " in pockets",
+      note: "Start solids ~15–30 min into ride." },
+    { id: "pack-sun-bottles", section: "pack", name: "Bike bottles with " + bottleStr,
+      note: "Sip from minute 0 — no carb powder in bottles." },
+    { id: "pack-sun-pre", section: "pack", name: "Half banana or 1 rice cake square",
+      note: "10–15 min before rolling — not the recovery oats jar." },
+    { id: "pack-sun-choc", section: "pack", name: "Chocolate milk (insulated)",
+      note: "Tier 1 recovery — drink before shower." },
+    { id: "pack-sun-oats", section: "pack", name: "Recovery oats jar (from Sat night build)",
+      note: "Tier 2 — within 60 min of finishing. ≥30 g protein." },
+
+    { id: "buy-milk", section: "buy", name: "Milk 2–3 L",
+      note: "Porridge, shakes, recovery oats, chocolate milk." },
+    { id: "buy-yogurt", section: "buy", name: "Greek yogurt 1 kg tub",
+      note: "If not packed — Sat post-ruck + recovery jar." },
+    { id: "buy-eggs", section: "buy", name: "Eggs 6-pack",
+      note: "If not packed — Sat post-ruck." },
+    { id: "buy-salad", section: "buy", name: "Salad leaves / cucumber / tomatoes",
+      note: "Sat + Sun chicken lunches." },
+    { id: "buy-carbs", section: "buy", name: "Carb anchor — wraps / microwave rice / pasta / potatoes",
+      note: "No weekend batch rice — Sat lunch, Sat dinner, Sun lunch." },
+    { id: "buy-dinner-protein", section: "buy", name: "Sat dinner protein — chicken thighs / steak / salmon",
+      note: "No Blackstone away — carb-rich dinner fuels Sunday (rice, pasta, wraps)." },
+    { id: "buy-lemons", section: "buy", name: "Lemons × 2",
+      note: "Electrolyte bottles if mixing on site." },
+
+    { id: "gear-coolbag", section: "gear", name: "Cool bag + ice packs",
+      note: "Chicken, yogurt, chocolate milk, rice cakes." },
+    { id: "gear-shaker", section: "gear", name: "Shaker bottle", note: "Sat whey shake." },
+    { id: "gear-jar", section: "gear", name: "350 ml jar (recovery oats)", note: "Built Sat night." },
+    { id: "gear-tubs", section: "gear", name: "2 × 350 ml chicken tubs (+ rice/fried-rice tub if used)",
+      note: "Microwave at lunch if office-style setup." },
+    { id: "gear-bike-bottles", section: "gear", name: "2 bike bottles + cages",
+      note: "Electrolyte E1/E2 on Sunday ride." },
+    { id: "gear-cutlery", section: "gear", name: "Bowl, mug, cutlery",
+      note: "If accommodation is bare." },
+
+    { id: "remind-oats-not-breakfast", section: "remind", name: "Recovery oats jar is POST-ride only",
+      note: "Not Sunday breakfast — half banana or rice cake square before rolling." },
+    { id: "remind-yogurt-sat", section: "remind", name: "Saturday post-ruck needs the yogurt",
+      note: "Biggest weekend protein gap without it." },
+    { id: "remind-chicken-not-eggs", section: "remind", name: "Sat + Sun lunch = chicken, not eggs on toast",
+      note: chicken + " g batch chicken + salad." },
+    { id: "remind-shake-sat", section: "remind", name: "Saturday whey shake is planned, not optional",
+      note: "Evening before carb-rich dinner." },
+    { id: "remind-rice-safety", section: "remind", name: "Cool rice / fried rice within 1 h; reheat piping hot",
+      note: "Applies if doing Wed-style fried rice while away." },
+  ];
+}
+
+const TRAVEL_SECTION_LABELS = {
+  prep: "Before you leave",
+  pack: "Pack from home",
+  buy: "Buy on arrival",
+  gear: "Gear & containers",
+  remind: "Don't forget",
+};

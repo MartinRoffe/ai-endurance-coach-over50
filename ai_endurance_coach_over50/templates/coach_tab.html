@@ -8,17 +8,45 @@
 <body>
 {% include 'nav.html' %}
 
-<div style="max-width:800px;margin:0 auto;padding:24px 16px">
+<style>
+  .coach-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - var(--gr-nav-height, 52px));
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .coach-page-header { flex-shrink: 0; margin-bottom: 12px; }
+  .coach-chat-card {
+    flex: 1;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .coach-chat-card .coach-chat-header { flex-shrink: 0; }
+  .coach-chat-card #chat-messages {
+    flex: 1;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+  .coach-chat-card #proposal-cards { flex-shrink: 0; }
+  .coach-chat-card .coach-chat-input-row { flex-shrink: 0; }
+</style>
 
-  <div style="margin-bottom:20px">
+<div class="coach-page">
+
+  <div class="coach-page-header">
     <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.08em;color:var(--text);margin-bottom:2px">AI COACH</p>
     <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">Ask about training load, sessions, recovery, or request plan adjustments</p>
   </div>
 
-  <!-- coach chat — override message area height for full-page view -->
-  <style>
-    #chat-messages { max-height: calc(100vh - 340px) !important; min-height: 300px !important; }
-  </style>
   {% include 'coach_chat.html' %}
 
 </div>
