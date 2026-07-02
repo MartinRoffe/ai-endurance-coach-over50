@@ -2,9 +2,11 @@
 the real ~/.ai_endurance_coach_over50/history.db."""
 import pytest
 
-import ai_endurance_coach_over50.history as history
+from ai_endurance_coach_over50.history import db as history_db
 
 
 @pytest.fixture(autouse=True)
 def tmp_db(tmp_path, monkeypatch):
-    monkeypatch.setattr(history, "DB_PATH", tmp_path / "history.db")
+    # _conn() reads DB_PATH from history.db at call time; the package-level
+    # history.DB_PATH re-export is a snapshot, so patch the db module.
+    monkeypatch.setattr(history_db, "DB_PATH", tmp_path / "history.db")
