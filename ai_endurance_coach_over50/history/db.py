@@ -97,6 +97,8 @@ _ACTIVITY_COLS: list[tuple[str, str]] = [
     ("max_power_w",            "REAL"),
     ("norm_power_w",           "REAL"),
     ("has_power_meter",        "INTEGER"),
+    ("tss",                    "REAL"),
+    ("intensity_factor",       "REAL"),
 ]
 
 

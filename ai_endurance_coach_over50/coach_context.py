@@ -7,6 +7,7 @@ from typing import Any, Optional
 from .alerts import check_fatigue_alerts
 from .analysis import retrieve_relevant_analyses
 from .hr_profile import format_hr_profile_lines
+from .power_profile import build_power_profile, format_power_profile_lines
 from .history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -139,6 +140,14 @@ def _section_pmc(today_pmc: dict, m: Optional["DailyMetrics"] = None) -> list[st
     acwr_line = _acwr_line(m)
     if acwr_line:
         lines.append(acwr_line)
+    try:
+        from .history import power_meter_active, weekly_tss
+        if power_meter_active():
+            wk = weekly_tss(2)
+            if wk:
+                lines.append(f"Power TSS this week: {round(wk[-1]['total_tss'])}")
+    except Exception:
+        pass
     return lines
 
 
@@ -337,8 +346,15 @@ def _section_coach_memory() -> list[str]:
     return []
 
 
+def _section_power_profile() -> list[str]:
+    return format_power_profile_lines()
+
+
 def _section_hr_profile(resting_hr_today: Optional[float] = None) -> list[str]:
-    return format_hr_profile_lines(resting_hr_today=resting_hr_today)
+    lines = format_hr_profile_lines(resting_hr_today=resting_hr_today)
+    if lines and build_power_profile():
+        lines.insert(1, "(Secondary strain/readiness channel — power is primary for prescription.)")
+    return lines
 
 
 def _section_ftp(limit: int = 1) -> list[str]:
@@ -412,6 +428,9 @@ def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) 
     mem = _section_coach_memory()
     if mem:
         parts += ["", *mem]
+    power_prof = _section_power_profile()
+    if power_prof:
+        parts += ["", *power_prof]
     ftp = _section_ftp(limit=1)
     if ftp:
         parts += ["", *ftp]
@@ -727,6 +746,23 @@ def build_coach_context() -> str:
                     parts.append(f"carbs {today_carbs_c}g")
                 if today_prot_c is not None:
                     parts.append(f"protein {today_prot_c}g")
+                try:
+                    from .energy import ride_kj, ride_kcal_from_kj
+                    today_acts = load_recent_activities(1)
+                    kj_total = 0.0
+                    for act in today_acts:
+                        if act.get("date") != today.isoformat():
+                            continue
+                        pwr = act.get("norm_power_w") or act.get("avg_power_w")
+                        secs = act.get("duration_seconds") or 0
+                        if pwr and secs and act.get("has_power_meter"):
+                            kj_total += ride_kj(float(pwr), float(secs))
+                    if kj_total > 0:
+                        parts.append(
+                            f"ride work {round(kj_total)} kJ (~{ride_kcal_from_kj(kj_total)} kcal mechanical)"
+                        )
+                except Exception:
+                    pass
                 body_parts.append("  |  ".join(parts))
 
         # Inject cached AI advisor text if available
@@ -843,6 +879,7 @@ def build_coach_context() -> str:
             ftp_parts.append(line)
 
     hr_profile_parts = _section_hr_profile(m.resting_hr)
+    power_profile_parts = _section_power_profile()
 
     # Durability drift (late-ride HR drift, last 5 rides ≥ 90 min)
     dur_parts: list[str] = []
@@ -1064,6 +1101,7 @@ def build_coach_context() -> str:
         *([*wkg_parts, ""] if wkg_parts else []),
         *([*power_parts, ""] if power_parts else []),
         *([*accl_parts, ""] if accl_parts else []),
+        *([*power_profile_parts, ""] if power_profile_parts else []),
         *([*ftp_parts, ""] if ftp_parts else []),
         *([*hr_profile_parts, ""] if hr_profile_parts else []),
         *([*dur_parts, ""] if dur_parts else []),

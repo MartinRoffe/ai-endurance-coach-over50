@@ -267,7 +267,19 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
             return "\n".join(lines) if len(lines) > 1 else "No performance detail available yet."
 
         if name == "get_hr_plan":
-            from ..hr_plan import hr_session_for_date as _hrs, HR_PLAN_START as _HRS, HR_EVENT_STAGES
+            from ..hr_plan import (
+                hr_session_for_date as _hrs,
+                HR_PLAN_START as _HRS,
+                HR_EVENT_STAGES,
+                power_target_for,
+                power_watts_range,
+            )
+            from ..history import load_ftp_tests
+            ftp_w = None
+            for t in reversed(load_ftp_tests()):
+                if t.get("ftp_w"):
+                    ftp_w = int(t["ftp_w"])
+                    break
             lines = ["## Haute Route Alpes 2027 — full plan"]
             for ph in HR_PHASES:
                 lines.append(f"Phase {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}")
@@ -278,7 +290,12 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
                     d = wk_start + timedelta(days=off)
                     sess = _hrs(d)
                     if sess and sess[0] != "rest":
-                        day_lines.append(f"{d.strftime('%a')} {sess[1]} ({sess[2]}min)")
+                        pt = power_target_for(sess[0], sess[1])
+                        pw = power_watts_range(ftp_w, pt) if ftp_w else (
+                            f"{pt[0]}–{pt[1]}% FTP" if isinstance(pt, tuple) else pt
+                        )
+                        extra = f" [{pw}]" if pw else ""
+                        day_lines.append(f"{d.strftime('%a')} {sess[1]} ({sess[2]}min){extra}")
                 if day_lines:
                     lines.append(f"Wk{wk+1} ({wk_start.isoformat()}): " + "; ".join(day_lines))
             lines.append("Event stages:")

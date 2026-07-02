@@ -238,12 +238,29 @@
   {% endif %}
   {% endif %}
 
-  <!-- ── FTP retest prompt ───────────────────────────────────────────── -->
+  <!-- ── FTP retest / power baseline prompt ─────────────────────────── -->
   {% if ftp_retest %}
   <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #60a5fa;background:rgba(96,165,250,0.05)">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <span style="font-size:18px">⏱</span>
       <div style="flex:1">
+        {% if ftp_retest.reason == 'power_baseline' %}
+        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:3px">
+          Power baseline needed
+        </p>
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
+          {{ ftp_retest.message }}.
+          {% if ftp_retest.slot %}Suggested slot: <strong style="color:var(--text)">{{ ftp_retest.slot.date_str }}</strong> (currently {{ ftp_retest.slot.current_label }}).{% endif %}
+        </p>
+        {% if ftp_retest.slot %}
+        <button onclick="applyModulation(this)" data-date="{{ ftp_retest.slot.date }}"
+                data-dur="45" data-type="ftp" data-label="Ramp Test"
+                data-reason="Power meter active — schedule ramp FTP baseline"
+                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
+          Schedule ramp test ⏱
+        </button>
+        {% endif %}
+        {% else %}
         <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:3px">
           FTP re-test due <button type="button" class="gr-tip-trigger" data-tip="A stale LTHR makes every zone target slightly wrong. Re-test every ~6 weeks so zones track your fitness." aria-label="More info" aria-expanded="false">?</button>
         </p>
@@ -260,8 +277,23 @@
           Schedule re-test ⏱
         </button>
         {% endif %}
+        {% endif %}
       </div>
     </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Stale workouts banner (new FTP measured) ─────────────────── -->
+  {% if workouts_stale_ftp %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.05)">
+    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fbbf24;margin-bottom:6px">New FTP measured</p>
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">
+      FTP is now <strong style="color:var(--text)">{{ workouts_stale_ftp }} W</strong> — Garmin workout templates still use the old targets.
+    </p>
+    <a href="/sync-workouts"
+       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px;display:inline-block">
+      Re-sync Garmin workouts ↻
+    </a>
   </div>
   {% endif %}
 
@@ -527,6 +559,36 @@
   </div>
   {% endif %}
 
+  <!-- ── Power profile (measured FTP zones) ───────────────────────── -->
+  {% if power_profile %}
+  {% set pp = power_profile %}
+  <details class="card" style="padding:14px 20px;margin-bottom:12px">
+    <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between">
+      <span class="eyebrow" style="margin:0">Power Profile · FTP {{ pp.ftp_w }}W{% if pp.wkg %} · {{ pp.wkg }} W/kg{% endif %}</span>
+      <span style="font-family:var(--font-m);font-size:10px;color:var(--muted)">tested {{ pp.test_date }}</span>
+    </summary>
+    <table style="width:100%;margin-top:12px;font-size:12px;border-collapse:collapse">
+      <thead>
+        <tr style="color:var(--muted);font-family:var(--font-m);font-size:10px;text-transform:uppercase">
+          <th style="text-align:left;padding:4px 8px 4px 0">Zone</th>
+          <th style="text-align:right;padding:4px 8px">Watts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for z in pp.zones %}
+        <tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 8px 6px 0;color:var(--text-dim)">Z{{ z.zone }} {{ z.label }}</td>
+          <td style="padding:6px 8px;text-align:right;font-family:var(--font-m);color:var(--text)">
+            {% if z.zone == 1 %}&lt;{{ z.hi }}{% elif z.zone == 7 %}&gt;{{ z.lo }}{% else %}{{ z.lo }}–{{ z.hi }}{% endif %} W
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">Power primary for prescription/pacing; HR is the strain/readiness channel.</p>
+  </details>
+  {% endif %}
+
   <!-- ── Last quality session power (informational) ──────────────── -->
   {% if power_snapshot %}
   {% set ps = power_snapshot %}
@@ -567,6 +629,14 @@
         <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Balance</p>
         <p style="font-family:var(--font-d);font-size:26px;color:{{ bal_col }};letter-spacing:0.04em;line-height:1">{% if nt.balance > 0 %}−{{ "{:,}".format(nt.balance) }}{% else %}+{{ "{:,}".format(-nt.balance) }}{% endif %}</p>
         <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">{% if nt.balance > 0 %}deficit{% else %}surplus{% endif %}</p>
+      </div>
+      {% endif %}
+
+      {% if nt.ride_work_kj %}
+      <div>
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Ride work</p>
+        <p style="font-family:var(--font-d);font-size:22px;color:#fbbf24;letter-spacing:0.04em;line-height:1">{{ nt.ride_work_kj }}</p>
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">kJ (~{{ nt.ride_work_kcal }} kcal)</p>
       </div>
       {% endif %}
 

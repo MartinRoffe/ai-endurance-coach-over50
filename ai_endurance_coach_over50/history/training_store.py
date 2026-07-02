@@ -222,6 +222,66 @@ def intensity_distribution_by_week_power(start: date, end: date) -> list[dict]:
     return result
 
 
+def weekly_tss(weeks: int = 12) -> list[dict]:
+    """Weekly summed TSS from power-meter rides."""
+    if not power_meter_active():
+        return []
+    end = date.today()
+    start = end - timedelta(weeks=weeks * 7)
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            """SELECT strftime('%Y-W%W', date) AS week_label,
+                      SUM(COALESCE(tss, 0)) AS total_tss,
+                      COUNT(*) AS ride_count
+               FROM activities
+               WHERE date >= ? AND date <= ? AND has_power_meter = 1 AND tss IS NOT NULL
+               GROUP BY week_label ORDER BY week_label""",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def power_pmc_history(days: int = 90) -> list[dict]:
+    """42/7-day EMA CTL/ATL/TSB over daily TSS (Coggan units)."""
+    if not power_meter_active():
+        return []
+    from math import exp
+
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    daily: dict[str, float] = {}
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            """SELECT date, SUM(COALESCE(tss, 0)) AS day_tss
+               FROM activities
+               WHERE date >= ? AND date <= ? AND has_power_meter = 1
+               GROUP BY date ORDER BY date""",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    for r in rows:
+        daily[r["date"]] = float(r["day_tss"] or 0)
+
+    ctl = atl = 0.0
+    result: list[dict] = []
+    d = start
+    while d <= end:
+        tss = daily.get(d.isoformat(), 0.0)
+        ctl = ctl * exp(-1 / 42) + tss * (1 - exp(-1 / 42))
+        atl = atl * exp(-1 / 7) + tss * (1 - exp(-1 / 7))
+        result.append({
+            "date": d.isoformat(),
+            "label": d.strftime("%-d %b"),
+            "tss": round(tss, 1),
+            "ctl": round(ctl, 1),
+            "atl": round(atl, 1),
+            "tsb": round(ctl - atl, 1),
+        })
+        d += timedelta(days=1)
+    return result
+
+
 def save_btb_note(btb_date: str, day_number: int, fatigue_rating: Optional[int], note: Optional[str] = None) -> None:
     with _conn() as con:
         _ensure_btb_schema(con)

@@ -59,6 +59,7 @@ from ..history import (
     pmc_history,
     power_activation_status,
     power_meter_active,
+    power_pmc_history,
     raw_history,
     save,
     save_activities,
@@ -73,6 +74,7 @@ from ..history import (
     sleep_history,
     vo2_history,
     weekly_monotony_strain,
+    weekly_tss,
     zone_distribution,
 )
 from ..hr_plan import (
@@ -248,6 +250,8 @@ async def sync_workouts_now():
         api = get_api(email_addr, password)
         summary = await run_in_threadpool(upload_and_schedule, api)
         n = summary.get("scheduled", 0)
+        from ..history import set_cached_text
+        set_cached_text("workouts_stale_ftp", "")
         return RedirectResponse(url=f"/?msg=synced&n={n}", status_code=303)
     except Exception as e:
         logger.error("sync-workouts failed: %s", e)
@@ -571,6 +575,9 @@ async def performance_view(request: Request):
                 {"date": power_durability_points[-1]["date"], "v": round(slope * (n - 1) + intercept, 2)},
             ]
 
+    power_tss_weekly = weekly_tss(12) if power_meter_active() else []
+    power_pmc = power_pmc_history(90) if power_meter_active() else []
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="performance.html",
@@ -605,6 +612,8 @@ async def performance_view(request: Request):
             "monotony_weeks": monotony_weeks,
             "acclimation": acclimation,
             "taper_scenarios": taper_scenarios,
+            "power_tss_weekly": power_tss_weekly,
+            "power_pmc": power_pmc,
         },
     )
 
@@ -994,6 +1003,11 @@ def haute_route_view(request: Request):
         "stage_plans":   stage_plans,
         "peak_decoupling_flags": peak_decoupling_flags,
         "power_meter_active": power_meter_active(),
+        "power_familiarization_note": (
+            "Power familiarization bridge (14 Sep – 4 Oct 2026): "
+            "bed in the pedals and learn to pace by watts before the formal Haute Route base block. "
+            "Not part of projected CTL — display only."
+        ),
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)
 
@@ -1009,10 +1023,15 @@ def haute_route_2012_postmortem(request: Request):
 
 @app.get("/haute-route/power-protocol", response_class=HTMLResponse)
 def haute_route_power_protocol(request: Request):
+    from ..power_profile import build_power_profile
     return TEMPLATES.TemplateResponse(
         request=request,
         name="hr_power_protocol.html",
-        context={"active_tab": "haute_route", "hr_subnav": "power"},
+        context={
+            "active_tab": "haute_route",
+            "hr_subnav": "power",
+            "power_profile": build_power_profile(),
+        },
     )
 
 

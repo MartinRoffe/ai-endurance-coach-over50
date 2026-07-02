@@ -114,7 +114,7 @@
 
   <h3>Pick your test</h3>
   <div class="card">
-    <p class="cap">Option A — Ramp test <span class="pick">← recommended for your first one</span></p>
+    <p class="cap">Option A — Ramp test <span class="pick">← recommended for your first one</span> <span style="color:var(--green);font-size:10px">(auto-detected)</span></p>
     <p style="margin:0 0 8px">No pacing skill needed (you literally can't go out too hard), and it's over quicker. Ideal given your pacing history.</p>
     <ol style="margin:0">
       <li>Warm up 10–15 min easy with 2–3 short spin-ups.</li>
@@ -138,21 +138,21 @@
 
   <div class="callout green">
     <p class="lbl">After the test</p>
-    <p>Enter the FTP in the Favero app, your Garmin, and the coach app. Then <strong>lock in your protocol</strong> — same test, same warm-up, indoors — and <strong>re-test every 4–6 weeks</strong>. The trend matters more than any single number; only same-protocol tests are comparable. Seed your ramp start sensibly next time (your current estimated FTP is ~180–210&nbsp;W, so 100&nbsp;W start gives plenty of runway).</p>
+    <p>Enter the FTP in the Favero app, your Garmin, and the coach app. Then <strong>lock in your protocol</strong> — same test, same warm-up, indoors — and <strong>re-test every 4–6 weeks</strong>. The trend matters more than any single number; only same-protocol tests are comparable.{% if power_profile %} Your measured FTP is <strong>{{ power_profile.ftp_w }}&nbsp;W</strong>{% if power_profile.wkg %} ({{ power_profile.wkg }} W/kg){% endif %}.{% else %} Seed your ramp start sensibly next time (your current estimated FTP is ~180–210&nbsp;W, so 100&nbsp;W start gives plenty of runway).{% endif %}</p>
   </div>
 
-  <h2>Your training zones (once you have FTP)</h2>
-  <p>Standard Coggan 7-zone model — fill in the watts once tested. These become your pacing ceilings and your easy/hard guardrails.</p>
+  <h2>Your training zones{% if power_profile %} (FTP {{ power_profile.ftp_w }}&nbsp;W){% endif %}</h2>
+  <p>Standard Coggan 7-zone model{% if not power_profile %} — fill in the watts once tested{% endif %}. These become your pacing ceilings and your easy/hard guardrails.</p>
   <table>
-    <thead><tr><th>Zone</th><th>% of FTP</th><th>Use</th></tr></thead>
+    <thead><tr><th>Zone</th><th>% of FTP</th>{% if power_profile %}<th class="num">Watts</th>{% endif %}<th>Use</th></tr></thead>
     <tbody>
-      <tr><td>Z1 Recovery</td><td class="num">&lt;55%</td><td>Easy spin, between-efforts</td></tr>
-      <tr><td>Z2 Endurance</td><td class="num">56–75%</td><td>The bread-and-butter — most Haute Route climbing lives here early in a stage</td></tr>
-      <tr><td>Z3 Tempo</td><td class="num">76–90%</td><td>Sustained climbing pace, steady stages</td></tr>
-      <tr><td>Z4 Threshold</td><td class="num">91–105%</td><td>FTP work; your test sits here</td></tr>
-      <tr><td>Z5 VO₂max</td><td class="num">106–120%</td><td>Short hard intervals, top-end builder</td></tr>
-      <tr><td>Z6 Anaerobic</td><td class="num">121–150%</td><td>Punchy efforts, &lt;2 min</td></tr>
-      <tr><td>Z7 Neuromuscular</td><td class="num">Max</td><td>Sprints</td></tr>
+      <tr><td>Z1 Recovery</td><td class="num">&lt;55%</td>{% if power_profile %}<td class="num">&lt;{{ power_profile.zones[0].hi }}</td>{% endif %}<td>Easy spin, between-efforts</td></tr>
+      <tr><td>Z2 Endurance</td><td class="num">56–75%</td>{% if power_profile %}<td class="num">{{ power_profile.zones[1].lo }}–{{ power_profile.zones[1].hi }}</td>{% endif %}<td>The bread-and-butter — most Haute Route climbing lives here early in a stage</td></tr>
+      <tr><td>Z3 Tempo</td><td class="num">76–90%</td>{% if power_profile %}<td class="num">{{ power_profile.zones[2].lo }}–{{ power_profile.zones[2].hi }}</td>{% endif %}<td>Sustained climbing pace, steady stages</td></tr>
+      <tr><td>Z4 Threshold</td><td class="num">91–105%</td>{% if power_profile %}<td class="num">{{ power_profile.zones[3].lo }}–{{ power_profile.zones[3].hi }}</td>{% endif %}<td>FTP work; your test sits here</td></tr>
+      <tr><td>Z5 VO₂max</td><td class="num">106–120%</td>{% if power_profile %}<td class="num">{{ power_profile.zones[4].lo }}–{{ power_profile.zones[4].hi }}</td>{% endif %}<td>Short hard intervals, top-end builder</td></tr>
+      <tr><td>Z6 Anaerobic</td><td class="num">121–150%</td>{% if power_profile %}<td class="num">{{ power_profile.zones[5].lo }}–{{ power_profile.zones[5].hi }}</td>{% endif %}<td>Punchy efforts, &lt;2 min</td></tr>
+      <tr><td>Z7 Neuromuscular</td><td class="num">Max</td>{% if power_profile %}<td class="num">&gt;{{ power_profile.zones[6].lo }}</td>{% endif %}<td>Sprints</td></tr>
     </tbody>
   </table>
   <p class="sub">Climbing-pace tip for 2027: early-stage climbs you'll cap around <strong>70–80% of FTP (upper Z2 / low Z3)</strong> — well below your test effort. That ceiling is the single discipline that wins a seven-day race.</p>

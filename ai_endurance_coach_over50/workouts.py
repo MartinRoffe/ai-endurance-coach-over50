@@ -40,7 +40,7 @@ _FE_SPORT     = {"sportTypeId": getattr(SportType, "FITNESS_EQUIPMENT", 6), "spo
 _HIKE_SPORT   = {"sportTypeId": getattr(SportType, "HIKING", 7),           "sportTypeKey": "hiking",             "displayOrder": 7}
 _CARDIO_SPORT = {"sportTypeId": 11,                          "sportTypeKey": "cardio",             "displayOrder": 11}
 
-_BIKE_TYPES         = {"bike", "tempo", "ftp", "long"}
+_BIKE_TYPES         = {"bike", "tempo", "ftp", "long", "endurance", "sweetspot", "vo2", "recovery", "back_to_back"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
 
 
@@ -86,6 +86,24 @@ def _quality_interval(
     return _interval(order, secs, _hr_zone_target(), hr_lo, hr_hi)
 
 
+_ENDURANCE_HR_NOTE = "HR backstop: Z2 (cap at Z2 ceiling on heat/fatigue days)"
+
+
+def _endurance_interval(
+    order: int, secs: float, ftp_w: int | None,
+    pct_lo: float = 0.56, pct_hi: float = 0.75,
+    hr_lo: int = 2, hr_hi: int = 2,
+) -> ExecutableStep:
+    """Z2 endurance block: %FTP when FTP known, with HR backstop note on power steps."""
+    if ftp_w:
+        return _interval(
+            order, secs, _power_lap_target(),
+            round(ftp_w * pct_lo), round(ftp_w * pct_hi),
+            description=_ENDURANCE_HR_NOTE,
+        )
+    return _interval(order, secs, _hr_zone_target(), hr_lo, hr_hi)
+
+
 # ── Step builders ────────────────────────────────────────────────────────────
 
 def _step(
@@ -97,8 +115,11 @@ def _step(
     target: dict[str, Any],
     lo: int | None = None,
     hi: int | None = None,
+    description: str | None = None,
 ) -> ExecutableStep:
     extra: dict[str, Any] = {}
+    if description:
+        extra["description"] = description
     target_key = target.get("workoutTargetTypeKey", "")
     if target_key == "heart.rate.zone":
         # Garmin Connect expects zoneNumber (1–5), not targetValueOne/Two (those are
@@ -120,8 +141,9 @@ def _step(
     )
 
 
-def _interval(order: int, secs: float, target: dict, lo: int | None = None, hi: int | None = None) -> ExecutableStep:
-    return _step(order, StepType.INTERVAL, "interval", 3, secs, target, lo, hi)
+def _interval(order: int, secs: float, target: dict, lo: int | None = None, hi: int | None = None,
+              description: str | None = None) -> ExecutableStep:
+    return _step(order, StepType.INTERVAL, "interval", 3, secs, target, lo, hi, description=description)
 
 def _recovery(order: int, secs: float, target: dict | None = None, lo: int | None = None, hi: int | None = None) -> ExecutableStep:
     return _step(order, StepType.RECOVERY, "recovery", 4, secs, target or _no_target(), lo, hi)
@@ -174,9 +196,10 @@ def _easy_spin(dur_min: int) -> CyclingWorkout:
 
 
 def _zone2_steady(dur_min: int) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
     return _make(f"Zone 2 Steady {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, (dur_min - 20) * 60, _hr_zone_target(), 2, 2),
+        _endurance_interval(2, (dur_min - 20) * 60, ftp_w),
         create_cooldown_step(600.0, step_order=3),
     ], dur_min)
 
@@ -191,13 +214,14 @@ def _recovery_spin(dur_min: int) -> CyclingWorkout:
 
 def _structured_z2(dur_min: int) -> CyclingWorkout:
     # 10m warmup + 3×(12m Z2 + 2m easy) + 10m cooldown = 60m
+    ftp_w = _latest_ftp_w()
     return _make(f"Structured Z2 {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, 720, _hr_zone_target(), 2, 2),
+        _endurance_interval(2, 720, ftp_w),
         _recovery(3, 120),
-        _interval(4, 720, _hr_zone_target(), 2, 2),
+        _endurance_interval(4, 720, ftp_w),
         _recovery(5, 120),
-        _interval(6, 720, _hr_zone_target(), 2, 2),
+        _endurance_interval(6, 720, ftp_w),
         create_cooldown_step(600.0, step_order=7),
     ], dur_min)
 
@@ -235,17 +259,19 @@ def _cadence_drills(dur_min: int) -> CyclingWorkout:
 
 def _hilly_z2(dur_min: int) -> CyclingWorkout:
     # Z2 target; Z3 accepted on climbs
+    ftp_w = _latest_ftp_w()
     return _make(f"Hilly Z2 {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, (dur_min - 20) * 60, _hr_zone_target(), 2, 3),
+        _endurance_interval(2, (dur_min - 20) * 60, ftp_w, 0.56, 0.80),
         create_cooldown_step(600.0, step_order=3),
     ], dur_min)
 
 
 def _z2_endurance(dur_min: int) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
     return _make(f"Z2 Endurance {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, (dur_min - 20) * 60, _hr_zone_target(), 2, 2),
+        _endurance_interval(2, (dur_min - 20) * 60, ftp_w),
         create_cooldown_step(600.0, step_order=3),
     ], dur_min)
 
@@ -284,6 +310,21 @@ def _ftp_test(name: str, dur_min: int) -> CyclingWorkout:
     ], dur_min)
 
 
+def _ramp_test(dur_min: int) -> CyclingWorkout:
+    """Ramp FTP test: 10m warmup + 1-min ascending power steps from 100W (+20W) + open final."""
+    steps: list = [create_warmup_step(600.0, step_order=1)]
+    order = 2
+    watts = 100
+    while watts <= 400:
+        steps.append(_interval(order, 60, _power_lap_target(), watts, watts + 19))
+        order += 1
+        watts += 20
+    steps.append(_interval(order, 120, _open_target()))
+    order += 1
+    steps.append(create_cooldown_step(600.0, step_order=order))
+    return _make(f"Ramp Test {dur_min}m", steps, dur_min)
+
+
 def _tempo_intervals(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 3×(10m Z4 + 5m Z1) + 5m cooldown = 60m
     ftp_w = _latest_ftp_w()
@@ -300,9 +341,10 @@ def _tempo_intervals(dur_min: int) -> CyclingWorkout:
 
 def _long_ride(name: str, dur_min: int) -> CyclingWorkout:
     # 15m warmup + main Z2 + 15m cooldown
+    ftp_w = _latest_ftp_w()
     return _make(f"{name} {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _interval(2, (dur_min - 30) * 60, _hr_zone_target(), 2, 2),
+        _endurance_interval(2, (dur_min - 30) * 60, ftp_w),
         create_cooldown_step(900.0, step_order=3),
     ], dur_min)
 
@@ -318,9 +360,10 @@ def _easy_ride(dur_min: int) -> CyclingWorkout:
 
 def _z2_ride(dur_min: int) -> CyclingWorkout:
     # 10m warmup + Z2 block + 10m cooldown
+    ftp_w = _latest_ftp_w()
     return _make(f"Z2 Ride {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, (dur_min - 20) * 60, _hr_zone_target(), 2, 2),
+        _endurance_interval(2, (dur_min - 20) * 60, ftp_w),
         create_cooldown_step(600.0, step_order=3),
     ], dur_min)
 
@@ -360,44 +403,137 @@ def _sweetspot_ride(dur_min: int) -> CyclingWorkout:
 
 def _over_unders(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 3×(8m Z4 under + 2m Z5 over + 5m Z1 recovery) + 15m cooldown = 75m
+    ftp_w = _latest_ftp_w()
     return _make(f"Over-Unders {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _interval(2, 480, _hr_zone_target(), 4, 4),
-        _interval(3, 120, _hr_zone_target(), 5, 5),
+        _quality_interval(2, 480, ftp_w, 0.95, 1.00, 4, 4),
+        _quality_interval(3, 120, ftp_w, 1.05, 1.10, 5, 5),
         _recovery(4, 300, _hr_zone_target(), 1, 1),
-        _interval(5, 480, _hr_zone_target(), 4, 4),
-        _interval(6, 120, _hr_zone_target(), 5, 5),
+        _quality_interval(5, 480, ftp_w, 0.95, 1.00, 4, 4),
+        _quality_interval(6, 120, ftp_w, 1.05, 1.10, 5, 5),
         _recovery(7, 300, _hr_zone_target(), 1, 1),
-        _interval(8, 480, _hr_zone_target(), 4, 4),
-        _interval(9, 120, _hr_zone_target(), 5, 5),
+        _quality_interval(8, 480, ftp_w, 0.95, 1.00, 4, 4),
+        _quality_interval(9, 120, ftp_w, 1.05, 1.10, 5, 5),
         create_cooldown_step(900.0, step_order=10),
     ], dur_min)
 
 
 def _threshold_ride(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 3×(15m Z4 + 5m Z1) + 15m cooldown = 90m
+    ftp_w = _latest_ftp_w()
     return _make(f"Threshold Ride {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _interval(2, 900, _hr_zone_target(), 4, 4),
+        _quality_interval(2, 900, ftp_w, 0.95, 1.00, 4, 4),
         _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _interval(4, 900, _hr_zone_target(), 4, 4),
+        _quality_interval(4, 900, ftp_w, 0.95, 1.00, 4, 4),
         _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _interval(6, 900, _hr_zone_target(), 4, 4),
+        _quality_interval(6, 900, ftp_w, 0.95, 1.00, 4, 4),
         create_cooldown_step(900.0, step_order=7),
     ], dur_min)
 
 
 def _hill_repeats(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 5×(3m Z4-5 effort + 3m Z1 recovery) + 15m cooldown = 60m
+    ftp_w = _latest_ftp_w()
     steps: list = [create_warmup_step(900.0, step_order=1)]
     o = 2
     for _ in range(5):
-        steps.append(_interval(o, 180, _hr_zone_target(), 4, 5))
+        steps.append(_quality_interval(o, 180, ftp_w, 1.06, 1.20, 4, 5))
         o += 1
         steps.append(_recovery(o, 180, _hr_zone_target(), 1, 1))
         o += 1
     steps.append(create_cooldown_step(900.0, step_order=o))
     return _make(f"Hill Repeats {dur_min}m", steps, dur_min)
+
+
+# ── Haute Route plan builders (HR vocabulary) ───────────────────────────────────
+
+def _hr_vo2_intervals(reps: int, work_min: int, rest_min: int, dur_min: int, name: str) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    steps: list = [create_warmup_step(900.0, step_order=1)]
+    o = 2
+    for _ in range(reps):
+        steps.append(_quality_interval(o, work_min * 60, ftp_w, 1.06, 1.20, 5, 5))
+        o += 1
+        steps.append(_recovery(o, rest_min * 60, _hr_zone_target(), 1, 1))
+        o += 1
+    steps.append(create_cooldown_step(600.0, step_order=o))
+    return _make(f"{name} {dur_min}m", steps, dur_min)
+
+
+def _hr_over_unders(reps: int, work_min: int, dur_min: int, name: str) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    steps: list = [create_warmup_step(900.0, step_order=1)]
+    o = 2
+    under_s = work_min * 60
+    over_s = max(120, work_min * 12)
+    for _ in range(reps):
+        steps.append(_quality_interval(o, under_s, ftp_w, 0.95, 1.00, 4, 4))
+        o += 1
+        steps.append(_quality_interval(o, over_s, ftp_w, 1.05, 1.10, 5, 5))
+        o += 1
+        steps.append(_recovery(o, 300, _hr_zone_target(), 1, 1))
+        o += 1
+    steps.append(create_cooldown_step(900.0, step_order=o))
+    return _make(f"{name} {dur_min}m", steps, dur_min)
+
+
+def _hr_tempo_blocks(blocks: int, block_min: int, dur_min: int, name: str) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    steps: list = [create_warmup_step(900.0, step_order=1)]
+    o = 2
+    for _ in range(blocks):
+        steps.append(_quality_interval(o, block_min * 60, ftp_w, 0.76, 0.90, 3, 4))
+        o += 1
+        if _ < blocks - 1:
+            steps.append(_recovery(o, 300, _hr_zone_target(), 1, 1))
+            o += 1
+    steps.append(create_cooldown_step(600.0, step_order=o))
+    return _make(f"{name} {dur_min}m", steps, dur_min)
+
+
+def _low_cadence_sweetspot(dur_min: int) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    steps: list = [create_warmup_step(600.0, step_order=1)]
+    o = 2
+    for _ in range(3):
+        if ftp_w:
+            steps.append(_interval(
+                o, 720, _power_lap_target(),
+                round(ftp_w * 0.88), round(ftp_w * 0.94),
+                description="Cadence 60–70 rpm",
+            ))
+        else:
+            steps.append(_interval(o, 720, _cadence_target(), 60, 70))
+        o += 1
+        steps.append(_recovery(o, 240))
+        o += 1
+    steps.append(create_cooldown_step(600.0, step_order=o))
+    return _make(f"Low Cadence Sweetspot {dur_min}m", steps, dur_min)
+
+
+def _short_sweetspot(dur_min: int) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    return _make(f"Short Sweetspot {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _quality_interval(2, 600, ftp_w, 0.88, 0.94, 3, 4),
+        _recovery(3, 300, _hr_zone_target(), 1, 1),
+        _quality_interval(4, 600, ftp_w, 0.88, 0.94, 3, 4),
+        create_cooldown_step(600.0, step_order=5),
+    ], dur_min)
+
+
+def _tempo_sharpener(dur_min: int) -> CyclingWorkout:
+    ftp_w = _latest_ftp_w()
+    return _make(f"Tempo Sharpener {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _quality_interval(2, 900, ftp_w, 0.76, 0.90, 3, 4),
+        create_cooldown_step(600.0, step_order=3),
+    ], dur_min)
+
+
+def _hr_long_ride(name: str, dur_min: int) -> CyclingWorkout:
+    return _long_ride(name, dur_min)
 
 
 # ── Cycling label → builder dispatch ─────────────────────────────────────────
@@ -406,6 +542,8 @@ _BUILDERS: dict[str, Any] = {
     "Easy Spin":        lambda d: _easy_spin(d),
     "Zone 2 Steady":    lambda d: _zone2_steady(d),
     "Recovery Spin":    lambda d: _recovery_spin(d),
+    "Recovery + Core":  lambda d: _recovery_spin(d),
+    "Strength + Core":  lambda d: _recovery_spin(d),
     "Structured Z2":    lambda d: _structured_z2(d),
     "Z2 + Hills":       lambda d: _z2_hills(d),
     "Cadence Drills":   lambda d: _cadence_drills(d),
@@ -416,6 +554,8 @@ _BUILDERS: dict[str, Any] = {
     "FTP Test":         lambda d: _ftp_test("FTP Test", d),
     "FTP Re-test":      lambda d: _ftp_test("FTP Re-test", d),
     "Final FTP Test":   lambda d: _ftp_test("Final FTP Test", d),
+    "Ramp Test":        lambda d: _ramp_test(d),
+    "FTP Ramp Test":    lambda d: _ramp_test(d),
     "Tempo Intervals":  lambda d: _tempo_intervals(d),
     "Long Ride":        lambda d: _long_ride("Long Ride", d),
     "Long Ride (Easy)": lambda d: _long_ride("Long Ride Easy", d),
@@ -426,13 +566,48 @@ _BUILDERS: dict[str, Any] = {
     "Over-Unders":      lambda d: _over_unders(d),
     "Threshold Ride":   lambda d: _threshold_ride(d),
     "Hill Repeats":     lambda d: _hill_repeats(d),
+    # Haute Route plan labels
+    "Z2 Steady":        lambda d: _zone2_steady(d),
+    "Z2 Easy":          lambda d: _z2_endurance(d),
+    "Low Cadence Sweetspot": lambda d: _low_cadence_sweetspot(d),
+    "Short Sweetspot":  lambda d: _short_sweetspot(d),
+    "Tempo Sharpener":  lambda d: _tempo_sharpener(d),
+    "Tempo Intervals 2×15": lambda d: _hr_tempo_blocks(2, 15, d, "Tempo Intervals 2×15"),
+    "Tempo Intervals 2×20": lambda d: _hr_tempo_blocks(2, 20, d, "Tempo Intervals 2×20"),
+    "Tempo Intervals 3×15": lambda d: _hr_tempo_blocks(3, 15, d, "Tempo Intervals 3×15"),
+    "Tempo Intervals 3×20": lambda d: _hr_tempo_blocks(3, 20, d, "Tempo Intervals 3×20"),
+    "Under-Overs 2×10 min": lambda d: _hr_over_unders(2, 10, d, "Under-Overs 2×10 min"),
+    "Under-Overs 3×10 min": lambda d: _hr_over_unders(3, 10, d, "Under-Overs 3×10 min"),
+    "Under-Overs 3×12 min": lambda d: _hr_over_unders(3, 12, d, "Under-Overs 3×12 min"),
+    "VO2 Intervals 4×3 min": lambda d: _hr_vo2_intervals(4, 3, 3, d, "VO2 Intervals 4×3 min"),
+    "VO2 Intervals 5×3 min": lambda d: _hr_vo2_intervals(5, 3, 3, d, "VO2 Intervals 5×3 min"),
+    "VO2 Intervals 5×4 min": lambda d: _hr_vo2_intervals(5, 4, 4, d, "VO2 Intervals 5×4 min"),
+    "VO2 Intervals 6×3 min": lambda d: _hr_vo2_intervals(6, 3, 3, d, "VO2 Intervals 6×3 min"),
+    "FTP Baseline Test": lambda d: _ftp_test("FTP Baseline Test", d),
+    "FTP Final Test":   lambda d: _ftp_test("FTP Final Test", d),
+    "Long Ride (Moderate)": lambda d: _hr_long_ride("Long Ride Moderate", d),
+    "Easy Endurance":   lambda d: _z2_endurance(d),
+    "Leg Openers":      lambda d: _easy_prep_ride(d),
+    "Back-to-Back Day 1": lambda d: _hr_long_ride("Back-to-Back Day 1", d),
+    "Back-to-Back Day 2": lambda d: _hr_long_ride("Back-to-Back Day 2", d),
+    "Back-to-Back Day 1 (Easy)": lambda d: _long_ride("Back-to-Back Day 1 Easy", d),
+    "Back-to-Back Day 2 (Easy)": lambda d: _long_ride("Back-to-Back Day 2 Easy", d),
+    "Camp — Arrival + Leg Openers": lambda d: _easy_prep_ride(d),
+    "Camp — Active Recovery": lambda d: _recovery_spin(d),
+    "Camp — Mountain Stage": lambda d: _hr_long_ride("Camp Mountain Stage", d),
+    "Camp — Summit Day": lambda d: _hr_long_ride("Camp Summit Day", d),
+    "Camp — Back-to-Back Day 1": lambda d: _hr_long_ride("Camp BTB Day 1", d),
+    "Camp — Back-to-Back Day 2": lambda d: _hr_long_ride("Camp BTB Day 2", d),
+    "Simulation Day 1": lambda d: _hr_long_ride("Simulation Day 1", d),
+    "Simulation Day 2": lambda d: _hr_long_ride("Simulation Day 2", d),
+    "Simulation Day 3": lambda d: _hr_long_ride("Simulation Day 3", d),
 }
 
 # Name prefixes used when generating workout names — used to find and delete stale uploads
 _NAME_PREFIXES: tuple[str, ...] = (
     "Easy Spin ", "Zone 2 Steady ", "Recovery Spin ", "Structured Z2 ", "Z2 + Hills ",
     "Cadence Drills ", "Hilly Z2 ", "Z2 Endurance ", "Low Cadence ", "Easy Prep Ride ",
-    "FTP Test", "FTP Re-test", "Final FTP Test", "Tempo Intervals ", "Long Ride ",
+    "FTP Test", "FTP Re-test", "Final FTP Test", "Ramp Test", "FTP Ramp Test", "Tempo Intervals ", "Long Ride ",
     "Long Ride Easy ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ", "Sweetspot Ride ",
     "Over-Unders ", "Threshold Ride ", "Hill Repeats ",
     # Strength & ruck

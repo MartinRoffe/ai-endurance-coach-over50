@@ -157,7 +157,7 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]], goal: str = "cut
                     deficit, key sessions fully fuelled.
     """
     existing = _load_nutrition_targets()
-    missing = [(t, d) for t, d in sessions if f"{goal}_{t}_{d}" not in existing]
+    missing = [(t, d) for t, d in sessions if f"{goal}_v2_{t}_{d}" not in existing]
     if not missing:
         return existing
 
@@ -188,12 +188,23 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]], goal: str = "cut
 
     from ..nutrition_plan import protein_target_g
     pt = protein_target_g()
+    from ..energy import planned_session_kj
+    from ..history import load_ftp_tests
+    from ..hr_plan import HR_POWER_TARGETS
+
+    ftp_w = None
+    for t in reversed(load_ftp_tests()):
+        if t.get("ftp_w"):
+            ftp_w = int(t["ftp_w"])
+            break
 
     lines = [
         f"You are a sports nutritionist for a male athlete aged 50+, {weight_str}.",
         *goal_lines,
         f"Protein target: at least {pt['low']}–{pt['high']} g/day ({pt['basis']}) to preserve muscle; "
         "distribute ~0.4 g/kg across 4+ meals plus a ~40 g pre-sleep casein/dairy dose.",
+        "Carb periodization: Z2 sessions ≤75 min may run lower-carb; VO2/threshold days are high-carb.",
+        "When mechanical work (kJ) is given, use it to scale in-ride and daily carb targets.",
         "For each training session below provide TOTAL DAILY nutrition targets (all meals + snacks combined).",
         "Reply ONLY with valid JSON: a dict mapping session_key -> {\"kcal\": int, \"protein_g\": int, \"carbs_g\": int, \"fat_g\": int, \"brief\": \"one-sentence tip\"}",
         "No extra text, no markdown fences.",
@@ -202,9 +213,13 @@ def prefetch_nutrition_targets(sessions: list[tuple[str, int]], goal: str = "cut
     ]
     for stype, dur in missing:
         desc = _SESSION_TYPE_DESC.get(stype, stype)
-        key = f"{goal}_{stype}_{dur}"
+        key = f"{goal}_v2_{stype}_{dur}"
         dur_str = f"{dur} min" if dur > 0 else "no exercise"
-        lines.append(f'"{key}": {desc}, {dur_str}')
+        kj_note = ""
+        if ftp_w and stype in HR_POWER_TARGETS:
+            lo, hi = HR_POWER_TARGETS[stype]
+            kj_note = f", estimated mechanical work ≈ {round(planned_session_kj(ftp_w, lo, hi, dur))} kJ"
+        lines.append(f'"{key}": {desc}, {dur_str}{kj_note}')
 
     try:
         msg = client.messages.create(
@@ -274,7 +289,7 @@ def _load_fuelling_plans() -> dict[str, dict]:
 
 def fuelling_session_key(stype: str, dur_min: int) -> str:
     """Single source of truth for fuelling_plans cache keys (plan type + planned minutes)."""
-    return f"{stype}_{dur_min}"
+    return f"v2_{stype}_{dur_min}"
 
 
 def default_fuelling_plan(dur_min: int) -> dict:
@@ -320,9 +335,21 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
     client = anthropic.Anthropic(api_key=api_key)
 
     weight_note = f"{weight:.0f} kg" + ("" if weight_known else " (assumed — no body-comp data)")
+    from ..energy import planned_session_kj
+    from ..history import load_ftp_tests
+    from ..hr_plan import HR_POWER_TARGETS
+
+    ftp_w = None
+    for t in reversed(load_ftp_tests()):
+        if t.get("ftp_w"):
+            ftp_w = int(t["ftp_w"])
+            break
+
     lines = [
         f"You are a sports nutritionist planning IN-RIDE fuelling for a male cyclist, ~{weight_note}.",
         "These are targets for what to consume DURING the session itself (not daily meals).",
+        "Carb periodization: Z2 ≤75 min may run lower-carb; VO2/threshold days are high-carb.",
+        "When estimated mechanical work (kJ) is given, ground carb totals in that work rate.",
         "Use evidence-based ranges: ~60 g carbs/hr for rides 1–2.5 h, rising to 80–90 g/hr for "
         "longer/harder rides (use a 1:0.8 glucose:fructose mix above ~60 g/hr to raise the "
         "absorption ceiling); 500–750 ml fluid/hr; 300–700 mg sodium/hr depending on duration and "
@@ -343,7 +370,11 @@ def prefetch_fuelling_plans(sessions: list[tuple[str, int]], weight_kg: Optional
     for stype, dur in missing:
         desc = _SESSION_TYPE_DESC.get(stype, stype)
         key = fuelling_session_key(stype, dur)
-        lines.append(f'"{key}": {desc}, {dur} min')
+        kj_note = ""
+        if ftp_w and stype in HR_POWER_TARGETS:
+            lo, hi = HR_POWER_TARGETS[stype]
+            kj_note = f", ≈ {round(planned_session_kj(ftp_w, lo, hi, dur))} kJ mechanical work"
+        lines.append(f'"{key}": {desc}, {dur} min{kj_note}')
 
     try:
         msg = client.messages.create(

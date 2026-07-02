@@ -34,6 +34,7 @@ from ..history import (
     load_ftp_tests,
     load_recent_activities,
     pmc_history,
+    power_meter_active,
     raw_history,
     save,
     save_activities,
@@ -51,6 +52,8 @@ from ..plan import (
     session_for_date,
     session_for_date_extended,
 )
+from ..hr_plan import hr_session_for_date
+from ..power_profile import build_power_profile
 from ..report import generate_advice, generate_body_analysis, generate_dashboard_explainer
 
 from .shared import (
@@ -369,21 +372,48 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     except Exception:
         pass
 
-    # FTP retest prompt: last test stale → suggest a slot via the override flow
+    # FTP retest / power baseline prompt
     ftp_retest = None
     try:
-        due = ftp_retest_due(target, plan_start=_PLAN_START)
-        if due:
-            slot = None
-            for offset in range(1, 11):
-                cand = target + timedelta(days=offset)
-                csess = session_for_date(cand)
-                if csess and csess[0] in ("tempo", "ftp", "bike"):
-                    slot = {"date": cand.isoformat(),
+        def _scan_ftp_slot(start: date, days: int = 10) -> Optional[dict]:
+            for offset in range(1, days + 1):
+                cand = start + timedelta(days=offset)
+                for resolver in (session_for_date, hr_session_for_date):
+                    csess = resolver(cand)
+                    if csess and csess[0] in ("tempo", "ftp", "bike", "sweetspot"):
+                        return {
+                            "date": cand.isoformat(),
                             "date_str": cand.strftime("%a %-d %b"),
-                            "current_label": csess[1]}
-                    break
-            ftp_retest = {**due, "slot": slot}
+                            "current_label": csess[1],
+                        }
+            return None
+
+        due = ftp_retest_due(target, plan_start=_PLAN_START)
+        has_ftp_w = any(t.get("ftp_w") for t in load_ftp_tests())
+        if power_meter_active() and not has_ftp_w:
+            ftp_retest = {
+                "reason": "power_baseline",
+                "last_date": None,
+                "age_days": None,
+                "message": "Power meter active but FTP watts never measured — schedule a test",
+                "slot": _scan_ftp_slot(target),
+            }
+        elif due:
+            ftp_retest = {**due, "reason": "stale", "slot": _scan_ftp_slot(target)}
+    except Exception:
+        pass
+
+    power_profile = None
+    try:
+        power_profile = build_power_profile()
+    except Exception:
+        pass
+
+    workouts_stale_ftp = None
+    try:
+        stale = get_cached_text("workouts_stale_ftp")
+        if stale:
+            workouts_stale_ftp = int(stale)
     except Exception:
         pass
 
@@ -430,6 +460,22 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         }
         if nutrition_today["tdee"] and nutrition_today["calories"]:
             nutrition_today["balance"] = nutrition_today["tdee"] - nutrition_today["calories"]
+        try:
+            from ..energy import ride_kj, ride_kcal_from_kj
+            today_iso = target.isoformat()
+            kj_total = 0.0
+            for act in activities:
+                if act.get("date") != today_iso:
+                    continue
+                pwr = act.get("norm_power_w") or act.get("avg_power_w")
+                secs = act.get("duration_seconds") or 0
+                if pwr and secs and act.get("has_power_meter"):
+                    kj_total += ride_kj(float(pwr), float(secs))
+            if kj_total > 0:
+                nutrition_today["ride_work_kj"] = round(kj_total)
+                nutrition_today["ride_work_kcal"] = ride_kcal_from_kj(kj_total)
+        except Exception:
+            pass
 
     gut_training = None
     try:
@@ -498,6 +544,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "nutrition_today": nutrition_today,
         "gut_training": gut_training,
         "power_snapshot": power_snapshot,
+        "power_profile": power_profile,
+        "workouts_stale_ftp": workouts_stale_ftp,
     }
 
 

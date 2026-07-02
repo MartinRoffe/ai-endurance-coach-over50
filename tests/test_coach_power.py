@@ -58,3 +58,4 @@ def test_build_coach_context_includes_power_sections():
     assert "Measured FTP / W/kg" in ctx
     assert "Pw:HR Decoupling" in ctx
     assert "FTP 250W" in ctx
+    assert "## Power Reference (measured FTP)" in ctx

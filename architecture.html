@@ -409,13 +409,23 @@ flowchart LR
         <span class="tag tag-plan">Plan</span>
       </div>
       <div class="mod-card">
+        <div class="filename">power_profile.py</div>
+        <div class="desc">Coggan zones from measured ftp_w. build_power_profile(), format_power_profile_lines() — coach, dashboard, email, protocol page.</div>
+        <span class="tag tag-ai">Power</span>
+      </div>
+      <div class="mod-card">
+        <div class="filename">energy.py</div>
+        <div class="desc">ride_kj(), planned_session_kj() — kJ-grounded nutrition annotations on dashboard and coach context.</div>
+        <span class="tag tag-ai">Nutrition</span>
+      </div>
+      <div class="mod-card">
         <div class="filename">workouts.py</div>
-        <div class="desc">Builds CyclingWorkout objects, bulk upload/schedule, apply_override_to_garmin(). _quality_interval() uses %FTP when ftp_w known.</div>
+        <div class="desc">CyclingWorkout builders with %FTP targets + HR fallback, ramp test, HR-vocabulary labels, apply_override_to_garmin().</div>
         <span class="tag tag-action">Action</span>
       </div>
       <div class="mod-card">
         <div class="filename">analysis.py</div>
-        <div class="desc">Post-workout AI (Sonnet), RAG, power extraction, _work_laps_from_steps(), refresh_power_backfill(), HR stage plans v2.</div>
+        <div class="desc">Post-workout AI (Sonnet), RAG, ramp FTP extraction, compute_tss/backfill_tss, refresh_power_backfill(), HR stage plans v3.</div>
         <span class="tag tag-ai">AI</span>
       </div>
       <div class="mod-card">
@@ -621,6 +631,7 @@ erDiagram
         int hr_zone_4_sec int hr_zone_5_sec
         real avg_power_w real norm_power_w
         int has_power_meter
+        real tss real intensity_factor
     }
     plan_overrides {
         text date PK
@@ -718,7 +729,7 @@ erDiagram
       </thead>
       <tbody>
         <tr><td><code>daily_metrics</code></td><td><code>date PK</code></td><td class="dim">One row per day. Auto-migrating schema.</td></tr>
-        <tr><td><code>activities</code></td><td><code>activity_id PK, avg_power_w, norm_power_w, has_power_meter</code></td><td class="dim">All Garmin activities with HR zones, training effect, and power fields when meter present.</td></tr>
+        <tr><td><code>activities</code></td><td><code>activity_id PK, avg_power_w, norm_power_w, has_power_meter, tss, intensity_factor</code></td><td class="dim">All Garmin activities with HR zones, training effect, power fields, and Coggan TSS/IF when ftp_w known.</td></tr>
         <tr><td><code>plan_overrides</code></td><td><code>date PK, session_type, label, duration_min</code></td><td class="dim">Persists coach-approved, HRV-driven, or recovery-gate session swaps.</td></tr>
         <tr><td><code>coach_conversations</code></td><td><code>id, role, content, proposal</code></td><td class="dim">Last 20 messages kept in context; older entries summarised into the memo.</td></tr>
         <tr><td><code>coach_memory</code></td><td><code>id=1, memo, updated_at</code></td><td class="dim">Single-row durable memo (150–250 words), refreshed every 4h in background via Haiku.</td></tr>
@@ -729,7 +740,7 @@ erDiagram
         <tr><td><code>ftp_tests</code></td><td><code>date UNIQUE, ftp_hr, ftp_w</code></td><td class="dim">Auto-populated from FTP-labelled sessions via refresh_analyses().</td></tr>
         <tr><td><code>btb_notes</code></td><td><code>date, day_number, fatigue_rating</code></td><td class="dim">Back-to-back ride fatigue logs; last 5 in coach context.</td></tr>
         <tr><td><code>fuelling_logs</code></td><td><code>activity_id UNIQUE, planned/actual carbs</code></td><td class="dim">In-ride fuelling compliance; last 5 in coach context.</td></tr>
-        <tr><td><code>text_cache</code></td><td><code>key PK, value</code></td><td class="dim">AI caches: workout descriptions, weekly_briefing_v3_{monday}, hr_stage_plan_v2_{day}, charity_day_plan_v1_{day}, fuelling plans.</td></tr>
+        <tr><td><code>text_cache</code></td><td><code>key PK, value</code></td><td class="dim">AI caches: workout descriptions, weekly_briefing_v3_{monday}, hr_stage_plan_v3_{day}, charity_day_plan_v1_{day}, fuelling v2_{type}_{dur}, workouts_stale_ftp.</td></tr>
         <tr><td><code>daily_advice</code></td><td><code>date PK, advice</code></td><td class="dim">Per-date daily readiness advice, survives server restart.</td></tr>
         <tr><td><code>body_metrics / blood_pressure</code></td><td><code>date, measurements</code></td><td class="dim">Withings/Garmin body composition and BP readings.</td></tr>
       </tbody>
@@ -756,12 +767,12 @@ erDiagram
         <tr>
           <td><code>/</code> Readiness</td>
           <td><code>dashboard.html</code></td>
-          <td class="dim"><code>metrics</code>, <code>history</code>, <code>alerts</code>, <code>modulation</code> (resolve_modulation), <code>report</code> (advice, weekly briefing), recovery-gate card, gut-training card, FTP retest, power_snapshot</td>
+          <td class="dim"><code>metrics</code>, <code>history</code>, <code>alerts</code>, <code>modulation</code>, <code>power_profile</code>, FTP baseline/retest, stale-workouts banner, ride kJ on nutrition card</td>
         </tr>
         <tr>
           <td><code>/performance</code></td>
           <td><code>performance.html</code></td>
-          <td class="dim"><code>history</code> (PMC, durability, monotony, measured W/kg, power polarisation, decoupling), CTL projection, taper scenarios, power activation checklist, Coach Memory widget via <code>/coach-memory</code></td>
+          <td class="dim"><code>history</code> (Garmin PMC, power TSS weekly + Coggan CTL/ATL/TSB, durability, monotony, measured W/kg, decoupling), CTL projection, taper scenarios, power activation checklist</td>
         </tr>
         <tr>
           <td><code>/analysis</code></td>
@@ -836,18 +847,22 @@ erDiagram
 <!-- ──────────────── SECTION 6: POWER METER ──────────────── -->
 <section id="power">
   <p class="section-label">06 — Power Meter</p>
-  <h2>Power Meter — Phases 1–6</h2>
-  <p class="section-desc">Measured watts support added while keeping HR primary for readiness, HRV modulation, and traffic-light logic. Most power UI and coaching branches on <code style="font-family:var(--font-m);color:var(--accent2)">power_meter_active()</code> — true when ≥3 cycling activities with <code style="font-family:var(--font-m);color:var(--accent2)">has_power_meter=1</code> in the last 60 days.</p>
+  <h2>Power Meter — Dual-Channel Training</h2>
+  <p class="section-desc">Measured watts are the primary strain/pacing channel when <code style="font-family:var(--font-m);color:var(--accent2)">power_meter_active()</code> (≥3 power rides in 60d). HR stays primary for readiness composite, HRV traffic light, and modulation gates. Branches on <code style="font-family:var(--font-m);color:var(--accent2)">power_profile.build_power_profile()</code> for zones, workout %FTP targets, TSS, and kJ nutrition.</p>
 
   <div class="diagram-wrap">
     <p class="diagram-label">Power data pipeline</p>
     <div class="mermaid">
 flowchart LR
-    Ingest["metrics.map_activity_power()"] --> ActDB[("activities")]
+    Ingest["metrics.map_activity_power()"] --> ActDB[("activities + tss/if")]
     Detail["analysis.fetch_activity_detail()"] --> Zones["power_zones_json"]
-    Detail --> Decouple["activity_power_durability"]
-    FTP["ftp_tests.ftp_w"] --> Wkg["measured_wkg_history()"]
-    Gate["power_meter_active()\n3 rides / 60d"] --> UI["Performance · Analysis\nBody · Coach · Workouts"]
+    Detail --> Ramp["ramp FTP 0.75× best 1-min"]
+    Ramp --> FTPW["ftp_tests.ftp_w"]
+    FTPW --> Profile["power_profile.py\nCoggan zones"]
+    Profile --> Workouts["workouts.py %FTP"]
+    TSS["compute_tss()"] --> PMC["power_pmc_history()"]
+    Profile --> KJ["energy.py ride_kj"]
+    Gate["power_meter_active()"] --> UI["Dashboard · Performance\nCoach · Haute Route"]
     style Gate fill:#1e1b2e,stroke:#6366f1
     </div>
   </div>
@@ -877,8 +892,11 @@ flowchart TD
       <tbody>
         <tr><td><code>Measured vs estimated</code></td><td class="dim">Measured FTP/W/kg from <code>ftp_tests.ftp_w</code> is primary when active. VO2max ACSM estimate (<code>estimated_wkg_history()</code>) demoted to secondary cross-check.</td></tr>
         <tr><td><code>Stays HR-only</code></td><td class="dim">Readiness composite score, HRV traffic light, PMC/CTL projection, modulation gates — no power-based session swaps.</td></tr>
-        <tr><td><code>Workout targets</code></td><td class="dim"><code>workouts._quality_interval()</code> — sweetspot/tempo use %FTP power laps when <code>ftp_w</code> known; Z2 endurance stays HR-only.</td></tr>
-        <tr><td><code>HR stage plans v2</code></td><td class="dim">Cache key <code>hr_stage_plan_v2_{day}</code>. JSON adds <code>steady_state_w</code>, <code>wkg_cap_first_climb</code> when power active. <code>peak_sim_decoupling_flags()</code> warns on weeks 36–43 if decoupling &gt; 8%.</td></tr>
+        <tr><td><code>Workout targets</code></td><td class="dim"><code>workouts._quality_interval()</code> + <code>_endurance_interval()</code> — quality and Z2/long use %FTP when <code>ftp_w</code> known (HR-backstop description on endurance); Z1 stays HR-only. Ramp test builder auto-detects FTP from laps.</td></tr>
+        <tr><td><code>HR stage plans v3</code></td><td class="dim">Cache key <code>hr_stage_plan_v3_{day}</code>. Deterministic kJ/duration grounding before Sonnet; dual-channel %FTP in prompt. <code>peak_sim_decoupling_flags()</code> warns on weeks 36–43 if decoupling &gt; 8%.</td></tr>
+        <tr><td><code>Power TSS</code></td><td class="dim">Coggan TSS/IF on <code>activities</code>; <code>weekly_tss()</code> + <code>power_pmc_history()</code> on Performance tab — independent of Garmin PMC.</td></tr>
+        <tr><td><code>Nutrition kJ</code></td><td class="dim"><code>energy.planned_session_kj()</code> in fuelling prefetch (keys <code>v2_{type}_{dur}</code>); ride kJ on readiness nutrition card.</td></tr>
+        <tr><td><code>Stale workouts</code></td><td class="dim">New <code>ftp_w</code> → <code>workouts_stale_ftp</code> banner → manual <code>/sync-workouts</code> (not auto-push).</td></tr>
         <tr><td><code>CLI + endpoint</code></td><td class="dim"><code>endurance-coach --activate-power 30</code> and <code>GET /activate-power?days=30</code> (7–90 days clamped) → <code>refresh_power_backfill()</code>.</td></tr>
         <tr><td><code>Backfill returns</code></td><td class="dim"><code>{activities_fetched, power_rides, durability_added, power_patched, ftp_seeded}</code></td></tr>
       </tbody>
@@ -1067,7 +1085,7 @@ flowchart TD
         <h4>🏁 get_event_plans</h4>
         <ul>
           <li><span class="dot pink"></span> Ghent→Amsterdam Day 1 + Day 2 pacing/fuelling</li>
-          <li><span class="dot pink"></span> Haute Route Alpes all 7 stage plans (v2 dual-channel when power active)</li>
+          <li><span class="dot pink"></span> Haute Route Alpes all 7 stage plans (v3 dual-channel + kJ grounding when power active)</li>
           <li><span class="dot pink"></span> Generated by Sonnet, cached in text_cache</li>
           <li><span class="dot pink"></span> No parameters required</li>
         </ul>

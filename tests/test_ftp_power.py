@@ -1,5 +1,9 @@
 """FTP test watts extraction from lap splits."""
 from ai_endurance_coach_over50.analysis import _extract_ftp_effort
+from ai_endurance_coach_over50.analysis.intervals import _extract_ramp_ftp
+from ai_endurance_coach_over50.analysis.power import _mark_workouts_stale, _try_save_ftp_from_detail
+from ai_endurance_coach_over50.history import get_cached_text
+from ai_endurance_coach_over50.workouts import _ramp_test
 
 
 class _SplitsApi:
@@ -57,3 +61,37 @@ def test_extract_ftp_effort_structured_workout_laps():
     assert out["ftp_w"] == round(213 * 0.95)
     assert out["ftp_effort_avg_hr"] == 181
     assert out["ftp_effort_max_hr"] == 188
+
+
+def test_extract_ramp_ftp_75_rule():
+    laps = [
+        {"duration": 60, "averagePower": 280, "averageHR": 175, "maxHR": 182},
+        {"duration": 60, "averagePower": 300, "averageHR": 180, "maxHR": 188},
+        {"duration": 45, "averagePower": 200},
+    ]
+    out = _extract_ramp_ftp(_SplitsApi(laps), 1)
+    assert out["ramp_best_1min_w"] == 300
+    assert out["ftp_w"] == round(300 * 0.75)
+    assert out["ftp_effort_avg_hr"] == 180
+
+
+def test_extract_ramp_ftp_filters_lap_duration():
+    laps = [{"duration": 30, "averagePower": 400}, {"duration": 120, "averagePower": 350}]
+    assert _extract_ramp_ftp(_SplitsApi(laps), 1) == {}
+
+
+def test_ramp_builder_shape():
+    w = _ramp_test(45)
+    steps = w.workoutSegments[0].workoutSteps
+    work_steps = [s for s in steps if s.targetType.get("workoutTargetTypeKey") == "power.lap"]
+    assert len(work_steps) >= 10
+    assert work_steps[0].targetValueOne == 100
+    assert work_steps[1].targetValueOne == 120
+
+
+def test_try_save_ftp_ramp_sets_stale_flag():
+    detail = {"ftp_w": 225, "ftp_effort_avg_w": 300}
+    act = {"date": "2026-07-02", "activity_id": 9999}
+    assert _try_save_ftp_from_detail(act, detail, "Ramp Test")
+    assert get_cached_text("workouts_stale_ftp") == "225"
+    _mark_workouts_stale(225)  # idempotent

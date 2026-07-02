@@ -110,4 +110,6 @@ from .training_store import (  # noqa: F401
     save_fuelling_log,
     save_power_durability,
     weekly_monotony_strain,
+    weekly_tss,
+    power_pmc_history,
 )

@@ -417,6 +417,19 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
 
     score_display = f"{comp_z:+.2f}σ" if comp_z is not None else "—"
 
+    power_header = ""
+    try:
+        from .power_profile import build_power_profile
+        pp = build_power_profile()
+        if pp:
+            wkg_bit = f" · {pp['wkg']:.2f} W/kg" if pp.get("wkg") else ""
+            power_header = (
+                f'<p style="margin:10px 0 0;font-size:13px;color:#93c5fd;">'
+                f'FTP {pp["ftp_w"]}W{wkg_bit} (tested {pp["test_date"]})</p>'
+            )
+    except Exception:
+        pass
+
     return f"""<!doctype html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -433,6 +446,7 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
             <p style="margin:8px 0 0;font-size:36px;font-weight:800;color:{score_colour};">{score_display}
               <span style="font-size:16px;color:#9ca3af;font-weight:400;margin-left:8px;">{label}</span>
             </p>
+            {power_header}
             <div style="margin-top:12px;">{badges_html}</div>
           </td>
         </tr>

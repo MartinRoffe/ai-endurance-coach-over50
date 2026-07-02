@@ -4,7 +4,12 @@ from __future__ import annotations
 from typing import Any, Optional
 
 
-_FTP_SESSION_LABELS = {"FTP Test", "FTP Re-test", "Final FTP Test"}
+_FTP_SESSION_LABELS = {
+    "FTP Test", "FTP Re-test", "Final FTP Test",
+    "FTP Baseline Test", "FTP Final Test",
+}
+_RAMP_SESSION_LABELS = {"Ramp Test", "FTP Ramp Test"}
+_ALL_FTP_LABELS = _FTP_SESSION_LABELS | _RAMP_SESSION_LABELS
 
 # effort_min/max in seconds — range that identifies a single effort lap
 _INTERVAL_CONFIG: dict[str, dict] = {
@@ -268,6 +273,37 @@ def _extract_ftp_effort(api: Any, activity_id: int) -> dict:
             return result
 
         return _ftp_effort_from_summary(api, activity_id)
+    except Exception:
+        return {}
+
+
+def _extract_ramp_ftp(api: Any, activity_id: int) -> dict:
+    """Ramp test: best 45–90 s lap avg power; FTP = 75% of best 1-min power."""
+    try:
+        splits = api.get_activity_splits(activity_id)
+        laps = splits.get("lapDTOs") or splits.get("laps") or []
+        best_pwr = 0.0
+        best_lap: Optional[dict] = None
+        for l in laps:
+            dur = _lap_dur(l)
+            if dur < 45 or dur > 90:
+                continue
+            pwr = _lap_power(l)
+            if pwr and pwr > best_pwr:
+                best_pwr = pwr
+                best_lap = l
+        if not best_lap or best_pwr <= 0:
+            return {}
+        result: dict = {
+            "ftp_effort_avg_w": round(best_pwr),
+            "ftp_w": round(best_pwr * 0.75),
+            "ramp_best_1min_w": round(best_pwr),
+        }
+        if best_lap.get("averageHR"):
+            result["ftp_effort_avg_hr"] = round(best_lap["averageHR"])
+        if best_lap.get("maxHR"):
+            result["ftp_effort_max_hr"] = round(best_lap["maxHR"])
+        return result
     except Exception:
         return {}
 

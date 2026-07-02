@@ -83,3 +83,28 @@ def tdee(
     if active < 0:
         active = 0.0
     return bmr + active
+
+
+# ── Mechanical work (cycling power) ─────────────────────────────────────────
+# At ~24% gross efficiency, mechanical kJ ≈ dietary kcal for replacement purposes.
+
+
+def ride_kj(avg_power_w: float, secs: float) -> float:
+    """Mechanical work in kilojoules (power × time)."""
+    if not avg_power_w or not secs or avg_power_w <= 0 or secs <= 0:
+        return 0.0
+    return round(avg_power_w * secs / 1000.0, 1)
+
+
+def ride_kcal_from_kj(kj: float) -> int:
+    """Approximate dietary kcal to replace mechanical work (~1:1 at ~24% gross efficiency)."""
+    return int(round(kj))
+
+
+def planned_session_kj(ftp_w: int, pct_lo: float, pct_hi: float, dur_min: int) -> float:
+    """Estimated mechanical work for a planned session at mid-range %FTP."""
+    if not ftp_w or dur_min <= 0:
+        return 0.0
+    mid_pct = (pct_lo + pct_hi) / 2.0 / 100.0
+    avg_w = ftp_w * mid_pct
+    return ride_kj(avg_w, dur_min * 60)

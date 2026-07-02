@@ -12,12 +12,12 @@ from ..llm import MODEL_FAST, MODEL_SMART
 from ..plan import COMPOUND_SESSIONS, session_for_date_extended
 from .db import _ensure_analysis_schema, load_analysis, save_detail
 from .intervals import (
+    _ALL_FTP_LABELS,
     _CYCLING_TYPES,
-    _FTP_SESSION_LABELS,
     _extract_durability,
     _extract_power_durability,
 )
-from .power import fetch_activity_detail
+from .power import _mark_workouts_stale, _session_label_for_date, fetch_activity_detail
 from .prompts import (
     _activity_has_power_data,
     _build_analysis_prompt,
@@ -118,49 +118,55 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
             try:
                 act_date = act.get("date")
                 if act_date:
-                    sess = session_for_date_extended(date.fromisoformat(act_date))
-                    session_label = sess[1] if sess else None
-                    if session_label in _FTP_SESSION_LABELS and existing.get("ftp_effort_avg_hr"):
+                    session_label = _session_label_for_date(date.fromisoformat(act_date))
+                    if session_label in _ALL_FTP_LABELS and (
+                        existing.get("ftp_effort_avg_hr") or existing.get("ftp_w")
+                    ):
                         from ..history import save_ftp_test, load_ftp_tests
                         d_obj = date.fromisoformat(act_date)
                         if not any(t["date"] == d_obj.isoformat() for t in load_ftp_tests()):
-                            ftp_w = None
-                            if existing.get("ftp_effort_avg_w"):
+                            ftp_w = existing.get("ftp_w")
+                            if not ftp_w and existing.get("ftp_effort_avg_w"):
                                 ftp_w = round(existing["ftp_effort_avg_w"] * 0.95)
                             save_ftp_test(
                                 d_obj.isoformat(), act_id,
-                                int(existing["ftp_effort_avg_hr"]),
+                                int(existing["ftp_effort_avg_hr"]) if existing.get("ftp_effort_avg_hr") else None,
                                 int(existing["ftp_effort_max_hr"]) if existing.get("ftp_effort_max_hr") else None,
                                 None,
                                 ftp_w=ftp_w,
                             )
+                            if ftp_w:
+                                _mark_workouts_stale(int(ftp_w))
             except Exception:
                 pass
             continue  # already analysed — nothing more to do
         try:
             companion = _find_compound_companion(act, acts_by_date.get(act["date"], []))
             act_date = act.get("date")
-            session_label = None
-            if act_date:
-                sess = session_for_date_extended(date.fromisoformat(act_date))
-                if sess:
-                    session_label = sess[1]
+            session_label = _session_label_for_date(date.fromisoformat(act_date)) if act_date else None
             detail = fetch_activity_detail(api, act_id, activity=act, session_label=session_label)
             text = generate_analysis(act, detail, companion=companion)
             save_detail(act_id, detail, text)
             # Auto-populate FTP trend table for FTP test sessions
-            if session_label in _FTP_SESSION_LABELS and detail.get("ftp_effort_avg_hr"):
+            if session_label in _ALL_FTP_LABELS and (
+                detail.get("ftp_effort_avg_hr") or detail.get("ftp_w")
+            ):
                 try:
                     from ..history import save_ftp_test, load_ftp_tests
                     d_obj = date.fromisoformat(act_date) if act_date else None
                     if d_obj and not any(t["date"] == d_obj.isoformat() for t in load_ftp_tests()):
+                        ftp_w = detail.get("ftp_w")
+                        if not ftp_w and detail.get("ftp_effort_avg_w"):
+                            ftp_w = round(detail["ftp_effort_avg_w"] * 0.95)
                         save_ftp_test(
                             d_obj.isoformat(), act_id,
-                            int(detail["ftp_effort_avg_hr"]),
+                            int(detail["ftp_effort_avg_hr"]) if detail.get("ftp_effort_avg_hr") else None,
                             int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
                             None,
-                            ftp_w=detail.get("ftp_w"),
+                            ftp_w=ftp_w,
                         )
+                        if ftp_w:
+                            _mark_workouts_stale(int(ftp_w))
                 except Exception:
                     pass
         except Exception as exc:

@@ -20,7 +20,7 @@ ACTIVITY_MATCH: dict[str, set[str]] = {
 
 def patch_activity_power(activity_id: int, fields: dict) -> bool:
     """Update power columns on an existing activity row. Returns True if patched."""
-    allowed = ("avg_power_w", "max_power_w", "norm_power_w", "has_power_meter")
+    allowed = ("avg_power_w", "max_power_w", "norm_power_w", "has_power_meter", "tss", "intensity_factor")
     updates = {k: fields[k] for k in allowed if k in fields and fields[k] is not None}
     if not updates:
         return False

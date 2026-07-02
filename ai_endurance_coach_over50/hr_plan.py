@@ -587,6 +587,62 @@ HR_HEAT_PROTOCOL: dict = {
     ),
 }
 
+# ── Power prescription metadata (display + coach; tuples untouched) ───────────
+
+HR_POWER_TARGETS: dict[str, tuple[int, int]] = {
+    "endurance": (56, 75),
+    "sweetspot": (88, 94),
+    "tempo": (76, 90),
+    "vo2": (106, 120),
+    "ftp": (95, 105),
+    "long": (56, 75),
+    "back_to_back": (56, 75),
+    "recovery": (0, 55),
+}
+
+HR_POWER_LABEL_OVERRIDES: dict[str, str] = {
+    "Under-Overs 2×10 min": "alternate 95%/105% FTP",
+    "Under-Overs 3×10 min": "alternate 95%/105% FTP",
+    "Under-Overs 3×12 min": "alternate 95%/105% FTP",
+    "Long Ride": "cap sustained climbs at 70–80% FTP",
+    "Long Ride (Moderate)": "cap sustained climbs at 70–80% FTP",
+    "Back-to-Back Day 1": "cap sustained climbs at 70–80% FTP",
+    "Back-to-Back Day 2": "cap sustained climbs at 70–80% FTP",
+    "Camp — Mountain Stage": "cap sustained climbs at 70–80% FTP",
+    "Camp — Summit Day": "cap sustained climbs at 70–80% FTP",
+    "Simulation Day 1": "cap sustained climbs at 70–80% FTP",
+    "Simulation Day 2": "cap sustained climbs at 70–80% FTP",
+    "Simulation Day 3": "cap sustained climbs at 70–80% FTP",
+}
+
+HR_TYPICAL_IF: dict[str, float] = {
+    "endurance": 0.65,
+    "sweetspot": 0.91,
+    "tempo": 0.83,
+    "vo2": 1.05,
+    "ftp": 1.00,
+    "long": 0.67,
+    "back_to_back": 0.67,
+    "recovery": 0.55,
+}
+
+
+def power_target_for(stype: str, label: str) -> tuple[int, int] | str | None:
+    """%FTP range or coaching override string for an HR-plan session."""
+    if label in HR_POWER_LABEL_OVERRIDES:
+        return HR_POWER_LABEL_OVERRIDES[label]
+    return HR_POWER_TARGETS.get(stype)
+
+
+def power_watts_range(ftp_w: int, target: tuple[int, int] | str | None) -> str | None:
+    if not target or not ftp_w:
+        return target if isinstance(target, str) else None
+    if isinstance(target, str):
+        return target
+    lo, hi = target
+    return f"{round(ftp_w * lo / 100)}–{round(ftp_w * hi / 100)} W ({lo}–{hi}% FTP)"
+
+
 # ── Lessons from the failed 2012 Haute Route attempt ──────────────────────────
 # Derived from analysis of the athlete's own 2012 TCX files (inaugural Haute
 # Route Alps, Geneva→Nice). He was pulled by the broom wagon on Day 3 after the
@@ -686,9 +742,14 @@ def hr_session_for_date(d: date) -> tuple[str, str, int] | None:
 
 def build_hr_calendar_weeks() -> list[dict]:
     """Return one dict per training week for template rendering."""
-    from .history import list_plan_overrides
+    from .history import list_plan_overrides, load_ftp_tests
     overrides = {o["date"]: o for o in list_plan_overrides()}
     today = date.today()
+    ftp_w = None
+    for t in reversed(load_ftp_tests()):
+        if t.get("ftp_w"):
+            ftp_w = int(t["ftp_w"])
+            break
     weeks = []
     for wk_idx, sessions in enumerate(HR_TRAINING_WEEKS):
         week_num = wk_idx + 1
@@ -696,6 +757,7 @@ def build_hr_calendar_weeks() -> list[dict]:
         phase = phase_for_week(week_num)
         days = []
         total_min = 0
+        planned_tss = 0.0
         for day_offset, (stype, label, dur) in enumerate(sessions):
             d = wk_start + timedelta(days=day_offset)
             ov = overrides.get(d.isoformat())
@@ -706,6 +768,10 @@ def build_hr_calendar_weeks() -> list[dict]:
                 if ov.get("label"):
                     label = ov["label"]
             total_min += dur
+            pt = power_target_for(stype, label)
+            if stype != "gym" and stype != "rest" and dur > 0:
+                if_typ = HR_TYPICAL_IF.get(stype, 0.65)
+                planned_tss += (dur / 60) * (if_typ ** 2) * 100
             days.append({
                 "date": d,
                 "day_num": d.day,
@@ -717,13 +783,18 @@ def build_hr_calendar_weeks() -> list[dict]:
                 "is_today": d == today,
                 "is_past": d < today,
                 "overridden": bool(ov),
+                "power_target": pt,
+                "power_watts": power_watts_range(ftp_w, pt) if ftp_w else (
+                    pt if isinstance(pt, str) else None
+                ),
             })
         weeks.append({
             "week_num": week_num,
             "start": wk_start,
-            "days": days,
             "phase": phase,
+            "days": days,
             "total_hrs": round(total_min / 60, 1),
+            "planned_tss": round(planned_tss),
         })
     return weeks
 

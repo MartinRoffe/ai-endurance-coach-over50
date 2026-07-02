@@ -76,6 +76,21 @@ CALORIE_TIERS = {
     "recovery": {"label": "Recovery week Mon–Fri",     "kcal": 2050},
 }
 
+from .energy import ride_kcal_from_kj
+
+
+def adjust_for_session_kj(tier_kcal: int, planned_kj: float) -> dict:
+    """Annotate a static calorie tier with estimated session mechanical work."""
+    if not planned_kj or planned_kj <= 0:
+        return {"tier_kcal": tier_kcal, "planned_kj": None, "note": None}
+    kcal = ride_kcal_from_kj(planned_kj)
+    return {
+        "tier_kcal": tier_kcal,
+        "planned_kj": round(planned_kj),
+        "planned_kcal_equiv": kcal,
+        "note": f"planned ride work ≈ {round(planned_kj)} kJ (~{kcal} kcal mechanical)",
+    }
+
 # ── Simple rules (primary athlete-facing cheat sheet) ─────────────────────────
 SIMPLE_RULES = [
     "Protein anchor every meal — chicken, scotch egg, tuna, prawns, Greek yogurt, or whey "
@@ -90,6 +105,8 @@ SIMPLE_RULES = [
     "Protein bar (Nature Valley or home-baked #03) — Tue/Thu mid-morning only.",
     "Weekend long rides — rice cakes + electrolyte bottles only (no carb powder). "
     "Prep Friday eve: see fuel_prep_for_ride() for batch count from planned ride length.",
+    "Carb periodization: Z2 rides ≤75 min may run lower-carb; VO2/threshold days are high-carb "
+    "(glycogen-dependent). Match carbs to session mechanical work when power data is available.",
 ]
 
 # ── Principles (detail behind the simple rules) ───────────────────────────────

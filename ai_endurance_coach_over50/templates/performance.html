@@ -412,6 +412,48 @@
   </div>
   {% endif %}
 
+  <!-- ── Power Load (TSS) ─────────────────────────────────────────── -->
+  {% if power_meter_active and power_tss_weekly and power_pmc %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <p class="eyebrow" style="margin-bottom:4px">Power Load (TSS)</p>
+    <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:14px">Coggan units — independent of Garmin PMC above <button type="button" class="gr-tip-trigger" data-tip="Training Stress Score from normalized power and your measured FTP (Coggan formula). Weekly bars sum ride TSS; the line chart is CTL/ATL/TSB from watts only (42/7-day EMA). Garmin's PMC above uses Garmin's own load units from your watch — the numbers are not comparable across the two systems; use each for trends within that channel." aria-label="More info" aria-expanded="false">?</button></p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="height:140px"><canvas id="powerTssWeeklyChart"></canvas></div>
+      <div style="height:140px"><canvas id="powerPmcChart"></canvas></div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    const weekly = {{ power_tss_weekly | tojson }};
+    const pmc = {{ power_pmc | tojson }};
+    if (weekly.length && document.getElementById('powerTssWeeklyChart')) {
+      new Chart(document.getElementById('powerTssWeeklyChart'), {
+        type: 'bar',
+        data: {
+          labels: weekly.map(w => w.week_label),
+          datasets: [{ label: 'Weekly TSS', data: weekly.map(w => w.total_tss), backgroundColor: 'rgba(251,191,36,0.55)' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#71717a', font: { family: 'DM Mono', size: 10 } } }, y: { ticks: { color: '#71717a' } } } }
+      });
+    }
+    if (pmc.length && document.getElementById('powerPmcChart')) {
+      new Chart(document.getElementById('powerPmcChart'), {
+        type: 'line',
+        data: {
+          labels: pmc.map(p => p.label),
+          datasets: [
+            { label: 'CTL', data: pmc.map(p => p.ctl), borderColor: '#34d399', pointRadius: 0, tension: 0.3 },
+            { label: 'ATL', data: pmc.map(p => p.atl), borderColor: '#f87171', pointRadius: 0, tension: 0.3 },
+            { label: 'TSB', data: pmc.map(p => p.tsb), borderColor: '#fbbf24', borderDash: [4,4], pointRadius: 0, tension: 0.3 },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a1a1aa', font: { family: 'DM Mono', size: 10 } } } }, scales: { x: { ticks: { maxTicksLimit: 8, color: '#71717a' } }, y: { ticks: { color: '#71717a' } } } }
+      });
+    }
+  })();
+  </script>
+  {% endif %}
+
   <!-- ── HR vs power caveat ───────────────────────────────────────── -->
   <div class="card" style="padding:14px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
     <span style="font-size:18px;flex-shrink:0">{% if power_meter_active %}⚡{% else %}❤️{% endif %}</span>

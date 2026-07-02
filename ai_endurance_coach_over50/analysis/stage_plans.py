@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from datetime import date, datetime, timedelta
+from typing import Optional
 
 from ..coach_voice import COACH_VOICE
 from ..llm import MODEL_SMART
@@ -10,8 +11,25 @@ from ..llm import MODEL_SMART
 
 # ── Haute Route per-stage pacing & fuelling plans ────────────────────────────
 
-HR_STAGE_PLAN_CACHE_VER = "v2"
+HR_STAGE_PLAN_CACHE_VER = "v3"
 _PEAK_DECOUPLING_THRESHOLD = 8.0
+
+
+def _stage_grounding_line(
+    stage: dict, ftp_w: Optional[int], weight_kg: Optional[float],
+) -> str:
+    """Deterministic duration + kJ + carb estimate before the Sonnet call."""
+    hrs = stage["km"] / 22 + stage["elev_m"] / 650
+    parts = [f"≈ {hrs:.1f} h"]
+    if ftp_w:
+        from ..energy import ride_kj
+        avg_w = ftp_w * 0.75
+        kj = ride_kj(avg_w, hrs * 3600)
+        carbs_hr = 80 if hrs >= 4 else 70
+        total_g = round(carbs_hr * hrs)
+        parts.append(f"≈ {round(kj)} kJ mechanical work → ≈ {total_g} g carbs at {carbs_hr} g/h")
+    return " · ".join(parts)
+
 
 def peak_sim_decoupling_flags(weeks: list[dict]) -> dict[int, dict]:
     """Flag upcoming peak-phase simulation weeks when recent Pw:HR decoupling is elevated."""
@@ -50,16 +68,16 @@ def peak_sim_decoupling_flags(weeks: list[dict]) -> dict[int, dict]:
 def generate_hr_stage_plans() -> dict[int, dict]:
     """Return {stage_day: plan_dict} for the 7 Haute Route Alpes stages.
 
-    Cached per stage in text_cache (key hr_stage_plan_v2_{day}, JSON string).
+    Cached per stage in text_cache (key hr_stage_plan_v3_{day}, JSON string).
     When any stage is missing and an API key is set, makes ONE batched
     claude-sonnet-4-6 call for all missing stages, grounded in the athlete's
     latest LTHR and measured or estimated FTP. Returns whatever is cached on failure.
     """
     import json as _json
-    from ..hr_plan import HR_EVENT_STAGES
+    from ..hr_plan import HR_EVENT_STAGES, HR_POWER_TARGETS
     from ..history import (
         get_cached_text, set_cached_text, load_ftp_tests,
-        latest_estimated_wkg, latest_measured_wkg, power_meter_active,
+        latest_estimated_wkg, latest_measured_wkg, latest_weight_kg, power_meter_active,
     )
 
     plans: dict[int, dict] = {}
@@ -93,6 +111,8 @@ def generate_hr_stage_plans() -> dict[int, dict]:
 
     has_power = power_meter_active()
     lthr_note = "LTHR unknown — express HR caps as % of LTHR"
+    ftp_w = None
+    measured = None
     try:
         tests = load_ftp_tests()
         if tests and tests[-1].get("ftp_hr"):
@@ -112,6 +132,10 @@ def generate_hr_stage_plans() -> dict[int, dict]:
             f"Athlete has a power meter. Measured FTP = {ftp_w or 'unknown'} W ({wkg_str}). "
             f"{lthr_note}. Dual-channel coaching: HR + watts."
         )
+        targets_line = "; ".join(
+            f"{k}: {v[0]}–{v[1]}% FTP" for k, v in HR_POWER_TARGETS.items()
+        )
+        athlete_note += f" Plan session power targets by type: {targets_line}."
         json_schema = (
             '{"pacing": "2-3 sentence stage pacing strategy", '
             '"hr_cap_first_climb": "specific HR cap or %LTHR for the first climb", '
@@ -156,9 +180,15 @@ def generate_hr_stage_plans() -> dict[int, dict]:
         "Stages:",
     ]
     for s in missing:
+        wt = None
+        if measured:
+            wt = measured.get("weight_kg")
+        if not wt:
+            wt = latest_weight_kg()
+        grounding = _stage_grounding_line(s, ftp_w if has_power else None, wt)
         lines.append(
             f'Day {s["day"]}: {s["label"]} — {s["km"]} km, {s["elev_m"]} m climbing, '
-            f'key climb {s["key_climb"]}'
+            f'key climb {s["key_climb"]} ({grounding})'
         )
 
     import anthropic

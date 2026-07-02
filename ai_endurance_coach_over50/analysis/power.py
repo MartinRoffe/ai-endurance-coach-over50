@@ -7,12 +7,15 @@ from typing import Any, Optional
 from ..plan import session_for_date_extended
 from .db import load_analysis, patch_analysis_power
 from .intervals import (
+    _ALL_FTP_LABELS,
     _CYCLING_TYPES,
     _FTP_SESSION_LABELS,
     _INTERVAL_CONFIG,
+    _RAMP_SESSION_LABELS,
     _extract_ftp_effort,
     _extract_interval_data,
     _extract_power_durability,
+    _extract_ramp_ftp,
 )
 
 
@@ -47,6 +50,29 @@ def _power_summary_from_dto(s: dict) -> dict:
 
 def activity_has_power_signal(act: dict) -> bool:
     return bool(act.get("has_power_meter") or act.get("avg_power_w") or act.get("max_power_w"))
+
+
+def compute_tss(np_w: float, secs: float, ftp_w: float) -> tuple[float, float]:
+    """Return (IF, TSS) using Coggan formula."""
+    if not ftp_w or ftp_w <= 0 or not np_w or secs <= 0:
+        return 0.0, 0.0
+    if_val = np_w / ftp_w
+    tss = secs * np_w * if_val / (ftp_w * 3600) * 100
+    return round(if_val, 3), round(tss, 1)
+
+
+def ftp_w_on_date(d: date) -> Optional[int]:
+    """Newest ftp_tests.ftp_w on or before ride date."""
+    from ..history import load_ftp_tests
+    ftp_w = None
+    for t in load_ftp_tests():
+        try:
+            td = date.fromisoformat(t["date"])
+        except Exception:
+            continue
+        if td <= d and t.get("ftp_w"):
+            ftp_w = int(t["ftp_w"])
+    return ftp_w
 
 
 def activity_needs_power_enrichment(act: dict) -> bool:
@@ -85,6 +111,18 @@ def enrich_activities_power(api: Any, activities: list[dict]) -> int:
                 "norm_power_w": power.get("norm_power_w"),
                 "has_power_meter": 1 if power.get("has_power_meter") else act.get("has_power_meter"),
             }
+            np_w = patch_fields.get("norm_power_w") or act.get("norm_power_w")
+            secs = act.get("duration_seconds") or 0
+            if np_w and secs:
+                try:
+                    ride_d = date.fromisoformat(act["date"])
+                    ftp_w = ftp_w_on_date(ride_d)
+                    if ftp_w:
+                        if_val, tss = compute_tss(float(np_w), float(secs), float(ftp_w))
+                        patch_fields["intensity_factor"] = if_val
+                        patch_fields["tss"] = tss
+                except Exception:
+                    pass
             if not patch_activity_power(act_id, patch_fields):
                 continue
             act.update(patch_fields)
@@ -182,7 +220,9 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
                 pass
         if result.get("has_power_meter"):
             result["power_zones"] = _fetch_power_zones(api, activity_id)
-        if session_label in _FTP_SESSION_LABELS:
+        if session_label in _RAMP_SESSION_LABELS:
+            result.update(_extract_ramp_ftp(api, activity_id))
+        elif session_label in _FTP_SESSION_LABELS:
             result.update(_extract_ftp_effort(api, activity_id))
         elif session_label in _INTERVAL_CONFIG:
             result.update(_extract_interval_data(api, activity_id, session_label,
@@ -216,7 +256,9 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
     result.update(_power_summary_from_dto(s))
     if result.get("has_power_meter"):
         result["power_zones"] = _fetch_power_zones(api, activity_id)
-    if session_label in _FTP_SESSION_LABELS:
+    if session_label in _RAMP_SESSION_LABELS:
+        result.update(_extract_ramp_ftp(api, activity_id))
+    elif session_label in _FTP_SESSION_LABELS:
         result.update(_extract_ftp_effort(api, activity_id))
     elif session_label in _INTERVAL_CONFIG:
         result.update(_extract_interval_data(api, activity_id, session_label,
@@ -224,20 +266,38 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
     return result
 
 
-def _session_label_for_activity(act: dict) -> Optional[str]:
-    act_date = act.get("date")
-    if not act_date:
-        return None
+def _session_label_for_date(d: date) -> Optional[str]:
+    sess = session_for_date_extended(d)
+    if sess:
+        return sess[1]
     try:
-        sess = session_for_date_extended(date.fromisoformat(act_date))
+        from ..hr_plan import hr_session_for_date
+        sess = hr_session_for_date(d)
         return sess[1] if sess else None
     except Exception:
         return None
 
 
+def _session_label_for_activity(act: dict) -> Optional[str]:
+    act_date = act.get("date")
+    if not act_date:
+        return None
+    try:
+        return _session_label_for_date(date.fromisoformat(act_date))
+    except Exception:
+        return None
+
+
+def _mark_workouts_stale(ftp_w: int) -> None:
+    from ..history import set_cached_text
+    set_cached_text("workouts_stale_ftp", str(ftp_w))
+
+
 def _try_save_ftp_from_detail(act: dict, detail: dict, session_label: Optional[str]) -> bool:
     """Seed ftp_tests.ftp_w from an FTP-labelled session when not already logged."""
-    if session_label not in _FTP_SESSION_LABELS or not detail.get("ftp_effort_avg_hr"):
+    if session_label not in _ALL_FTP_LABELS:
+        return False
+    if not detail.get("ftp_w") and not detail.get("ftp_effort_avg_hr"):
         return False
     act_date = act.get("date")
     if not act_date:
@@ -250,13 +310,16 @@ def _try_save_ftp_from_detail(act: dict, detail: dict, session_label: Optional[s
         ftp_w = detail.get("ftp_w")
         if not ftp_w and detail.get("ftp_effort_avg_w"):
             ftp_w = round(detail["ftp_effort_avg_w"] * 0.95)
+        ftp_hr = detail.get("ftp_effort_avg_hr")
         save_ftp_test(
             d_obj.isoformat(), act["activity_id"],
-            int(detail["ftp_effort_avg_hr"]),
+            int(ftp_hr) if ftp_hr else None,
             int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
             None,
             ftp_w=ftp_w,
         )
+        if ftp_w:
+            _mark_workouts_stale(int(ftp_w))
         return True
     except Exception:
         return False
@@ -325,4 +388,36 @@ def refresh_power_backfill(api: Any, days: int = 30) -> dict:
             pass
 
     refresh_analyses(api, days=days)
+    stats["tss_backfilled"] = backfill_tss(days)
     return stats
+
+
+def backfill_tss(days: int = 30) -> int:
+    """Compute TSS/IF for power rides missing TSS in the last N days."""
+    from ..history import load_activities_by_date, patch_activity_power
+
+    start = date.today() - timedelta(days=days - 1)
+    updated = 0
+    for _d, day_acts in load_activities_by_date(start, date.today()).items():
+        for act in day_acts:
+            if not activity_has_power_signal(act):
+                continue
+            if act.get("tss") is not None:
+                continue
+            np_w = act.get("norm_power_w") or act.get("avg_power_w")
+            secs = act.get("duration_seconds") or 0
+            if not np_w or not secs:
+                continue
+            try:
+                ftp_w = ftp_w_on_date(date.fromisoformat(act["date"]))
+            except Exception:
+                continue
+            if not ftp_w:
+                continue
+            if_val, tss = compute_tss(float(np_w), float(secs), float(ftp_w))
+            if patch_activity_power(act["activity_id"], {
+                "intensity_factor": if_val,
+                "tss": tss,
+            }):
+                updated += 1
+    return updated

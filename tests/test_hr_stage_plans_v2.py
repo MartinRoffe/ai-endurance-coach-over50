@@ -31,8 +31,8 @@ def _sim_week(week_num: int, start: date) -> dict:
     }
 
 
-def test_stage_plan_cache_version_is_v2():
-    assert HR_STAGE_PLAN_CACHE_VER == "v2"
+def test_stage_plan_cache_version_is_v3():
+    assert HR_STAGE_PLAN_CACHE_VER == "v3"
 
 
 def test_peak_decoupling_flags_empty_without_power_meter():
