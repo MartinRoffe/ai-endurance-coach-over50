@@ -346,8 +346,8 @@
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Measured FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="FTP watts from power-meter test efforts crossed with bodyweight. W/kg is the climb number for Haute Route. Dashed line = VO2max estimate for comparison — divergence shows where measured power differs from the proxy." aria-label="More info" aria-expanded="false">?</button></p>
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">From FTP test watts · dashed = VO2max estimate overlay</p>
+        <p class="eyebrow" style="margin-bottom:4px">Measured FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="FTP watts from power-meter test efforts crossed with bodyweight. W/kg is the climb number for Haute Route. Faint dashed line = VO2max proxy on test dates (optional cross-check)." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">From FTP test watts · dashed = VO2max proxy overlay</p>
       </div>
       <span style="font-family:var(--font-m);font-size:12px;color:#fbbf24;flex-shrink:0;padding-top:2px">
         Latest: {{ measured_wkg[-1].ftp_w }} W · {{ measured_wkg[-1].wkg }} W/kg
@@ -357,13 +357,30 @@
   </div>
   {% endif %}
 
-  <!-- ── Estimated FTP & W/kg ─────────────────────────────────────── -->
+  <!-- ── Estimated FTP & W/kg (primary without power meter; collapsed proxy otherwise) ── -->
   {% if wkg_history and wkg_history | length >= 2 %}
+  {% if measured_wkg and measured_wkg | length >= 1 %}
+  <details class="card" style="padding:12px 20px;margin-bottom:16px">
+    <summary style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px">
+      <span style="color:var(--ink)">VO2max proxy trend</span>
+      <span style="text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted)">optional · ACSM estimate from VO2max + weight</span>
+    </summary>
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin:0">Secondary to measured FTP above — not used for pacing or zones</p>
+        <span style="font-family:var(--font-m);font-size:12px;color:#a78bfa;flex-shrink:0">
+          Current: ~{{ wkg_history[-1].est_ftp_w }} W · {{ wkg_history[-1].wkg }} W/kg
+        </span>
+      </div>
+      <div style="height:120px;position:relative"><canvas id="wkgChart"></canvas></div>
+    </div>
+  </details>
+  {% else %}
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
-        <p class="eyebrow" style="margin-bottom:4px">Estimated FTP &amp; W/kg{% if measured_wkg %} <span style="color:var(--muted);font-weight:400">(proxy)</span>{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Estimated from VO2max + weight (ACSM formula) — no power meter required. When measured FTP exists above, treat this as a secondary cross-check, not the primary number." aria-label="More info" aria-expanded="false">?</button></p>
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Estimated from VO2max + weight (ACSM){% if measured_wkg %} · secondary to measured FTP{% else %} · trend, not absolute{% endif %}</p>
+        <p class="eyebrow" style="margin-bottom:4px">Estimated FTP &amp; W/kg <button type="button" class="gr-tip-trigger" data-tip="Estimated from VO2max + weight (ACSM formula) — no power meter required. Treat as a trend, not an absolute target." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Estimated from VO2max + weight (ACSM) · trend, not absolute</p>
       </div>
       {% if wkg_history %}
       <span style="font-family:var(--font-m);font-size:12px;color:#a78bfa;flex-shrink:0;padding-top:2px">
@@ -373,6 +390,7 @@
     </div>
     <div style="height:160px;position:relative"><canvas id="wkgChart"></canvas></div>
   </div>
+  {% endif %}
   {% endif %}
 
   <!-- ── Power meter activation (partial onboarding) ──────────────── -->
@@ -1117,7 +1135,7 @@
         datasets: [
           { label:'FTP (W)', data:mk.map(p=>p.ftp_w), borderColor:'#fbbf24', backgroundColor:'rgba(251,191,36,0.08)', borderWidth:2, pointRadius:5, tension:0.2, fill:true, yAxisID:'y' },
           { label:'W/kg', data:mk.map(p=>p.wkg), borderColor:'#34d399', borderWidth:1.5, pointRadius:4, tension:0.2, fill:false, yAxisID:'y1' },
-          { label:'Est. FTP (W)', data:mk.map(p=>p.est_ftp_w ?? null), borderColor:'rgba(167,139,250,0.5)', borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0.2, spanGaps:true, yAxisID:'y' },
+          { label:'Est. FTP (W)', data:mk.map(p=>p.est_ftp_w ?? null), borderColor:'rgba(167,139,250,0.35)', borderWidth:1, borderDash:[4,6], pointRadius:0, tension:0.2, spanGaps:true, yAxisID:'y' },
         ]
       },
       options: {
