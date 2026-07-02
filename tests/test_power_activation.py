@@ -89,8 +89,10 @@ def test_refresh_power_backfill_patches_existing_analysis(monkeypatch):
         def get_activity(self, activity_id):
             return {"summaryDTO": {"averagePower": 210}}
 
+    # Patch the defining sub-modules: refresh_power_backfill resolves these
+    # names there, not via the analysis package facade.
     monkeypatch.setattr(
-        "ai_endurance_coach_over50.analysis.fetch_activity_detail",
+        "ai_endurance_coach_over50.analysis.power.fetch_activity_detail",
         lambda api, act_id, **kw: {
             "hr_zones": [],
             "power_zones": [{"zone": 2, "secs": 600}],
@@ -98,7 +100,7 @@ def test_refresh_power_backfill_patches_existing_analysis(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        "ai_endurance_coach_over50.analysis.refresh_analyses",
+        "ai_endurance_coach_over50.analysis.generate.refresh_analyses",
         lambda api, days=14: None,
     )
     monkeypatch.setattr(
