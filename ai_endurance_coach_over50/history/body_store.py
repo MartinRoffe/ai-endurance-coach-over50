@@ -265,6 +265,67 @@ def latest_lean_mass_kg() -> Optional[float]:
 
 # ── BMR / TDEE (Katch-McArdle from body composition) ─────────────────────────
 
+_CALIBRATION_WINDOW_DAYS = 28
+
+
+def _load_tdee_inputs(days: int) -> tuple[
+    list[tuple[str, float, float]],
+    dict[str, float],
+]:
+    """Body-comp readings and per-day activity-calorie fallback for a date range."""
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    with _conn() as con:
+        _ensure_schema(con)
+        _ensure_body_metrics_schema(con)
+        _ensure_activities_schema(con)
+        comp_rows = con.execute(
+            "SELECT date, weight_kg, fat_pct FROM body_metrics "
+            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL ORDER BY date",
+        ).fetchall()
+        act_rows = con.execute(
+            "SELECT date, COALESCE(SUM(calories), 0) AS act_cal FROM activities "
+            "WHERE date >= ? AND date <= ? GROUP BY date",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    activity_cal_by_date = {r["date"]: r["act_cal"] for r in act_rows}
+    comps = [(r["date"], float(r["weight_kg"]), float(r["fat_pct"])) for r in comp_rows]
+    return comps, activity_cal_by_date
+
+
+def _bmr_on_date(d_iso: str, comps: list[tuple[str, float, float]]) -> Optional[float]:
+    from ..energy import bmr_katch_mcardle
+    chosen = None
+    for cd, w, f in comps:
+        if cd <= d_iso:
+            chosen = (w, f)
+        else:
+            break
+    if chosen is None:
+        return None
+    return bmr_katch_mcardle(chosen[0], chosen[1])
+
+
+def _tdee_model_for_day(
+    d_iso: str,
+    row: dict,
+    comps: list[tuple[str, float, float]],
+    activity_cal_by_date: dict[str, float],
+) -> tuple[Optional[float], Optional[float], bool, Optional[float]]:
+    """Return (bmr, active_calories, active_estimated, model_tdee)."""
+    from ..energy import tdee as _tdee
+    bmr = _bmr_on_date(d_iso, comps)
+    active = row.get("active_calories")
+    active_estimated = False
+    if active is None:
+        fallback = activity_cal_by_date.get(d_iso)
+        if fallback:
+            active = fallback
+            active_estimated = True
+    model_tdee = round(_tdee(active, bmr=bmr)) if bmr is not None else None
+    return bmr, active, active_estimated, model_tdee
+
+
 def latest_bmr() -> Optional[float]:
     """Resting metabolic rate (kcal/day) from the most recent body-comp reading
     that has both weight and body-fat %, via Katch-McArdle. None if unavailable.
@@ -282,67 +343,96 @@ def latest_bmr() -> Optional[float]:
     return bmr_katch_mcardle(row["weight_kg"], row["fat_pct"])
 
 
+def tdee_calibration(window_days: int = _CALIBRATION_WINDOW_DAYS) -> Optional[dict]:
+    """Empirical TDEE calibration from trailing weight trend + logged intake.
+
+    Returns a correction dict when guardrails pass (≥10 intake days, ≥5 weigh-ins
+    spanning ≥14 days), else None.
+    """
+    from ..energy import (
+        empirical_tdee,
+        tdee_correction,
+        weight_trend_kg_per_day,
+    )
+
+    start = (date.today() - timedelta(days=window_days - 1)).isoformat()
+    hist = raw_history(window_days)
+    intake_rows = [r for r in hist if r.get("calories_consumed") is not None]
+    if len(intake_rows) < 10:
+        return None
+
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        weight_rows = con.execute(
+            "SELECT date, weight_kg FROM body_metrics "
+            "WHERE date >= ? AND weight_kg IS NOT NULL ORDER BY date",
+            (start,),
+        ).fetchall()
+    readings = [(r["date"], float(r["weight_kg"])) for r in weight_rows]
+    slope = weight_trend_kg_per_day(readings)
+    if slope is None:
+        return None
+
+    comps, activity_cal_by_date = _load_tdee_inputs(window_days)
+    model_vals: list[float] = []
+    for row in intake_rows:
+        d_iso = row["date"].isoformat() if hasattr(row["date"], "isoformat") else str(row["date"])
+        _, _, _, model = _tdee_model_for_day(d_iso, row, comps, activity_cal_by_date)
+        if model is not None:
+            model_vals.append(float(model))
+    if not model_vals:
+        return None
+
+    avg_intake = sum(r["calories_consumed"] for r in intake_rows) / len(intake_rows)
+    model_avg = sum(model_vals) / len(model_vals)
+    empirical = empirical_tdee(avg_intake, slope)
+    correction = round(tdee_correction(model_avg, empirical))
+    span_days = (
+        date.fromisoformat(readings[-1][0]) - date.fromisoformat(readings[0][0])
+    ).days
+
+    return {
+        "correction": correction,
+        "empirical_tdee": round(empirical),
+        "model_avg": round(model_avg),
+        "slope_kg_per_day": round(slope, 5),
+        "n_intake_days": len(intake_rows),
+        "n_weighins": len(readings),
+        "span_days": span_days,
+        "window_days": window_days,
+    }
+
+
 def tdee_history(days: int = 14) -> list[dict]:
     """Per-day TDEE for the last `days` days (oldest first).
 
     TDEE = Katch-McArdle BMR (weight + fat% carried forward from the most
     recent body-comp reading on or before each day) + that day's measured
-    Garmin active calories. Days without enough data carry ``tdee = None``.
+    Garmin active calories, plus an optional weight-trend calibration offset.
+    Days without enough data carry ``tdee = None``.
     """
-    from ..energy import bmr_katch_mcardle, tdee as _tdee
-    end = date.today()
-    start = end - timedelta(days=days - 1)
-    with _conn() as con:
-        _ensure_schema(con)
-        _ensure_body_metrics_schema(con)
-        _ensure_activities_schema(con)
-        comp_rows = con.execute(
-            "SELECT date, weight_kg, fat_pct FROM body_metrics "
-            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL ORDER BY date",
-        ).fetchall()
-        # Sum of recorded-activity calories per day — used as a fallback for the
-        # day's active burn when Garmin's daily-summary activeKilocalories is
-        # missing (e.g. not yet synced). When the daily summary IS present it
-        # already includes activities + NEAT, so we don't add on top of it.
-        act_rows = con.execute(
-            "SELECT date, COALESCE(SUM(calories), 0) AS act_cal FROM activities "
-            "WHERE date >= ? AND date <= ? GROUP BY date",
-            (start.isoformat(), end.isoformat()),
-        ).fetchall()
-    activity_cal_by_date = {r["date"]: r["act_cal"] for r in act_rows}
-    comps = [(r["date"], float(r["weight_kg"]), float(r["fat_pct"])) for r in comp_rows]
-
-    def _bmr_on(d_iso: str) -> Optional[float]:
-        chosen = None
-        for cd, w, f in comps:
-            if cd <= d_iso:
-                chosen = (w, f)
-            else:
-                break
-        if chosen is None:
-            return None
-        return bmr_katch_mcardle(chosen[0], chosen[1])
+    cal = tdee_calibration(_CALIBRATION_WINDOW_DAYS)
+    correction = cal["correction"] if cal else None
+    comps, activity_cal_by_date = _load_tdee_inputs(days)
 
     result = []
     for row in raw_history(days):
         d = row["date"]
         d_iso = d.isoformat() if hasattr(d, "isoformat") else str(d)
-        bmr = _bmr_on(d_iso)
-        active = row.get("active_calories")
-        active_estimated = False
-        if active is None:
-            fallback = activity_cal_by_date.get(d_iso)
-            if fallback:
-                active = fallback
-                active_estimated = True
+        bmr, active, active_estimated, model_tdee = _tdee_model_for_day(
+            d_iso, row, comps, activity_cal_by_date
+        )
+        if model_tdee is not None and correction is not None:
+            corrected = round(model_tdee + correction)
+        else:
+            corrected = model_tdee
         result.append({
             "date": d,
             "bmr": round(bmr) if bmr is not None else None,
             "active_calories": active,
             "active_estimated": active_estimated,
-            "tdee": (
-                round(_tdee(active, bmr=bmr))
-                if bmr is not None else None
-            ),
+            "tdee_model": model_tdee,
+            "calibration_kcal": correction,
+            "tdee": corrected,
         })
     return result

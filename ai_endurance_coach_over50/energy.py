@@ -22,13 +22,20 @@ current body composition so it tracks the athlete's changing lean mass.
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 # Katch-McArdle constants
 _KM_CONST = 370.0
 _KM_PER_KG_LBM = 21.6
 
-TDEE_METHOD = "Katch-McArdle BMR (lean mass) + measured Garmin active calories"
+# Energy content of 1 kg body mass change (kcal/kg)
+KCAL_PER_KG = 7700.0
+
+TDEE_METHOD = (
+    "Katch-McArdle BMR (lean mass) + measured Garmin active calories, "
+    "calibrated from 28-day weight trend"
+)
 
 
 def fat_free_mass_kg(
@@ -83,6 +90,59 @@ def tdee(
     if active < 0:
         active = 0.0
     return bmr + active
+
+
+def weight_trend_kg_per_day(readings: list[tuple[str, float]]) -> Optional[float]:
+    """Least-squares slope of weight (kg/day) over dated readings.
+
+    Returns None when fewer than 5 readings or the span is under 14 days.
+    """
+    if len(readings) < 5:
+        return None
+    xs: list[float] = []
+    ys: list[float] = []
+    for d_iso, w in readings:
+        try:
+            xs.append(float(date.fromisoformat(d_iso).toordinal()))
+            ys.append(float(w))
+        except (TypeError, ValueError):
+            continue
+    if len(xs) < 5:
+        return None
+    span_days = int(max(xs) - min(xs))
+    if span_days < 14:
+        return None
+    n = len(xs)
+    sx, sy = sum(xs), sum(ys)
+    sxy = sum(x * y for x, y in zip(xs, ys))
+    sx2 = sum(x * x for x in xs)
+    denom = n * sx2 - sx * sx
+    if not denom:
+        return None
+    return (n * sxy - sx * sy) / denom
+
+
+def empirical_tdee(avg_intake_kcal: float, slope_kg_per_day: float) -> float:
+    """TDEE implied by logged intake and weight trend (kcal/day)."""
+    return avg_intake_kcal - slope_kg_per_day * KCAL_PER_KG
+
+
+def tdee_correction(model_avg: float, empirical: float) -> float:
+    """Level-shift offset (kcal/day), clamped to ±25% of model TDEE."""
+    raw = empirical - model_avg
+    limit = 0.25 * model_avg
+    return max(-limit, min(limit, raw))
+
+
+def apply_tdee_correction(
+    model_tdee: Optional[float], correction: Optional[float]
+) -> Optional[float]:
+    """Apply a calibration offset to a model TDEE value."""
+    if model_tdee is None:
+        return None
+    if correction is None:
+        return model_tdee
+    return model_tdee + correction
 
 
 # ── Mechanical work (cycling power) ─────────────────────────────────────────

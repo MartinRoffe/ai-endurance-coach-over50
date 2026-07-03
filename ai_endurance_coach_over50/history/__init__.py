@@ -71,6 +71,7 @@ from .body_store import (  # noqa: F401
     pmc_history,
     save_blood_pressure,
     save_body_metrics,
+    tdee_calibration,
     tdee_history,
     vo2_history,
 )

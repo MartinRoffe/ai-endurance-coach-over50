@@ -36,6 +36,7 @@ from .history import (
     power_meter_active,
     raw_history,
     sleep_history,
+    tdee_calibration,
     tdee_history,
     weekly_monotony_strain,
 )
@@ -722,6 +723,15 @@ def build_coach_context() -> str:
             if avg_tdee:
                 deficit = avg_tdee - avg_consumed
                 body_parts.append(f"Avg TDEE: {avg_tdee:,} kcal  |  Avg deficit: {deficit:+,} kcal/day")
+                try:
+                    _cal = tdee_calibration()
+                    if _cal:
+                        body_parts.append(
+                            f"TDEE calibrated {_cal['correction']:+,} kcal/day vs "
+                            f"Katch-McArdle+Garmin model (28-day weight trend)"
+                        )
+                except Exception:
+                    pass
             carbs_vals   = [r["carbs_consumed"]   for r in history_14 if r.get("carbs_consumed")   is not None]
             protein_vals = [r["protein_consumed"] for r in history_14 if r.get("protein_consumed") is not None]
             if carbs_vals:

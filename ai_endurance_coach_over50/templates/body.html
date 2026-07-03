@@ -246,6 +246,9 @@
         {% else %}
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal (activity-adjusted)</p>
         {% endif %}
+        {% if cal_ctx.tdee_correction is defined %}
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">calibrated {{ "%+d"|format(cal_ctx.tdee_correction) }} kcal/day from 28-day weight trend</p>
+        {% endif %}
       </div>
       {% endif %}
 

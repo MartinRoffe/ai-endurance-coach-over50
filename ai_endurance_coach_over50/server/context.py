@@ -13,7 +13,6 @@ from ..body import bp_classification
 from ..client import get_api
 from ..coach_context import build_advice_timing
 from ..display import FIELD_LABELS, enrich_activity, fmt_value, readiness_label
-from ..energy import tdee as compute_tdee
 from ..history import (
     ACTIVITY_MATCH,
     baseline_stats,
@@ -23,7 +22,6 @@ from ..history import (
     get_cached_text,
     gut_training_summary,
     history_for_chart,
-    latest_bmr,
     latest_estimated_wkg,
     latest_measured_wkg,
     list_plan_overrides,
@@ -39,6 +37,7 @@ from ..history import (
     save,
     save_activities,
     seven_day_composite_trend_csv,
+    tdee_calibration,
     tdee_history,
     z_score,
 )
@@ -444,13 +443,13 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     # Nutrition snapshot for readiness tab
     nutrition_today = None
     if m.calories_consumed is not None:
-        # TDEE = Katch-McArdle BMR (from body comp) + measured active calories.
-        _bmr = None
+        _tdee = None
         try:
-            _bmr = latest_bmr()
+            _rows = tdee_history(1)
+            if _rows:
+                _tdee = _rows[-1].get("tdee")
         except Exception:
             pass
-        _tdee = compute_tdee(m.active_calories, bmr=_bmr) if _bmr else None
         nutrition_today = {
             "calories": int(m.calories_consumed),
             "tdee":     int(round(_tdee)) if _tdee else None,
@@ -1029,6 +1028,16 @@ def _body_context() -> dict[str, Any]:
         cal_ctx["avg_carbs"]   = round(sum(carbs_vals) / len(carbs_vals))
     if protein_vals:
         cal_ctx["avg_protein"] = round(sum(protein_vals) / len(protein_vals))
+
+    try:
+        _cal = tdee_calibration()
+        if _cal:
+            cal_ctx["tdee_correction"] = _cal["correction"]
+            cal_ctx["empirical_tdee"] = _cal["empirical_tdee"]
+            cal_ctx["tdee_model_avg"] = _cal["model_avg"]
+            cal_ctx["calibration_n_days"] = _cal["n_intake_days"]
+    except Exception:
+        pass
 
     # Calorie chart (last 14 days) — convert date objects to ISO strings for _short()
     _cal_rows   = [r for r in recent_metrics if r.get("calories_consumed") is not None]

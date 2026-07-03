@@ -1120,7 +1120,7 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
 
     # Calorie intake (food log — available once user logs meals in Garmin Connect)
     # TDEE = Katch-McArdle BMR (body comp) + measured active calories, per day.
-    from .history import tdee_history as _tdee_history
+    from .history import tdee_calibration, tdee_history as _tdee_history
     _tdee_by_date = {}
     try:
         for _t in _tdee_history(len(recent_metrics) or 14):
@@ -1152,6 +1152,17 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
             f"  Avg consumed: {avg_consumed:,} kcal/day",
             f"  Avg TDEE (BMR + active cals): {avg_tdee:,} kcal/day" if avg_tdee else "",
             deficit_note,
+        ]
+        try:
+            _cal = tdee_calibration()
+            if _cal:
+                lines.append(
+                    f"  TDEE calibrated {_cal['correction']:+,} kcal/day vs "
+                    f"Katch-McArdle+Garmin model (28-day weight trend)"
+                )
+        except Exception:
+            pass
+        lines += [
             "  Note: a sustained deficit of ~500 kcal/day ≈ 0.5 kg/week fat loss."
             " If deficit exceeds 700 kcal/day on training days, flag risk of under-fuelling.",
             "",

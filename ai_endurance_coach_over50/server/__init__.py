@@ -31,7 +31,6 @@ from ..body import fetch_blood_pressure, fetch_body_composition
 from ..client import get_api
 from ..coach_context import build_coach_context as _build_coach_context
 from ..display import enrich_activity
-from ..energy import tdee as compute_tdee
 from ..history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -43,7 +42,6 @@ from ..history import (
     get_coach_memory,
     intensity_distribution_by_week,
     intensity_distribution_by_week_power,
-    latest_bmr,
     load,
     load_activities_by_date,
     load_body_metrics,
@@ -72,6 +70,7 @@ from ..history import (
     set_cached_text,
     set_plan_override,
     sleep_history,
+    tdee_history,
     vo2_history,
     weekly_monotony_strain,
     weekly_tss,
@@ -830,15 +829,13 @@ async def nutrition_plan(request: Request):
 
     recent = raw_history(3)
     today_nut = next((r for r in reversed(recent) if r.get("calories_consumed") is not None), None)
-    _bmr = None
+    _tdee_today = None
     try:
-        _bmr = latest_bmr()
+        _rows = tdee_history(1)
+        if _rows:
+            _tdee_today = _rows[-1].get("tdee")
     except Exception:
         pass
-    _tdee_today = (
-        compute_tdee(today_nut.get("active_calories"), bmr=_bmr)
-        if today_nut and _bmr else None
-    )
     cycle_week = cycle_week_index(_PLAN_START, today)
     checklist = today_checklist(_PLAN_START, today)
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
