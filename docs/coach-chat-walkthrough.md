@@ -124,7 +124,7 @@ So the complete call is: a large `system` string (persona + rules + all your dat
 
 ```python
 for _ in range(_COACH_MAX_TOOL_TURNS):          # capped at 6
-    with client.messages.stream(model=MODEL_SMART, system=system,
+    with client.messages.stream(model=MODEL_COACH, system=system,
                                 tools=all_tools, messages=convo) as stream:
         for chunk in stream.text_stream:
             yield f"data: {json.dumps({'type':'text','chunk':chunk})}\n\n"

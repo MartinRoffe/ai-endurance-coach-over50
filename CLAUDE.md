@@ -158,7 +158,7 @@ Key vars: `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `GMAIL_ADDRESS
 - `available_count()` checks how many non-null numeric fields exist — used to detect empty fetches. The email gate checks specifically for `sleep_score` and `body_battery_morning` (only populated after the watch syncs overnight data); if either is missing, the CLI exits with code 2 and the launchd retry loop tries again in 30 minutes.
 - All Garmin API calls are individually try/except'd; a failed endpoint logs at DEBUG and leaves the field `None` rather than crashing.
 - Templates are package data — any change to a `.html` file requires `pip install --force-reinstall .` before the running server picks it up.
-- Claude model usage: **Sonnet** for coach chat, post-workout activity analysis, and Haute Route stage plans; **Haiku** for email advice, recovery suggestions, workout descriptions, nutrition targets, fuelling plans, weekly briefings, and coach memory summaries.
+- Claude model usage: **Opus** for coach chat; **Sonnet** for post-workout activity analysis and Haute Route stage plans; **Haiku** for email advice, recovery suggestions, workout descriptions, nutrition targets, fuelling plans, weekly briefings, and coach memory summaries.
 
 ## AI text caching
 

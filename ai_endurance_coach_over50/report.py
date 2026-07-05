@@ -11,7 +11,8 @@ from typing import Optional
 import anthropic
 
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
-from .plan import session_for_date, session_for_date_extended
+from .plan import session_for_date, session_for_date_extended, charity_event_summary
+from .hr_plan import HR_EVENT_NAME
 from .history import (
     ACTIVITY_MATCH,
     LOWER_IS_BETTER,
@@ -33,6 +34,7 @@ from .coach_context import build_advice_context, build_advice_timing, coach_pers
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
 _ADVICE_MODE_KEY = "advice_mode_v1_{}"
+_ADVICE_MAX_TOKENS = 1024
 
 
 def _advice_mode_cache_key(target: date) -> str:
@@ -80,6 +82,12 @@ def _build_advice_prompt(
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
     lines += [build_advice_context(target, timing)]
+    lines += [
+        "",
+        "Official A-event names (use these exactly; never invent nicknames like 'Lap the Map'):",
+        f"  - {charity_event_summary()}",
+        f"  - {HR_EVENT_NAME} (23–29 Aug 2027)",
+    ]
     if timing["post_workout"]:
         lines += [
             "",
@@ -133,7 +141,7 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
     try:
         message = client.messages.create(
             model=MODEL_SMART,
-            max_tokens=500,
+            max_tokens=_ADVICE_MAX_TOKENS,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
             system=system,

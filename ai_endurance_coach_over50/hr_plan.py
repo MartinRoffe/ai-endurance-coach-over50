@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+HR_EVENT_NAME = "Haute Route Alpes 2027"
 HR_PLAN_START = date(2026, 10, 5)
 assert HR_PLAN_START.weekday() == 0, "Plan must start on Monday"
 

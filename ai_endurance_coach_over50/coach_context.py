@@ -41,16 +41,18 @@ from .history import (
     weekly_monotony_strain,
 )
 from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
-from .hr_plan import HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
+from .hr_plan import HR_EVENT_NAME, HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
 from .metrics import DailyMetrics
 from .plan import (
     PLAN_START,
     build_calendar_weeks,
     CAMP_END,
     CAMP_GRID_WORKOUTS,
+    CHARITY_EVENT_NAME,
     COMPOUND_SESSIONS,
     EVENT_PREP_DAYS,
     TENERIFE_DAYS,
+    charity_event_summary,
     session_for_date,
     session_for_date_extended,
 )
@@ -104,6 +106,9 @@ def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
         COACH_VOICE + "\n\n"
         + ATHLETE_CONSTRAINTS + "\n\n"
         + task + "\n\n"
+        + "When referring to A-events, use only the official names in context "
+        f"(e.g. \"{CHARITY_EVENT_NAME}\", \"{HR_EVENT_NAME}\"). "
+        "Never invent alternative names or nicknames.\n\n"
         + hr_channel_note(has_power)
     )
 
@@ -402,6 +407,14 @@ def _section_rag(session_type: Optional[str], limit: int = 2) -> list[str]:
     return lines
 
 
+def _section_athlete_goals() -> list[str]:
+    return [
+        "## Athlete Goals",
+        f"  Primary A-event: {charity_event_summary()}",
+        f"  Secondary A-event: {HR_EVENT_NAME} (23–29 Aug 2027)",
+    ]
+
+
 def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) -> str:
     """Focused context for daily readiness advice (today's decision)."""
     timing = timing or build_advice_timing(target)
@@ -412,6 +425,8 @@ def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) 
     parts: list[str] = [
         "",
         "## Coaching Context",
+        *_section_athlete_goals(),
+        "",
         *_section_timing(timing, target),
         "",
         *_section_pmc(today_pmc, m),
@@ -617,7 +632,7 @@ def build_coach_context() -> str:
     # Event prep days (Aug 31 – Sep 6)
     event_prep_future = [ep for ep in EVENT_PREP_DAYS if ep["date"] >= today]
     if event_prep_future:
-        upcoming_lines.append("  --- Event Prep (Ghent to Amsterdam charity ride, 13–14 Sep 2026) ---")
+        upcoming_lines.append(f"  --- Event Prep ({CHARITY_EVENT_NAME}, 13–14 Sep 2026) ---")
         for ep in event_prep_future:
             upcoming_lines.append(
                 f"  {ep['date'].strftime('%a %d %b')} ({ep['date'].isoformat()}): "

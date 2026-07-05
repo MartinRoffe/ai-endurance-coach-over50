@@ -31,7 +31,7 @@ from ..history import (
     weekly_monotony_strain,
 )
 from ..hr_plan import HR_PHASES
-from ..llm import MODEL_FAST, MODEL_SMART
+from ..llm import MODEL_COACH, MODEL_FAST
 from ..plan import session_for_date_extended
 
 from .shared import (
@@ -356,6 +356,7 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
 
 
 _COACH_MAX_TOOL_TURNS = 6
+_COACH_MAX_TOKENS = 2048
 
 
 def _base_plan_session(d: date) -> tuple[str, str, int] | None:
@@ -424,8 +425,8 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, list[dict]]:
 
     for _ in range(_COACH_MAX_TOOL_TURNS):
         response = client.messages.create(
-            model=MODEL_SMART,
-            max_tokens=1000,
+            model=MODEL_COACH,
+            max_tokens=_COACH_MAX_TOKENS,
             system=system,
             tools=all_tools,
             messages=convo,
@@ -540,8 +541,8 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     try:
         for _ in range(_COACH_MAX_TOOL_TURNS):
             with client.messages.stream(
-                model=MODEL_SMART,
-                max_tokens=1000,
+                model=MODEL_COACH,
+                max_tokens=_COACH_MAX_TOKENS,
                 system=system,
                 tools=all_tools,
                 messages=convo,

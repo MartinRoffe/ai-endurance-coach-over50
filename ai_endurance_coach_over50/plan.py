@@ -712,10 +712,20 @@ MERSEA_EVENT_DAYS: list[dict] = [
 ]
 
 # ── Ghent–Amsterdam Charity Ride ──────────────────────────────────────────────
+CHARITY_EVENT_NAME = "Ghent→Amsterdam charity ride"
 CHARITY_DAYS: list[dict] = [
     {"day": 1, "date": date(2026, 9, 13), "label": "Ghent → Eindhoven", "km": 190},
     {"day": 2, "date": date(2026, 9, 14), "label": "Eindhoven → Amsterdam", "km": 120},
 ]
+
+
+def charity_event_summary() -> str:
+    """Single-line A-event description for coach/advice prompts."""
+    d1, d2 = CHARITY_DAYS
+    return (
+        f"{CHARITY_EVENT_NAME} (13–14 Sep 2026): "
+        f"{d1['label']} (~{d1['km']} km), then {d2['label']} (~{d2['km']} km)"
+    )
 
 
 def build_combined_event_weeks() -> list[dict]:

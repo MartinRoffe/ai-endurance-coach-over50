@@ -31,18 +31,20 @@ variation on it.
 
 ## Model routing — `llm.py`
 
-The whole file is two constants:
+The whole file is three constants:
 
 ```python
-MODEL_SMART = "claude-sonnet-4-6"          # coach chat, post-workout analysis, stage plans
+MODEL_COACH = "claude-opus-4-8"            # coach chat (agent loop with tools)
+MODEL_SMART = "claude-sonnet-4-6"          # post-workout analysis, stage plans, daily advice
 MODEL_FAST  = "claude-haiku-4-5-20251001"  # blurbs, nutrition targets, memory summaries
 ```
 
 Every call site imports these instead of hardcoding a model string.
 
-**Concept: model routing.** Pick the cheapest model that's good enough *per task*. Reasoning
-and judgement (coaching, analysis) get the smart model; cheap throwaway text generation gets
-the fast one. Centralising the IDs means upgrading a model is a one-line change.
+**Concept: model routing.** Pick the cheapest model that's good enough *per task*. Interactive
+coach chat with tools gets Opus; reasoning and judgement on batch jobs (analysis, advice) get
+Sonnet; cheap throwaway text generation gets Haiku. Centralising the IDs means upgrading a
+model is a one-line change.
 
 **Try this:** grep for `MODEL_FAST` and look at every job that uses it. Ask yourself for each
 one: could this be rule-based instead of an LLM call? Could any `MODEL_FAST` job actually need
@@ -185,7 +187,7 @@ The agent loop itself:
 
 ```python
 for _ in range(_COACH_MAX_TOOL_TURNS):
-    response = client.messages.create(model=MODEL_SMART, system=system,
+    response = client.messages.create(model=MODEL_COACH, system=system,
                                       tools=all_tools, messages=convo)
     tool_results = []
     for block in response.content:           # response is a LIST of blocks
@@ -262,7 +264,7 @@ and latency control is a real part of AI engineering, not an afterthought.
 
 Read these in order, easiest to hardest:
 
-1. `llm.py` — model routing (2 lines).
+1. `llm.py` — model routing (three constants).
 2. `report.py` → `generate_advice` and `_build_advice_prompt` — a single Claude call + its prompt.
 3. `coach_context.py` → `build_advice_context`, then `build_coach_context` — context engineering at two scales.
 4. `analysis.py` → `retrieve_relevant_analyses` — retrieval as SQL.
@@ -286,7 +288,7 @@ intuition for prompt engineering — faster than any amount of reading, includin
 
 | File | AI role |
 |------|---------|
-| `llm.py` | Model IDs (smart vs fast) |
+| `llm.py` | Model IDs (coach Opus / smart Sonnet / fast Haiku) |
 | `coach_voice.py` | Coach persona / voice constants, athlete constraints |
 | `coach_context.py` | Builds the big context blocks for advice + chat |
 | `report.py` | Daily advice, weekly briefing, email text (single-shot calls + rule-based fallback) |
