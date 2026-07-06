@@ -40,7 +40,9 @@
 <body>
 
 {% set active_tab = 'sleep' %}
+{% set recovery_section = recovery_section | default('sleep') %}
 {% include 'nav.html' %}
+{% include 'recovery_subnav.html' %}
 
 <!-- Ambient glow -->
 <div style="position:fixed;top:-160px;left:-80px;width:640px;height:640px;background:radial-gradient(circle,rgba(167,139,250,0.025) 0%,transparent 65%);pointer-events:none;z-index:0"></div>

@@ -180,17 +180,17 @@ body {
 
 <nav class="gr-nav">
   <div class="gr-nav-inner">
-    {% set perf_active   = active_tab in ['performance', 'analysis'] %}
+    {% set train_active  = active_tab in ['performance', 'analysis'] %}
     {% set plan_active   = active_tab in ['calendar', 'training', 'compliance'] %}
     {% set nutrition_active = active_tab in ['nutrition', 'meals', 'fuelling', 'recipes', 'shopping', 'lidl_shopping'] %}
-    {% set health_active = active_tab in ['sleep', 'body'] %}
+    {% set recovery_active = active_tab in ['sleep', 'body'] %}
     {% set events_active = active_tab in ['tenerife', 'haute_route'] %}
 
-    <a href="/" class="tab {% if active_tab == 'readiness' %}active{% endif %}">Readiness</a>
+    <a href="/" class="tab {% if active_tab in ['readiness', 'today'] %}active{% endif %}">Today</a>
 
-    <div class="gr-nav-group" id="grp-perf">
-      <button class="tab {% if perf_active %}active{% endif %}" onclick="toggleGroup('grp-perf')">
-        Performance <span class="gr-nav-chevron">▾</span>
+    <div class="gr-nav-group" id="grp-train">
+      <button class="tab {% if train_active %}active{% endif %}" onclick="toggleGroup('grp-train')">
+        Train <span class="gr-nav-chevron">▾</span>
       </button>
       <div class="gr-nav-dropdown">
         <a href="/performance" class="{% if active_tab == 'performance' %}active{% endif %}">Performance</a>
@@ -198,28 +198,11 @@ body {
       </div>
     </div>
 
-    <div class="gr-nav-group" id="grp-plan">
-      <button class="tab {% if plan_active %}active{% endif %}" onclick="toggleGroup('grp-plan')">
-        Plan <span class="gr-nav-chevron">▾</span>
-      </button>
-      <div class="gr-nav-dropdown">
-        <a href="/calendar"    class="{% if active_tab == 'calendar'    %}active{% endif %}">Calendar</a>
-        <a href="/training"    class="{% if active_tab == 'training'    %}active{% endif %}">Training</a>
-        <a href="/compliance"  class="{% if active_tab == 'compliance'  %}active{% endif %}">Compliance</a>
-      </div>
-    </div>
+    <a href="/calendar" class="tab {% if plan_active %}active{% endif %}">Plan</a>
 
     <a href="/nutrition" class="tab {% if nutrition_active %}active{% endif %}">Nutrition</a>
 
-    <div class="gr-nav-group" id="grp-health">
-      <button class="tab {% if health_active %}active{% endif %}" onclick="toggleGroup('grp-health')">
-        Health <span class="gr-nav-chevron">▾</span>
-      </button>
-      <div class="gr-nav-dropdown">
-        <a href="/sleep" class="{% if active_tab == 'sleep' %}active{% endif %}">Sleep</a>
-        <a href="/body"  class="{% if active_tab == 'body'  %}active{% endif %}">Body</a>
-      </div>
-    </div>
+    <a href="/sleep" class="tab {% if recovery_active %}active{% endif %}">Recovery</a>
 
     <div class="gr-nav-group" id="grp-events">
       <button class="tab {% if events_active %}active{% endif %}" onclick="toggleGroup('grp-events')">
@@ -231,7 +214,7 @@ body {
       </div>
     </div>
 
-    <a href="/coach" class="tab {% if active_tab == 'coach' %}active{% endif %}">Coach</a>
+    <a href="/coach" class="tab {% if active_tab == 'coach' %}active{% endif %}" title="Multi-day planning, fuelling depth, event strategy">Coach</a>
     <a href="/memory" class="tab {% if active_tab == 'memory' %}active{% endif %}">Memory</a>
 
   </div>
@@ -327,3 +310,4 @@ document.addEventListener('click', e => {
   }
 })();
 </script>
+{% include 'partials/plan_change.js.html' %}

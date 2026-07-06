@@ -259,6 +259,12 @@
       <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--protein)">{{ protein_today }}g</div>
     </div>
     {% endif %}
+    {% if nutrition_today and nutrition_today.ride_work_kj %}
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">Ride work</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent2)">{{ nutrition_today.ride_work_kj }} kJ</div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -374,9 +380,9 @@
 
   <!-- SECTION HUB -->
   <section>
-    <div class="section-label">Explore the plan</div>
-    <h2>NUTRITION GUIDES</h2>
-    <p>Each topic has its own page — daily meals, ride fuelling protocols, batch recipes and the weekly shop.</p>
+    <div class="section-label">Reference</div>
+    <h2>RECIPES &amp; SHOPPING</h2>
+    <p>Each topic has its own page — daily menus and ride fuelling are in the main nav; recipes and shopping lists live here.</p>
     <div class="hub-grid">
       <a href="/nutrition/fuelling" class="hub-card featured">
         <div class="hub-icon">🚴</div>

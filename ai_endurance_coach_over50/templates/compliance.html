@@ -340,7 +340,9 @@
 <body>
 
 {% set active_tab = 'compliance' %}
+{% set plan_section = plan_section | default('compliance') %}
 {% include 'nav.html' %}
+{% include 'plan_subnav.html' %}
 
 {% set adherence_cls = 'stat' if overall_pct >= 80 else ('stat amber' if overall_pct >= 60 else 'stat red') %}
 

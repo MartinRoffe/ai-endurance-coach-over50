@@ -8,6 +8,7 @@ from typing import Optional
 
 from ..metrics import DailyMetrics
 from .db import NUMERIC_FIELDS, _conn, _ensure_schema
+from .activities_store import ACTIVITY_MATCH, load_activities_by_date
 
 
 # Don't score these — context/baselines or timestamp fields, not daily readiness signals
@@ -17,6 +18,8 @@ _UNSCORED = {
     "carbs_consumed", "protein_consumed",
     # acclimation + resting HR — consumed by illness/heat features, not the composite
     "heat_acclimation_pct", "altitude_acclimation", "resting_hr",
+    # load context — surfaced via ACWR tile and Performance tab, not morning readiness
+    "training_load_acute", "body_battery_current",
     # timestamps — large absolute values destroy z-score baseline
     "sleep_start_ts", "sleep_end_ts",
     # sleep detail — sleep_score already summarises these for the composite
@@ -293,3 +296,134 @@ def sleep_history(days: int = 30) -> list[dict]:
             "rem_pct":           round(rem_s  / total_secs * 100) if rem_s  and total_secs else None,
         })
     return result
+
+
+def _ensure_morning_snapshot_schema(con) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS morning_snapshots (
+            date TEXT PRIMARY KEY,
+            captured_at TEXT NOT NULL,
+            hrv_last_night REAL,
+            sleep_score REAL,
+            body_battery_morning REAL,
+            resting_hr REAL,
+            hrv_status TEXT,
+            composite_z REAL,
+            readiness_label TEXT,
+            traffic_light_status TEXT,
+            traffic_light_reason TEXT,
+            advice_pre TEXT
+        )
+    """)
+
+
+def _plan_activity_logged(target: date) -> bool:
+    """True when Garmin activities satisfy today's planned session (or any activity on rest day)."""
+    from ..plan import COMPOUND_SESSIONS, session_for_date_extended
+    from .coach_store import get_plan_override
+
+    session = session_for_date_extended(target)
+    day_acts = load_activities_by_date(target, target).get(target.isoformat(), [])
+    if session and session[0] != "rest":
+        stype, label, _dur = session
+        ov = get_plan_override(target.isoformat())
+        if ov:
+            stype = ov.get("session_type") or stype
+            label = ov.get("label") or label
+        if not day_acts:
+            return False
+        compound = COMPOUND_SESSIONS.get(label)
+        if compound:
+            return any(
+                any(a["type_key"] == sub["garmin_key"] for sub in compound)
+                for a in day_acts
+            )
+        valid_keys = ACTIVITY_MATCH.get(stype, set())
+        return any(a["type_key"] in valid_keys for a in day_acts)
+    return bool(day_acts)
+
+
+def load_morning_snapshot(target: date) -> Optional[dict]:
+    with _conn() as con:
+        _ensure_morning_snapshot_schema(con)
+        row = con.execute(
+            "SELECT * FROM morning_snapshots WHERE date = ?",
+            (target.isoformat(),),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def metrics_from_snapshot(snap: dict, target: date) -> DailyMetrics:
+    """Rebuild a DailyMetrics row from a frozen morning snapshot."""
+    m = DailyMetrics(date=target)
+    for field in ("hrv_last_night", "sleep_score", "body_battery_morning", "resting_hr"):
+        if snap.get(field) is not None:
+            setattr(m, field, snap[field])
+    if snap.get("hrv_status"):
+        m.hrv_status = snap["hrv_status"]
+    return m
+
+
+def capture_morning_snapshot(
+    target: date,
+    m: DailyMetrics,
+    *,
+    composite_z: Optional[float],
+    readiness_label: str,
+    traffic_light: Optional[dict],
+    advice_pre: Optional[str] = None,
+) -> bool:
+    """Write the morning gate snapshot once; returns True if a new row was inserted."""
+    if load_morning_snapshot(target) is not None:
+        return False
+    tl = traffic_light or {}
+    with _conn() as con:
+        _ensure_morning_snapshot_schema(con)
+        con.execute(
+            """INSERT INTO morning_snapshots (
+                date, captured_at, hrv_last_night, sleep_score, body_battery_morning,
+                resting_hr, hrv_status, composite_z, readiness_label,
+                traffic_light_status, traffic_light_reason, advice_pre
+            ) VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                target.isoformat(),
+                m.hrv_last_night,
+                m.sleep_score,
+                m.body_battery_morning,
+                m.resting_hr,
+                m.hrv_status,
+                composite_z,
+                readiness_label,
+                tl.get("status"),
+                tl.get("reason"),
+                advice_pre,
+            ),
+        )
+    return True
+
+
+def maybe_capture_morning_snapshot(
+    target: date,
+    m: DailyMetrics,
+    stats: dict,
+    *,
+    composite_z: Optional[float],
+    readiness_label: str,
+    traffic_light: Optional[dict],
+    advice_pre: Optional[str] = None,
+) -> bool:
+    """Lock morning readiness before the first plan-matched activity is logged."""
+    if load_morning_snapshot(target) is not None:
+        return False
+    if m.sleep_score is None and m.hrv_last_night is None:
+        return False
+    if _plan_activity_logged(target):
+        return False
+    return capture_morning_snapshot(
+        target,
+        m,
+        composite_z=composite_z,
+        readiness_label=readiness_label,
+        traffic_light=traffic_light,
+        advice_pre=advice_pre,
+    )

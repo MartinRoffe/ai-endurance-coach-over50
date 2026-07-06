@@ -1,0 +1,47 @@
+{# plan_section: calendar | programme | compliance #}
+<style>
+  .plan-subnav {
+    background: rgba(17, 17, 20, 0.92);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: var(--gr-nav-height, 44px);
+    z-index: 99;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .plan-subnav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .plan-subnav-inner::-webkit-scrollbar { display: none; }
+  .plan-subnav a {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .plan-subnav a:hover { color: var(--text); }
+  .plan-subnav a.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+  }
+</style>
+<nav class="plan-subnav" aria-label="Plan sections">
+  <div class="plan-subnav-inner">
+    <a href="/calendar" class="{% if plan_section == 'calendar' %}active{% endif %}">Calendar</a>
+    <a href="/training" class="{% if plan_section == 'programme' %}active{% endif %}">Programme</a>
+    <a href="/compliance" class="{% if plan_section == 'compliance' %}active{% endif %}">Compliance</a>
+  </div>
+</nav>

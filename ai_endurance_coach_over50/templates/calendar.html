@@ -32,7 +32,9 @@
 <body>
 
   {% set active_tab = 'calendar' %}
+  {% set plan_section = plan_section | default('calendar') %}
   {% include 'nav.html' %}
+  {% include 'plan_subnav.html' %}
 
   <div style="max-width:1080px;margin:0 auto;padding:40px 24px 80px">
 
@@ -48,6 +50,9 @@
       </div>
       {% endif %}
     </div>
+
+    {% include 'partials/week_progress.html' %}
+    {% include 'partials/event_tracker.html' %}
 
     <!-- Legend -->
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center">

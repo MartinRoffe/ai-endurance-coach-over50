@@ -67,20 +67,6 @@
     return bubble;
   }
 
-  function proposalSummary(proposal) {
-    const currLabel = proposal.current_session_label || 'Session';
-    const newLabel = proposal.session_label || 'Session';
-    const currDur = proposal.current_duration_min ? `${proposal.current_duration_min} min` : 'current';
-    const newDur = `${proposal.duration_min} min`;
-    const labelLine = currLabel !== newLabel
-      ? `<strong>${currLabel}</strong> → <strong>${newLabel}</strong>`
-      : `<strong>${newLabel}</strong>`;
-    const durLine = currDur !== newDur
-      ? `${currDur} → <strong>${newDur}</strong>`
-      : `<strong>${newDur}</strong>`;
-    return `${labelLine} on <strong>${proposal.date}</strong>: ${durLine}<br><span style="color:var(--muted);font-size:12px;margin-top:4px;display:inline-block">${mdToHtml(proposal.reason)}</span>`;
-  }
-
   function renderProposals(proposals) {
     _proposals = proposals.filter(p => p && p.session_type);
     const container = document.getElementById('proposal-cards');
@@ -90,24 +76,30 @@
       return;
     }
     _proposals.forEach((proposal, idx) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:rgba(96,165,250,0.05);border:1px solid rgba(96,165,250,0.2);border-left:3px solid #60a5fa;padding:14px 16px;border-radius:2px';
-      card.innerHTML = `
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#60a5fa;margin-bottom:8px">Proposed Change</p>
-        <p style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px">${proposalSummary(proposal)}</p>
-        <div style="display:flex;gap:8px">
-          <button data-idx="${idx}" class="apply-proposal-btn" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:#60a5fa;color:#09090b;border:none;padding:7px 16px;cursor:pointer;border-radius:2px;font-weight:600">APPLY CHANGE</button>
-          <button data-idx="${idx}" class="dismiss-proposal-btn" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:7px 14px;cursor:pointer;border-radius:2px">DISMISS</button>
-        </div>`;
-      container.appendChild(card);
+      const card = window.PlanChange.render(container, proposal, {showDismiss: true});
+      card.addEventListener('planchange:applied', (e) => {
+        _proposals = _proposals.filter(p => p.date !== proposal.date);
+        const container = document.getElementById('proposal-cards');
+        if (!_proposals.length) {
+          container.style.display = 'none';
+          container.innerHTML = '';
+        }
+        const data = e.detail.data || {};
+        const g = data.garmin || {};
+        const sync = g.pushed
+          ? ' Pushed to Garmin Connect.'
+          : ' Saved locally — Garmin sync failed.';
+        const durText = data.duration_min ? `**${data.duration_min} min**` : '**rest day**';
+        renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to ${durText}.${sync}`);
+      });
+      card.addEventListener('planchange:dismissed', () => {
+        _proposals = _proposals.filter(p => p.date !== proposal.date);
+        if (!_proposals.length) {
+          container.style.display = 'none';
+        }
+      });
     });
     container.style.display = 'flex';
-    container.querySelectorAll('.apply-proposal-btn').forEach(btn => {
-      btn.addEventListener('click', () => applyProposal(Number(btn.dataset.idx)));
-    });
-    container.querySelectorAll('.dismiss-proposal-btn').forEach(btn => {
-      btn.addEventListener('click', () => dismissProposal(Number(btn.dataset.idx)));
-    });
   }
 
   window.dismissProposal = function(idx) {
@@ -120,58 +112,6 @@
     const container = document.getElementById('proposal-cards');
     container.style.display = 'none';
     container.innerHTML = '';
-  };
-
-  window.applyProposal = async function(idx) {
-    const proposal = typeof idx === 'number' ? _proposals[idx] : _proposals[0];
-    if (!proposal || !proposal.session_type) return;
-    const container = document.getElementById('proposal-cards');
-    const btn = container.querySelector(`.apply-proposal-btn[data-idx="${idx}"]`);
-    if (btn) {
-      btn.textContent = 'APPLYING…';
-      btn.disabled = true;
-    }
-    try {
-      const res = await fetch('/apply-plan-change', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          date: proposal.date,
-          duration_min: proposal.duration_min,
-          reason: proposal.reason,
-          session_type: proposal.session_type || null,
-          label: proposal.session_label || null,
-        }),
-      });
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
-      if (res.ok && data.ok) {
-        if (typeof idx === 'number') dismissProposal(idx);
-        else dismissProposal();
-        const g = data.garmin || {};
-        const sync = g.pushed
-          ? ' Pushed to Garmin Connect.'
-          : ' Saved locally — Garmin sync failed, it will reconcile on the next full sync.';
-        const durText = data.duration_min ? `**${data.duration_min} min**` : '**rest day**';
-        renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to ${durText}.${sync}`);
-      } else {
-        if (btn) {
-          btn.textContent = 'FAILED — RETRY';
-          btn.disabled = false;
-        }
-        const detail = data.detail;
-        const msg = typeof detail === 'string' ? detail
-          : Array.isArray(detail) && detail[0]?.msg ? detail[0].msg
-          : 'Could not apply that change.';
-        renderMessage('assistant', `Could not apply the plan change: ${msg}`);
-      }
-    } catch(e) {
-      if (btn) {
-        btn.textContent = 'FAILED — RETRY';
-        btn.disabled = false;
-      }
-      renderMessage('assistant', 'Connection error applying the plan change. Please try again.');
-    }
   };
 
   window.sendCoachMessage = async function() {

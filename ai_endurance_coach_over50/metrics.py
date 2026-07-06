@@ -48,6 +48,7 @@ class DailyMetrics:
     hrv_status: Optional[str] = None              # BALANCED / UNBALANCED / LOW / POOR
     # Body Battery
     body_battery_morning: Optional[float] = None  # 0–100 (reading at/after sleep end)
+    body_battery_current: Optional[float] = None  # 0–100 (latest reading today; updates on refresh)
     # Stress (lower = better)
     avg_stress: Optional[float] = None            # 0–100
     rest_stress: Optional[float] = None           # 0–100
@@ -209,10 +210,14 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                     if entry[1] is not None:
                         all_readings.append((0.0, float(entry[1])))
             if all_readings:
+                all_readings.sort(key=lambda pair: pair[0])
+                m.body_battery_current = all_readings[-1][1]
                 if _sleep_end_ms is not None:
-                    # Use first reading at/after sleep end — the true wake-up BB level
-                    post_sleep = [v for ts, v in all_readings if ts >= _sleep_end_ms]
-                    m.body_battery_morning = post_sleep[0] if post_sleep else max(v for _, v in all_readings)
+                    # Earliest reading at/after sleep end — the true wake-up BB level
+                    post_sleep = [(ts, v) for ts, v in all_readings if ts >= _sleep_end_ms]
+                    m.body_battery_morning = (
+                        post_sleep[0][1] if post_sleep else max(v for _, v in all_readings)
+                    )
                 else:
                     m.body_battery_morning = max(v for _, v in all_readings)
     except Exception as e:

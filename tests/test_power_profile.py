@@ -88,8 +88,9 @@ def test_power_baseline_card_absent_when_ftp_w_known():
 
 
 def test_build_context_includes_power_profile_tile():
+    from ai_endurance_coach_over50.server.context import build_trends_context
     _activate_power_meter(ftp_w=250)
     save_body_metrics([{"date": date.today().isoformat(), "weight_kg": 78.0}])
-    ctx = _build_context(date.today())
+    ctx = build_trends_context(date.today())
     assert ctx["power_profile"] is not None
     assert ctx["power_profile"]["ftp_w"] == 250

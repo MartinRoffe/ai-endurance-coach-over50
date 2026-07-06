@@ -1,0 +1,164 @@
+{# Trends block moved from Today dashboard — expects build_trends_context() keys #}
+
+{% if moderate_fatigue_alerts %}
+{% for alert in moderate_fatigue_alerts %}
+<div class="card" style="padding:12px 18px;margin-bottom:12px;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.08)">
+  <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">{{ alert.message }}</span>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if workouts_stale_ftp %}
+<div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.05)">
+  <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fbbf24;margin-bottom:6px">New FTP measured</p>
+  <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">
+    FTP is now <strong style="color:var(--text)">{{ workouts_stale_ftp }} W</strong> — Garmin workout templates still use the old targets.
+  </p>
+  <a href="/sync-workouts" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px;display:inline-block">Re-sync Garmin workouts ↻</a>
+</div>
+{% endif %}
+
+{% if weekly_briefing %}
+<details {% if is_monday %}open{% endif %} class="card" style="padding:16px 20px;margin-bottom:12px">
+  <summary style="cursor:pointer;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent)">This week — Coach's Briefing</summary>
+  <div style="margin-top:12px;font-size:13px;color:var(--text-dim);line-height:1.7;white-space:pre-wrap">{{ weekly_briefing }}</div>
+</details>
+{% endif %}
+
+{% if acwr is not none and acwr > 1.5 %}
+<div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid {% if acwr > 1.8 %}#f87171{% else %}#fbbf24{% endif %}">
+  <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:{% if acwr > 1.8 %}#f87171{% else %}#fbbf24{% endif %};margin-bottom:6px">Injury Risk · ACWR {{ "%.2f"|format(acwr) }}</p>
+  <p style="font-size:12px;color:var(--text-dim);line-height:1.55">Acute load vs chronic baseline — see Today for daily gate context.</p>
+</div>
+{% endif %}
+
+{% if power_profile %}
+{% set pp = power_profile %}
+<details class="card" style="padding:14px 20px;margin-bottom:12px">
+  <summary style="cursor:pointer;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Power Profile · FTP {{ pp.ftp_w }}W{% if pp.wkg %} · {{ pp.wkg }} W/kg{% endif %}</summary>
+  <table style="width:100%;margin-top:12px;font-size:12px;border-collapse:collapse">
+    {% for z in pp.zones %}
+    <tr style="border-top:1px solid var(--border)">
+      <td style="padding:6px 8px 6px 0;color:var(--text-dim)">Z{{ z.zone }} {{ z.label }}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-m)">{% if z.zone == 1 %}&lt;{{ z.hi }}{% elif z.zone == 7 %}&gt;{{ z.lo }}{% else %}{{ z.lo }}–{{ z.hi }}{% endif %} W</td>
+    </tr>
+    {% endfor %}
+  </table>
+</details>
+{% endif %}
+
+{% if power_snapshot %}
+{% set ps = power_snapshot %}
+<div class="card" style="padding:14px 20px;margin-bottom:12px">
+  <p class="eyebrow" style="margin-bottom:6px">Last Quality Session · Power</p>
+  <p style="font-family:var(--font-m);font-size:13px;color:var(--text-dim)">{{ ps.label }} ({{ ps.date }}) — NP <strong style="color:#fbbf24">{{ ps.norm_power_w }} W</strong> ({{ ps.pct_ftp }}% FTP)</p>
+</div>
+{% endif %}
+
+{% if trend_note or activity_blurb %}
+<div class="card" style="padding:20px 24px;margin-bottom:12px">
+  <p class="eyebrow" style="margin-bottom:8px">Context · 7-day trend</p>
+  <p style="font-family:var(--font-m);font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">{{ trend_note }}</p>
+  <p class="eyebrow" style="margin-bottom:6px">Recent workouts</p>
+  <p style="font-size:12px;color:var(--muted)">{{ activity_blurb }}</p>
+</div>
+{% endif %}
+
+{% if sparklines %}
+<div class="card" style="padding:20px 24px;margin-bottom:12px">
+  <p class="eyebrow" style="margin-bottom:16px">14-Day Recovery Trends</p>
+  <div style="display:flex;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:120px"><p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:7px">HRV</p><div style="height:44px"><canvas id="sparkHrv"></canvas></div></div>
+    <div style="flex:1;min-width:120px"><p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:7px">Sleep</p><div style="height:44px"><canvas id="sparkSleep"></canvas></div></div>
+    <div style="flex:1;min-width:120px"><p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:7px">Stress</p><div style="height:44px"><canvas id="sparkStress"></canvas></div></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="padding:20px 24px;margin-bottom:12px">
+  <p class="eyebrow" style="margin-bottom:18px">14-Day Composite Trend</p>
+  <div style="height:136px"><canvas id="trendChart"></canvas></div>
+</div>
+
+{% if resting_hr_history and resting_hr_history['values'] | reject('none') | list | length > 1 %}
+<div class="card" style="padding:20px 24px;margin-bottom:12px">
+  <p class="eyebrow" style="margin-bottom:18px">Resting HR · 30-day history{% if resting_hr_history.baseline %} · baseline {{ resting_hr_history.baseline }} bpm{% endif %}</p>
+  <div style="height:136px"><canvas id="restingHrChart"></canvas></div>
+</div>
+{% endif %}
+
+{% if metric_explainer %}
+<details class="card" style="margin-bottom:12px">
+  <summary style="cursor:pointer;padding:16px 20px;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Understanding Your Metrics</summary>
+  <div id="help-content" style="padding:0 20px 20px;font-size:13px;color:var(--text-dim);line-height:1.75"></div>
+</details>
+{% endif %}
+
+<script>
+(function() {
+  {% if chart_labels is defined %}
+  const labels = {{ chart_labels | tojson }};
+  const values = {{ chart_values | tojson }};
+  const tc = document.getElementById('trendChart');
+  if (tc && labels.length) {
+    const colours = values.map(v => v === null ? 'transparent' : v >= 0.25 ? '#a3e635' : v <= -0.25 ? '#f87171' : '#fb923c');
+    new Chart(tc, {
+      type: 'bar',
+      data: { labels, datasets: [{ data: values, backgroundColor: colours, borderRadius: 1, borderSkipped: false }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 } } },
+          y: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 } }, suggestedMin: -2, suggestedMax: 2 }
+        }
+      }
+    });
+  }
+  {% endif %}
+
+  {% if sparklines %}
+  const sp = {{ sparklines | tojson }};
+  function spark(id, colour, key) {
+    const c = document.getElementById(id);
+    if (!c || !sp[key] || sp[key].every(v => v === null)) return;
+    new Chart(c, {
+      type: 'line',
+      data: { labels: sp.labels, datasets: [{ data: sp[key], borderColor: colour, borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, animation: false }
+    });
+  }
+  spark('sparkHrv', '#a3e635', 'hrv');
+  spark('sparkSleep', '#38bdf8', 'sleep');
+  spark('sparkStress', '#fb923c', 'stress');
+  {% endif %}
+
+  {% if resting_hr_history %}
+  const rhr = {{ resting_hr_history | tojson }};
+  const rc = document.getElementById('restingHrChart');
+  if (rc && rhr.values) {
+    const bl = rhr.baseline;
+    const datasets = [{ data: rhr.values, borderColor: '#f87171', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true, fill: true, backgroundColor: 'rgba(248,113,113,0.1)' }];
+    if (bl) datasets.push({ data: rhr.values.map(() => bl), borderColor: '#a1a1aa', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
+    new Chart(rc, {
+      type: 'line', data: { labels: rhr.labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#18181b' } }, y: { grid: { color: '#18181b' } } } }
+    });
+  }
+  {% endif %}
+
+  {% if metric_explainer %}
+  const raw = {{ metric_explainer | tojson }};
+  const hc = document.getElementById('help-content');
+  if (hc) {
+    raw.split(/\n\n+/).forEach(para => {
+      if (!para.trim()) return;
+      const p = document.createElement('p');
+      p.style.marginBottom = '10px';
+      p.innerHTML = para.trim().replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
+      hc.appendChild(p);
+    });
+  }
+  {% endif %}
+})();
+</script>

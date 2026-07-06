@@ -1,0 +1,154 @@
+<script>
+(function() {
+  'use strict';
+
+  function proposalFromEl(el) {
+    return {
+      date: el.dataset.date,
+      duration_min: parseInt(el.dataset.dur, 10),
+      session_type: el.dataset.type,
+      label: el.dataset.label,
+      reason: el.dataset.reason || '',
+      from_label: el.dataset.fromLabel || null,
+      from_duration_min: el.dataset.fromDur ? parseInt(el.dataset.fromDur, 10) : null,
+      date_display: el.dataset.dateDisplay || el.dataset.date,
+    };
+  }
+
+  function setStatus(card, text, colour) {
+    const st = card.querySelector('.plan-change-status');
+    if (!st) return;
+    st.style.display = 'block';
+    st.style.color = colour || 'var(--muted)';
+    st.textContent = text;
+  }
+
+  async function apply(proposal, card) {
+    const applyBtn = card && card.querySelector('.plan-change-apply');
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.textContent = 'Applying…';
+    }
+    try {
+      const res = await fetch('/apply-plan-change', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          date: proposal.date,
+          duration_min: proposal.duration_min,
+          reason: proposal.reason,
+          session_type: proposal.session_type,
+          label: proposal.label,
+        }),
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (res.ok && data.ok) {
+        const g = data.garmin || {};
+        const msg = g.pushed
+          ? '✓ Synced to Garmin Connect.'
+          : '✓ Saved locally — Garmin sync failed.';
+        if (applyBtn) {
+          applyBtn.textContent = g.pushed ? '✓ Synced' : '✓ Saved';
+        }
+        setStatus(card, msg, g.pushed ? '#4ade80' : '#fbbf24');
+        card.dispatchEvent(new CustomEvent('planchange:applied', {detail: {proposal, data}}));
+        return {ok: true, data};
+      }
+      if (applyBtn) {
+        applyBtn.textContent = 'Retry';
+        applyBtn.disabled = false;
+      }
+      const detail = data.detail;
+      const errMsg = typeof detail === 'string' ? detail
+        : Array.isArray(detail) && detail[0]?.msg ? detail[0].msg
+        : 'Could not apply that change.';
+      setStatus(card, errMsg, '#f87171');
+      return {ok: false, error: errMsg};
+    } catch (e) {
+      if (applyBtn) {
+        applyBtn.textContent = 'Retry';
+        applyBtn.disabled = false;
+      }
+      setStatus(card, 'Connection error — please retry.', '#f87171');
+      return {ok: false, error: 'connection'};
+    }
+  }
+
+  function bindCard(card) {
+    if (card.dataset.bound === '1') return;
+    card.dataset.bound = '1';
+    const applyBtn = card.querySelector('.plan-change-apply');
+    const dismissBtn = card.querySelector('.plan-change-dismiss');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', async () => {
+        await apply(proposalFromEl(card), card);
+      });
+    }
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        card.remove();
+        card.dispatchEvent(new CustomEvent('planchange:dismissed'));
+      });
+    }
+  }
+
+  function render(container, proposal, opts) {
+    opts = opts || {};
+    const accent = opts.accent || '#60a5fa';
+    const showDismiss = !!opts.showDismiss;
+    const card = document.createElement('div');
+    card.className = 'plan-change-card card';
+    card.style.cssText = 'padding:14px 20px;margin-bottom:12px;border-left:3px solid ' + accent + ';background:rgba(96,165,250,0.05)';
+    card.dataset.date = proposal.date;
+    card.dataset.dur = proposal.duration_min;
+    card.dataset.type = proposal.session_type;
+    card.dataset.label = proposal.session_label || proposal.label;
+    card.dataset.reason = proposal.reason || '';
+    if (proposal.current_session_label) card.dataset.fromLabel = proposal.current_session_label;
+    if (proposal.current_duration_min != null) card.dataset.fromDur = proposal.current_duration_min;
+    const dateDisp = proposal.date_display || proposal.date;
+    if (dateDisp) card.dataset.dateDisplay = dateDisp;
+
+    const fromLabel = proposal.current_session_label;
+    const newLabel = proposal.session_label || proposal.label;
+    const fromDur = proposal.current_duration_min;
+    const newDur = proposal.duration_min;
+    let bodyHtml = '';
+    if (fromLabel && fromLabel !== newLabel) {
+      bodyHtml = '<p style="margin:0 0 4px"><span style="color:var(--muted)">Was:</span> ' + fromLabel
+        + (fromDur ? ' (' + fromDur + ' min)' : '') + '</p>'
+        + '<p style="margin:0"><span style="color:var(--muted)">→</span> <strong>' + newLabel + '</strong> (' + newDur + ' min)</p>';
+    } else if (fromDur && fromDur !== newDur) {
+      bodyHtml = '<p style="margin:0"><strong>' + newLabel + '</strong>: ' + fromDur + ' min → <strong>' + newDur + ' min</strong></p>';
+    } else {
+      bodyHtml = '<p style="margin:0"><strong>' + newLabel + '</strong> · ' + newDur + ' min</p>';
+    }
+    if (proposal.reason) {
+      bodyHtml += '<p style="font-size:12px;color:var(--muted);margin-top:6px;margin-bottom:0">' + proposal.reason + '</p>';
+    }
+
+    card.innerHTML =
+      '<p class="plan-change-eyebrow" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:' + accent + ';margin-bottom:8px">'
+      + 'Proposed Plan Change · ' + dateDisp + '</p>'
+      + '<div class="plan-change-body" style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px">' + bodyHtml + '</div>'
+      + '<div class="plan-change-actions" style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button type="button" class="plan-change-apply" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:none;color:#09090b;background:' + accent + ';border-radius:2px;font-weight:600">Apply &amp; sync Garmin</button>'
+      + (showDismiss ? '<button type="button" class="plan-change-dismiss" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border);color:var(--muted);background:transparent;border-radius:2px">Dismiss</button>' : '')
+      + '</div>'
+      + '<p class="plan-change-status" style="display:none;font-family:var(--font-m);font-size:11px;margin-top:8px;color:var(--muted)"></p>';
+
+    container.appendChild(card);
+    bindCard(card);
+    return card;
+  }
+
+  function initAll(root) {
+    (root || document).querySelectorAll('.plan-change-card:not([data-bound="1"])').forEach(bindCard);
+  }
+
+  window.PlanChange = {apply, render, bindCard, initAll, proposalFromEl};
+
+  document.addEventListener('DOMContentLoaded', () => initAll());
+})();
+</script>

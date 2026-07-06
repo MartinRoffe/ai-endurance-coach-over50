@@ -1,0 +1,28 @@
+{# week_summary dict from _week_summary() #}
+{% if week_summary %}
+{% set ws = week_summary %}
+{% set type_col = {'bike':'#34d399','tempo':'#fbbf24','ftp':'#fb923c','long':'#f59e0b','strength':'#a78bfa','ruck':'#f472b6','rest':'#3f3f46'} %}
+<div class="card" style="padding:16px 20px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:2px">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted)">{% if ws.week_num %}Week {{ ws.week_num }} of 12{% else %}This Week{% endif %}</p>
+    <span style="font-family:var(--font-m);font-size:11px;{% if ws.pct >= 90 %}color:#a3e635{% elif ws.pct >= 60 %}color:#fb923c{% else %}color:#f87171{% endif %}">{{ ws.pct }}% · {{ ws.done_min_fmt }} / {{ ws.plan_min_fmt }}</span>
+  </div>
+  {% for day in ws.days %}
+  <div style="display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;gap:6px;padding:4px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}{% if day.is_future %}opacity:0.45{% endif %}">
+    <span style="font-family:var(--font-m);font-size:10px;color:{% if day.is_today %}var(--text){% else %}var(--muted){% endif %}">{{ day.day_name | upper }}</span>
+    <span style="font-size:12px;color:{{ type_col.get(day.type, '#a1a1aa') }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{% if day.type == 'rest' %}—{% else %}{{ day.label }}{% endif %}</span>
+    <span style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-align:right">{% if day.dur_min and day.type != 'rest' %}{{ day.dur_min }}m{% endif %}</span>
+    <span style="font-family:var(--font-m);font-size:11px;text-align:right;min-width:42px">
+      {% if day.type == 'rest' %}—
+      {% elif day.is_future %}·
+      {% elif day.completed %}<span style="color:#a3e635">✓ {{ day.actual_min }}m</span>
+      {% elif day.is_today %}·
+      {% else %}<span style="color:#f87171">✗</span>{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+  <div style="margin-top:8px;background:var(--border);height:2px;border-radius:2px;overflow:hidden">
+    <div style="height:100%;width:{{ ws.bar_filled }}%;{% if ws.pct >= 90 %}background:#a3e635{% elif ws.pct >= 60 %}background:#fb923c{% else %}background:#f87171{% endif %}"></div>
+  </div>
+</div>
+{% endif %}

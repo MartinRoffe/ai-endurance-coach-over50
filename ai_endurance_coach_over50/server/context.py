@@ -30,7 +30,9 @@ from ..history import (
     load_blood_pressure,
     load_body_metrics,
     load_ftp_tests,
+    load_morning_snapshot,
     load_recent_activities,
+    metrics_from_snapshot,
     pmc_history,
     power_meter_active,
     raw_history,
@@ -197,12 +199,33 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         stats["resting_hr"] = _rhr_base
     comp_z = composite_score(m, stats)
     comp_label, comp_colour = readiness_label(comp_z)
+    live_comp_z = comp_z
+    live_comp_label, live_comp_colour = comp_label, comp_colour
 
-    # Status badges
+    morning_snapshot = load_morning_snapshot(target)
+    if morning_snapshot:
+        morning_m = metrics_from_snapshot(morning_snapshot, target)
+        morning_comp_z = morning_snapshot.get("composite_z")
+        morning_comp_label = morning_snapshot.get("readiness_label") or comp_label
+        morning_comp_colour = readiness_label(morning_comp_z)[1] if morning_comp_z is not None else comp_colour
+        morning_captured_at = morning_snapshot.get("captured_at")
+    else:
+        morning_m = m
+        morning_comp_z = comp_z
+        morning_comp_label = comp_label
+        morning_comp_colour = comp_colour
+        morning_captured_at = None
+
+    # Morning gate uses frozen snapshot metrics when available
+    comp_z = morning_comp_z
+    comp_label = morning_comp_label
+    comp_colour = morning_comp_colour
+
+    # Status badges (morning recovery signals)
     badges: list[tuple[str, str]] = []
-    if m.hrv_status:
-        text = f"HRV {m.hrv_status.title()}"
-        badges.append((text, _badge_cls(m.hrv_status)))
+    if morning_m.hrv_status:
+        text = f"HRV {morning_m.hrv_status.title()}"
+        badges.append((text, _badge_cls(morning_m.hrv_status)))
     if m.training_status_label:
         text = f"Training {m.training_status_label}"
         badges.append((text, _badge_cls(m.training_status_label)))
@@ -242,29 +265,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
             "context_only": context_only,
         })
 
-    # Chart data — last 14 days
-    history = history_for_chart(days=14)
-    chart_labels = [d.strftime("%d %b") for d, _ in history]
-    chart_values = [round(v, 3) if v is not None else None for _, v in history]
+    # Chart data, sparklines, and resting-HR history moved to build_trends_context()
+    # (Performance tab). Dashboard no longer computes them.
 
-    # Sparklines — last 14 days of key recovery metrics
-    spark_rows = raw_history(14)
-    sparklines = {
-        "hrv":    [r["hrv_last_night"] for r in spark_rows],
-        "sleep":  [r["sleep_score"]    for r in spark_rows],
-        "stress": [r["avg_stress"]     for r in spark_rows],
-        "labels": [r["date"].strftime("%-d %b") for r in spark_rows],
-    }
-
-    # Resting HR history — last 30 days for the trend chart under the metrics grid
-    rhr_rows = raw_history(30)
-    resting_hr_history = {
-        "labels": [r["date"].strftime("%-d %b") for r in rhr_rows],
-        "values": [r["resting_hr"] for r in rhr_rows],
-        "baseline": round(_rhr_base[0], 1) if _rhr_base else None,
-    }
-
-    # Activities — last 7 days, fetch fresh if force_fetch
+    # Activities — refresh on force_fetch (ride kJ etc. computed on Nutrition tab)
     if force_fetch:
         email_addr = os.getenv("GARMIN_EMAIL", "")
         password = os.getenv("GARMIN_PASSWORD", "")
@@ -277,19 +281,50 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 enrich_activities_power(api, acts_raw)
             except Exception:
                 pass
-    activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
 
+    timing = build_advice_timing(target)
+    post_workout = timing["post_workout"]
     date_key = target.isoformat()
+    today_activities = [enrich_activity(a) for a in timing.get("matched_activities") or []]
+
+    # HRV traffic light + session modulation (morning gate metrics)
+    traffic_light = None
+    modulation = None
+    try:
+        from ..modulation import resolve_modulation
+        traffic_light, modulation = resolve_modulation(target, morning_m, morning_comp_z)
+    except Exception:
+        pass
+    if morning_snapshot and morning_snapshot.get("traffic_light_status"):
+        traffic_light = {
+            "status": morning_snapshot["traffic_light_status"],
+            "reason": morning_snapshot.get("traffic_light_reason"),
+            "hrv_z": None,
+            "ratio": None,
+        }
+
     with _ai_cache_lock:
         if force_fetch:
-            _advice_cache.pop(date_key, None)
-        timing = build_advice_timing(target)
-        expected_mode = "post" if timing["post_workout"] else "pre"
-        if get_cached_text(f"advice_mode_v1_{date_key}") != expected_mode:
-            _advice_cache.pop(date_key, None)
-        if date_key not in _advice_cache:
-            _advice_cache[date_key] = generate_advice(m, stats, comp_z)
-        advice_text = _advice_cache[date_key]
+            _advice_cache.pop(f"{date_key}:pre", None)
+            _advice_cache.pop(f"{date_key}:post", None)
+        pre_key = f"{date_key}:pre"
+        if pre_key not in _advice_cache:
+            _advice_cache[pre_key] = generate_advice(
+                morning_m, stats, morning_comp_z,
+                mode="pre",
+                traffic_light=traffic_light,
+            )
+        advice_pre = _advice_cache[pre_key]
+        advice_post = None
+        if post_workout:
+            post_key = f"{date_key}:post"
+            if post_key not in _advice_cache:
+                _advice_cache[post_key] = generate_advice(
+                    m, stats, live_comp_z,
+                    mode="post",
+                    traffic_light=traffic_light,
+                )
+            advice_post = _advice_cache[post_key]
 
     # Today's planned session
     _SESSION_ICONS = {
@@ -334,42 +369,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 "severity": "high" if comp_z < -1.0 else "moderate",
             }
 
-    # Event readiness tracker
-    _EVENT_DATE = date(2026, 9, 13)
-    _PLAN_DAYS  = 84
-    _days_into  = (target - _PLAN_START).days
-    _ws = _week_summary()
-    if target >= _PLAN_START and (_EVENT_DATE - target).days > 0:
-        _week_pct = _ws.get("pct") if _ws else None
-        if _week_pct is None:
-            _on_label, _on_col = "No data yet", "text-zinc-500"
-        elif _week_pct >= 80:
-            _on_label, _on_col = "On track", "text-emerald-400"
-        elif _week_pct >= 50:
-            _on_label, _on_col = "Slightly behind", "text-yellow-400"
-        else:
-            _on_label, _on_col = "Behind", "text-red-400"
-        event_tracker: Optional[dict] = {
-            "week_num":        min(12, max(1, _days_into // 7 + 1)),
-            "plan_pct":        min(100, max(0, int(_days_into / _PLAN_DAYS * 100))),
-            "days_to_event":   (_EVENT_DATE - target).days,
-            "on_track_label":  _on_label,
-            "on_track_colour": _on_col,
-        }
-    else:
-        event_tracker = None
+    # Event tracker, weekly briefing, power profile, gut training — other tabs
 
     # Fatigue alerts
     fatigue_alerts = check_fatigue_alerts(target)
-
-    # HRV traffic light + session modulation suggestion (recovery gate first)
-    traffic_light = None
-    modulation = None
-    try:
-        from ..modulation import resolve_modulation
-        traffic_light, modulation = resolve_modulation(target, m, comp_z)
-    except Exception:
-        pass
 
     # FTP retest / power baseline prompt
     ftp_retest = None
@@ -402,114 +405,16 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     except Exception:
         pass
 
-    power_profile = None
-    try:
-        power_profile = build_power_profile()
-    except Exception:
-        pass
-
-    workouts_stale_ftp = None
-    try:
-        stale = get_cached_text("workouts_stale_ftp")
-        if stale:
-            workouts_stale_ftp = int(stale)
-    except Exception:
-        pass
-
-    # Weekly briefing (Monday only)
-    weekly_briefing: Optional[str] = None
-    is_monday = target.weekday() == 0
-    if is_monday:
-        week_sessions = []
-        for i in range(7):
-            d = target + timedelta(days=i)
-            sess = session_for_date(d)
-            if sess and sess[0] != "rest":
-                day_name = d.strftime("%a")
-                week_sessions.append((day_name, sess[0], sess[1], sess[2]))
-        # Use the most recent entry that actually has PMC numbers — today's
-        # training-load row may not have synced from the watch yet on Monday AM.
-        _pmc_recent = pmc_history(days=7)
-        _pmc_today = next(
-            (e for e in reversed(_pmc_recent) if e.get("ctl") is not None),
-            _pmc_recent[-1] if _pmc_recent else {},
-        )
-        try:
-            from ..report import generate_weekly_briefing
-            weekly_briefing = generate_weekly_briefing(week_sessions, _pmc_today, comp_z)
-        except Exception:
-            pass
-
-    # Nutrition snapshot for readiness tab
-    nutrition_today = None
+    # Nutrition pill for Today gate (full tile lives on /nutrition)
+    nutrition_pill = None
     if m.calories_consumed is not None:
-        _tdee = None
-        try:
-            _rows = tdee_history(1)
-            if _rows:
-                _tdee = _rows[-1].get("tdee")
-        except Exception:
-            pass
-        nutrition_today = {
-            "calories": int(m.calories_consumed),
-            "tdee":     int(round(_tdee)) if _tdee else None,
-            "goal":     int(m.calorie_goal) if m.calorie_goal else None,
-            "carbs":    round(m.carbs_consumed) if m.carbs_consumed is not None else None,
-            "protein":  round(m.protein_consumed) if m.protein_consumed is not None else None,
-        }
-        if nutrition_today["tdee"] and nutrition_today["calories"]:
-            nutrition_today["balance"] = nutrition_today["tdee"] - nutrition_today["calories"]
-        try:
-            from ..energy import ride_kj, ride_kcal_from_kj
-            today_iso = target.isoformat()
-            kj_total = 0.0
-            for act in activities:
-                if act.get("date") != today_iso:
-                    continue
-                pwr = act.get("norm_power_w") or act.get("avg_power_w")
-                secs = act.get("duration_seconds") or 0
-                if pwr and secs and act.get("has_power_meter"):
-                    kj_total += ride_kj(float(pwr), float(secs))
-            if kj_total > 0:
-                nutrition_today["ride_work_kj"] = round(kj_total)
-                nutrition_today["ride_work_kcal"] = ride_kcal_from_kj(kj_total)
-        except Exception:
-            pass
+        nutrition_pill = {"calories": int(m.calories_consumed)}
 
-    gut_training = None
-    try:
-        gut_training = gut_training_summary(target)
-    except Exception:
-        pass
-
-    power_snapshot = None
-    try:
-        tests = load_ftp_tests()
-        ftp_w = next((t["ftp_w"] for t in reversed(tests) if t.get("ftp_w")), None)
-        if ftp_w:
-            for act in load_recent_activities(14):
-                if act.get("type_key") not in _BIKE_TYPE_KEYS:
-                    continue
-                np_w = act.get("norm_power_w")
-                if not np_w:
-                    continue
-                try:
-                    sess = session_for_date_extended(date.fromisoformat(act["date"]))
-                except Exception:
-                    sess = None
-                label = sess[1] if sess else ""
-                if label not in QUALITY_BIKE_LABELS:
-                    continue
-                power_snapshot = {
-                    "label": label,
-                    "date": act["date"],
-                    "norm_power_w": round(np_w),
-                    "ftp_w": ftp_w,
-                    "pct_ftp": round(np_w / ftp_w * 100),
-                }
-                break
-    except Exception:
-        pass
+    post_fatigue = {
+        "body_battery": m.body_battery_current if m.body_battery_current is not None else m.body_battery_morning,
+        "acwr": m.acwr,
+        "training_load_acute": m.training_load_acute,
+    }
 
     return {
         "date": date_key,
@@ -517,34 +422,30 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "comp_z": comp_z,
         "comp_label": comp_label,
         "comp_colour": comp_colour,
+        "live_comp_z": live_comp_z,
+        "live_comp_label": live_comp_label,
+        "live_comp_colour": live_comp_colour,
+        "morning_comp_z": morning_comp_z,
+        "morning_comp_label": morning_comp_label,
+        "morning_comp_colour": morning_comp_colour,
+        "morning_captured_at": morning_captured_at,
+        "morning_snapshot": morning_snapshot,
+        "post_workout": post_workout,
+        "today_activities": today_activities,
+        "post_fatigue": post_fatigue,
+        "advice_pre": advice_pre,
+        "advice_post": advice_post,
         "badges": badges,
         "acwr": m.acwr,
         "metrics": metric_rows,
-        "chart_labels": chart_labels,
-        "chart_values": chart_values,
         "baseline_count": len(stats),
-        "activities": activities,
-        "trend_note": seven_day_composite_trend_csv(),
-        "activity_blurb": _activity_context_blurb(activities),
-        "advice": advice_text,
-        "week_summary": _ws,
-        "metric_explainer": generate_dashboard_explainer(),
-        "sparklines": sparklines,
-        "resting_hr_history": resting_hr_history,
+        "nutrition_pill": nutrition_pill,
         "today_plan": today_plan,
         "swap_suggestion": swap_suggestion,
-        "event_tracker": event_tracker,
         "fatigue_alerts": fatigue_alerts,
         "traffic_light": traffic_light,
         "modulation": modulation,
         "ftp_retest": ftp_retest,
-        "weekly_briefing": weekly_briefing,
-        "is_monday": is_monday,
-        "nutrition_today": nutrition_today,
-        "gut_training": gut_training,
-        "power_snapshot": power_snapshot,
-        "power_profile": power_profile,
-        "workouts_stale_ftp": workouts_stale_ftp,
     }
 
 
@@ -889,6 +790,216 @@ def _week_summary() -> Optional[dict]:
         "last_done_fmt": _fmt_min(last_done_min) if last_done_min else "0m",
         "week_num": week_num,
         "week_start": mon,
+    }
+
+
+_EVENT_DATE = date(2026, 9, 13)
+_PLAN_BLOCK_DAYS = 84
+
+
+def build_event_tracker(target: date) -> Optional[dict]:
+    """Charity event countdown for Calendar / plan views."""
+    _days_into = (target - _PLAN_START).days
+    _ws = _week_summary()
+    if target < _PLAN_START or (_EVENT_DATE - target).days <= 0:
+        return None
+    _week_pct = _ws.get("pct") if _ws else None
+    if _week_pct is None:
+        _on_label, _on_col = "No data yet", "text-zinc-500"
+    elif _week_pct >= 80:
+        _on_label, _on_col = "On track", "text-emerald-400"
+    elif _week_pct >= 50:
+        _on_label, _on_col = "Slightly behind", "text-yellow-400"
+    else:
+        _on_label, _on_col = "Behind", "text-red-400"
+    return {
+        "week_num": min(12, max(1, _days_into // 7 + 1)),
+        "plan_pct": min(100, max(0, int(_days_into / _PLAN_BLOCK_DAYS * 100))),
+        "days_to_event": (_EVENT_DATE - target).days,
+        "on_track_label": _on_label,
+        "on_track_colour": _on_col,
+    }
+
+
+def build_nutrition_today(m: DailyMetrics, target: date) -> Optional[dict]:
+    """Full nutrition tile for /nutrition overview."""
+    if m.calories_consumed is None:
+        return None
+    _tdee = None
+    try:
+        _rows = tdee_history(1)
+        if _rows:
+            _tdee = _rows[-1].get("tdee")
+    except Exception:
+        pass
+    nutrition_today = {
+        "calories": int(m.calories_consumed),
+        "tdee": int(round(_tdee)) if _tdee else None,
+        "goal": int(m.calorie_goal) if m.calorie_goal else None,
+        "carbs": round(m.carbs_consumed) if m.carbs_consumed is not None else None,
+        "protein": round(m.protein_consumed) if m.protein_consumed is not None else None,
+    }
+    if nutrition_today["tdee"] and nutrition_today["calories"]:
+        nutrition_today["balance"] = nutrition_today["tdee"] - nutrition_today["calories"]
+    try:
+        from ..energy import ride_kj, ride_kcal_from_kj
+        today_iso = target.isoformat()
+        kj_total = 0.0
+        for act in load_recent_activities(days=7):
+            if act.get("date") != today_iso:
+                continue
+            pwr = act.get("norm_power_w") or act.get("avg_power_w")
+            secs = act.get("duration_seconds") or 0
+            if pwr and secs and act.get("has_power_meter"):
+                kj_total += ride_kj(float(pwr), float(secs))
+        if kj_total > 0:
+            nutrition_today["ride_work_kj"] = round(kj_total)
+            nutrition_today["ride_work_kcal"] = ride_kcal_from_kj(kj_total)
+    except Exception:
+        pass
+    return nutrition_today
+
+
+def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict[str, Any]:
+    """Charts, trends, and depth content for Performance tab."""
+    if m is None:
+        m = load(target) or DailyMetrics(date=target)
+    stats = baseline_stats(target)
+    _rhr_base = field_baseline("resting_hr", target)
+    if _rhr_base:
+        stats["resting_hr"] = _rhr_base
+
+    history = history_for_chart(days=14)
+    chart_labels = [d.strftime("%d %b") for d, _ in history]
+    chart_values = [round(v, 3) if v is not None else None for _, v in history]
+
+    spark_rows = raw_history(14)
+    sparklines = {
+        "hrv": [r["hrv_last_night"] for r in spark_rows],
+        "sleep": [r["sleep_score"] for r in spark_rows],
+        "stress": [r["avg_stress"] for r in spark_rows],
+        "labels": [r["date"].strftime("%-d %b") for r in spark_rows],
+    }
+
+    rhr_rows = raw_history(30)
+    resting_hr_history = {
+        "labels": [r["date"].strftime("%-d %b") for r in rhr_rows],
+        "values": [r["resting_hr"] for r in rhr_rows],
+        "baseline": round(_rhr_base[0], 1) if _rhr_base else None,
+    }
+
+    activities = [enrich_activity(a) for a in load_recent_activities(days=7)]
+    comp_z = composite_score(m, stats)
+
+    metric_rows = []
+    for field, (label_str, unit) in FIELD_LABELS.items():
+        value = getattr(m, field)
+        val_str = fmt_value(field, value)
+        context_only = field in _UNSCORED
+        if field in stats and value is not None:
+            mean, std = stats[field]
+            z = z_score(value, mean, std, field)
+            avg_str = fmt_value(field, mean)
+            col = _value_colour(z)
+        else:
+            z = None
+            avg_str = "—"
+            col = "text-white"
+        metric_rows.append({
+            "label": label_str,
+            "value": val_str,
+            "unit": unit if value is not None else "",
+            "avg": avg_str,
+            "z_val": z,
+            "value_colour": col,
+            "context_only": context_only,
+        })
+
+    weekly_briefing: Optional[str] = None
+    is_monday = target.weekday() == 0
+    if is_monday:
+        week_sessions = []
+        for i in range(7):
+            d = target + timedelta(days=i)
+            sess = session_for_date(d)
+            if sess and sess[0] != "rest":
+                week_sessions.append((d.strftime("%a"), sess[0], sess[1], sess[2]))
+        _pmc_recent = pmc_history(days=7)
+        _pmc_today = next(
+            (e for e in reversed(_pmc_recent) if e.get("ctl") is not None),
+            _pmc_recent[-1] if _pmc_recent else {},
+        )
+        try:
+            from ..report import generate_weekly_briefing
+            weekly_briefing = generate_weekly_briefing(week_sessions, _pmc_today, comp_z)
+        except Exception:
+            pass
+
+    power_profile = None
+    try:
+        power_profile = build_power_profile()
+    except Exception:
+        pass
+
+    power_snapshot = None
+    try:
+        tests = load_ftp_tests()
+        ftp_w = next((t["ftp_w"] for t in reversed(tests) if t.get("ftp_w")), None)
+        if ftp_w:
+            for act in load_recent_activities(14):
+                if act.get("type_key") not in _BIKE_TYPE_KEYS:
+                    continue
+                np_w = act.get("norm_power_w")
+                if not np_w:
+                    continue
+                try:
+                    sess = session_for_date_extended(date.fromisoformat(act["date"]))
+                except Exception:
+                    sess = None
+                label = sess[1] if sess else ""
+                if label not in QUALITY_BIKE_LABELS:
+                    continue
+                power_snapshot = {
+                    "label": label,
+                    "date": act["date"],
+                    "norm_power_w": round(np_w),
+                    "ftp_w": ftp_w,
+                    "pct_ftp": round(np_w / ftp_w * 100),
+                }
+                break
+    except Exception:
+        pass
+
+    workouts_stale_ftp = None
+    try:
+        stale = get_cached_text("workouts_stale_ftp")
+        if stale:
+            workouts_stale_ftp = int(stale)
+    except Exception:
+        pass
+
+    moderate_alerts = [
+        a for a in check_fatigue_alerts(target) if a.get("severity") != "HIGH"
+    ]
+
+    return {
+        "chart_labels": chart_labels,
+        "chart_values": chart_values,
+        "sparklines": sparklines,
+        "resting_hr_history": resting_hr_history,
+        "trend_note": seven_day_composite_trend_csv(),
+        "activity_blurb": _activity_context_blurb(activities),
+        "activities": activities,
+        "metrics": metric_rows,
+        "metric_explainer": generate_dashboard_explainer(),
+        "weekly_briefing": weekly_briefing,
+        "is_monday": is_monday,
+        "power_profile": power_profile,
+        "power_snapshot": power_snapshot,
+        "workouts_stale_ftp": workouts_stale_ftp,
+        "moderate_fatigue_alerts": moderate_alerts,
+        "acwr": m.acwr,
+        "baseline_count": len(stats),
     }
 
 

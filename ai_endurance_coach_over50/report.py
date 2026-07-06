@@ -120,23 +120,57 @@ def _build_advice_prompt(
     return "\n".join(lines)
 
 
-def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> str:
+def generate_advice(
+    m: DailyMetrics,
+    stats: dict,
+    comp_z: Optional[float],
+    *,
+    mode: Optional[str] = None,
+    traffic_light: Optional[dict] = None,
+) -> str:
+    from .history import maybe_capture_morning_snapshot
+
     timing = build_advice_timing(m.date)
-    mode = "post" if timing["post_workout"] else "pre"
-    mode_key = _advice_mode_cache_key(m.date)
-    cached = load_advice(m.date)
+    mode = mode or ("post" if timing["post_workout"] else "pre")
+    if mode == "post" and not timing["post_workout"]:
+        return ""
+
+    mode_key = (
+        f"advice_mode_post_v1_{m.date.isoformat()}"
+        if mode == "post"
+        else _advice_mode_cache_key(m.date)
+    )
+    cached = load_advice(m.date, mode=mode)  # type: ignore[arg-type]
     if cached and get_cached_text(mode_key) == mode:
         return cached
 
+    advice_timing = dict(timing)
+    if mode == "pre":
+        advice_timing["post_workout"] = False
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return _rule_based_advice(m, stats, comp_z, timing=timing)
+        text = _rule_based_advice(m, stats, comp_z, timing=advice_timing)
+        save_advice(m.date, text, mode=mode)  # type: ignore[arg-type]
+        if mode == "pre":
+            label, _ = readiness_label(comp_z)
+            maybe_capture_morning_snapshot(
+                m.date, m, stats,
+                composite_z=comp_z,
+                readiness_label=label,
+                traffic_light=traffic_light,
+                advice_pre=text,
+            )
+        return text
 
     from .history import power_meter_active
-    system = coach_persona_brief(power_meter_active(), post_workout=timing["post_workout"])
+    system = coach_persona_brief(
+        power_meter_active(),
+        post_workout=advice_timing["post_workout"],
+    )
 
     client = anthropic.Anthropic(api_key=api_key)
-    prompt = _build_advice_prompt(m, stats, comp_z, timing=timing)
+    prompt = _build_advice_prompt(m, stats, comp_z, timing=advice_timing)
 
     try:
         message = client.messages.create(
@@ -147,13 +181,22 @@ def generate_advice(m: DailyMetrics, stats: dict, comp_z: Optional[float]) -> st
             system=system,
         )
         text = message.content[0].text
-        save_advice(m.date, text)
+        save_advice(m.date, text, mode=mode)  # type: ignore[arg-type]
         set_cached_text(mode_key, mode)
+        if mode == "pre":
+            label, _ = readiness_label(comp_z)
+            maybe_capture_morning_snapshot(
+                m.date, m, stats,
+                composite_z=comp_z,
+                readiness_label=label,
+                traffic_light=traffic_light,
+                advice_pre=text,
+            )
         return text
     except anthropic.APIStatusError as e:
         import logging
         logging.getLogger(__name__).warning("Anthropic API error (%s), using rule-based advice", e.status_code)
-        return _rule_based_advice(m, stats, comp_z, timing=timing)
+        return _rule_based_advice(m, stats, comp_z, timing=advice_timing)
 
 
 def _rule_based_advice(
@@ -467,6 +510,15 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
           </td>
         </tr>
 
+        <!-- Post-debrief pointer -->
+        <tr>
+          <td style="padding:0 32px 20px;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">
+              After you train and sync your watch, the post-workout debrief is on the <strong>Today</strong> tab in the dashboard.
+            </p>
+          </td>
+        </tr>
+
         {_planned_session_html(m.date)}
         {_week_completion_html(m.date)}
 
@@ -531,7 +583,7 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
     label, _ = readiness_label(comp_z)
 
     activities = load_recent_activities(days=7)
-    advice = generate_advice(m, stats, comp_z)
+    advice = generate_advice(m, stats, comp_z, mode="pre")
     score_str = f"{comp_z:+.2f}σ" if comp_z is not None else "—"
     subject = f"Readiness {m.date.strftime('%-d %b')} · {score_str} {label}"
     html = build_html(m, stats, comp_z, advice, activities)

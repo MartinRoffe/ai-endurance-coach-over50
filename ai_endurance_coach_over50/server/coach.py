@@ -50,6 +50,36 @@ def _coach_system() -> str:
         "You have access to their live Garmin data in the context block below. "
         "Use it to give specific, evidence-based advice referencing actual numbers.\n\n"
         "Response style: 2–4 short paragraphs. Use **bold** for key numbers/points.\n\n"
+        "Durable state & capabilities: your write powers are EXACTLY these — propose_plan_change "
+        "(athlete confirms; also pushes that date to Garmin), save_commitment / resolve_commitment "
+        "(durable checkpoint, guardrail and decision-rule log), and add_session_note (short note "
+        "shown on a date's calendar tile). You can NOT set reminders or alarms, send emails, edit "
+        "Garmin workout structure directly, or schedule anything else — never offer an action "
+        "outside this list; if the athlete needs one, tell them how to do it themselves. When you "
+        "agree a checkpoint, guardrail or decision rule with the athlete, persist it with "
+        "save_commitment rather than just saying 'locked in' — unsaved agreements do not survive "
+        "between conversations. When a commitment in context is flagged DUE, evaluate it against "
+        "its decision rule and baseline, then call resolve_commitment with the outcome.\n\n"
+        "Grounding: the Key Dates and Canonical Baselines sections in context are the single "
+        "source of truth. Never state camp/event/test timing from memory — read Key Dates. When "
+        "citing a baseline (HRV, resting HR, weight, muscle mass, FTP, W/kg), quote ONLY the "
+        "Canonical Baselines numbers, never values recalled from earlier in the conversation — "
+        "they may be stale or wrong.\n\n"
+        "Measurement noise: never trigger a decision off a single data point. Judge weight and "
+        "muscle mass on the 14-day rolling averages in Canonical Baselines (bio-impedance swings "
+        "±0.5–1 kg day to day). Treat an FTP retest within ±3% of the previous result as FLAT "
+        "(test noise), not a real gain or loss. Judge HRV on the z-score and 7d/30d ratio in "
+        "context, never on one night. Guardrails and decision rules must be framed on rolling "
+        "averages and noise bands, not raw single readings.\n\n"
+        "Nutrition periodization: sustained calorie deficits belong in BASE phases. During "
+        "build/peak blocks and training camps, steer toward maintenance so quality work is "
+        "fuelled and absorbed — at 50+ a hard cut and a hard block don't mix. If the Training "
+        "Phase & Nutrition Periodization section flags a conflict, raise it whenever weight, "
+        "fuelling or trajectory targets come up.\n\n"
+        "Projections: when sketching trajectories (FTP, weight, W/kg, CTL), give RANGES anchored "
+        "to scheduled checkpoints (FTP retests, camps), state the assumptions, and recalibrate at "
+        "each test. A solid training block yields roughly 5–15W — do not compound best-case block "
+        "gains into a precise long-range point estimate.\n\n"
         "When you recommend modifying a planned session, call propose_plan_change once per date — "
         "each call renders its own confirmation card. For multi-day swaps (e.g. defer quality to tomorrow), "
         "call the tool separately for every date that changes. After the tool call(s), briefly explain "
@@ -83,6 +113,12 @@ def _coach_system() -> str:
         "standard thresholds; the absolute CTL/ATL/TSB values are NOT (Garmin units). A practical exception: "
         "an imminent FTP/LTHR retest needs a genuine recovery window regardless of build intent, since a "
         "fatigued test suppresses the result and mis-anchors zones.\n\n"
+        "Escalation contract: the athlete's **Today** tab (/) is the daily gate — morning readiness, "
+        "HRV traffic light, today's session, and post-workout debrief live there. Do NOT repeat today's "
+        "gate advice or post-debrief unless they explicitly ask. Do NOT re-summarise the latest activity "
+        "analysis — point them to the Analysis tab or call get_activity_analysis. For vague questions, "
+        "clarify scope first (today vs next two weeks). Your default lane is multi-day plan swaps, event "
+        "pacing, fuelling depth, and programme philosophy — not 'should I train today?'\n\n"
     )
     return base + hr_channel_note(power_meter_active()) + "\n\n" + ATHLETE_CONSTRAINTS
 
@@ -105,6 +141,91 @@ _COACH_TOOL = {
         "required": ["date", "duration_min", "reason"],
     },
 }
+
+
+# Action tools: execute immediately (no confirmation card) and persist durable
+# coaching state. Together with propose_plan_change and the read tools below,
+# this is the coach's COMPLETE power set — _coach_system() states this so the
+# coach never offers actions it can't take (reminders, emails, etc.).
+_ACTION_TOOLS = [
+    {
+        "name": "save_commitment",
+        "description": (
+            "Persist a durable coaching commitment — a checkpoint, guardrail or decision rule "
+            "agreed with the athlete. Open commitments are re-injected into your context every "
+            "conversation until resolved, so use this whenever you'd otherwise say 'locked in' "
+            "or 'we'll track that'."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "title":         {"type": "string", "description": "Short name, e.g. 'Guardrail checkpoint #1 — 5 Aug FTP test'"},
+            "review_date":   {"type": "string", "description": "When to evaluate it (YYYY-MM-DD), if date-bound"},
+            "decision_rule": {"type": "string", "description": "The agreed rule verbatim: thresholds/noise bands, which signal governs, what action follows"},
+            "baseline":      {"type": "string", "description": "Baseline numbers captured now for later comparison, e.g. 'FTP 202W; muscle 14d avg 64.8kg; HRV 30d 42.2ms'"},
+        }, "required": ["title"]},
+    },
+    {
+        "name": "resolve_commitment",
+        "description": "Mark an open commitment as resolved once its checkpoint has been evaluated. Record the outcome.",
+        "input_schema": {"type": "object", "properties": {
+            "commitment_id": {"type": "integer", "description": "The [id] shown in the Open Coach Commitments context section"},
+            "resolution":    {"type": "string", "description": "Outcome vs the decision rule, e.g. 'FTP 208W (+3%, up); muscle held — deficit continues'"},
+        }, "required": ["commitment_id", "resolution"]},
+    },
+    {
+        "name": "add_session_note",
+        "description": (
+            "Attach a short coaching note to a specific date — it appears on that day's calendar "
+            "tile (✦ badge) and in your own context. Use for pre-test reminders and execution "
+            "cues, e.g. 'Keep genuinely easy — FTP test + guardrail checkpoint Wednesday'. "
+            "One note per date; a new note replaces the old."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "date": {"type": "string", "description": "YYYY-MM-DD"},
+            "note": {"type": "string", "description": "One or two short sentences"},
+        }, "required": ["date", "note"]},
+    },
+]
+
+_ACTION_TOOL_NAMES = {t["name"] for t in _ACTION_TOOLS}
+
+
+def _dispatch_action_tool(name: str, tool_input: dict) -> str:
+    """Run one action tool and return a plain-text result. Never raises."""
+    try:
+        if name == "save_commitment":
+            from ..history import save_coach_commitment
+            title = (tool_input.get("title") or "").strip()[:200]
+            if not title:
+                return "Commitment title is empty — nothing saved."
+            cid = save_coach_commitment(
+                title=title,
+                decision_rule=tool_input.get("decision_rule"),
+                review_date=tool_input.get("review_date"),
+                baseline=tool_input.get("baseline"),
+            )
+            return f"Commitment saved (id {cid}). It will appear in context every conversation until resolved."
+
+        if name == "resolve_commitment":
+            from ..history import resolve_coach_commitment
+            ok = resolve_coach_commitment(
+                int(tool_input["commitment_id"]),
+                (tool_input.get("resolution") or "").strip()[:500],
+            )
+            return "Commitment resolved." if ok else "No open commitment with that id."
+
+        if name == "add_session_note":
+            from ..history import set_session_note
+            d = date.fromisoformat(tool_input["date"])  # validates format
+            note = (tool_input.get("note") or "").strip()[:300]
+            if not note:
+                return "Note text is empty — nothing saved."
+            set_session_note(d.isoformat(), note)
+            return f"Note saved for {d.isoformat()} — it will show on that day's calendar tile."
+
+        return f"Unknown tool: {name}"
+    except Exception as exc:
+        logger.exception("action-tool %s failed", name)
+        return f"({name} failed: {exc})"
 
 
 # Read-only tools: the always-on context carries a summary of every tab; these let
@@ -417,7 +538,7 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, list[dict]]:
     system = _coach_system() + f"\n\n## Current Context\n{context}"
 
     client = _anthropic.Anthropic(api_key=api_key)
-    all_tools = [_COACH_TOOL, *_READ_TOOLS]
+    all_tools = [_COACH_TOOL, *_ACTION_TOOLS, *_READ_TOOLS]
 
     convo = list(messages)
     text_parts: list[str] = []
@@ -439,6 +560,8 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, list[dict]]:
                 if block.name == "propose_plan_change":
                     proposals.append(_enrich_plan_proposal(dict(block.input)))
                     content = "Proposal ready for athlete confirmation."
+                elif block.name in _ACTION_TOOL_NAMES:
+                    content = _dispatch_action_tool(block.name, dict(block.input))
                 elif block.name in _READ_TOOL_NAMES:
                     content = _dispatch_read_tool(block.name, dict(block.input))
                 else:
@@ -497,7 +620,8 @@ def _regenerate_coach_memory(api_key: str) -> None:
         "Write a replacement memo (150–250 words) covering:\n"
         "- Goals and timeline (Ghent to Amsterdam charity ride 13–14 Sep 2026, Haute Route Alpes 2027)\n"
         "- Tendencies (e.g. pushes through fatigue, HRV baseline, training response)\n"
-        "- Plan decisions made via coach chat\n"
+        "- Plan decisions made via coach chat (formal checkpoints/guardrails live in the "
+        "coach_commitments store and are injected separately — don't duplicate them here)\n"
         "- Long-term patterns worth watching\n"
         "Third person (athlete/they). Specific, not generic. Replace the previous memo entirely."
     )
@@ -532,7 +656,7 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     context = _build_coach_context()
     system = _coach_system() + f"\n\n## Current Context\n{context}"
     client = _anthropic.Anthropic(api_key=api_key)
-    all_tools = [_COACH_TOOL, *_READ_TOOLS]
+    all_tools = [_COACH_TOOL, *_ACTION_TOOLS, *_READ_TOOLS]
 
     full_text: list[str] = []
     proposals: list[dict] = []
@@ -564,6 +688,9 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
                     proposals.append(enriched)
                     yield f"data: {json.dumps({'type': 'proposal', 'data': enriched})}\n\n"
                     content = "Proposal ready for athlete confirmation."
+                elif block.name in _ACTION_TOOL_NAMES:
+                    yield f"data: {json.dumps({'type': 'tool', 'name': block.name})}\n\n"
+                    content = _dispatch_action_tool(block.name, dict(block.input))
                 elif block.name in _READ_TOOL_NAMES:
                     yield f"data: {json.dumps({'type': 'tool', 'name': block.name})}\n\n"
                     content = _dispatch_read_tool(block.name, dict(block.input))

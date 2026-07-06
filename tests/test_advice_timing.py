@@ -7,6 +7,7 @@ from ai_endurance_coach_over50.coach_context import (
     coach_persona_brief,
 )
 from ai_endurance_coach_over50.history import save_activities
+from ai_endurance_coach_over50.history.text_cache import load_advice
 from ai_endurance_coach_over50.report import _build_advice_prompt
 from ai_endurance_coach_over50.metrics import DailyMetrics
 from ai_endurance_coach_over50.history import baseline_stats, composite_score
@@ -97,3 +98,18 @@ def test_coach_persona_brief_post_workout():
     brief = coach_persona_brief(True, post_workout=True)
     assert "ALREADY completed" in brief
     assert "morning pre-session briefing" in brief
+
+
+def test_load_advice_pre_from_snapshot():
+    from ai_endurance_coach_over50.history import capture_morning_snapshot
+
+    target = date(2026, 7, 9)
+    m = DailyMetrics(date=target, hrv_last_night=45, sleep_score=80)
+    capture_morning_snapshot(
+        target, m,
+        composite_z=0.2,
+        readiness_label="Average",
+        traffic_light={"status": "green", "reason": "ok"},
+        advice_pre="Frozen morning advice.",
+    )
+    assert load_advice(target, mode="pre") == "Frozen morning advice."

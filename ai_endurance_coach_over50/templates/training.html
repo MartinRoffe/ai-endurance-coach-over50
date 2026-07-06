@@ -500,7 +500,9 @@
 <body>
 
 {% set active_tab = 'training' %}
+{% set plan_section = plan_section | default('programme') %}
 {% include 'nav.html' %}
+{% include 'plan_subnav.html' %}
 
 <div class="hero">
   <div class="container">

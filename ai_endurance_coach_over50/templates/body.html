@@ -27,7 +27,9 @@
 <body>
 
 {% set active_tab = 'body' %}
+{% set recovery_section = recovery_section | default('body') %}
 {% include 'nav.html' %}
+{% include 'recovery_subnav.html' %}
 
 <div class="page">
 

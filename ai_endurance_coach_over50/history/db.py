@@ -254,6 +254,38 @@ def _ensure_power_durability_schema(con: sqlite3.Connection) -> None:
     """)
 
 
+def _ensure_commitments_schema(con: sqlite3.Connection) -> None:
+    """Durable coach commitments: checkpoints, guardrails and decision rules
+    agreed in coach chat. Unlike coach_memory (a lossy summary), these survive
+    verbatim and are re-injected into the coach context until resolved."""
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS coach_commitments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_date TEXT NOT NULL,
+            review_date TEXT,
+            title TEXT NOT NULL,
+            decision_rule TEXT,
+            baseline TEXT,
+            status TEXT NOT NULL DEFAULT 'open',
+            resolution TEXT,
+            resolved_at TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def _ensure_session_notes_schema(con: sqlite3.Connection) -> None:
+    """Per-date coaching notes (e.g. 'keep genuinely easy — FTP test Wednesday').
+    Rendered on calendar tiles via the existing COACH_NOTES hook in plan.py."""
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS session_notes (
+            date TEXT PRIMARY KEY,
+            note TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
 def _ensure_fuelling_log_schema(con: sqlite3.Connection) -> None:
     con.execute("""
         CREATE TABLE IF NOT EXISTS fuelling_logs (

@@ -300,10 +300,18 @@ def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None
             status = " — COMPLETED today"
         elif timing.get("is_today"):
             status = " — not yet logged"
-    return [
+    lines = [
         "## Today's Planned Workout",
         f"  {label} — {discipline} ({stype}, {dur_str}){note}{status}",
     ]
+    try:
+        from .history import list_session_notes
+        day_note = list_session_notes().get(target.isoformat())
+        if day_note:
+            lines.append(f"  Coach note for this day: {day_note}")
+    except Exception:
+        pass
+    return lines
 
 
 def _section_week_ahead(target: date) -> list[str]:
@@ -404,6 +412,219 @@ def _section_rag(session_type: Optional[str], limit: int = 2) -> list[str]:
         lines.append(hdr)
         if p.get("summary"):
             lines.append(f"    {p['summary']}")
+    return lines
+
+
+def _section_key_dates(today: date) -> list[str]:
+    """Canonical timing block. The coach is instructed to read plan/camp/event/test
+    timing from here and never reason about dates from memory (kills the
+    'it lands before/after Tenerife' error class)."""
+    from .plan import CAMP_START, CHARITY_DAYS, _PLAN_DAYS
+    from .hr_plan import HR_EVENT_STAGES
+
+    def _until(d: date) -> str:
+        n = (d - today).days
+        if n > 1:
+            return f"in {n} days"
+        if n == 1:
+            return "tomorrow"
+        if n == 0:
+            return "TODAY"
+        return f"{-n} days ago"
+
+    lines = ["## Key Dates (canonical — read timing from here, never from memory)"]
+    plan_end = PLAN_START + timedelta(days=_PLAN_DAYS - 1)
+    lines.append(
+        f"  12-week charity plan: {PLAN_START.isoformat()} → {plan_end.isoformat()} "
+        f"(ends {_until(plan_end)})"
+    )
+    next_ftp = None
+    for i in range(400):
+        d = today + timedelta(days=i)
+        sess = session_for_date_extended(d) or hr_session_for_date(d)
+        if sess and sess[0] == "ftp":
+            next_ftp = (d, sess[1])
+            break
+    if next_ftp:
+        lines.append(
+            f"  Next FTP test: {next_ftp[0].strftime('%a %d %b %Y')} ({next_ftp[0].isoformat()}) "
+            f"— {next_ftp[1]} ({_until(next_ftp[0])})"
+        )
+    lines.append(
+        f"  Tenerife camp: {CAMP_START.isoformat()} → {CAMP_END.isoformat()} "
+        f"(starts {_until(CAMP_START)})"
+    )
+    if CHARITY_DAYS:
+        c1, c2 = CHARITY_DAYS[0]["date"], CHARITY_DAYS[-1]["date"]
+        lines.append(f"  {CHARITY_EVENT_NAME}: {c1.isoformat()} → {c2.isoformat()} (starts {_until(c1)})")
+    lines.append(f"  Haute Route 46-week plan starts: {HR_PLAN_START.isoformat()} ({_until(HR_PLAN_START)})")
+    if HR_EVENT_STAGES:
+        h1, h2 = HR_EVENT_STAGES[0]["date"], HR_EVENT_STAGES[-1]["date"]
+        lines.append(f"  {HR_EVENT_NAME}: {h1.isoformat()} → {h2.isoformat()} (starts {_until(h1)})")
+    return lines
+
+
+def _section_canonical_baselines(today: date, m: "DailyMetrics") -> list[str]:
+    """Single source of truth for baseline numbers. The coach is instructed to
+    quote ONLY these when citing HRV/RHR/weight/muscle/FTP baselines, so the
+    same conversation can't drift between two different 'baselines'."""
+    import statistics as _st
+    lines: list[str] = []
+    rows = raw_history(31)
+    hrv_vals = [r["hrv_last_night"] for r in rows if r.get("hrv_last_night") is not None]
+    if hrv_vals:
+        mean30 = _st.mean(hrv_vals)
+        sd30 = _st.pstdev(hrv_vals) if len(hrv_vals) > 1 else 0.0
+        seg = f"  HRV: 30d baseline {mean30:.1f} ± {sd30:.1f} ms  |  7d avg {_st.mean(hrv_vals[-7:]):.1f} ms"
+        if m.hrv_last_night is not None:
+            seg += f"  |  last night {m.hrv_last_night:.0f} ms"
+        lines.append(seg)
+    rhr_vals = [r["resting_hr"] for r in rows if r.get("resting_hr") is not None]
+    if rhr_vals:
+        seg = f"  Resting HR: 30d avg {_st.mean(rhr_vals):.0f} bpm"
+        if m.resting_hr is not None:
+            seg += f"  |  today {m.resting_hr:.0f} bpm"
+        lines.append(seg)
+    body_rows = load_body_metrics(days=14)
+    w_rows = [(r["date"], r["weight_kg"]) for r in body_rows if r.get("weight_kg") is not None]
+    mm_rows = [(r["date"], r["muscle_mass_kg"]) for r in body_rows if r.get("muscle_mass_kg") is not None]
+    avg_w = None
+    if w_rows:
+        avg_w = sum(v for _, v in w_rows) / len(w_rows)
+        lines.append(
+            f"  Weight: 14d rolling avg {avg_w:.1f} kg  |  latest {w_rows[-1][1]:.1f} kg ({w_rows[-1][0]})"
+        )
+    if mm_rows:
+        avg_mm = sum(v for _, v in mm_rows) / len(mm_rows)
+        lines.append(
+            f"  Muscle mass: 14d rolling avg {avg_mm:.1f} kg  |  latest {mm_rows[-1][1]:.1f} kg ({mm_rows[-1][0]})"
+        )
+    ftp_w = ftp_date = None
+    for t in reversed(load_ftp_tests()):
+        if t.get("ftp_w"):
+            ftp_w, ftp_date = int(t["ftp_w"]), t["date"]
+            break
+    if ftp_w:
+        seg = f"  FTP: {ftp_w} W (test {ftp_date})"
+        if avg_w:
+            seg += f"  |  {ftp_w / avg_w:.2f} W/kg on 14d avg weight"
+        lines.append(seg)
+    if not lines:
+        return []
+    return [
+        "## Canonical Baselines (single source of truth — when citing baselines, quote ONLY these)",
+        *lines,
+        "  Noise bands: judge weight/muscle on the 14d averages (single scale readings swing ±0.5–1 kg); "
+        "FTP retest within ±3% of previous = FLAT; HRV via z-score and 7d/30d ratio, never one night.",
+    ]
+
+
+def _section_commitments(today: date) -> list[str]:
+    """Open durable commitments (checkpoints / guardrails / decision rules)."""
+    try:
+        from .history import list_coach_commitments
+        rows = list_coach_commitments("open")
+    except Exception:
+        return []
+    if not rows:
+        return []
+    lines = ["## Open Coach Commitments (durable — evaluate & resolve_commitment when DUE)"]
+    for r in rows:
+        due = ""
+        if r.get("review_date"):
+            try:
+                rd = date.fromisoformat(r["review_date"])
+                due = "  ⚠ DUE NOW" if rd <= today else f"  (review {r['review_date']})"
+            except ValueError:
+                due = f"  (review {r['review_date']})"
+        lines.append(f"  [{r['id']}] {r['title']}{due}")
+        if r.get("decision_rule"):
+            lines.append(f"      Rule: {r['decision_rule']}")
+        if r.get("baseline"):
+            lines.append(f"      Baseline: {r['baseline']}")
+    return lines
+
+
+def _section_session_notes(today: date, days: int = 14) -> list[str]:
+    """Upcoming per-date coaching notes (shown on calendar tiles)."""
+    try:
+        from .history import list_session_notes
+        notes = list_session_notes()
+    except Exception:
+        return []
+    end = (today + timedelta(days=days)).isoformat()
+    upcoming = sorted((d, n) for d, n in notes.items() if today.isoformat() <= d <= end)
+    if not upcoming:
+        return []
+    lines = [f"## Session Notes (on calendar tiles, next {days} days)"]
+    for d, n in upcoming:
+        lines.append(f"  {d}: {n}")
+    return lines
+
+
+def _current_training_phase(today: date) -> tuple[str, str]:
+    """(label, category); category ∈ base/build/peak/taper/camp/transition."""
+    from .plan import CAMP_START, CHARITY_DAYS, _PLAN_DAYS
+    if CAMP_START <= today <= CAMP_END:
+        return ("Tenerife camp (concentrated overload)", "camp")
+    if CHARITY_DAYS and CHARITY_DAYS[0]["date"] - timedelta(days=14) <= today <= CHARITY_DAYS[-1]["date"]:
+        return (f"{CHARITY_EVENT_NAME} taper/event window", "taper")
+    delta = (today - PLAN_START).days
+    if 0 <= delta < _PLAN_DAYS:
+        wk = delta // 7 + 1
+        if wk in (4, 8):
+            return (f"12-week charity plan, week {wk}/12 (deload)", "base")
+        cat = "base" if wk <= 4 else "build"
+        return (f"12-week charity plan, week {wk}/12 ({cat})", cat)
+    if today >= HR_PLAN_START:
+        wk = (today - HR_PLAN_START).days // 7 + 1
+        for ph in HR_PHASES:
+            if ph["week_start"] <= wk <= ph["week_end"]:
+                low = ph["label"].lower()
+                cat = ("taper" if "taper" in low
+                       else "peak" if "peak" in low
+                       else "build" if "build" in low
+                       else "base")
+                return (f"Haute Route plan, week {wk}/46 — {ph['label']}", cat)
+    return ("transition (between plan blocks)", "transition")
+
+
+def _section_phase_nutrition(today: date) -> list[str]:
+    """Current phase + 14-day energy balance, with an explicit conflict flag when a
+    sustained deficit coincides with a build/peak/camp block (deficits belong in base)."""
+    label, cat = _current_training_phase(today)
+    lines = ["## Training Phase & Nutrition Periodization", f"  Current phase: {label}"]
+    try:
+        rows = raw_history(14)
+        tdee_by: dict[str, Any] = {}
+        for t in tdee_history(14):
+            d = t["date"]
+            tdee_by[d.isoformat() if hasattr(d, "isoformat") else str(d)] = t.get("tdee")
+        deltas = []
+        for r in rows:
+            c = r.get("calories_consumed")
+            di = r["date"].isoformat() if hasattr(r["date"], "isoformat") else str(r["date"])
+            t = tdee_by.get(di)
+            if c is not None and t:
+                deltas.append(c - t)
+        if deltas:
+            avg_bal = sum(deltas) / len(deltas)
+            lines.append(f"  14d avg energy balance: {avg_bal:+.0f} kcal/day ({len(deltas)} logged days)")
+            if avg_bal <= -300 and cat in ("build", "peak", "camp"):
+                lines.append(
+                    "  ⚠ CONFLICT: sustained deficit during a build/peak/camp block — calorie cuts and "
+                    "peak adaptation pull against each other at 50+. Steer toward maintenance for this "
+                    "block; place the deficit in base weeks."
+                )
+            elif avg_bal <= -300 and cat == "taper":
+                lines.append("  ⚠ Deficit during taper/event window — fuel the event; do not cut into it.")
+            elif avg_bal <= -300:
+                lines.append(
+                    "  Deficit is appropriately placed (base/transition) — protect the protein floor "
+                    "and watch the muscle-mass rolling average."
+                )
+    except Exception:
+        pass
     return lines
 
 
@@ -1106,9 +1327,19 @@ def build_coach_context() -> str:
     nutrition_ctx = nutrition_coach_context(PLAN_START, today)
     nutrition_week_ctx = nutrition_week_context(PLAN_START, today)
 
+    key_dates_parts = _section_key_dates(today)
+    baseline_parts = _section_canonical_baselines(today, m)
+    commitment_parts = _section_commitments(today)
+    session_note_parts = _section_session_notes(today)
+    phase_nutrition_parts = _section_phase_nutrition(today)
+
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
         "",
+        *key_dates_parts,
+        "",
+        *([*commitment_parts, ""] if commitment_parts else []),
+        *([*session_note_parts, ""] if session_note_parts else []),
         *_section_pmc(today_pmc, m),
         "",
         "## Today's Readiness",
@@ -1117,6 +1348,8 @@ def build_coach_context() -> str:
         f"|  Avg stress: {m.avg_stress}  |  Resting HR: {m.resting_hr}  |  VO2max: {m.vo2_max}",
         *tl_parts,
         "",
+        *([*baseline_parts, ""] if baseline_parts else []),
+        *([*phase_nutrition_parts, ""] if phase_nutrition_parts else []),
         *([*alert_parts, ""] if alert_parts else []),
         *([*interference_parts, ""] if interference_parts else []),
         *([*sleep_parts, ""] if sleep_parts else []),

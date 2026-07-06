@@ -126,6 +126,9 @@ from .context import (  # noqa: F401
     _apply_overrides,
     _body_context,
     _build_calendar_ctx,
+    build_event_tracker,
+    build_nutrition_today,
+    build_trends_context,
     _build_context,
     _build_preplan_weeks,
     _calendar_weeks,
@@ -337,6 +340,13 @@ def analysis_view(request: Request):
     except Exception:
         pass
 
+    gut_training = None
+    try:
+        from ..history import gut_training_summary
+        gut_training = gut_training_summary(date.today())
+    except Exception:
+        pass
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="analysis.html",
@@ -344,6 +354,7 @@ def analysis_view(request: Request):
             "activities": activities,
             "zone_dist": zone_distribution(days=7),
             "rpe_by_activity": rpe_by_activity,
+            "gut_training": gut_training,
         },
     )
 
@@ -577,6 +588,10 @@ async def performance_view(request: Request):
     power_tss_weekly = weekly_tss(12) if power_meter_active() else []
     power_pmc = power_pmc_history(90) if power_meter_active() else []
 
+    today = date.today()
+    m_today = load(today) or DailyMetrics(date=today)
+    trends = build_trends_context(today, m_today)
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="performance.html",
@@ -613,6 +628,7 @@ async def performance_view(request: Request):
             "taper_scenarios": taper_scenarios,
             "power_tss_weekly": power_tss_weekly,
             "power_pmc": power_pmc,
+            **trends,
         },
     )
 
@@ -755,12 +771,17 @@ async def calendar_view(request: Request):
         pass
     ctx["charity_plans"] = charity_plans
 
+    ctx["plan_section"] = "calendar"
+    ctx["week_summary"] = _week_summary()
+    ctx["event_tracker"] = build_event_tracker(date.today())
+
     return TEMPLATES.TemplateResponse(request=request, name="calendar.html", context=ctx)
 
 
 @app.get("/training", response_class=HTMLResponse)
 async def training_plan(request: Request):
     ctx = _plan_completion_stats()
+    ctx["plan_section"] = "programme"
     return TEMPLATES.TemplateResponse(request=request, name="training.html", context=ctx)
 
 
@@ -814,6 +835,7 @@ async def compliance_view(request: Request):
             cum_done += wk["done_min"]
             cumulative.append(int(cum_done / cum_plan * 100) if cum_plan else 0)
     ctx["cumulative_pcts"] = cumulative
+    ctx["plan_section"] = "compliance"
 
     return TEMPLATES.TemplateResponse(request=request, name="compliance.html", context=ctx)
 
@@ -841,6 +863,9 @@ async def nutrition_plan(request: Request):
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
     sunday_fuel = fuel_prep_for_ride(sunday_ride_min) if sunday_ride_min else None
 
+    m = load(today) or DailyMetrics(date=today)
+    nutrition_today = build_nutrition_today(m, today)
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="nutrition.html",
@@ -851,6 +876,7 @@ async def nutrition_plan(request: Request):
             "checklist": checklist,
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
+            "nutrition_today": nutrition_today,
             "cal_today":     int(today_nut["calories_consumed"])    if today_nut and today_nut.get("calories_consumed")    else None,
             "tdee_today":    int(round(_tdee_today)) if _tdee_today else None,
             "carbs_today":   round(today_nut["carbs_consumed"])     if today_nut and today_nut.get("carbs_consumed")       else None,
@@ -1036,6 +1062,7 @@ def haute_route_power_protocol(request: Request):
 async def body_view(request: Request, msg: Optional[str] = None):
     ctx = _body_context()
     ctx["flash_msg"] = msg
+    ctx["recovery_section"] = "body"
     return TEMPLATES.TemplateResponse(request=request, name="body.html", context=ctx)
 
 
@@ -1109,6 +1136,7 @@ async def sleep_view(request: Request):
         "has_spo2":   any(d["spo2"] is not None for d in data),
         "has_resp":   any(d["respiration"] is not None for d in data),
         "has_hrv":    any(d["hrv"] is not None for d in data),
+        "recovery_section": "sleep",
     })
 
 
@@ -1270,11 +1298,14 @@ async def apply_plan_change(body: _ApplyChangeRequest):
 
 
 @app.post("/regenerate-advice")
-def regenerate_advice_endpoint():
+def regenerate_advice_endpoint(mode: str = "post"):
     today = _today()
-    delete_advice(today)
+    if mode not in ("pre", "post"):
+        mode = "post"
+    delete_advice(today, mode=mode)
     ctx = _build_context(today, force_fetch=True)
-    return JSONResponse({"advice": ctx["advice"]})
+    key = "advice_pre" if mode == "pre" else "advice_post"
+    return JSONResponse({"advice": ctx.get(key), "mode": mode})
 
 
 @app.post("/regenerate-body-advice")

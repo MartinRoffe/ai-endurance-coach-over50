@@ -1,0 +1,17 @@
+{# event_tracker dict from build_event_tracker() #}
+{% if event_tracker %}
+{% set et = event_tracker %}
+<div class="card" style="padding:16px 20px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:2px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted)">Ghent–Amsterdam · 13–14 Sep 2026</p>
+    <span style="font-family:var(--font-m);font-size:12px;{% if et.on_track_label == 'On track' %}color:#4ade80{% elif 'behind' in et.on_track_label.lower() %}color:#facc15{% else %}color:#f87171{% endif %}">{{ et.on_track_label }}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+    <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">Week {{ et.week_num }} / 12</span>
+    <span style="font-family:var(--font-m);font-size:12px;color:var(--muted)">{{ et.days_to_event }} days to event</span>
+  </div>
+  <div style="background:var(--border);height:3px;border-radius:2px;overflow:hidden">
+    <div style="height:100%;width:{{ et.plan_pct }}%;{% if et.on_track_label == 'On track' %}background:#a3e635{% elif 'Slightly' in et.on_track_label %}background:#facc15{% else %}background:#f87171{% endif %}"></div>
+  </div>
+</div>
+{% endif %}

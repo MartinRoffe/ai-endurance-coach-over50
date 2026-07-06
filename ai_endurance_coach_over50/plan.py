@@ -498,8 +498,21 @@ def _enrich_kb_spec(spec: dict | None) -> dict | None:
     }
 
 
+def coach_notes_merged() -> dict[str, str]:
+    """Static COACH_NOTES overlaid with DB-backed session notes (coach-chat
+    `add_session_note` tool). DB notes win on date collisions."""
+    notes = dict(COACH_NOTES)
+    try:
+        from .history import list_session_notes
+        notes.update(list_session_notes())
+    except Exception:
+        pass
+    return notes
+
+
 def build_calendar_weeks() -> list[dict]:
     today = date.today()
+    notes = coach_notes_merged()
     weeks = []
     for wk_idx, sessions in enumerate(TRAINING_WEEKS):
         wk_start = PLAN_START + timedelta(weeks=wk_idx)
@@ -564,7 +577,7 @@ def build_calendar_weeks() -> list[dict]:
                 "dur_min": dur,
                 "is_today": d == today,
                 "is_past": d < today,
-                "coach_note": COACH_NOTES.get(d.isoformat(), ""),
+                "coach_note": notes.get(d.isoformat(), ""),
                 "sub_sessions": sub_sessions,
                 "maxi_intervals": maxi_intervals,
                 "ruck_spec": ruck_spec,

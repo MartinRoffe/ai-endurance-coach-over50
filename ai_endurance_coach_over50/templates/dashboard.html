@@ -4,14 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
-  <title>Readiness · {{ date }}</title>
+  <title>Today · {{ date }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     body { background: #09090b; }
-
     .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
-
     .eyebrow {
       font-family: var(--font-m);
       font-size: 11px;
@@ -19,14 +16,7 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 2px;
-    }
-
-    /* Hero score */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
     .score-num {
       font-family: var(--font-d);
       font-size: clamp(80px, 14vw, 128px);
@@ -38,7 +28,6 @@
       font-size: 0.28em;
       vertical-align: super;
       opacity: 0.45;
-      letter-spacing: 0;
     }
     .score-label {
       font-family: var(--font-m);
@@ -47,8 +36,6 @@
       text-transform: uppercase;
       margin-top: 14px;
     }
-
-    /* Metric cards */
     .m-label {
       font-family: var(--font-m);
       font-size: 11px;
@@ -56,50 +43,42 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-    .m-val {
-      font-family: var(--font-m);
-      font-size: 26px;
-      font-weight: 500;
-      line-height: 1;
-    }
+    .m-val { font-family: var(--font-m); font-size: 26px; font-weight: 500; line-height: 1; }
     .m-unit { font-size: 13px; color: var(--muted); font-weight: 400; }
-    .m-avg  { font-family: var(--font-m); font-size: 12px; color: var(--muted); }
-
-    /* Z-bar */
+    .m-avg { font-family: var(--font-m); font-size: 12px; color: var(--muted); }
     .z-track { background: var(--border); height: 3px; border-radius: 2px; position: relative; overflow: hidden; }
     .z-pos { background: #a3e635; position: absolute; left: 50%; top: 0; height: 100%; }
     .z-neg { background: #f87171; position: absolute; right: 50%; top: 0; height: 100%; }
     .z-mid { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--border2); }
     .z-reading { font-family: var(--font-m); font-size: 12px; text-align: right; margin-top: 4px; }
-
-    /* Activities */
-    .act-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--surface2); }
-    .act-row:last-child { border-bottom: none; }
-    .act-name { font-size: 13px; font-weight: 400; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .act-meta { font-family: var(--font-m); font-size: 12px; color: var(--muted); margin-top: 1px; }
-    .act-stat { text-align: right; }
-    .act-stat-val { font-family: var(--font-m); font-size: 12px; font-weight: 500; color: var(--text); }
-    .act-stat-lbl { font-family: var(--font-m); font-size: 11px; color: var(--muted); }
-
-    /* Fade in */
+    .bdg { font-family: var(--font-m); font-size: 11px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 2px; border: 1px solid; white-space: nowrap; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .page { animation: fadeUp 0.3s ease both; }
-
-    /* Badge */
-    .bdg { font-family: var(--font-m); font-size: 11px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 2px; border: 1px solid; white-space: nowrap; }
+    .today-footer-links { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+    .today-footer-links a {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+    .today-footer-links a:hover { color: var(--accent); border-color: var(--accent); }
   </style>
 </head>
 <body>
 
-{% set active_tab = 'readiness' %}
+{% set active_tab = 'today' %}
+{% from 'partials/plan_change_card.html' import plan_change_card %}
 {% include 'nav.html' %}
 
-<!-- Ambient glow -->
 <div style="position:fixed;top:-160px;right:-80px;width:640px;height:640px;background:radial-gradient(circle,rgba(163,230,53,0.028) 0%,transparent 65%);pointer-events:none;z-index:0"></div>
 
 <div class="page">
 
-  <!-- ── Header ────────────────────────────────────────────────────── -->
   {% if flash_msg %}
   <div id="flash-banner" style="margin-bottom:16px;padding:10px 16px;border-radius:2px;display:flex;align-items:center;justify-content:space-between;
     {% if flash_msg in ['sent', 'synced'] %}background:rgba(163,230,53,0.08);border:1px solid #a3e635;
@@ -121,902 +100,302 @@
   </div>
   {% endif %}
 
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:48px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px">
     <div>
-      <p class="eyebrow" style="margin-bottom:8px">Daily Readiness</p>
+      <p class="eyebrow" style="margin-bottom:8px">Today</p>
       <h1 style="font-family:var(--font-d);font-size:clamp(24px,4vw,36px);letter-spacing:0.05em;color:var(--text);line-height:1">{{ date_long }}</h1>
+      {% if nutrition_pill %}
+      <p style="margin-top:8px;font-family:var(--font-m);font-size:11px;color:var(--muted)">
+        {{ "{:,}".format(nutrition_pill.calories) }} kcal logged · <a href="/nutrition" style="color:var(--accent);text-decoration:none">Nutrition →</a>
+      </p>
+      {% endif %}
     </div>
     <div style="text-align:right;padding-top:2px;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-      <div style="display:flex;gap:8px">
-        <a href="/refresh"
-           style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
-           onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
-           onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">Sync ↺</a>
-        <a href="/send-email"
-           style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
-           onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
-           onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">Send Email ✉</a>
-        <a href="/sync-workouts"
-           onclick="return confirm('Re-upload and re-schedule all plan workouts (with coach overrides) to your Garmin watch?')"
-           style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
-           onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
-           onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">Sync to Watch ⌚</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <a href="/refresh" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px">Sync ↺</a>
+        <a href="/send-email" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px">Send Email ✉</a>
+        <a href="/sync-workouts" onclick="return confirm('Re-upload and re-schedule all plan workouts to Garmin?')" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px">Sync to Watch ⌚</a>
       </div>
-      <p class="eyebrow">refreshes every 5 min</p>
       <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:3px" id="last-updated">just now</p>
     </div>
   </div>
 
-  <!-- ── Fatigue alerts ───────────────────────────────────────────── -->
+  {# HIGH severity fatigue alerts only #}
   {% if fatigue_alerts %}
-  {% for alert in fatigue_alerts %}
-  <div style="background:{% if alert.severity == 'HIGH' %}rgba(239,68,68,0.12){% else %}rgba(251,191,36,0.1){% endif %};
-              border-left:3px solid {% if alert.severity == 'HIGH' %}var(--danger){% else %}#fbbf24{% endif %};
-              padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px">
-    <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">
-      {% if alert.severity == 'HIGH' %}⚠ {% endif %}{{ alert.message }}
-    </span>
+  {% for alert in fatigue_alerts if alert.severity == 'HIGH' %}
+  <div style="background:rgba(239,68,68,0.12);border-left:3px solid #f87171;padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px">
+    <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">⚠ {{ alert.message }}</span>
   </div>
   {% endfor %}
   {% endif %}
 
-  <!-- ── Recovery gate + HRV session modulation ───────────────────── -->
-  {% if modulation and modulation.gate and modulation.label is defined %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left-width:3px;border-left-style:solid;
-    {% if modulation.gate_type == 'illness' %}border-left-color:#ef4444;background:rgba(239,68,68,0.08)
-    {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
-    <div style="display:flex;align-items:flex-start;gap:10px">
-      <span style="font-size:18px">{% if modulation.gate_type == 'illness' %}🛑{% else %}🟠{% endif %}</span>
-      <div style="flex:1">
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
-          {% if modulation.gate_type == 'illness' %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
-          {{ modulation.headline }} <button type="button" class="gr-tip-trigger" data-tip="Masters athletes: elevated resting HR and poor sleep often precede HRV drops. When illness signals fire, full rest protects weeks of training — not just today's session." aria-label="More info" aria-expanded="false">?</button>
-        </p>
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
-          {{ modulation.reason }}.
-          {% if modulation.planned_label is defined %}
-          Suggested: <strong style="color:var(--text)">{{ modulation.label }}{% if modulation.duration_min > 1 %} ({{ modulation.duration_min }} min){% endif %}</strong>
-          instead of {{ modulation.planned_label }}.
-          {% endif %}
-        </p>
-        <button onclick="applyModulation(this)" data-date="{{ modulation.date }}"
-                data-dur="{{ modulation.duration_min }}" data-type="{{ modulation.session_type }}"
-                data-label="{{ modulation.label }}" data-reason="Recovery gate: {{ modulation.reason }}"
-                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
-          Apply to plan ✓
-        </button>
-      </div>
+  {# FTP retest / power baseline — unified plan change card #}
+  {% if ftp_retest and ftp_retest.slot and not post_workout %}
+  {% if ftp_retest.reason == 'power_baseline' %}
+  {% set _ftp_intro = '<p style="margin:0">' ~ ftp_retest.message ~ '. Suggested slot: <strong style="color:var(--text)">' ~ ftp_retest.slot.date_str ~ '</strong> (currently ' ~ ftp_retest.slot.current_label ~ ').</p>' %}
+  {{ plan_change_card({
+    'date': ftp_retest.slot.date,
+    'duration_min': 45,
+    'session_type': 'ftp',
+    'label': 'Ramp Test',
+    'reason': 'Power meter active — schedule ramp FTP baseline',
+    'from_label': ftp_retest.slot.current_label,
+    'date_display': ftp_retest.slot.date_str,
+  }, intro_html=_ftp_intro) }}
+  {% else %}
+  {% set _ftp_intro = '<p style="margin:0">' ~ ('Last FTP test was ' ~ ftp_retest.age_days ~ ' days ago (' ~ ftp_retest.last_date ~ ').' if ftp_retest.age_days else 'No FTP test logged yet.') ~ ' Suggested slot: <strong style="color:var(--text)">' ~ ftp_retest.slot.date_str ~ '</strong> (currently ' ~ ftp_retest.slot.current_label ~ ').</p>' %}
+  {{ plan_change_card({
+    'date': ftp_retest.slot.date,
+    'duration_min': 60,
+    'session_type': 'ftp',
+    'label': 'FTP Re-test',
+    'reason': 'Auto-suggested: last test >42 days old',
+    'from_label': ftp_retest.slot.current_label,
+    'date_display': ftp_retest.slot.date_str,
+  }, intro_html=_ftp_intro) }}
+  {% endif %}
+  {% elif ftp_retest and not ftp_retest.slot %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #60a5fa">
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin:0">{{ ftp_retest.message or 'FTP re-test due — no open plan slot found in the next 10 days.' }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Morning Readiness -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border)">
+      <p class="eyebrow" style="margin:0;color:var(--accent)">Morning Readiness{% if morning_captured_at %} · captured {{ morning_captured_at.split(' ')[1][:5] if ' ' in morning_captured_at else morning_captured_at }}{% endif %}</p>
+      {% if post_workout %}
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">Frozen gate — the readiness picture before you trained.</p>
+      {% endif %}
     </div>
-  </div>
-  {% elif modulation and modulation.gate and modulation.headline is defined %}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:6px 12px;border-left:3px solid #ef4444;background:rgba(239,68,68,0.06);border-radius:0 4px 4px 0">
-    <span style="font-size:12px">🛑</span>
-    <span style="font-family:var(--font-m);font-size:11px;color:#f87171;letter-spacing:0.08em">
-      {{ modulation.reason }}
-    </span>
-  </div>
-  {% elif traffic_light and traffic_light.status != 'unknown' %}
-  {% set tl = traffic_light %}
-  {% if modulation and modulation.label is defined and not modulation.gate %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left-width:3px;border-left-style:solid;
-    {% if tl.status == 'red' %}border-left-color:#f87171;background:rgba(248,113,113,0.05)
-    {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
-    <div style="display:flex;align-items:flex-start;gap:10px">
-      <span style="font-size:18px">{% if tl.status == 'red' %}🔴{% else %}🟠{% endif %}</span>
-      <div style="flex:1">
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
-          {% if tl.status == 'red' %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
-          {{ modulation.headline }} <button type="button" class="gr-tip-trigger" data-tip="HRV-guided training: when morning HRV drops well below your 30-day baseline, easing today's session protects the adaptations you've already built. Evidence: HRV-guided groups outperform fixed plans." aria-label="More info" aria-expanded="false">?</button>
-        </p>
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
-          {{ tl.reason }}. Suggested: <strong style="color:var(--text)">{{ modulation.label }} ({{ modulation.duration_min }} min)</strong>
-          instead of {{ modulation.planned_label }}.
-        </p>
-        <button onclick="applyModulation(this)" data-date="{{ modulation.date }}"
-                data-dur="{{ modulation.duration_min }}" data-type="{{ modulation.session_type }}"
-                data-label="{{ modulation.label }}" data-reason="HRV traffic light: {{ tl.reason }}"
-                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
-          Apply to plan ✓
-        </button>
-      </div>
+
+    {# HRV / recovery gates #}
+    {% if modulation and modulation.gate and modulation.label is defined and not post_workout %}
+    {% set _gate_intro = '<p style="margin:0"><strong style="color:#fbbf24">' ~ modulation.headline ~ '</strong> — ' ~ modulation.reason ~ '. Suggested: <strong style="color:var(--text)">' ~ modulation.label ~ (' (' ~ modulation.duration_min ~ ' min)' if modulation.duration_min > 1 else '') ~ '</strong> instead of ' ~ modulation.planned_label ~ '.</p>' %}
+    {{ plan_change_card({
+      'date': modulation.date,
+      'duration_min': modulation.duration_min,
+      'session_type': modulation.session_type,
+      'label': modulation.label,
+      'reason': 'Recovery gate: ' ~ modulation.reason,
+      'from_label': modulation.planned_label,
+      'from_duration_min': none,
+    }, intro_html=_gate_intro, accent='#fbbf24') }}
+    {% elif modulation and modulation.gate and modulation.headline is defined %}
+    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-m);font-size:11px;color:#f87171">🛑 {{ modulation.reason }}</span>
     </div>
-  </div>
-  {% elif tl.status == 'green' %}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:6px 12px">
-    <span style="font-size:12px">🟢</span>
-    <span style="font-family:var(--font-m);font-size:11px;color:#34d399;letter-spacing:0.08em">
-      HRV in range — session as planned
-    </span>
-  </div>
-  {% elif modulation %}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:6px 12px">
-    <span style="font-size:12px">{% if tl.status == 'red' %}🔴{% else %}🟠{% endif %}</span>
-    <span style="font-family:var(--font-m);font-size:11px;color:#fbbf24;letter-spacing:0.08em">
-      {{ tl.reason }} — keep today genuinely easy
-    </span>
-  </div>
-  {% endif %}
-  {% endif %}
-
-  <!-- ── FTP retest / power baseline prompt ─────────────────────────── -->
-  {% if ftp_retest %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #60a5fa;background:rgba(96,165,250,0.05)">
-    <div style="display:flex;align-items:flex-start;gap:10px">
-      <span style="font-size:18px">⏱</span>
-      <div style="flex:1">
-        {% if ftp_retest.reason == 'power_baseline' %}
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:3px">
-          Power baseline needed
-        </p>
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
-          {{ ftp_retest.message }}.
-          {% if ftp_retest.slot %}Suggested slot: <strong style="color:var(--text)">{{ ftp_retest.slot.date_str }}</strong> (currently {{ ftp_retest.slot.current_label }}).{% endif %}
-        </p>
-        {% if ftp_retest.slot %}
-        <button onclick="applyModulation(this)" data-date="{{ ftp_retest.slot.date }}"
-                data-dur="45" data-type="ftp" data-label="Ramp Test"
-                data-reason="Power meter active — schedule ramp FTP baseline"
-                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
-          Schedule ramp test ⏱
-        </button>
-        {% endif %}
-        {% else %}
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:3px">
-          FTP re-test due <button type="button" class="gr-tip-trigger" data-tip="A stale LTHR makes every zone target slightly wrong. Re-test every ~6 weeks so zones track your fitness." aria-label="More info" aria-expanded="false">?</button>
-        </p>
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:8px">
-          {% if ftp_retest.age_days %}Last FTP test was {{ ftp_retest.age_days }} days ago ({{ ftp_retest.last_date }}).
-          {% else %}No FTP test logged yet.{% endif %}
-          {% if ftp_retest.slot %}Suggested slot: <strong style="color:var(--text)">{{ ftp_retest.slot.date_str }}</strong> (currently {{ ftp_retest.slot.current_label }}).{% endif %}
-        </p>
-        {% if ftp_retest.slot %}
-        <button onclick="applyModulation(this)" data-date="{{ ftp_retest.slot.date }}"
-                data-dur="60" data-type="ftp" data-label="FTP Re-test"
-                data-reason="Auto-suggested: last test >42 days old"
-                style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">
-          Schedule re-test ⏱
-        </button>
-        {% endif %}
-        {% endif %}
-      </div>
+    {% elif traffic_light and traffic_light.status != 'unknown' %}
+    {% set tl = traffic_light %}
+    {% if modulation and modulation.label is defined and not modulation.gate and not post_workout %}
+    {% set _hrv_intro = '<p style="margin:0">' ~ tl.reason ~ '. Suggested: <strong style="color:var(--text)">' ~ modulation.label ~ ' (' ~ modulation.duration_min ~ ' min)</strong> instead of ' ~ modulation.planned_label ~ '.</p>' %}
+    {{ plan_change_card({
+      'date': modulation.date,
+      'duration_min': modulation.duration_min,
+      'session_type': modulation.session_type,
+      'label': modulation.label,
+      'reason': 'HRV traffic light: ' ~ tl.reason,
+      'from_label': modulation.planned_label,
+    }, intro_html=_hrv_intro, accent='#fbbf24' if tl.status == 'amber' else '#f87171') }}
+    {% elif tl.status == 'green' %}
+    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-m);font-size:11px;color:#34d399">🟢 HRV in range — session as planned{% if post_workout %} (trained){% endif %}</span>
     </div>
-  </div>
-  {% endif %}
+    {% elif modulation %}
+    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-m);font-size:11px;color:#fbbf24">{{ tl.reason }} — keep today genuinely easy</span>
+    </div>
+    {% endif %}
+    {% endif %}
 
-  <!-- ── Stale workouts banner (new FTP measured) ─────────────────── -->
-  {% if workouts_stale_ftp %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.05)">
-    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fbbf24;margin-bottom:6px">New FTP measured</p>
-    <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">
-      FTP is now <strong style="color:var(--text)">{{ workouts_stale_ftp }} W</strong> — Garmin workout templates still use the old targets.
-    </p>
-    <a href="/sync-workouts"
-       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:6px 14px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px;display:inline-block">
-      Re-sync Garmin workouts ↻
-    </a>
-  </div>
-  {% endif %}
-
-  <script>
-    async function applyModulation(btn) {
-      btn.disabled = true;
-      btn.textContent = 'Applying…';
-      try {
-        const res = await fetch('/apply-plan-change', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            date: btn.dataset.date,
-            duration_min: parseInt(btn.dataset.dur, 10),
-            session_type: btn.dataset.type,
-            label: btn.dataset.label,
-            reason: btn.dataset.reason,
-          }),
-        });
-        if (res.ok) {
-          let g = {};
-          try { g = (await res.json()).garmin || {}; } catch (e) {}
-          btn.textContent = g.pushed ? '✓ Synced to Garmin' : '✓ Saved (Garmin sync failed)';
-          setTimeout(() => location.reload(), 1100);
-          return;
-        }
-        btn.textContent = 'Failed — retry?';
-        btn.disabled = false;
-      } catch (e) {
-        btn.textContent = 'Failed — retry?';
-        btn.disabled = false;
-      }
-    }
-  </script>
-
-  <!-- ── Hero: Composite Score ──────────────────────────────────────── -->
-  <div class="card" style="padding:32px 36px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
-    <div style="flex:1;min-width:180px">
-      <p class="eyebrow" style="margin-bottom:14px">Composite Score <button type="button" class="gr-tip-trigger" data-tip="Your readiness score in standard deviations vs your 30-day personal baseline. +0.5σ or above = good to train hard. Below −0.5σ = prioritise recovery or lower intensity today." aria-label="More info" aria-expanded="false">?</button></p>
-      {% if comp_z is not none %}
-        <div class="score-num {{ comp_colour }}">
-          {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="score-sigma">σ</span>
-        </div>
+    {# Composite hero #}
+    <div style="padding:18px 20px 8px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <div style="flex:1;min-width:180px">
+        <p class="eyebrow" style="margin-bottom:14px">Composite Score</p>
+        {% if comp_z is not none %}
+        <div class="score-num {{ comp_colour }}">{% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="score-sigma">σ</span></div>
         <p class="score-label {{ comp_colour }}">{{ comp_label }}</p>
-      {% else %}
+        {% else %}
         <div class="score-num" style="color:var(--muted)">—</div>
         <p class="score-label" style="color:var(--muted)">no data</p>
-      {% endif %}
-    </div>
-    <!-- Status badges -->
-    <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px">
-      {% for badge_text, badge_cls in badges %}
+        {% endif %}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px">
+        {% for badge_text, badge_cls in badges %}
         <span class="bdg {{ badge_cls }}">{{ badge_text }}</span>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- ── Injury risk indicator ────────────────────────────────────── -->
-  {% if acwr is not none and acwr > 1.5 %}
-  {% set ir_high = acwr > 1.8 %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;
-    border-left-width:3px;border-left-style:solid;
-    {% if ir_high %}border-left-color:#f87171;background:rgba(248,113,113,0.05)
-    {% else %}border-left-color:#fbbf24;background:rgba(251,191,36,0.05){% endif %}">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">{% if ir_high %}🔴{% else %}🟡{% endif %}</span>
-      <div style="flex:1">
-        <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
-          {% if ir_high %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:3px">
-          Injury Risk · {% if ir_high %}Warning{% else %}Caution{% endif %} <button type="button" class="gr-tip-trigger" data-tip="Acute:Chronic Workload Ratio — compares your last 7 days of load to your 28-day average. Above 1.3 = elevated injury risk. Above 1.5 = reduce volume immediately." aria-label="More info" aria-expanded="false">?</button>
-        </p>
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.55">
-          {% if ir_high %}Acute load is significantly above your chronic baseline (ACWR {{ "%.2f"|format(acwr) }}). Consider reducing intensity today — pushing hard here raises injury risk.
-          {% else %}Acute load is above your chronic baseline (ACWR {{ "%.2f"|format(acwr) }}). Train at moderate intensity and monitor fatigue carefully.
-          {% endif %}
-        </p>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ── Week progress ─────────────────────────────────────────────── -->
-  {% if week_summary %}
-  {% set ws = week_summary %}
-  {% set type_col = {'bike':'#34d399','tempo':'#fbbf24','ftp':'#fb923c','long':'#f59e0b','strength':'#a78bfa','ruck':'#f472b6','rest':'#3f3f46'} %}
-  <div class="card" style="padding:16px 20px;margin-bottom:12px">
-
-    <!-- Header row -->
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-      <p class="eyebrow">{% if ws.week_num %}Week {{ ws.week_num }} of 12{% else %}This Week{% endif %}</p>
-      <span style="font-family:var(--font-m);font-size:11px;
-        {% if ws.pct >= 90 %}color:#a3e635{% elif ws.pct >= 60 %}color:#fb923c{% else %}color:#f87171{% endif %}">
-        {{ ws.pct }}% · {{ ws.done_min_fmt }} / {{ ws.plan_min_fmt }}
-      </span>
-    </div>
-
-    <!-- Day rows -->
-    {% for day in ws.days %}
-    <div style="display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;gap:6px;padding:4px 0;
-      {% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}
-      {% if day.is_today %}opacity:1{% elif day.is_future %}opacity:0.45{% endif %}">
-
-      <!-- Day name -->
-      <span style="font-family:var(--font-m);font-size:10px;color:{% if day.is_today %}var(--text){% else %}var(--muted){% endif %};letter-spacing:0.1em">
-        {{ day.day_name | upper }}
-      </span>
-
-      <!-- Session label -->
-      <span style="font-size:12px;color:{{ type_col.get(day.type, '#a1a1aa') }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        {% if day.type == 'rest' %}—{% else %}{{ day.label }}{% endif %}
-      </span>
-
-      <!-- Planned duration -->
-      <span style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-align:right;white-space:nowrap">
-        {% if day.dur_min and day.type != 'rest' %}{{ day.dur_min }}m{% endif %}
-      </span>
-
-      <!-- Status indicator -->
-      <span style="font-family:var(--font-m);font-size:11px;text-align:right;white-space:nowrap;min-width:42px">
-        {% if day.type == 'rest' %}
-          <span style="color:var(--muted)">—</span>
-        {% elif day.is_future %}
-          <span style="color:var(--muted)">·</span>
-        {% elif day.completed %}
-          <span style="color:#a3e635">✓ {{ day.actual_min }}m</span>
-        {% elif day.is_today %}
-          <span style="color:var(--muted)">·</span>
-        {% else %}
-          <span style="color:#f87171">✗</span>
-        {% endif %}
-      </span>
-
-    </div>
-    {% endfor %}
-
-    <!-- Footer -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-      <span style="font-family:var(--font-m);font-size:10px;color:var(--muted)">
-        Last week: {{ ws.last_done_fmt }}
-      </span>
-      {% if ws.avg_readiness is not none %}
-      <span style="font-family:var(--font-m);font-size:10px;color:var(--muted)">
-        Avg readiness:
-        <span style="{% if ws.avg_readiness >= 0.5 %}color:#a3e635{% elif ws.avg_readiness >= -0.5 %}color:#fbbf24{% else %}color:#f87171{% endif %}">
-          {% if ws.avg_readiness >= 0 %}+{% endif %}{{ "%.2f"|format(ws.avg_readiness) }}σ
-        </span>
-      </span>
-      {% endif %}
-    </div>
-
-    <!-- Progress bar -->
-    <div style="margin-top:8px;background:var(--border);height:2px;border-radius:2px;overflow:hidden">
-      <div style="height:100%;border-radius:2px;width:{{ ws.bar_filled }}%;
-        {% if ws.pct >= 90 %}background:#a3e635{% elif ws.pct >= 60 %}background:#fb923c{% else %}background:#f87171{% endif %}">
-      </div>
-    </div>
-
-  </div>
-  {% endif %}
-
-  <!-- ── Weekly coach briefing (Monday only) ──────────────────────── -->
-  {% if weekly_briefing %}
-  <details {% if is_monday %}open{% endif %} class="card" style="padding:16px 20px;margin-bottom:12px">
-    <summary style="cursor:pointer;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);user-select:none">
-      This week — Coach's Briefing
-    </summary>
-    <div style="margin-top:12px;font-size:13px;color:var(--text-dim);line-height:1.7;white-space:pre-wrap">{{ weekly_briefing }}</div>
-  </details>
-  {% endif %}
-
-  <!-- ── Today's session ──────────────────────────────────────────────── -->
-  {% if today_plan %}
-  {% set type_badge = {
-    'bike':     'border-emerald-700 text-emerald-300',
-    'tempo':    'border-yellow-700  text-yellow-300',
-    'ftp':      'border-orange-700  text-orange-300',
-    'long':     'border-amber-700   text-amber-300',
-    'strength': 'border-violet-700  text-violet-300',
-    'ruck':     'border-pink-800    text-pink-300',
-  } %}
-  <div class="card" style="padding:16px 20px;margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <p class="eyebrow">Today's Session</p>
-      <span class="bdg {{ type_badge.get(today_plan.type, 'border-zinc-700 text-zinc-400') }}">{{ today_plan.type | upper }}</span>
-    </div>
-    {% if today_plan.compound %}
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <span style="font-size:20px;line-height:1;margin-top:2px">{{ today_plan.icon }}</span>
-        <div style="flex:1">
-          <p style="font-size:15px;font-weight:500;color:var(--text);line-height:1.2;margin-bottom:6px">{{ today_plan.label }}</p>
-          {% for sub in today_plan.compound %}
-            <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);line-height:1.8">· {{ sub.label }}</p>
-          {% endfor %}
-        </div>
-        <p style="font-family:var(--font-m);font-size:18px;font-weight:500;color:var(--text-dim);align-self:center;flex-shrink:0">{{ today_plan.dur_fmt }}</p>
-      </div>
-    {% else %}
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:20px;line-height:1">{{ today_plan.icon }}</span>
-        <p style="font-size:15px;font-weight:500;color:var(--text);flex:1">{{ today_plan.label }}</p>
-        <p style="font-family:var(--font-m);font-size:18px;font-weight:500;color:var(--text-dim);flex-shrink:0">{{ today_plan.dur_fmt }}</p>
-      </div>
-    {% endif %}
-    {% if swap_suggestion %}
-    {% set _sw = swap_suggestion %}
-    <div style="margin-top:12px;padding:10px 14px;border-radius:2px;border:1px solid;
-      {% if _sw.severity == 'high' %}border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.07)
-      {% else %}border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.07){% endif %}">
-      <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
-        {% if _sw.severity == 'high' %}color:#f87171{% else %}color:#fbbf24{% endif %};margin-bottom:5px">⚠ Readiness Low</p>
-      {% if _sw.to_date_str %}
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">Consider swapping with <strong style="color:var(--text)">{{ _sw.to_label }}</strong> on {{ _sw.to_date_str }} — do today's {{ _sw.from_label }} on that day instead.</p>
-      {% else %}
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">Consider reducing intensity or cutting this session short to protect recovery.</p>
-      {% endif %}
-    </div>
-    {% endif %}
-    {% if today_plan.note %}
-    <div style="margin-top:12px;padding:10px 14px;border-radius:2px;border:1px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.05)">
-      <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#60a5fa;margin-bottom:5px">📋 Coach Note</p>
-      <p style="font-size:12px;color:var(--text-dim);line-height:1.6">{{ today_plan.note }}</p>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- ── Gut training compliance (charity prep) ───────────────────── -->
-  {% if gut_training %}
-  {% set gt = gut_training %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #a78bfa;background:rgba(167,139,250,0.06)">
-    <p class="eyebrow" style="margin-bottom:10px;color:#a78bfa">Gut Training <button type="button" class="gr-tip-trigger" data-tip="Rehearse 80–90 g carbs/hr on long rides now so your gut is ready for the two charity days. After each ride ≥75 min, open Analysis → scroll to the Fuelling block on that activity card → enter actual g/h and Save." aria-label="More info" aria-expanded="false">?</button></p>
-    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
-      <div>
-        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">
-          {% if gt.weekly_adherence_pct is not none %}{{ gt.weekly_adherence_pct }}%{% else %}—{% endif %}
-        </p>
-        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">This week adherence</p>
-      </div>
-      <div>
-        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">{{ gt.sessions_rehearsed }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Sessions ≥80% target</p>
-      </div>
-      <div>
-        <p style="font-family:var(--font-m);font-size:22px;font-weight:500;color:var(--text)">{{ gt.days_to_charity }}d</p>
-        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">To charity ride</p>
-      </div>
-      {% if gt.sparkline %}
-      <div style="flex:1;min-width:120px">
-        <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Last {{ gt.sparkline|length }} sessions</p>
-        <div style="display:flex;align-items:flex-end;gap:4px;height:32px">
-          {% for pct in gt.sparkline %}
-          <div style="flex:1;background:{% if pct >= 80 %}#34d399{% elif pct >= 60 %}#fbbf24{% else %}#f87171{% endif %};height:{{ [pct, 100]|min * 0.28 + 4 }}px;border-radius:1px" title="{{ pct }}%"></div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-    </div>
-    {% if gt.total_logged == 0 %}
-    <p style="font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5">No fuelling logs yet — on the <a href="/analysis" style="color:#a78bfa">Analysis</a> tab, open any ride ≥75 min and scroll to the <strong style="color:var(--text)">Fuelling</strong> block (below Session Feel).</p>
-    {% elif gt.weekly_adherence_pct is not none and gt.weekly_adherence_pct < 70 %}
-    <p style="font-size:12px;color:#fbbf24;margin-top:10px;line-height:1.5">Below 70% this week — prioritise hitting planned carbs on your next long ride.</p>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- ── Power profile (measured FTP zones) ───────────────────────── -->
-  {% if power_profile %}
-  {% set pp = power_profile %}
-  <details class="card" style="padding:14px 20px;margin-bottom:12px">
-    <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between">
-      <span class="eyebrow" style="margin:0">Power Profile · FTP {{ pp.ftp_w }}W{% if pp.wkg %} · {{ pp.wkg }} W/kg{% endif %}</span>
-      <span style="font-family:var(--font-m);font-size:10px;color:var(--muted)">tested {{ pp.test_date }}</span>
-    </summary>
-    <table style="width:100%;margin-top:12px;font-size:12px;border-collapse:collapse">
-      <thead>
-        <tr style="color:var(--muted);font-family:var(--font-m);font-size:10px;text-transform:uppercase">
-          <th style="text-align:left;padding:4px 8px 4px 0">Zone</th>
-          <th style="text-align:right;padding:4px 8px">Watts</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for z in pp.zones %}
-        <tr style="border-top:1px solid var(--border)">
-          <td style="padding:6px 8px 6px 0;color:var(--text-dim)">Z{{ z.zone }} {{ z.label }}</td>
-          <td style="padding:6px 8px;text-align:right;font-family:var(--font-m);color:var(--text)">
-            {% if z.zone == 1 %}&lt;{{ z.hi }}{% elif z.zone == 7 %}&gt;{{ z.lo }}{% else %}{{ z.lo }}–{{ z.hi }}{% endif %} W
-          </td>
-        </tr>
         {% endfor %}
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">Power primary for prescription/pacing; HR is the strain/readiness channel.</p>
-  </details>
-  {% endif %}
-
-  <!-- ── Last quality session power (informational) ──────────────── -->
-  {% if power_snapshot %}
-  {% set ps = power_snapshot %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:6px">Last Quality Session · Power</p>
-    <p style="font-family:var(--font-m);font-size:13px;color:var(--text-dim);line-height:1.5">
-      <span style="color:var(--text)">{{ ps.label }}</span> ({{ ps.date }}) —
-      NP <span style="color:#fbbf24;font-weight:500">{{ ps.norm_power_w }} W</span>
-      <span style="color:var(--muted)">({{ ps.pct_ftp }}% FTP)</span>
-    </p>
-  </div>
-  {% endif %}
-
-  <!-- ── Today's nutrition ───────────────────────────────────────── -->
-  {% if nutrition_today %}
-  {% set nt = nutrition_today %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:10px">Today's Nutrition</p>
-    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
-
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Logged</p>
-        <p style="font-family:var(--font-d);font-size:26px;color:var(--text);letter-spacing:0.04em;line-height:1">{{ "{:,}".format(nt.calories) }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">kcal</p>
       </div>
-
-      {% if nt.tdee %}
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">TDEE</p>
-        <p style="font-family:var(--font-d);font-size:26px;color:var(--text-dim);letter-spacing:0.04em;line-height:1">{{ "{:,}".format(nt.tdee) }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">kcal</p>
-      </div>
-      {% endif %}
-
-      {% if nt.balance is defined %}
-      {% set bal_col = '#4ade80' if nt.balance > 0 else ('#fbbf24' if nt.balance > -500 else '#f87171') %}
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Balance</p>
-        <p style="font-family:var(--font-d);font-size:26px;color:{{ bal_col }};letter-spacing:0.04em;line-height:1">{% if nt.balance > 0 %}−{{ "{:,}".format(nt.balance) }}{% else %}+{{ "{:,}".format(-nt.balance) }}{% endif %}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">{% if nt.balance > 0 %}deficit{% else %}surplus{% endif %}</p>
-      </div>
-      {% endif %}
-
-      {% if nt.ride_work_kj %}
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Ride work</p>
-        <p style="font-family:var(--font-d);font-size:22px;color:#fbbf24;letter-spacing:0.04em;line-height:1">{{ nt.ride_work_kj }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">kJ (~{{ nt.ride_work_kcal }} kcal)</p>
-      </div>
-      {% endif %}
-
-      {% if nt.carbs %}
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Carbs</p>
-        <p style="font-family:var(--font-d);font-size:26px;color:#a3e635;letter-spacing:0.04em;line-height:1">{{ nt.carbs }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">g</p>
-      </div>
-      {% endif %}
-
-      {% if nt.protein %}
-      <div>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Protein</p>
-        <p style="font-family:var(--font-d);font-size:26px;color:#38bdf8;letter-spacing:0.04em;line-height:1">{{ nt.protein }}</p>
-        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">g</p>
-      </div>
-      {% endif %}
-
     </div>
-  </div>
-  {% endif %}
 
-  <!-- ── AI Advice ─────────────────────────────────────────────────── -->
-  {% if advice %}
-  <div class="card" style="padding:20px 24px;margin-bottom:12px;border-left:3px solid var(--accent)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <p class="eyebrow" style="color:var(--accent)">Today's Advice</p>
-      <button id="regen-btn" onclick="regenAdvice()" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;color:var(--muted);background:none;border:1px solid var(--border);padding:3px 10px;cursor:pointer;border-radius:2px" title="Force-fetch latest Garmin data and regenerate">↺ rethink</button>
+    {# Today's session #}
+    {% if today_plan %}
+    {% set type_badge = {
+      'bike': 'border-emerald-700 text-emerald-300', 'tempo': 'border-yellow-700 text-yellow-300',
+      'ftp': 'border-orange-700 text-orange-300', 'long': 'border-amber-700 text-amber-300',
+      'strength': 'border-violet-700 text-violet-300', 'ruck': 'border-pink-800 text-pink-300',
+    } %}
+    <div style="padding:8px 20px 16px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="eyebrow">Today's Session</p>
+        <span class="bdg {{ type_badge.get(today_plan.type, 'border-zinc-700 text-zinc-400') }}">{{ today_plan.type | upper }}</span>
+      </div>
+      {% if today_plan.compound %}
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:20px">{{ today_plan.icon }}</span>
+        <div style="flex:1">
+          <p style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">{{ today_plan.label }}</p>
+          {% for sub in today_plan.compound %}
+          <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">· {{ sub.label }}</p>
+          {% endfor %}
+        </div>
+        <p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim)">{{ today_plan.dur_fmt }}</p>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:20px">{{ today_plan.icon }}</span>
+        <p style="font-size:15px;font-weight:500;color:var(--text);flex:1">{{ today_plan.label }}</p>
+        <p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim)">{{ today_plan.dur_fmt }}</p>
+      </div>
+      {% endif %}
+      {% if swap_suggestion %}
+      {% set _sw = swap_suggestion %}
+      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.07);border-radius:2px">
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">
+          {% if _sw.to_date_str %}Consider swapping with <strong>{{ _sw.to_label }}</strong> on {{ _sw.to_date_str }}.
+          {% else %}Consider reducing intensity or cutting this session short.{% endif %}
+        </p>
+      </div>
+      {% endif %}
+      {% if today_plan.note %}
+      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.05);border-radius:2px">
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">{{ today_plan.note }}</p>
+      </div>
+      {% endif %}
     </div>
-    <div id="advice-body">
-      {% for para in advice.strip().split('\n\n') %}
+    {% endif %}
+
+    {% if advice_pre %}
+    <div style="padding:8px 20px 20px;border-top:1px solid var(--border);border-left:3px solid var(--accent)">
+      <p class="eyebrow" style="color:var(--accent);margin-bottom:10px">Morning Advice</p>
+      <div id="advice-pre-body">
+        {% for para in advice_pre.strip().split('\n\n') %}
         {% if para.strip() %}
-          <p class="advice-para" style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:10px{% endif %}">{{ para.strip() }}</p>
+        <p class="advice-para" style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:10px{% endif %}">{{ para.strip() }}</p>
         {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Post-Session Debrief #}
+  {% if post_workout %}
+  <div class="card" style="padding:20px 24px;margin-bottom:12px;border-left:3px solid #34d399">
+    <p class="eyebrow" style="color:#34d399;margin-bottom:14px">Post-Session Debrief</p>
+    {% if today_activities %}
+    <div style="margin-bottom:16px">
+      {% for act in today_activities %}
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
+        <span style="font-size:18px">{{ act.icon if act.icon else '🚴' }}</span>
+        <div style="flex:1">
+          <p style="font-size:14px;font-weight:500;color:var(--text);margin:0">{{ act.name or act.type_label }}</p>
+          <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:2px">
+            {{ act.duration_fmt or '' }}{% if act.avg_hr %} · {{ act.avg_hr|int }} bpm{% endif %}{% if act.norm_power_w or act.avg_power_w %} · {{ act.norm_power_w or act.avg_power_w|int }} W{% endif %}
+          </p>
+        </div>
+      </div>
       {% endfor %}
     </div>
-  </div>
-  <script>
-    document.querySelectorAll('.advice-para').forEach(p => {
-      p.innerHTML = p.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
-    });
-
-    async function regenAdvice() {
-      const btn = document.getElementById('regen-btn');
-      btn.textContent = '…';
-      btn.disabled = true;
-      try {
-        const res = await fetch('/regenerate-advice', {method: 'POST'});
-        const data = await res.json();
-        if (data.advice) {
-          const body = document.getElementById('advice-body');
-          body.innerHTML = '';
-          data.advice.trim().split(/\n\n+/).forEach((para, i, arr) => {
-            if (!para.trim()) return;
-            const p = document.createElement('p');
-            p.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.75' + (i < arr.length - 1 ? ';margin-bottom:10px' : '');
-            p.innerHTML = para.trim().replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
-            body.appendChild(p);
-          });
-        }
-      } finally {
-        btn.textContent = '↺ rethink';
-        btn.disabled = false;
-      }
-    }
-  </script>
-  {% endif %}
-
-  <!-- ── Event readiness tracker ──────────────────────────────────────── -->
-  {% if event_tracker %}
-  {% set et = event_tracker %}
-  <div class="card" style="padding:16px 20px;margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <p class="eyebrow">Ghent–Amsterdam · 13–14 Sep 2026</p>
-      <span style="font-family:var(--font-m);font-size:12px;letter-spacing:0.06em;{{ 'color:#4ade80' if et.on_track_label == 'On track' else 'color:#facc15' if 'behind' in et.on_track_label.lower() else 'color:#f87171' }}">{{ et.on_track_label }}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">Week {{ et.week_num }} / 12</span>
-      <span style="font-family:var(--font-m);font-size:12px;color:var(--muted)">{{ et.days_to_event }} days to event</span>
-    </div>
-    <div style="background:var(--border);height:3px;border-radius:2px;overflow:hidden">
-      <div style="height:100%;border-radius:2px;width:{{ et.plan_pct }}%;
-        {% if et.on_track_label == 'On track' %}background:#a3e635
-        {% elif 'Slightly' in et.on_track_label %}background:#facc15
-        {% else %}background:#f87171{% endif %}"></div>
-    </div>
-    <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:5px;text-align:right">{{ et.plan_pct }}% of training block complete</p>
-  </div>
-  {% endif %}
-
-  <!-- ── Context ───────────────────────────────────────────────────── -->
-  <div class="card" style="padding:20px 24px;margin-bottom:28px">
-    <p class="eyebrow" style="margin-bottom:8px">Context · 7-day trend</p>
-    <p style="font-family:var(--font-m);font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">{{ trend_note }}</p>
-    <p class="eyebrow" style="margin-bottom:6px">Recent workouts</p>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6">{{ activity_blurb }}</p>
-  </div>
-
-  <!-- ── Metrics grid ──────────────────────────────────────────────── -->
-  <p class="eyebrow" style="margin-bottom:14px">Metrics · 30-day baseline</p>
-  {% set _metric_tips = {
-    'HRV Last Night':       'Heart Rate Variability: your key recovery signal. A drop of 10+ ms from your rolling average means your nervous system is under stress — consider an easy day or rest.',
-    'HRV Weekly Avg':       'Your 7-day average HRV trend. Compare week-to-week: sustained drops signal accumulated fatigue; a rising trend means you are adapting well to training.',
-    'Sleep Score':          "Garmin's composite sleep quality. Below 70 = recovery compromised. Below 60 = seriously consider skipping any intensity today.",
-    'Sleep Duration':       'Most endurance athletes need 8–9 hours. Below 7 hours consistently impairs glycogen restoration, growth hormone release, and next-day performance.',
-    'Body Battery':         "Garmin's energy reserve estimate (0–100). Below 30 means recovery is the priority. A fully charged body battery overnight means you're ready for a hard session.",
-    'Resting HR':           'Your overnight resting heart rate. Lower is better — a value 3–5+ bpm above your baseline often precedes illness, signals incomplete recovery, or accumulated fatigue. Scored lower-is-better but excluded from the composite.',
-    'Avg Stress':           'Daily average stress score. Chronically elevated stress (50+) suppresses training adaptation even if workouts feel fine. High stress days count against your recovery budget.',
-    'Rest Stress':          'Your stress level during rest periods specifically. Elevated rest stress (above 35) even with normal average stress can indicate the nervous system is not fully recovering.',
-    'Acute:Chronic Ratio':  'ACWR — compares your last 7 days of training load to your 28-day average. The sweet spot is 0.8–1.3. Above 1.3 = elevated injury risk. Above 1.5 = reduce volume now.',
-    'Acute Load (7d)':      'Your recent 7-day training load. High relative to your chronic load? Give more easy days. Context-only — not scored against baseline.',
-    'Chronic Load (28d)':   'Your rolling 28-day training load — your fitness fingerprint. Steadily rising week-over-week means you are building fitness. Context-only — not scored against baseline.',
-    'VO2 Max':              'Garmin estimate of your aerobic ceiling. Improves slowly over months of consistent training. Does not change day-to-day — use as a long-term trend, not daily indicator.',
-  } %}
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:32px">
-    {% for m in metrics %}
-    <div class="card" style="padding:16px;
-      border-left-width:2px;
-      border-left-style:solid;
-      border-left-color:{% if m.z_val is not none %}{% if m.z_val >= 0.5 %}#a3e635{% elif m.z_val <= -0.5 %}#f87171{% else %}var(--border2){% endif %}{% else %}var(--border){% endif %}">
-      <p class="m-label" style="margin-bottom:9px">{{ m.label }}{% if m.label in _metric_tips %} <button type="button" class="gr-tip-trigger" data-tip="{{ _metric_tips[m.label] }}" aria-label="More info" aria-expanded="false">?</button>{% endif %}</p>
-      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;flex-wrap:wrap">
-        <span class="m-val {% if m.z_val is not none %}{{ m.value_colour }}{% else %}{% endif %}">{{ m.value }}</span>
-        {% if m.unit %}<span class="m-unit">{{ m.unit }}</span>{% endif %}
-        {% if m.avg != "—" %}<span class="m-avg" style="margin-left:auto">avg {{ m.avg }}</span>{% endif %}
+    {% endif %}
+    {% if post_fatigue %}
+    <div style="display:flex;flex-wrap:wrap;gap:20px;margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:2px">
+      {% if post_fatigue.body_battery is not none %}
+      <div>
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Body Battery</p>
+        <p style="font-family:var(--font-d);font-size:22px;color:var(--text)">{{ post_fatigue.body_battery|int }}</p>
       </div>
-      {% if m.z_val is not none %}
-        <div class="z-track">
-          {% if m.z_val >= 0 %}
-            <div class="z-pos" style="width:{{ [m.z_val / 2.0 * 50, 50]|min }}%"></div>
-          {% else %}
-            <div class="z-neg" style="width:{{ [(-m.z_val) / 2.0 * 50, 50]|min }}%"></div>
-          {% endif %}
+      {% endif %}
+      {% if post_fatigue.acwr is not none %}
+      <div>
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">ACWR</p>
+        <p style="font-family:var(--font-d);font-size:22px;color:var(--text)">{{ "%.2f"|format(post_fatigue.acwr) }}</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if advice_post %}
+    <div style="margin-bottom:12px">
+      <p class="eyebrow" style="margin-bottom:10px">Recovery &amp; load watchouts</p>
+      <div id="advice-post-body">
+        {% for para in advice_post.strip().split('\n\n') %}
+        {% if para.strip() %}
+        <p class="advice-para" style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:10px{% endif %}">{{ para.strip() }}</p>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <a href="/analysis" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Full session analysis →</a>
+  </div>
+  {% elif today_plan %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px">
+    <p style="font-size:12px;color:var(--muted);margin:0">Complete today's session to unlock the post-workout debrief.</p>
+  </div>
+  {% endif %}
+
+  {# Collapsed metrics for power users #}
+  <details class="card" style="padding:0;margin-bottom:12px">
+    <summary style="cursor:pointer;padding:14px 20px;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">All readiness metrics</summary>
+    <div style="padding:0 20px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
+      {% for m in metrics %}
+      <div style="padding:14px;border:1px solid var(--border);border-radius:2px">
+        <p class="m-label" style="margin-bottom:8px">{{ m.label }}</p>
+        <div style="display:flex;align-items:baseline;gap:5px">
+          <span class="m-val">{{ m.value }}</span>
+          {% if m.unit %}<span class="m-unit">{{ m.unit }}</span>{% endif %}
+        </div>
+        {% if m.z_val is not none %}
+        <div class="z-track" style="margin-top:8px">
+          {% if m.z_val >= 0 %}<div class="z-pos" style="width:{{ [m.z_val / 2.0 * 50, 50]|min }}%"></div>
+          {% else %}<div class="z-neg" style="width:{{ [(-m.z_val) / 2.0 * 50, 50]|min }}%"></div>{% endif %}
           <div class="z-mid"></div>
         </div>
         <p class="z-reading" style="{% if m.z_val >= 0.5 %}color:#a3e635{% elif m.z_val <= -0.5 %}color:#f87171{% else %}color:var(--muted){% endif %}">
           {% if m.z_val >= 0 %}+{% endif %}{{ "%.2f"|format(m.z_val) }}σ
         </p>
-      {% elif m.context_only %}
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:4px">context only</p>
-      {% else %}
-        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:4px">no baseline</p>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-
-  <!-- ── Resting HR history ───────────────────────────────────────────── -->
-  {% if resting_hr_history and resting_hr_history['values'] | reject('none') | list | length > 1 %}
-  <div class="card" style="padding:20px 24px;margin-bottom:32px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
-      <p class="eyebrow" style="margin-bottom:0">Resting HR · 30-day history <button type="button" class="gr-tip-trigger" data-tip="Overnight resting heart rate over the last 30 days. The dashed line is your 30-day baseline. A sustained rise of 3–5+ bpm above baseline is an early fatigue or illness signal." aria-label="More info" aria-expanded="false">?</button></p>
-      {% if resting_hr_history.baseline %}<span style="font-family:var(--font-m);font-size:11px;color:var(--muted)">baseline {{ resting_hr_history.baseline }} bpm</span>{% endif %}
-    </div>
-    <div style="height:136px;position:relative">
-      <canvas id="restingHrChart"></canvas>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ── Recovery sparklines ──────────────────────────────────────────── -->
-  {% if sparklines %}
-  <div class="card" style="padding:20px 24px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:16px">14-Day Recovery Trends</p>
-    <div style="display:flex;gap:20px;flex-wrap:wrap">
-      <div style="flex:1;min-width:120px">
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:7px">HRV (ms)</p>
-        <div style="height:44px;position:relative"><canvas id="sparkHrv"></canvas></div>
-      </div>
-      <div style="flex:1;min-width:120px">
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:7px">Sleep Score</p>
-        <div style="height:44px;position:relative"><canvas id="sparkSleep"></canvas></div>
-      </div>
-      <div style="flex:1;min-width:120px">
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:7px">Avg Stress</p>
-        <div style="height:44px;position:relative"><canvas id="sparkStress"></canvas></div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ── 14-day trend chart ─────────────────────────────────────────── -->
-  <div class="card" style="padding:20px 24px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:18px">14-Day Composite Trend <button type="button" class="gr-tip-trigger" data-tip="Each bar is your composite readiness score for that day vs your 30-day baseline. Green = above average. Red = below. Look for trends, not individual days — one bad night is noise, three in a row is a signal." aria-label="More info" aria-expanded="false">?</button></p>
-    <div style="height:136px;position:relative">
-      <canvas id="trendChart"></canvas>
-    </div>
-  </div>
-
-  <!-- ── Activities ────────────────────────────────────────────────── -->
-  <div class="card" style="padding:20px 24px;margin-bottom:12px">
-    <p class="eyebrow" style="margin-bottom:16px">Last 7 Days · Workouts</p>
-    {% if activities %}
-      {% for a in activities %}
-      <div class="act-row">
-        <span style="font-size:18px;flex-shrink:0;width:26px">{{ a.icon }}</span>
-        <div style="flex:1;min-width:0">
-          <p class="act-name">{{ a.name or a.type_label }}</p>
-          <p class="act-meta">{{ a.type_label }}{% if a.date %} · {{ a.date[5:] | replace('-', ' ') }}{% endif %}</p>
-          {% if a.aerobic_te %}
-            {% if a.aerobic_te >= 4 %}{% set te_col = '#fb923c' %}
-            {% elif a.aerobic_te >= 3 %}{% set te_col = '#fde047' %}
-            {% elif a.aerobic_te >= 2 %}{% set te_col = '#4ade80' %}
-            {% else %}{% set te_col = '#71717a' %}{% endif %}
-            {% set te_lbl = a.training_effect_label | replace('_', ' ') | title if a.training_effect_label and a.training_effect_label not in ('NO_AEROBIC_BENEFIT', 'RECOVERY') else '' %}
-            <p style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;margin-top:2px;color:{{ te_col }}">TE {{ a.aerobic_te | round(1) }}{% if te_lbl %} · {{ te_lbl }}{% endif %}</p>
-          {% endif %}
-        </div>
-        <div style="display:flex;gap:14px;flex-shrink:0">
-          {% if a.duration_fmt %}
-          <div class="act-stat"><p class="act-stat-val">{{ a.duration_fmt }}</p><p class="act-stat-lbl">dur</p></div>
-          {% endif %}
-          {% if a.distance_fmt %}
-          <div class="act-stat"><p class="act-stat-val">{{ a.distance_fmt }}</p><p class="act-stat-lbl">dist</p></div>
-          {% endif %}
-          {% if a.avg_hr %}
-          <div class="act-stat"><p class="act-stat-val">{{ a.avg_hr | int }}</p><p class="act-stat-lbl">hr</p></div>
-          {% endif %}
-          {% if a.training_load %}
-          <div class="act-stat"><p class="act-stat-val">{{ a.training_load | int }}</p><p class="act-stat-lbl">load</p></div>
-          {% endif %}
-          {% if a.calories %}
-          <div class="act-stat"><p class="act-stat-val">{{ a.calories | int }}</p><p class="act-stat-lbl">kcal</p></div>
-          {% endif %}
-        </div>
+        {% endif %}
       </div>
       {% endfor %}
-    {% else %}
-      <p style="font-size:13px;color:var(--muted)">No workouts cached — <a href="/refresh" style="color:var(--accent);text-decoration:none">force refresh ↺</a></p>
-    {% endif %}
-  </div>
-
-  <!-- ── Metric explainer ──────────────────────────────────────────── -->
-  {% if metric_explainer %}
-  <div class="card" style="margin-bottom:12px">
-    <button onclick="toggleHelp()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:none;border:none;cursor:pointer;text-align:left">
-      <p class="eyebrow">Understanding Your Metrics</p>
-      <span id="help-chev" style="font-family:var(--font-m);font-size:12px;color:var(--muted);transition:transform 0.2s">▼</span>
-    </button>
-    <div id="help-body" style="display:none;padding:0 20px 20px">
-      <div id="help-content" style="font-size:13px;color:var(--text-dim);line-height:1.75"></div>
     </div>
-  </div>
-  <script>
-    (function() {
-      const raw = {{ metric_explainer | tojson }};
-      const c = document.getElementById('help-content');
-      raw.split(/\n\n+/).forEach(para => {
-        para = para.trim(); if (!para) return;
-        const p = document.createElement('p');
-        p.style.marginBottom = '10px';
-        p.innerHTML = para.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
-        c.appendChild(p);
-      });
-    })();
-    function toggleHelp() {
-      const b = document.getElementById('help-body'), chev = document.getElementById('help-chev');
-      const open = b.style.display === 'block';
-      b.style.display = open ? 'none' : 'block';
-      chev.style.transform = open ? '' : 'rotate(180deg)';
-    }
-  </script>
-  {% endif %}
+  </details>
 
-  <!-- ── Footer ────────────────────────────────────────────────────── -->
-  <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;padding-top:8px">
-    30-day rolling baseline ·
-    {% if baseline_count > 0 %}{{ baseline_count }} fields tracked{% else %}building baseline{% endif %}
-    · <a href="/refresh" style="color:var(--muted);text-decoration:none">↺ refresh</a>
+  <nav class="today-footer-links" aria-label="Related pages">
+    <a href="/calendar">Plan</a>
+    <a href="/performance">Performance</a>
+    <a href="/analysis">Analysis</a>
+    <a href="/nutrition">Nutrition</a>
+    <a href="/coach">Coach</a>
+  </nav>
+
+  <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;padding-top:16px">
+    {% if baseline_count > 0 %}{{ baseline_count }} fields tracked{% else %}Building baseline{% endif %}
   </p>
-
 </div>
 
 <script>
-  const labels = {{ chart_labels | tojson }};
-  const values = {{ chart_values | tojson }};
-  const colours = values.map(v =>
-    v === null ? 'transparent' :
-    v >= 0.25 ? '#a3e635' : v <= -0.25 ? '#f87171' : '#fb923c'
-  );
-  new Chart(document.getElementById('trendChart'), {
-    type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: colours, borderRadius: 1, borderSkipped: false }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.raw === null ? 'no data' : (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + 'σ' } }
-      },
-      scales: {
-        x: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 } } },
-        y: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 }, callback: v => (v>=0?'+':'')+v.toFixed(1)+'σ' }, suggestedMin: -2, suggestedMax: 2 }
-      }
-    }
+  document.querySelectorAll('.advice-para').forEach(p => {
+    p.innerHTML = p.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
   });
-
-  {% if resting_hr_history %}
-  (function() {
-    const rhr = {{ resting_hr_history | tojson }};
-    const canvas = document.getElementById('restingHrChart');
-    if (!canvas || !rhr || !rhr.values) return;
-    const baseline = rhr.baseline;
-    const baselineLine = baseline ? rhr.values.map(() => baseline) : null;
-    const datasets = [{
-      data: rhr.values,
-      borderColor: '#f87171',
-      backgroundColor: 'rgba(248,113,113,0.10)',
-      borderWidth: 2,
-      pointRadius: 2,
-      pointBackgroundColor: '#f87171',
-      tension: 0.3,
-      spanGaps: true,
-      fill: true,
-    }];
-    if (baselineLine) {
-      datasets.push({
-        data: baselineLine,
-        borderColor: '#a1a1aa',
-        borderWidth: 1,
-        borderDash: [4, 4],
-        pointRadius: 0,
-        fill: false,
-      });
-    }
-    new Chart(canvas, {
-      type: 'line',
-      data: { labels: rhr.labels, datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            filter: ctx => ctx.datasetIndex === 0 && ctx.raw !== null,
-            callbacks: { label: ctx => ctx.raw === null ? 'no data' : ctx.raw.toFixed(0) + ' bpm' }
-          }
-        },
-        scales: {
-          x: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 }, maxTicksLimit: 10 } },
-          y: { grid: { color: '#18181b' }, ticks: { color: '#a1a1aa', font: { family: 'DM Mono', size: 11 }, callback: v => v + '' } }
-        }
-      }
-    });
-  })();
-  {% endif %}
-
-  {% if sparklines %}
-  (function() {
-    const sp = {{ sparklines | tojson }};
-    function makeSparkline(id, colour, dataKey) {
-      const canvas = document.getElementById(id);
-      if (!canvas) return;
-      const data = sp[dataKey];
-      if (!data || data.every(v => v === null)) return;
-      new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: sp.labels,
-          datasets: [{ data, borderColor: colour, borderWidth: 1.5, pointRadius: 0, tension: 0.3, spanGaps: false, fill: false }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          scales: { x: { display: false }, y: { display: false } },
-          animation: false,
-        }
-      });
-    }
-    makeSparkline('sparkHrv',    '#a3e635', 'hrv');
-    makeSparkline('sparkSleep',  '#38bdf8', 'sleep');
-    makeSparkline('sparkStress', '#fb923c', 'stress');
-  })();
-  {% endif %}
+  if (window.PlanChange) PlanChange.initAll();
 
   const startTime = Date.now();
   const updEl = document.getElementById('last-updated');
-  setInterval(() => {
-    const s = Math.round((Date.now() - startTime) / 1000);
-    updEl.textContent = s < 60 ? `${s}s ago` : `${Math.round(s/60)}m ago`;
-  }, 10000);
+  if (updEl) {
+    setInterval(() => {
+      const s = Math.round((Date.now() - startTime) / 1000);
+      updEl.textContent = s < 60 ? `${s}s ago` : `${Math.round(s/60)}m ago`;
+    }, 10000);
+  }
   setTimeout(() => location.reload(), 300000);
 </script>
 </body>

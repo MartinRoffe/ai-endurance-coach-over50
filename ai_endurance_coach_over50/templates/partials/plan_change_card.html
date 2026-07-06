@@ -1,0 +1,45 @@
+{# Unified plan-change card — server-rendered via macro or client via PlanChange.render() #}
+{% macro plan_change_card(proposal, card_id='', show_dismiss=false, accent='#60a5fa', intro_html='') %}
+<div class="plan-change-card card" id="{{ card_id }}"
+     style="padding:14px 20px;margin-bottom:12px;border-left:3px solid {{ accent }};background:rgba(96,165,250,0.05)"
+     data-date="{{ proposal.date }}"
+     data-dur="{{ proposal.duration_min }}"
+     data-type="{{ proposal.session_type }}"
+     data-label="{{ proposal.label }}"
+     data-reason="{{ proposal.reason }}"
+     {% if proposal.from_label %}data-from-label="{{ proposal.from_label }}"{% endif %}
+     {% if proposal.from_duration_min is defined and proposal.from_duration_min is not none %}data-from-dur="{{ proposal.from_duration_min }}"{% endif %}
+     {% if proposal.date_display %}data-date-display="{{ proposal.date_display }}"{% endif %}>
+  <p class="plan-change-eyebrow" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:{{ accent }};margin-bottom:8px">
+    Proposed Plan Change{% if proposal.date_display %} · {{ proposal.date_display }}{% elif proposal.date %} · {{ proposal.date }}{% endif %}
+  </p>
+  {% if intro_html %}
+  <div class="plan-change-intro" style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">{{ intro_html | safe }}</div>
+  {% else %}
+  <div class="plan-change-body" style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px">
+    {% if proposal.from_label and proposal.from_label != proposal.label %}
+    <p style="margin:0 0 4px"><span style="color:var(--muted)">Was:</span> {{ proposal.from_label }}{% if proposal.from_duration_min %} ({{ proposal.from_duration_min }} min){% endif %}</p>
+    <p style="margin:0"><span style="color:var(--muted)">→</span> <strong>{{ proposal.label }}</strong> ({{ proposal.duration_min }} min)</p>
+    {% else %}
+    <p style="margin:0"><strong>{{ proposal.label }}</strong> · {{ proposal.duration_min }} min</p>
+    {% endif %}
+    {% if proposal.reason %}
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;margin-bottom:0">{{ proposal.reason }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+  <div class="plan-change-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="plan-change-apply"
+            style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:none;color:#09090b;background:{{ accent }};border-radius:2px;font-weight:600">
+      Apply &amp; sync Garmin
+    </button>
+    {% if show_dismiss %}
+    <button type="button" class="plan-change-dismiss"
+            style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:6px 14px;border:1px solid var(--border);color:var(--muted);background:transparent;border-radius:2px">
+      Dismiss
+    </button>
+    {% endif %}
+  </div>
+  <p class="plan-change-status" style="display:none;font-family:var(--font-m);font-size:11px;margin-top:8px;color:var(--muted)"></p>
+</div>
+{% endmacro %}
