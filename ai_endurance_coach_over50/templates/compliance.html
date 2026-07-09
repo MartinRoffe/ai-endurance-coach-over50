@@ -327,6 +327,26 @@
   }
   .legend span { display: flex; align-items: center; gap: 6px; }
 
+  .phase-divider {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 20px 0 10px;
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+  .phase-divider.camp {
+    color: #fbbf24;
+    background: rgba(120, 53, 15, 0.18);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+  }
+  .phase-divider.event-prep {
+    color: #7dd3fc;
+    background: rgba(7, 89, 133, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+  }
+
   @media (max-width: 700px) {
     .hero { padding: 40px 20px 36px; }
     .container { padding: 0 16px; }
@@ -348,7 +368,7 @@
 
 <div class="hero">
   <div class="container">
-    <div class="hero-eyebrow">12-Week Programme · Training Adherence</div>
+    <div class="hero-eyebrow">12-Week Plan · Tenerife Camp · Event Prep</div>
     <h1>PLAN <span>COMPLIANCE</span></h1>
     <div class="hero-stats">
       <div class="{{ adherence_cls }}">
@@ -415,11 +435,16 @@
 
     <div class="weeks-list">
       {% for wk in completion_weeks %}
+      {% if wk.phase_start and wk.phase == 'camp' %}
+      <div class="phase-divider camp">Tenerife Cycling Camp · Aug 10–30</div>
+      {% elif wk.phase_start and wk.phase == 'event_prep' %}
+      <div class="phase-divider event-prep">Ghent→Amsterdam Event Prep · Aug 31–Sep 20</div>
+      {% endif %}
       {% set row_cls = 'week-row is-current' if wk.status == 'current' else ('week-row is-future' if wk.status == 'future' else 'week-row') %}
       <div class="{{ row_cls }}">
 
         <!-- Week num -->
-        <div class="wk-num">Wk {{ '%02d'|format(wk.week_num) }}</div>
+        <div class="wk-num">{% if wk.phase == 'plan' %}Wk {{ '%02d'|format(wk.week_num) }}{% else %}{{ wk.week_label }}{% endif %}</div>
 
         <!-- Date range -->
         <div class="wk-dates">{{ wk.date_range }}</div>
@@ -488,7 +513,7 @@
 <script>
 // Build cumulative adherence bar chart
 const pcts = {{ cumulative_pcts | tojson }};
-const labels = {{ completion_weeks | map(attribute='week_num') | list | tojson }};
+const labels = {{ completion_weeks | map(attribute='week_label') | list | tojson }};
 const container = document.getElementById('cumChart');
 if (container) {
   const defined = pcts.filter(p => p !== null);
@@ -503,8 +528,8 @@ if (container) {
                 : 'var(--danger)';
     const opacity = pct === null ? '0.3' : '1';
     group.innerHTML = `
-      <div class="chart-bar" style="height:${barPct}%;background:${color};opacity:${opacity}" title="Wk ${labels[i]}: ${pct !== null ? pct + '%' : '—'}"></div>
-      <span class="chart-label">W${labels[i]}</span>
+      <div class="chart-bar" style="height:${barPct}%;background:${color};opacity:${opacity}" title="${labels[i]}: ${pct !== null ? pct + '%' : '—'}"></div>
+      <span class="chart-label">${labels[i]}</span>
     `;
     container.appendChild(group);
   });

@@ -5,7 +5,7 @@ from datetime import date
 from typing import Literal, Optional
 
 from .db import _conn
-from .metrics_store import load_morning_snapshot
+from .metrics_store import load_morning_snapshot, morning_snapshot_premature
 
 AdviceMode = Literal["pre", "post"]
 
@@ -54,6 +54,7 @@ def _ensure_daily_advice_schema(con) -> None:
 
 def save_advice(target_date: date, text: str, mode: AdviceMode = "pre") -> None:
     iso = target_date.isoformat()
+    snap = load_morning_snapshot(target_date) if mode == "pre" else None
     if mode == "post":
         with _conn() as con:
             _ensure_daily_advice_schema(con)
@@ -68,21 +69,36 @@ def save_advice(target_date: date, text: str, mode: AdviceMode = "pre") -> None:
             "INSERT OR REPLACE INTO daily_advice (date, advice) VALUES (?, ?)",
             (iso, text),
         )
+        if snap is not None and not morning_snapshot_premature(snap):
+            con.execute(
+                "UPDATE morning_snapshots SET advice_pre = ? WHERE date = ?",
+                (text, iso),
+            )
 
 
 def delete_advice(target_date: date, mode: Optional[AdviceMode] = None) -> None:
     iso = target_date.isoformat()
+    snap = load_morning_snapshot(target_date) if mode in (None, "pre") else None
     with _conn() as con:
         _ensure_daily_advice_schema(con)
         if mode in (None, "pre"):
             con.execute("DELETE FROM daily_advice WHERE date = ?", (iso,))
+            if snap is not None:
+                if morning_snapshot_premature(snap):
+                    con.execute("DELETE FROM morning_snapshots WHERE date = ?", (iso,))
+                else:
+                    con.execute(
+                        "UPDATE morning_snapshots SET advice_pre = NULL WHERE date = ?",
+                        (iso,),
+                    )
         if mode in (None, "post"):
             con.execute("DELETE FROM daily_advice_post WHERE date = ?", (iso,))
     if mode in (None, "pre"):
-        try:
-            set_cached_text(f"advice_mode_v1_{iso}", "")
-        except Exception:
-            pass
+        for key in (f"advice_mode_v1_{iso}", f"advice_fp_v1_{iso}"):
+            try:
+                set_cached_text(key, "")
+            except Exception:
+                pass
     if mode in (None, "post"):
         try:
             set_cached_text(f"advice_mode_post_v1_{iso}", "")
@@ -93,16 +109,18 @@ def delete_advice(target_date: date, mode: Optional[AdviceMode] = None) -> None:
 def load_advice(target_date: date, mode: AdviceMode = "pre") -> Optional[str]:
     iso = target_date.isoformat()
     if mode == "pre":
-        snap = load_morning_snapshot(target_date)
-        if snap and snap.get("advice_pre"):
-            return snap["advice_pre"]
         with _conn() as con:
             _ensure_daily_advice_schema(con)
             row = con.execute(
                 "SELECT advice FROM daily_advice WHERE date = ?",
                 (iso,),
             ).fetchone()
-        return row["advice"] if row else None
+        if row:
+            return row["advice"]
+        snap = load_morning_snapshot(target_date)
+        if snap and snap.get("advice_pre"):
+            return snap["advice_pre"]
+        return None
     with _conn() as con:
         _ensure_daily_advice_schema(con)
         row = con.execute(

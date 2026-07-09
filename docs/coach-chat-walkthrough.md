@@ -97,8 +97,9 @@ Composed in layers by `_coach_system()` (~line 2323):
    overreaching. That overreaching paragraph is pure prompt engineering: without it Claude
    would see a deeply negative TSB and wrongly raise an alarm, so the prompt teaches it the
    athlete's context in advance.
-3. **`hr_channel_note(...)`** — the HR-vs-power caveat (wording depends on whether a power
-   meter is active).
+3. **`hr_channel_note(...)`** — dual-channel caveat: watts for intervals and load when
+   `power_meter_active()`; HR for readiness, HRV, and fatigue (see
+   [Power Training](power-training.md)).
 4. **`ATHLETE_CONSTRAINTS`** — the hard rules ("NEVER suggest running").
 5. **`_build_coach_context()`** glued on under a `## Current Context` header.
 
@@ -106,7 +107,9 @@ Composed in layers by `_coach_system()` (~line 2323):
 
 ~25 markdown sections, string-appended from SQLite: today's PMC (CTL/ATL/TSB), readiness
 z-score, HRV traffic light, sleep, body composition, nutrition, compliance, zone distribution,
-the full remaining plan, the Haute Route phases, RPE logs, and more. Two things to notice:
+the full remaining plan, the Haute Route phases, RPE logs, and more. When power is active,
+adds power profile, weekly TSS, measured W/kg, decoupling, and power zone distribution.
+Two things to notice:
 
 - It ends by pulling **coach memory** (the LLM-compressed long-term memo) and **RAG results**
   (`retrieve_relevant_analyses` — your recent same-discipline sessions, fetched by SQL join).

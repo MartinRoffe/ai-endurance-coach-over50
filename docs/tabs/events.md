@@ -5,6 +5,9 @@
 These tabs cover the big targets the rest of the plan builds towards: a training
 camp and a multi-day mountain event.
 
+Camp and event-prep sessions feed **[Compliance](plan.md)** tracking alongside
+the 12-week plan.
+
 ---
 
 ## Tenerife tab
@@ -21,6 +24,9 @@ A day-by-day camp itinerary — the rides and structure of the training block on
 the island. It's a reference page for what each camp day holds.
 
 > 📸 *Screenshot: the Tenerife tab showing the camp itinerary.*
+
+Camp ride days also appear on the [Calendar](plan.md) and in **Compliance** once
+their dates have passed.
 
 ---
 
@@ -44,9 +50,24 @@ mountain event in late August 2027.
   toward the event.
 - **The seven event stages**, each with its distance, elevation, and key climb.
 - **Per-stage pacing & fuelling plans.** Below the stage grid, expandable cards
-  hold AI-generated pacing and fuelling guidance for each of the seven stages.
+  hold AI-generated pacing and fuelling guidance for each of the seven stages
+  (dual-channel %FTP and kJ grounding when power is active).
 - **A heat-protocol banner** on the taper phase — a set of heat-acclimation
   sessions for the final ten days before the event.
+- **%FTP prescriptions** on calendar tiles when measured FTP exists — watt ranges
+  for planned quality and endurance sessions.
+- **Planned TSS** on week headers (estimated from typical intensity factors).
+- **Power familiarization bridge** — display card for 14 Sep – 4 Oct 2026.
+- **Peak-simulation decoupling warnings** — banner on weeks 36–43 if recent
+  Pw:HR decoupling exceeds ~8%.
+- **Power meter active badge** when ≥3 power rides in 60 days.
+
+### Power protocol sub-page
+
+**Route:** `/haute-route/power-protocol`
+
+Favero power-meter setup, ramp FTP test procedure, and a live Coggan 7-zone table
+from your measured FTP. See **[Power Training](../power-training.md#haute-route-power-layer)**.
 
 ### How to use it
 

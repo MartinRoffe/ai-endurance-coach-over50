@@ -357,6 +357,59 @@
   </div>
   {% endif %}
 
+  <!-- ── Path to target W/kg ──────────────────────────────────────── -->
+  {% if wkg_goal %}
+  <div class="card" style="padding:20px 24px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">Path to {{ wkg_goal.target_wkg }} W/kg <button type="button" class="gr-tip-trigger" data-tip="Forward projection to your target power-to-weight. Weight is extrapolated from its own trend with deceleration and no floor; three FTP retraining scenarios (conservative/expected/stretch) approach engine ceilings and re-anchor on each new FTP test. Race weight is discovered — where extra weight loss stops adding watts — not assumed." aria-label="More info" aria-expanded="false">?</button></p>
+        <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">Weight trend (no floor) × FTP retraining scenarios · race weight discovered, not assumed</p>
+      </div>
+      <span style="font-family:var(--font-m);font-size:12px;color:#fbbf24;flex-shrink:0;padding-top:2px">
+        Target {{ wkg_goal.target_date }}
+      </span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:14px;font-family:var(--font-m);font-size:12px">
+      <div><span style="color:var(--muted)">Current</span><br><span style="font-size:15px;color:var(--ink)">{{ wkg_goal.path.current_wkg }} W/kg</span></div>
+      <div><span style="color:var(--muted)">Gap</span><br><span style="font-size:15px;color:{% if wkg_goal.path.gap_wkg > 0 %}#fbbf24{% else %}#34d399{% endif %}">{{ '%+.2f' | format(wkg_goal.path.gap_wkg) }}</span></div>
+      <div><span style="color:var(--muted)">Projected race weight</span><br><span style="font-size:15px;color:var(--ink)">{{ wkg_goal.path.race_weight_kg }} kg</span></div>
+      <div><span style="color:var(--muted)">Required FTP @ race weight</span><br><span style="font-size:15px;color:var(--ink)">{{ wkg_goal.path.required_ftp_w }} W</span></div>
+      <div><span style="color:var(--muted)">Expected at event</span><br><span style="font-size:15px;color:var(--ink)">{{ wkg_goal.path.wkg_expected_at_event }} W/kg</span></div>
+    </div>
+
+    {% if wkg_goal.guard and wkg_goal.guard.firing %}
+    <div style="padding:10px 14px;margin-bottom:12px;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.05);font-family:var(--font-m);font-size:12px;color:var(--muted);line-height:1.5">
+      <strong style="color:#fbbf24">Approaching effective race weight.</strong>
+      {{ wkg_goal.guard.reasons | join('; ') }}. Consider holding at maintenance for 2-3 weeks and re-testing.
+    </div>
+    {% endif %}
+
+    {% if wkg_goal.estimated_anchor %}
+    <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin:0 0 10px">Anchored on the VO2max estimate at current weight — take a real FTP test to anchor the scenarios.</p>
+    {% endif %}
+    {% if wkg_goal.path.weight_flat %}
+    <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin:0 0 10px">Weight held flat — trend needs &ge;5 weigh-ins over 14 days to project a decline.</p>
+    {% endif %}
+
+    <div style="height:180px;position:relative"><canvas id="wkgGoalChart"></canvas></div>
+
+    <details style="margin-top:12px">
+      <summary style="font-family:var(--font-m);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);cursor:pointer">Edit target</summary>
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-top:12px">
+        <label style="font-family:var(--font-m);font-size:11px;color:var(--muted)">Target W/kg<br>
+          <input type="number" id="wkgGoalTarget" step="0.05" min="2" max="6" value="{{ wkg_goal.target_wkg }}" style="margin-top:4px;width:90px;padding:6px 8px;background:var(--bg);border:1px solid var(--line,#3f3f46);border-radius:6px;color:var(--ink);font-family:var(--font-m);font-size:13px">
+        </label>
+        <label style="font-family:var(--font-m);font-size:11px;color:var(--muted)">Target date<br>
+          <input type="date" id="wkgGoalDate" value="{{ wkg_goal.target_date }}" style="margin-top:4px;padding:6px 8px;background:var(--bg);border:1px solid var(--line,#3f3f46);border-radius:6px;color:var(--ink);font-family:var(--font-m);font-size:13px">
+        </label>
+        <button type="button" id="wkgGoalSave" style="padding:7px 16px;background:var(--accent,#a3e635);border:none;border-radius:6px;color:#0a0a0a;font-family:var(--font-m);font-size:12px;cursor:pointer">Save</button>
+        <span id="wkgGoalMsg" style="font-family:var(--font-m);font-size:11px;color:var(--muted)"></span>
+      </div>
+    </details>
+  </div>
+  {% endif %}
+
   <!-- ── Estimated FTP & W/kg (primary without power meter; collapsed proxy otherwise) ── -->
   {% if wkg_history and wkg_history | length >= 2 %}
   {% if measured_wkg and measured_wkg | length >= 1 %}
@@ -1203,6 +1256,123 @@
         }
       }
     });
+  })();
+  {% endif %}
+
+  // Path to target W/kg
+  {% if wkg_goal %}
+  (function() {
+    const path = {{ wkg_goal.path | tojson }};
+    const measured = {{ measured_wkg | tojson }};
+    const target = {{ wkg_goal.target_wkg }};
+    const bandLo = {{ wkg_goal.band_lo }};
+    const bandHi = {{ wkg_goal.band_hi }};
+    const targetLabel = path.points.length ? path.points[path.points.length - 1].label : null;
+
+    const mLabels = measured.map(p => p.label);
+    const pLabels = path.points.map(p => p.label);
+    const allLabels = [...mLabels, ...pLabels];
+    const nM = mLabels.length, nP = pLabels.length;
+    const pad = () => Array(nM).fill(null);
+
+    const measuredData = [...measured.map(p => p.wkg), ...Array(nP).fill(null)];
+    const consData = [...pad(), ...path.points.map(p => p.wkg_conservative)];
+    const expData  = [...pad(), ...path.points.map(p => p.wkg_expected)];
+    const strData  = [...pad(), ...path.points.map(p => p.wkg_stretch)];
+    const reqData  = [...pad(), ...path.points.map(p => p.wkg_required)];
+
+    const wkgGoalBandPlugin = {
+      id: 'wkgGoalBand',
+      beforeDatasetsDraw(chart) {
+        const { ctx, chartArea: { left, right }, scales: { x, y } } = chart;
+        ctx.save();
+        ctx.font = '500 9px "DM Mono", monospace';
+        // 2012 engine reference band
+        const yHi = y.getPixelForValue(bandHi), yLo = y.getPixelForValue(bandLo);
+        ctx.fillStyle = 'rgba(163,230,53,0.06)';
+        ctx.fillRect(left, yHi, right - left, yLo - yHi);
+        ctx.fillStyle = 'rgba(163,230,53,0.5)';
+        ctx.textAlign = 'left';
+        ctx.fillText('2012 engine reference (270-280 W)', left + 4, yHi - 3);
+        // Target line
+        const yT = y.getPixelForValue(target);
+        ctx.strokeStyle = 'rgba(52,211,153,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(left, yT); ctx.lineTo(right, yT); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(52,211,153,0.7)'; ctx.textAlign = 'right';
+        ctx.fillText(target.toFixed(2) + ' W/kg target', right - 4, yT - 3);
+        // Event vertical line
+        const evIdx = targetLabel !== null ? chart.data.labels.lastIndexOf(targetLabel) : -1;
+        if (evIdx >= 0) {
+          const evX = x.getPixelForValue(evIdx);
+          ctx.strokeStyle = 'rgba(163,230,53,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+          ctx.beginPath(); ctx.moveTo(evX, y.top); ctx.lineTo(evX, y.bottom); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(163,230,53,0.65)'; ctx.textAlign = 'center';
+          ctx.fillText('HAUTE ROUTE', evX, y.top + 10);
+        }
+        ctx.restore();
+      }
+    };
+
+    new Chart(document.getElementById('wkgGoalChart'), {
+      type: 'line',
+      plugins: [wkgGoalBandPlugin],
+      data: {
+        labels: allLabels,
+        datasets: [
+          { label:'Measured W/kg', data:measuredData, borderColor:'#34d399', backgroundColor:'#34d399', pointRadius:4, showLine:false, spanGaps:false },
+          { label:'Conservative', data:consData, borderColor:'rgba(161,161,170,0.7)', borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0.3, spanGaps:true },
+          { label:'Expected', data:expData, borderColor:'#fbbf24', borderWidth:2, borderDash:[6,4], pointRadius:0, tension:0.3, spanGaps:true },
+          { label:'Stretch', data:strData, borderColor:'#a78bfa', borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0.3, spanGaps:true },
+          { label:'Required', data:reqData, borderColor:'rgba(248,113,113,0.5)', borderWidth:1.5, borderDash:[2,3], pointRadius:0, tension:0, spanGaps:true },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label: ctx => {
+                if (ctx.raw === null) return null;
+                if (ctx.dataset.label === 'Measured W/kg') return `Measured: ${ctx.raw} W/kg`;
+                if (ctx.dataset.label === 'Required') return `Required: ${ctx.raw} W/kg`;
+                const p = path.points[ctx.dataIndex - nM];
+                if (!p) return `${ctx.dataset.label}: ${ctx.raw} W/kg`;
+                const ftp = ctx.dataset.label === 'Conservative' ? p.ftp_conservative
+                          : ctx.dataset.label === 'Expected' ? p.ftp_expected : p.ftp_stretch;
+                return `${ctx.dataset.label}: ${ctx.raw} W/kg (${ftp} W, ${p.weight_kg} kg)`;
+              }
+            },
+            filter: item => item.raw !== null,
+          }
+        },
+        scales:{
+          x:{grid:{color:G},ticks:{...T,maxTicksLimit:10}},
+          y:{grid:{color:G},ticks:{...T,callback:v=>v.toFixed(1)}, suggestedMax: Math.max(target, 4.0) + 0.2},
+        }
+      }
+    });
+
+    const saveBtn = document.getElementById('wkgGoalSave');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const msg = document.getElementById('wkgGoalMsg');
+        const target_wkg = parseFloat(document.getElementById('wkgGoalTarget').value);
+        const target_date = document.getElementById('wkgGoalDate').value;
+        msg.textContent = 'Saving…';
+        fetch('/wkg-goal', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ target_wkg, target_date })
+        }).then(r => {
+          if (r.ok) { location.reload(); }
+          else { r.json().then(d => { msg.textContent = d.detail || 'Save failed'; }).catch(() => { msg.textContent = 'Save failed'; }); }
+        }).catch(() => { msg.textContent = 'Save failed'; });
+      });
+    }
   })();
   {% endif %}
 

@@ -36,6 +36,48 @@ def load_ftp_tests() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── W/kg goal (target power-to-weight + date) ────────────────────────────────
+
+_WKG_GOAL_KEY = "wkg_goal_v1"
+_WKG_GOAL_DEFAULTS = {"target_wkg": 4.0, "target_date": "2027-08-23"}
+
+
+def load_wkg_goal() -> dict:
+    """Target W/kg + date, defaults merged over stored JSON (malformed -> defaults).
+
+    Stored in ``text_cache`` (precedent: ``workouts_stale_ftp`` keeps a non-AI
+    scalar there), so no dedicated table is needed.
+    """
+    import json
+
+    from .text_cache import get_cached_text
+
+    goal = dict(_WKG_GOAL_DEFAULTS)
+    raw = get_cached_text(_WKG_GOAL_KEY)
+    if raw:
+        try:
+            stored = json.loads(raw)
+            if isinstance(stored, dict):
+                if stored.get("target_wkg") is not None:
+                    goal["target_wkg"] = float(stored["target_wkg"])
+                if stored.get("target_date"):
+                    goal["target_date"] = str(stored["target_date"])
+        except (ValueError, TypeError):
+            pass
+    return goal
+
+
+def save_wkg_goal(target_wkg: float, target_date: str) -> None:
+    import json
+
+    from .text_cache import set_cached_text
+
+    set_cached_text(
+        _WKG_GOAL_KEY,
+        json.dumps({"target_wkg": float(target_wkg), "target_date": str(target_date)}),
+    )
+
+
 def power_meter_active() -> bool:
     """True when ≥3 cycling activities in the last 60 days recorded power."""
     return count_power_rides(60) >= 3

@@ -5,13 +5,18 @@ import statistics
 from datetime import date, timedelta
 from typing import Optional
 
+from .energy import weight_trend_kg_per_day
 from .history import (
+    history_for_chart,
     load_activities_by_date,
+    load_body_metrics,
+    load_ftp_tests,
     pmc_history,
     raw_history,
     weekly_monotony_strain,
 )
 from .plan import session_for_date
+from .wkg_projection import performance_guard
 
 
 def _signal_z(rows: list[dict], field: str) -> Optional[float]:
@@ -143,6 +148,32 @@ def check_fatigue_alerts(today: date) -> list[dict]:
                     f"Training monotony is {recent['monotony']:.1f} (>2.0) with strain "
                     f"{recent['strain']:.0f} — too-similar daily loads raise illness/overuse "
                     "risk. Make hard days harder and easy days easier."
+                ),
+            })
+    except Exception:
+        pass
+
+    # 6. WEIGHT_PERFORMANCE: weight loss appears to be costing performance —
+    #    the race-weight discovery signal (falling FTP watts and/or a sustained
+    #    readiness-composite sag while still cutting weight).
+    try:
+        readings = [
+            (r["date"], r["weight_kg"])
+            for r in load_body_metrics(90)
+            if r.get("weight_kg")
+        ]
+        weight_slope = weight_trend_kg_per_day(readings)
+        comp_z_series = [c for (_d, c) in history_for_chart(14)]
+        guard = performance_guard(load_ftp_tests(), weight_slope, comp_z_series)
+        if guard["firing"]:
+            alerts.append({
+                "type": "WEIGHT_PERFORMANCE",
+                "severity": "MODERATE",
+                "message": (
+                    "Weight loss may be costing performance: "
+                    + "; ".join(guard["reasons"]) + ". "
+                    "You may be near your effective race weight — hold at "
+                    "maintenance for 2-3 weeks and re-test."
                 ),
             })
     except Exception:

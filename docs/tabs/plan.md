@@ -33,6 +33,8 @@ smart flags layered on top.
   AI-generated pacing and fuelling plans (carbs per hour, fluids, sodium, and
   framing versus your longest training ride).
 - **A Mersea countdown**, when that build is active.
+- **Haute Route calendar** (separate tab) shows **%FTP watt ranges** on planned
+  sessions when measured FTP exists, plus a power familiarization bridge card.
 
 ### How to use it
 
@@ -53,12 +55,14 @@ smart flags layered on top.
 
 ### What it's for
 
-A summary of how much of the plan you've completed.
+A summary of how much of the plan you've completed across the full training
+block (12-week plan, Tenerife camp, and event prep).
 
 ### What you'll see
 
-Plan completion statistics — sessions done versus scheduled across the plan, so
-you can see your overall follow-through at a glance.
+Plan completion statistics — sessions done versus scheduled, week-by-week
+progress dots, and overall volume adherence. Camp and event-prep weeks use date
+labels (e.g. "10 Aug") instead of week numbers.
 
 ---
 
@@ -68,13 +72,16 @@ you can see your overall follow-through at a glance.
 
 ### What it's for
 
-A closer look at *which kinds* of training you're keeping up with.
+A closer look at *which kinds* of training you're keeping up with across the
+entire block through to the charity ride.
 
 ### What you'll see
 
-Per-discipline adherence — your completion rate broken down by session type
-(e.g. cycling vs strength vs rucking), so you can spot a discipline that's
-quietly slipping.
+- **Overall adherence** — sessions and training time done vs planned.
+- **Per-discipline breakdown** — completion rate by bike, strength, and ruck.
+- **18 weeks total** — 12-week plan, then three Tenerife camp weeks, then three
+  event-prep weeks (including charity ride days), with phase dividers on the page.
+- **Cumulative adherence chart** and week-by-week session log with day dots.
 
 > 📸 *Screenshot: the Compliance tab showing per-discipline adherence bars.*
 
@@ -84,3 +91,6 @@ quietly slipping.
   once the matching activity has landed in Garmin Connect.
 - **Compound days are tracked per sub-session** — completing the kettlebell half
   but not the stair-climber half shows up accurately rather than as all-or-nothing.
+- **Camp ride days** use estimated durations from distance and elevation for
+  volume percentages; see [Power Training](../power-training.md) for how camp
+  sessions are matched.

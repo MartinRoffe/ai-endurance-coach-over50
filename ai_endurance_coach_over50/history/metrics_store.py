@@ -87,6 +87,36 @@ def _stats_from_rows(rows) -> dict[str, tuple[float, float]]:
     return stats
 
 
+def baseline_maturity(
+    reference_date: date,
+    stats: dict[str, tuple[float, float]],
+    comp_z: Optional[float],
+    *,
+    window_days: int = 30,
+    min_metrics: int = 5,
+    min_days: int = 14,
+) -> dict[str, int | bool]:
+    """Whether personal 30-day readiness baselines are mature enough to trust."""
+    start = (reference_date - timedelta(days=window_days)).isoformat()
+    end = (reference_date - timedelta(days=1)).isoformat()
+    with _conn() as con:
+        _ensure_schema(con)
+        history_days = con.execute(
+            "SELECT COUNT(*) FROM daily_metrics WHERE date >= ? AND date <= ?",
+            (start, end),
+        ).fetchone()[0]
+    established = (
+        comp_z is not None
+        and len(stats) >= min_metrics
+        and history_days >= min_days
+    )
+    return {
+        "established": established,
+        "metric_count": len(stats),
+        "history_days": history_days,
+    }
+
+
 def baseline_stats(
     reference_date: date,
     window_days: int = 30,
@@ -343,6 +373,23 @@ def _plan_activity_logged(target: date) -> bool:
     return bool(day_acts)
 
 
+def morning_snapshot_premature(snap: dict) -> bool:
+    """True when the snapshot was taken before overnight watch data synced."""
+    return (
+        snap.get("sleep_score") is None
+        and snap.get("body_battery_morning") is None
+    )
+
+
+def delete_morning_snapshot(target: date) -> None:
+    with _conn() as con:
+        _ensure_morning_snapshot_schema(con)
+        con.execute(
+            "DELETE FROM morning_snapshots WHERE date = ?",
+            (target.isoformat(),),
+        )
+
+
 def load_morning_snapshot(target: date) -> Optional[dict]:
     with _conn() as con:
         _ensure_morning_snapshot_schema(con)
@@ -415,7 +462,9 @@ def maybe_capture_morning_snapshot(
     """Lock morning readiness before the first plan-matched activity is logged."""
     if load_morning_snapshot(target) is not None:
         return False
-    if m.sleep_score is None and m.hrv_last_night is None:
+    from ..metrics import morning_metrics_ready
+
+    if not morning_metrics_ready(m):
         return False
     if _plan_activity_logged(target):
         return False

@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**User-facing docs:** [docs/README.md](docs/README.md) (user guide), [docs/power-training.md](docs/power-training.md) (power meter onboarding and dual-channel model).
+
 ## Commands
 
 ```bash
@@ -56,7 +58,7 @@ The app has two interfaces sharing the same data layer:
 - `/analysis`, `/analysis-refresh` — post-workout analysis tab and refresh trigger
 - `/performance` — PMC (CTL/ATL/TSB), power TSS weekly bars + Coggan CTL/ATL/TSB (when power active), Z2 HR drift, CTL/TSB projection to event, zone polarisation charts, FTP trend, Z2 cardiac drift trend
 - `/calendar` — unified plan/camp/event-prep calendar with completion tracking, interference flags, BTB log
-- `/training`, `/compliance` — plan completion stats and per-discipline adherence
+- `/training`, `/compliance` — plan completion stats and per-discipline adherence across 12-week plan + Tenerife camp + event prep (`_compliance_weeks_unified` in `server/context.py`)
 - `/nutrition` — nutrition hub (principles, calorie tiers, supplements)
 - `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/shopping-list`, `/nutrition/lidl-shopping-list` — nutrition sub-pages
 - `/architecture` — bundled architecture.html diagram (Mermaid system map)
@@ -116,7 +118,7 @@ On the calendar, compound session days render as **two independently clickable s
 
 **Mersea routes** (`mersea_routes.py`) — coastal route data for the Mersea Island build (rucking progression in plan weeks 9–10). `MERSEA_TARGET_DATE` drives a countdown displayed on the Calendar tab.
 
-**Garmin workouts** (`workouts.py`) — builds `garminconnect.workout.CyclingWorkout` objects for charity-plan and Haute Route labels, uploads templates once, then schedules each on its plan dates via `upload_cycling_workout` + `schedule_workout`. When `ftp_w` is known, quality and endurance builders use `%FTP` power laps (`_quality_interval`, `_endurance_interval` with HR-backstop `description`); Z1 builders stay HR/RPE only. `_ramp_test()` provides ascending 1-min steps for ramp FTP. `upload_and_schedule()` is the bulk re-sync (`_delete_existing_plan_workouts` → re-upload → re-schedule), invoked by `--workouts`/`/sync-workouts`. `_specs_for(stype, label, dur, week_num)` is the single source of truth mapping one (override-resolved) session to its workout spec(s) — `("bike", label, dur)` or `("sr", kind, week_num, dur)`, with compound sessions (KB + MaxiClimber, Ruck + KB) expanding to two specs — shared by the bulk strength/ruck builder and `_workouts_for_date(d)` (falls back to `hr_session_for_date` on HR dates). `apply_override_to_garmin(api, date_str)` is the **surgical per-date push** used by `/apply-plan-change`: it `get_scheduled_workouts(year, month)` → filters to that date's plan-prefixed (`_NAME_PREFIXES`) items → `unschedule_workout()` each (never `delete_workout`, so shared templates on other dates survive) → builds/reuses-by-name/schedules the new session. Best-effort; never raises.
+**Garmin workouts** (`workouts.py`) — builds `garminconnect.workout.CyclingWorkout` objects for charity-plan and Haute Route labels, uploads templates once, then schedules each on its plan dates via `upload_cycling_workout` + `schedule_workout`. When `ftp_w` is known, quality and endurance builders use `%FTP` power laps (`_quality_interval`, `_endurance_interval` with HR-backstop `description`); Z1 builders stay HR/RPE only. `_ramp_test()` provides ascending 1-min steps for ramp FTP. `upload_and_schedule()` is the bulk re-sync (`_delete_existing_plan_workouts` → re-upload → re-schedule), invoked by `--workouts`/`/sync-workouts`; its cycling schedule (`_workout_schedule()`, override-aware via `_resolve_bike_session()`) covers the 12-week plan **plus** `CAMP_GRID_WORKOUTS` and `EVENT_PREP_DAYS` (Tenerife camp days themselves are unstructured and never pushed), and the unschedule pass runs `PLAN_START` → the last event-prep date. `_specs_for(stype, label, dur, week_num)` is the single source of truth mapping one (override-resolved) session to its workout spec(s) — `("bike", label, dur)` or `("sr", kind, week_num, dur)`, with compound sessions (KB + MaxiClimber, Ruck + KB) expanding to two specs — shared by the bulk strength/ruck builder and `_workouts_for_date(d)` (falls back to `hr_session_for_date` on HR dates). `apply_override_to_garmin(api, date_str)` is the **surgical per-date push** used by `/apply-plan-change`: it `get_scheduled_workouts(year, month)` → filters to that date's plan-prefixed (`_NAME_PREFIXES`) items → `unschedule_workout()` each (never `delete_workout`, so shared templates on other dates survive) → builds/reuses-by-name/schedules the new session. Best-effort; never raises.
 
 **Power profile** (`power_profile.py`) — pure computation (no cache): `build_power_profile()` from latest `ftp_tests.ftp_w` + `latest_measured_wkg()`, Coggan 7-zone watt table via `_coggan_zones()`, `format_power_profile_lines()` for coach/advice context. Surfaced on readiness dashboard, email header, `/haute-route/power-protocol`, and coach context (primary strain channel when power active; HR profile secondary).
 

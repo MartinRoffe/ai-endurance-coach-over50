@@ -26,12 +26,18 @@ The diagram is a standalone HTML page with Mermaid flowcharts and reference
 tables covering:
 
 - **System overview** — CLI + FastAPI sharing the same core modules
-- **Module map** — `metrics.py`, `history.py`, `analysis.py`, `plan.py`, etc.
+- **Module map** — `metrics.py`, `history/` (SQLite stores), `analysis/` (power,
+  intervals, AI), `server/` (FastAPI routes), `plan.py`, `power_profile.py`, etc.
 - **Data flow** — Garmin fetch → SQLite → dashboard / email / coach
-- **Database schema** — all SQLite tables and relationships
+- **Database schema** — all SQLite tables and relationships (including power
+  columns on `activities`, `ftp_tests.ftp_w`, `activity_power_durability`)
 - **Dashboard tabs** — routes, templates, and key endpoints per page
-- **Power meter** — dual-channel HR + power backfill and coaching surfaces
+- **Power meter** — dual-channel HR + power backfill, `power_meter_active()`
+  gate, Coggan TSS, and coaching surfaces
 - **Coach chat** — context assembly, tools, streaming, and memory
+
+For user-facing power setup and dual-channel behaviour, see
+**[Power Training](power-training.md)**.
 
 Use it when onboarding to the codebase or tracing where a feature lives. The
 text module list in the [project README](../README.md#architecture) and

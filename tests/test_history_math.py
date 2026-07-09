@@ -5,9 +5,12 @@ from datetime import date, timedelta
 
 from ai_endurance_coach_over50.history import (
     _stats_from_rows,
+    baseline_maturity,
+    baseline_stats,
     composite_score,
     ftp_retest_due,
     history_for_chart,
+    load,
     save,
     save_ftp_test,
     weekly_monotony_strain,
@@ -141,3 +144,28 @@ def test_history_for_chart_scores_with_baseline():
     results = dict(history_for_chart(days=7))
     assert results[today] is not None
     assert results[today] > 1.0  # well above its baseline
+
+
+def test_baseline_maturity_established_with_history():
+    today = date.today()
+    for i in range(20, 0, -1):
+        save(DailyMetrics(
+            date=today - timedelta(days=i),
+            sleep_score=75 + (i % 4),
+            hrv_last_night=40 + (i % 5),
+            body_battery_morning=70 + (i % 6),
+        ))
+    save(DailyMetrics(
+        date=today,
+        sleep_score=80,
+        hrv_last_night=45,
+        body_battery_morning=85,
+    ))
+    stats = baseline_stats(today)
+    m = load(today)
+    comp_z = composite_score(m, stats)
+    mat = baseline_maturity(today, stats, comp_z)
+    assert mat["history_days"] >= 14
+    assert mat["metric_count"] >= 3
+    if comp_z is not None and mat["metric_count"] >= 5:
+        assert mat["established"] is True

@@ -118,8 +118,8 @@ def _fmt_min(minutes: int) -> str:
 
 
 def _today() -> date:
-    from datetime import date as _date
-    return _date.today()
+    from ..metrics import local_today
+    return local_today()
 
 
 def date_fromisoformat_safe(s: str) -> date:

@@ -15,7 +15,8 @@ bottom or jump straight to the tab you're looking at.
 | Page | Covers |
 |------|--------|
 | **[Getting Started](getting-started.md)** | Install, configure your `.env`, first run, connecting your Garmin account |
-| **[Key Concepts](concepts.md)** | The mental model: readiness score, training load (CTL/ATL/TSB), the HRV traffic light, and why this app uses heart rate instead of power |
+| **[Key Concepts](concepts.md)** | The mental model: readiness score, training load (CTL/ATL/TSB), the HRV traffic light, and the dual-channel HR + power model |
+| **[Power Training](power-training.md)** | Power meter setup, activation, measured FTP/TSS, and what stays HR-primary vs watts-primary |
 | **[Readiness](tabs/readiness.md)** | The home page — your daily readiness score, metric tiles, nutrition card, fatigue alerts, and session modulation |
 | **[Performance](tabs/performance.md)** | The **Performance ▾** group: the Performance tab (training-load and trend charts) and the Analysis tab (per-workout AI review) |
 | **[Plan](tabs/plan.md)** | The **Plan ▾** group: Calendar, Training, and Compliance |
@@ -67,6 +68,8 @@ The whole guide can be exported to a single PDF:
 ```bash
 bash docs/build-pdf.sh   # produces docs/user-guide.pdf
 ```
+
+Includes **Power Training** (`power-training.md`) after Key Concepts.
 
 This needs [`pandoc`](https://pandoc.org/) and a LaTeX engine installed
 (`brew install pandoc basictex` on macOS). The Markdown files here are the

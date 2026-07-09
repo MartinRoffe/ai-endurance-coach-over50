@@ -9,6 +9,7 @@ the full set of command-line flags.
 Each morning the app can send an HTML email summarising your day:
 
 - Your **readiness score** and the metrics behind it.
+- **Measured FTP and W/kg** in the header when a power profile exists.
 - The **planned workout** for the day (including any override you've applied).
 - A **recent-activity summary**.
 - Any **HIGH fatigue alerts**, pushed to the very top as a callout, followed by
@@ -39,8 +40,9 @@ later. This stops you getting an empty 7 a.m. email before your watch has synced
 ## The weekly briefing
 
 On Mondays the email leads with a short coach briefing — a summary of your
-current form, the key session of the week, and an execution cue. It's generated
-once per week and cached, so it's consistent all week.
+current form, the key session of the week, and an execution cue. When power is
+active, the briefing may include dual-channel intensity notes and FTP retest
+reminders. It's generated once per week and cached, so it's consistent all week.
 
 ## Running it in the background (macOS)
 
@@ -69,6 +71,7 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 | `endurance-coach --serve` | Start the web dashboard at **http://127.0.0.1:8743** |
 | `endurance-coach --email [--dry-run]` | Send the daily email (or preview it) |
 | `endurance-coach --backfill 30` | Pull the last *N* days from Garmin to build your baseline |
+| `endurance-coach --activate-power 30` | Backfill power ingest, TSS, decoupling, and FTP seed (7–90 days; also `GET /activate-power` on Performance) |
 | `endurance-coach --workouts [--dry-run]` | Upload the plan's structured cycling workouts to Garmin Connect and schedule them on their dates |
 | `endurance-coach --setup-schedule` | Install the macOS launchd agents (daily email + server) |
 
@@ -77,4 +80,6 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 This builds structured cycling workouts for each distinct session type in the
 plan, uploads them to Garmin Connect once, and schedules each on its planned
 dates — so the workouts appear on your watch ready to follow. Use `--dry-run`
-first to see what would be uploaded.
+first to see what would be uploaded. When a power meter is active and FTP is
+known, quality and endurance builders include **%FTP** power targets (Z1 sessions
+stay HR-only). Re-run after FTP changes — see [Power Training](power-training.md).

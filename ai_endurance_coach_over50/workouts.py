@@ -29,6 +29,7 @@ from garminconnect.workout import (
 from .plan import (
     TRAINING_WEEKS, PLAN_START,
     MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
+    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS,
 )
 
 _SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
@@ -566,6 +567,9 @@ _BUILDERS: dict[str, Any] = {
     "Over-Unders":      lambda d: _over_unders(d),
     "Threshold Ride":   lambda d: _threshold_ride(d),
     "Hill Repeats":     lambda d: _hill_repeats(d),
+    # Event-prep block labels (Aug 31 – Sep 11)
+    "Sweetspot Intervals": lambda d: _sweetspot_ride(d),
+    "Pre-Event Long Ride": lambda d: _long_ride("Pre-Event Long Ride", d),
     # Haute Route plan labels
     "Z2 Steady":        lambda d: _zone2_steady(d),
     "Z2 Easy":          lambda d: _z2_endurance(d),
@@ -609,7 +613,7 @@ _NAME_PREFIXES: tuple[str, ...] = (
     "Cadence Drills ", "Hilly Z2 ", "Z2 Endurance ", "Low Cadence ", "Easy Prep Ride ",
     "FTP Test", "FTP Re-test", "Final FTP Test", "Ramp Test", "FTP Ramp Test", "Tempo Intervals ", "Long Ride ",
     "Long Ride Easy ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ", "Sweetspot Ride ",
-    "Over-Unders ", "Threshold Ride ", "Hill Repeats ",
+    "Over-Unders ", "Threshold Ride ", "Hill Repeats ", "Pre-Event Long Ride ",
     # Strength & ruck
     "Kettlebell Wk", "Light KB Wk", "MaxiClimber Wk", "Ruck ",
 )
@@ -743,33 +747,53 @@ def _build_strength_ruck_workout(kind: str, week_num: int, dur_min: int) -> Any 
 
 # ── Schedule builders ────────────────────────────────────────────────────────
 
-def _workout_schedule() -> dict[tuple[str, int], list[str]]:
-    """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
+def _resolve_bike_session(d: date, stype: str, label: str, dur: int) -> tuple[str, int] | None:
+    """Apply any coach plan override to one session; return (label, dur) if it is a
+    cycling workout after override resolution, else None.
 
     An override that swaps a day to a non-bike type (ruck/strength/rest) drops that
     cycling workout entirely so the stale one is removed on the next full re-sync.
     """
     from .history import get_plan_override
 
+    ov = get_plan_override(d.isoformat())
+    if ov:
+        o_type = ov.get("session_type") or stype
+        o_label = ov.get("label") or label
+        o_dur = ov.get("duration_min") or dur
+        if o_type not in _BIKE_TYPES:
+            # Swapped to a non-cycling session — no Garmin cycling workout for this day.
+            return None
+        if _resolve_builder(o_label) is None:
+            print(f"  [warn] override label '{o_label}' on {d.isoformat()} has no "
+                  f"builder; using plan label '{label}'")
+            o_label = label
+        stype, label, dur = o_type, o_label, o_dur
+    if stype in _BIKE_TYPES:
+        return label, dur
+    return None
+
+
+def _workout_schedule() -> dict[tuple[str, int], list[str]]:
+    """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
+
+    Covers the 12-week plan plus the camp-window spins (`CAMP_GRID_WORKOUTS`,
+    Aug 10–11/28/30) and the event-prep block (`EVENT_PREP_DAYS`, Aug 31 – Sep 11).
+    Tenerife camp days themselves are unstructured rides and are never pushed.
+    """
     schedule: dict[tuple[str, int], list[str]] = defaultdict(list)
     for wk_idx, week in enumerate(TRAINING_WEEKS):
         for day_idx, (stype, label, dur) in enumerate(week):
             d = PLAN_START + timedelta(weeks=wk_idx, days=day_idx)
-            ov = get_plan_override(d.isoformat())
-            if ov:
-                o_type = ov.get("session_type") or stype
-                o_label = ov.get("label") or label
-                o_dur = ov.get("duration_min") or dur
-                if o_type not in _BIKE_TYPES:
-                    # Swapped to a non-cycling session — no Garmin cycling workout for this day.
-                    continue
-                if _resolve_builder(o_label) is None:
-                    print(f"  [warn] override label '{o_label}' on {d.isoformat()} has no "
-                          f"builder; using plan label '{label}'")
-                    o_label = label
-                stype, label, dur = o_type, o_label, o_dur
-            if stype in _BIKE_TYPES:
-                schedule[(label, dur)].append(d.isoformat())
+            resolved = _resolve_bike_session(d, stype, label, dur)
+            if resolved:
+                schedule[(resolved[0], resolved[1])].append(d.isoformat())
+    for d, w in list(CAMP_GRID_WORKOUTS.items()) + [
+        (ep["date"], ep) for ep in EVENT_PREP_DAYS
+    ]:
+        resolved = _resolve_bike_session(d, w["type"], w["label"], w["dur_min"])
+        if resolved:
+            schedule[(resolved[0], resolved[1])].append(d.isoformat())
     return schedule
 
 
@@ -1039,8 +1063,13 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     # its already-scheduled calendar items (Garmin keeps the schedule and the template
     # as independent objects), so without this pass a re-sync stacks a fresh copy on
     # top of the existing one and every plan day doubles up.
+    # The range extends past the 12-week plan to cover the camp-window spins and the
+    # event-prep block, which are synced too; only plan-prefixed titles are touched,
+    # so athlete-created workouts in that window survive.
     plan_end = PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1)
-    unsched = unschedule_plan_workouts_in_range(api, PLAN_START, plan_end, dry_run=dry_run)
+    sync_end = max([plan_end, *CAMP_GRID_WORKOUTS,
+                    *(ep["date"] for ep in EVENT_PREP_DAYS)])
+    unsched = unschedule_plan_workouts_in_range(api, PLAN_START, sync_end, dry_run=dry_run)
     print(f"  {unsched['unscheduled']} existing plan calendar entr(y/ies) cleared "
           f"({unsched['found']} found, {unsched['errors']} error(s))")
 

@@ -89,34 +89,34 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("ruck",     "Ruck  10 kg",          50),
         ("long",     "Long Ride",            80),
     ],
-    # WK 09
+    # WK 09 — charity-ride specificity: rucks/4×4 dropped, time converted to Z2 riding
     [
         ("rest",     "Rest",                  0),
-        ("strength", "KB + MaxiClimber",     45),
-        ("bike",     "Sweetspot Ride",       90),   # extended from Z2 60m, add structure
-        ("tempo",    "Over-Unders",          75),   # freed from KB+MaxiClimber — threshold intervals
-        ("bike",     "Z2 Endurance",         75),   # de-stacked from Tempo Intervals — avoid 3 consecutive intensity days
-        ("ruck",     "Ruck  12–15 kg",      105),
+        ("strength", "Light KB",             25),   # heavy/low-volume dose — 4×4 dropped (2 quality bike days max)
+        ("bike",     "Sweetspot Ride",       90),   # Q1
+        ("bike",     "Z2 Endurance",         75),
+        ("tempo",    "Over-Unders",          75),   # Q2 — 48 h after Q1, easy Sat before Sun long ride
+        ("bike",     "Z2 Endurance",         75),   # converted from Ruck 12–15 kg (Mersea deprioritised)
         ("long",     "Long Ride",           210),   # extended from 165m
     ],
     # WK 10
     [
         ("rest",     "Rest",                  0),
-        ("strength", "KB + MaxiClimber",     45),
-        ("bike",     "Low Cadence Ride",     90),   # extended from 60m
-        ("tempo",    "Threshold Ride",       90),   # freed from KB+MaxiClimber — sustained threshold
-        ("bike",     "Z2 Endurance",         90),   # de-stacked from Tempo Intervals — avoid 3 consecutive intensity days
-        ("ruck",     "Ruck  12–15 kg",      110),
+        ("strength", "Light KB",             25),   # heavy/low-volume dose — 4×4 dropped
+        ("tempo",    "Threshold Ride",       90),   # Q1
+        ("bike",     "Z2 Endurance",         90),
+        ("tempo",    "Low Cadence Ride",     75),   # Q2 — strength-endurance, replaces dropped gym stimulus
+        ("bike",     "Z2 Endurance",         75),   # converted from Ruck 12–15 kg
         ("long",     "Long Ride",           255),   # extended from 180m
     ],
     # WK 11
     [
         ("bike",     "Recovery Spin",        60),   # back-to-back day 2 after Wk10 Sun 255m long ride
-        ("strength", "KB + MaxiClimber",     45),
+        ("strength", "Light KB",             25),   # 4×4 dropped
         ("bike",     "Z2 Endurance",         90),   # extended from 60m
         ("bike",     "Easy Ride",            45),   # freed from Light KB — 1 strength/week
         ("bike",     "Easy Prep Ride",       60),
-        ("ruck",     "Easy Ruck  8 kg",      60),
+        ("rest",     "Rest",                  0),   # full rest before the 5 hr event simulation (was Easy Ruck)
         ("long",     "Long Ride",           300),   # extended from 210m — 5 hr event simulation
     ],
     # WK 12
@@ -126,7 +126,7 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("ftp",      "Final FTP Test",       60),
         ("strength", "Easy MaxiClimber",     20),
         ("bike",     "Easy Spin",            45),
-        ("ruck",     "Celebration Ruck",     60),
+        ("bike",     "Easy Spin",            45),   # was Celebration Ruck — keep legs cycling-fresh into camp
         ("long",     "Long Ride (Easy)",    120),
     ],
 ]
@@ -146,17 +146,15 @@ COMPOUND_SESSIONS: dict[str, list[dict]] = {
 
 # MaxiClimber interval progression keyed by 1-based week number.
 # Weeks not listed use the session as easy/recovery (deload or Easy MaxiClimber weeks).
-# Norwegian 4×4 introduced in week 9 after the week-8 deload — body is fresh and
-# has 4 weeks of interval base. 4-min intervals at 85–95% max HR with full 3-min recovery.
+# Weeks 9–11 Norwegian 4×4 removed for the charity-ride block: VO2 work is the least
+# specific quality for a flat 190 km event and the third weekly intensity day was
+# crashing HRV — Tuesdays are now a short heavy KB dose only.
 MAXI_INTERVALS: dict[int, dict] = {
     # KB + MaxiClimber — progressive intervals (kb: True)
     1:  {"sets": 10, "work_s": 150, "rest_s":  45, "kb": True},
     2:  {"sets": 10, "work_s": 150, "rest_s":  45, "kb": True},
     5:  {"sets": 10, "work_s": 180, "rest_s":  45, "kb": True},
     6:  {"sets":  8, "work_s": 210, "rest_s":  45, "kb": True},
-    9:  {"sets":  4, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
-    10: {"sets":  5, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
-    11: {"sets":  4, "work_s": 240, "rest_s": 180, "kb": True, "norwegian": True},
     # Easy MaxiClimber — standalone, no KB, easy aerobic (kb: False, easy: True)
     3:  {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
     12: {"sets": 5, "work_s":  90, "rest_s": 60, "kb": False, "easy": True},   # 20m
@@ -195,10 +193,8 @@ RUCK_SPECS: dict[int, dict] = {
     6:  {"weight_lo": 10, "weight_hi": 12,   "note": "Push to 12 kg if last week felt manageable"},
     7:  {"weight_lo": 12, "weight_hi": None, "note": "Peak week — hold 12 kg for the full distance"},
     8:  {"weight_lo": 10, "weight_hi": None, "note": "Deload — step back to 10 kg, easy effort"},
-    9:  {"weight_lo": 12, "weight_hi": 15,   "mersea_build": True, "note": "Mersea build — swap this ruck for the Eastern Arc (12 km, ~3 hr at easy load) to start building duration for the Sep 20 circuit. Or do a regular heavy ruck if you prefer — both work."},
-    10: {"weight_lo": 12, "weight_hi": 15,   "mersea_build": True, "note": "Mersea build — repeat the Eastern Arc or step up to the Coastal Spur (13 km). Either way keep load light (~10 kg) so the focus is duration, not weight."},
-    11: {"weight_lo": 8,  "weight_hi": None, "note": "Taper — 8 kg, focus on stride quality and pace"},
-    12: {"weight_lo": 8,  "weight_hi": None, "note": "Celebration ruck — any comfortable load, enjoy it"},
+    # Weeks 9–12 rucks removed: Round Mersea deprioritised in favour of charity-ride
+    # specificity — those Saturdays are now Z2 rides / rest (see TRAINING_WEEKS).
 }
 
 KB_VIDEO_URLS: dict[str, str] = {
@@ -669,7 +665,7 @@ CAMP_GRID_WORKOUTS: dict[date, dict] = {
 # ── Ghent–Amsterdam Event Prep ────────────────────────────────────────────────
 # AI-designed periodised block: recovery → sweetspot build → back-to-back simulation → taper.
 # Aug 31–Sep 3: recovery rides to absorb the Tenerife gains.
-# Sep 5–9: event-specific quality (sweetspot, 2.5h + 1.5h back-to-back, tempo sharpener).
+# Sep 5–9: event-specific quality (sweetspot, 4.5h + 2h back-to-back, tempo sharpener).
 # Sep 11: short activation; Sep 12: full rest before the start.
 EVENT_PREP_DAYS: list[dict] = [
     {"date": date(2026, 8, 31), "type": "bike",  "label": "Easy Spin",           "dur_min": 45},
@@ -677,7 +673,7 @@ EVENT_PREP_DAYS: list[dict] = [
     {"date": date(2026, 9,  3), "type": "long",  "label": "Z2 Endurance",        "dur_min": 120},
     {"date": date(2026, 9,  5), "type": "tempo", "label": "Sweetspot Intervals", "dur_min": 90},
     {"date": date(2026, 9,  6), "type": "long",  "label": "Pre-Event Long Ride",  "dur_min": 270},
-    {"date": date(2026, 9,  7), "type": "long",  "label": "Long Ride (Easy)",    "dur_min": 90},
+    {"date": date(2026, 9,  7), "type": "long",  "label": "Long Ride (Easy)",    "dur_min": 120},  # only true BTB rehearsal for the 190+120 km event
     {"date": date(2026, 9,  8), "type": "bike",  "label": "Recovery Spin",       "dur_min": 45},
     {"date": date(2026, 9,  9), "type": "tempo", "label": "Tempo Intervals",     "dur_min": 75},
     {"date": date(2026, 9, 11), "type": "bike",  "label": "Easy Prep Ride",      "dur_min": 30},

@@ -18,6 +18,7 @@ FILES=(
   README.md
   getting-started.md
   concepts.md
+  power-training.md
   architecture.md
   tabs/readiness.md
   tabs/performance.md
@@ -28,6 +29,8 @@ FILES=(
   tabs/coach.md
   email-and-automation.md
   faq.md
+  ai-architecture.md
+  coach-chat-walkthrough.md
 )
 
 python3 - "${FILES[@]}" <<'PY' | pandoc \

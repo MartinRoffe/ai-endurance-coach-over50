@@ -18,11 +18,14 @@ answer it quietly assembles a rich picture of where you are:
 
 - Your current training load (CTL / ATL / TSB) and today's readiness.
 - Every remaining session across all your plans (12-week build, Tenerife camp,
-  event prep).
+  event prep, Haute Route with power targets when FTP is known).
 - Recent activities and their AI analyses, body composition, and any active plan
   overrides.
 - Your recent RPE logs, in-ride fuelling compliance, back-to-back fatigue notes,
   and your calorie/macro intake (today's full breakdown plus 14-day averages).
+- **When your power meter is active:** Coggan zone table, weekly TSS, measured
+  W/kg, Pw:HR decoupling, power zone distribution, ride kJ, and dual-channel
+  pacing guidance (watts for intervals; HR for readiness and fatigue).
 
 So you can ask things like "I felt flat on yesterday's intervals — should I
 change Thursday?" and it answers with your numbers in mind.
@@ -42,9 +45,9 @@ change Thursday?" and it answers with your numbers in mind.
 - **It remembers across sessions.** A compact memory of your goals, tendencies,
   and past decisions is kept and refreshed in the background, so the coach has
   continuity beyond the last few messages on screen.
-- **It knows it's working from heart rate, not power.** The coach is told the
-  same [HR-not-power caveat](../concepts.md#why-heart-rate-not-power) you should
-  keep in mind, so it treats W/kg and zone numbers as estimates.
+- **Dual-channel coaching.** When your power meter is active, the coach uses
+  watts for interval pacing and load; HR remains primary for readiness, HRV
+  modulation, and fatigue. See **[Power Training](../power-training.md)**.
 - **The coach needs your Anthropic API key.** Without it, this tab is inert.
 - **It advises; it doesn't act on its own.** Every plan change passes through your
   explicit approval first.

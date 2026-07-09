@@ -53,7 +53,8 @@ sessions, so you can see whether you'll arrive fit *and* fresh.
 > units**, not the TSS (Training Stress Score) units of classic PMC software. The
 > shape of the curves and the direction of change are what matter — the absolute
 > TSB numbers will look different from tools like TrainingPeaks, so don't compare
-> them directly.
+> them directly. When power is active, a separate **Coggan TSS / power PMC** block
+> appears on Performance; see [Two load channels](#two-load-channels).
 
 ## The HRV traffic light
 
@@ -91,24 +92,45 @@ patterns and raises a banner when one trips:
 HIGH alerts are also pushed to the top of the daily email. See
 [Readiness](tabs/readiness.md) and [Email & Automation](email-and-automation.md).
 
-## Why heart rate, not power
+## Dual-channel training: HR and power
 
-This is a deliberate, important design choice that affects how you read several
-charts. **The athlete this app is built for trains by heart rate, not with a
-power meter.** That has consequences:
+The app uses **both** heart rate and power, with a clear split of responsibilities:
 
-- **Heart-rate zones drift.** The same effort produces a different heart rate
-  depending on heat, fatigue, sleep, altitude, and cardiac drift over a long
-  ride. A "Zone 2" ride isn't as clean a measurement as power would be.
-- **The W/kg figure is an estimate, not a measurement.** Where the app shows an
-  estimated FTP or watts-per-kilo (on Performance and Body), it's derived from
-  your VO₂max and weight as a **coarse proxy** — useful for spotting a trend, not
-  for precise training targets.
-- **Durability and cardiac-drift charts** exist precisely because HR training
-  needs you to watch how your heart rate behaves late in long rides.
+**HR-primary (always)** — readiness composite, HRV traffic light, session
+modulation (amber/red swaps), fatigue alerts, and Garmin PMC projection. These
+gates answer *"should I train today, and how hard relative to recovery?"*
 
-Keep this in mind anywhere you see watts, W/kg, or FTP in the app: treat them as
-**trend indicators**, not gospel numbers.
+**Watts-primary when your power meter is active** (≥3 power rides in 60 days) —
+interval pacing, Coggan TSS/IF, power PMC, measured FTP and W/kg, power zone
+polarisation, Pw:HR decoupling, Garmin %FTP workout targets, and coach/analysis
+commentary on watts. These answer *"how hard was that ride, and what watt target
+for the next interval?"*
+
+See **[Power Training](power-training.md)** for setup (`--activate-power`),
+the activation checklist, FTP lifecycle, and chart-by-chart reference.
+
+### Two load channels
+
+The **Performance** tab may show two different load pictures:
+
+1. **Garmin PMC** (CTL / ATL / TSB) — from Garmin's training-load units. Used for
+   readiness-adjacent fatigue and the forward projection to your event.
+2. **Power TSS / Coggan PMC** — from measured watts and your FTP. Independent
+   scale; use for pacing and interval load when power is active.
+
+The shape and direction of each curve matter more than absolute numbers. Do not
+compare Garmin TSB values to TrainingPeaks or other Coggan-based tools.
+
+### HR nuances (still relevant)
+
+Even with a power meter, HR remains essential for recovery decisions:
+
+- **Heart-rate zones drift** with heat, fatigue, sleep, and cardiac drift on long
+  rides — the HR durability chart tracks this.
+- **Estimated W/kg** (from VO₂max and weight) remains available as a fallback
+  before activation or as a secondary line when power is active.
+- **Measured W/kg** (from FTP test watts ÷ weight) is the primary fitness trend
+  once your meter is active.
 
 ---
 

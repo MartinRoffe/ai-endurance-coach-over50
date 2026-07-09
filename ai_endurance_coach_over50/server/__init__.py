@@ -40,8 +40,11 @@ from ..history import (
     delete_advice,
     estimated_wkg_history,
     get_coach_memory,
+    history_for_chart,
     intensity_distribution_by_week,
     intensity_distribution_by_week_power,
+    latest_estimated_wkg,
+    latest_weight_kg,
     load,
     load_activities_by_date,
     load_body_metrics,
@@ -53,7 +56,9 @@ from ..history import (
     load_power_durability,
     load_recent_activities,
     load_session_rpe,
+    load_wkg_goal,
     measured_wkg_history,
+    save_wkg_goal,
     pmc_history,
     power_activation_status,
     power_meter_active,
@@ -95,6 +100,13 @@ from ..plan import (
     session_for_date_extended,
 )
 from ..report import generate_pmc_analysis, generate_pmc_explainer, generate_sleep_analysis
+from ..energy import weight_trend_kg_per_day
+from ..wkg_projection import (
+    REALISTIC_BAND_WKG,
+    _ftp_anchor,
+    build_wkg_path,
+    performance_guard,
+)
 
 from .shared import (  # noqa: F401
     QUALITY_BIKE_LABELS,
@@ -392,6 +404,23 @@ async def log_fuelling_endpoint(body: _FuellingLogRequest, _=Depends(_require_au
     return JSONResponse({"ok": True})
 
 
+class _WkgGoalRequest(BaseModel):
+    target_wkg: float = Field(..., ge=2.0, le=6.0)
+    target_date: str  # ISO YYYY-MM-DD, validated in the handler
+
+
+@app.post("/wkg-goal")
+async def wkg_goal_endpoint(body: _WkgGoalRequest, _=Depends(_require_auth)):
+    try:
+        td = date.fromisoformat(body.target_date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="target_date must be YYYY-MM-DD")
+    if td <= date.today():
+        raise HTTPException(status_code=422, detail="target_date must be in the future")
+    save_wkg_goal(body.target_wkg, body.target_date)
+    return JSONResponse({"ok": True})
+
+
 @app.get("/api/ftp-tests")
 async def api_ftp_tests(_=Depends(_require_auth)):
     return JSONResponse(load_ftp_tests())
@@ -572,6 +601,54 @@ async def performance_view(request: Request):
     for row in measured_wkg:
         row["est_ftp_w"] = est_by_date.get(row["date"], {}).get("est_ftp_w")
 
+    # Path to target W/kg (goal projection + race-weight discovery guard)
+    wkg_goal = None
+    try:
+        goal = load_wkg_goal()
+
+        estimated_anchor = False
+        anchor = _ftp_anchor(load_ftp_tests())
+        if anchor is None:
+            est = latest_estimated_wkg()
+            if est and est.get("est_ftp_w"):
+                anchor = (est["date"], int(est["est_ftp_w"]))
+                estimated_anchor = True
+
+        w0 = latest_weight_kg()
+        if anchor is not None and w0 is not None:
+            readings = [
+                (r["date"], r["weight_kg"])
+                for r in load_body_metrics(90)
+                if r.get("weight_kg")
+            ]
+            weight_slope = weight_trend_kg_per_day(readings)
+
+            path = build_wkg_path(
+                anchor_date_iso=anchor[0],
+                anchor_ftp_w=anchor[1],
+                latest_weight_kg=w0,
+                weight_slope_kg_per_day=weight_slope,
+                target_wkg=goal["target_wkg"],
+                target_date_iso=goal["target_date"],
+            )
+            if path is not None:
+                comp_z_series = [c for (_d, c) in history_for_chart(14)]
+                guard = performance_guard(load_ftp_tests(), weight_slope, comp_z_series)
+                wkg_goal = {
+                    "target_wkg": goal["target_wkg"],
+                    "target_date": goal["target_date"],
+                    "path": path,
+                    "band_lo": REALISTIC_BAND_WKG[0],
+                    "band_hi": REALISTIC_BAND_WKG[1],
+                    "guard": guard,
+                    "estimated_anchor": estimated_anchor,
+                    "anchor_date": anchor[0],
+                    "anchor_ftp_w": anchor[1],
+                }
+    except Exception:
+        logger.exception("wkg_goal projection failed")
+        wkg_goal = None
+
     # Pw:HR decoupling on long power rides
     power_durability_points = load_power_durability(180)
     power_durability_trend: list[dict] = []
@@ -621,6 +698,7 @@ async def performance_view(request: Request):
             "power_durability_trend": power_durability_trend,
             "wkg_history": wkg_history,
             "measured_wkg": measured_wkg,
+            "wkg_goal": wkg_goal,
             "power_meter_active": power_meter_active(),
             "power_activation": power_activation_status(),
             "monotony_weeks": monotony_weeks,

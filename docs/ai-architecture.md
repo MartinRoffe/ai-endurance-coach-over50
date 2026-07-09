@@ -115,9 +115,9 @@ What to notice as a learner:
   `"\n".join(parts)`. There is no magic — a prompt is a string you build with ordinary code.
 - **Inline caveats are prompt engineering.** Look for lines like
   *"Garmin training-load units, NOT Coggan TSS"* and *"NOT necessarily the same workout
-  type as today"*. These exist to pre-empt mistakes the model would otherwise make. Writing
-  these defensive notes is a core prompt-engineering skill: you are debugging the model's
-  assumptions in advance.
+  type as today"*. When `power_meter_active()` is true, additional sections inject measured
+  FTP, weekly TSS, and power zone distribution — see **[Power Training](power-training.md)**
+  for the dual-channel split (HR for readiness gates, watts for pacing).
 - **Match context size to the job.** `build_advice_context` (~line 278) is a *trimmed*
   version of the same idea for the morning email — fewer sections, smaller payload. Don't
   send everything everywhere; more context costs money, adds latency, and can dilute the

@@ -24,12 +24,14 @@ on any tile for a short explanation.
 
 **Today's Nutrition card.** Pulled from your Garmin food log: calories logged,
 your estimated daily burn (TDEE), and the **balance** between them, plus carbs
-and protein. The balance is colour-coded — 🟢 green for a deficit, 🟠 amber for a
+and protein. When today's ride has power data, **ride mechanical work (kJ)** may
+appear here too. The balance is colour-coded — 🟢 green for a deficit, 🟠 amber for a
 small surplus, 🔴 red for a large surplus — so a weight-loss block is easy to keep
 honest at a glance.
 
 **The HRV traffic light.** A green / amber / red card rating today's planned
 session against last night's HRV. See [the concept](../concepts.md#the-hrv-traffic-light).
+This gate stays **HR-only** even when a power meter is active.
 
 **Fatigue alerts.** When one of the five [fatigue patterns](../concepts.md#fatigue-alerts)
 trips, a banner appears here (HIGH alerts in red, moderate in amber) explaining
@@ -38,13 +40,17 @@ what was detected.
 **FTP re-test card.** If it's been more than six weeks since your last fitness
 test, a card suggests scheduling an "FTP Re-test" into an upcoming suitable
 session. Apply it and, once you complete that ride, your test history updates
-automatically and the card disappears.
+automatically (HR and watts when power data exists) and the card disappears.
+
+**Power baseline card.** When your power meter is active but no measured FTP
+watts are saved yet, a card prompts you to schedule a ramp or baseline FTP test
+via the same Apply flow as HRV modulation.
 
 ## How to use it
 
 - **Apply a session change.** On an amber or red traffic-light day (or when the
-  FTP-retest card appears), click **Apply**. This records a one-day override on
-  your plan — the swap then shows up on the [Calendar](plan.md) and in the daily
+  FTP-retest or power-baseline card appears), click **Apply**. This records a
+  one-day override on your plan — the swap then shows up on the [Calendar](plan.md) and in the daily
   email. Green days just show a "session as planned" pill, nothing to do.
 - **Refresh the data.** The **Refresh** action force-fetches fresh data straight
   from Garmin and clears the cached AI advice for the day — use it if you synced
@@ -67,3 +73,5 @@ automatically and the card disappears.
   the score means much.
 - **AI advice is cached** per day, so it won't change every time you reload —
   use **Refresh** to regenerate it.
+- **Stale Garmin workouts banner** appears on the [Performance](performance.md)
+  tab after FTP changes, not here — run Sync workouts when prompted.

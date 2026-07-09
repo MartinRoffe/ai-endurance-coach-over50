@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, fields
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,16 @@ class DailyMetrics:
     calorie_goal_adjusted: Optional[float] = None # Garmin intake GOAL adjusted for activity (NOT expenditure; real TDEE computed in energy.py)
     carbs_consumed: Optional[float] = None        # grams of carbohydrate logged
     protein_consumed: Optional[float] = None      # grams of protein logged
+
+
+def local_today() -> date:
+    """Calendar date in the machine's local timezone."""
+    return datetime.now().astimezone().date()
+
+
+def morning_metrics_ready(m: DailyMetrics) -> bool:
+    """True once overnight watch data has synced (sleep or morning body battery)."""
+    return m.sleep_score is not None or m.body_battery_morning is not None
 
 
 def needs_metrics_refetch(m: DailyMetrics) -> bool:
@@ -424,7 +434,7 @@ def map_activity_power(raw: dict) -> dict:
 
 def fetch_activities(api, days: int = 7) -> list[dict]:
     """Return raw activity dicts for the last `days` days."""
-    from datetime import date, timedelta
+    from datetime import date, datetime, timedelta
     end = date.today().strftime("%Y-%m-%d")
     start = (date.today() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     try:

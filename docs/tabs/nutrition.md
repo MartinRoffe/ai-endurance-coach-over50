@@ -68,9 +68,14 @@ toggle.
 
 Carbs and protein logged in your Garmin food diary appear on:
 
-- The **Readiness** tab nutrition card
+- The **Readiness** tab nutrition card (including **ride work kJ** when today's
+  ride has power data)
 - The **Nutrition** overview banner
 - The **Body** tab macro tiles (today + 14-day averages)
 - **Coach** context (simple rules + checklist lead the nutrition block)
 
 Protein targets use lean-mass-based floors from `protein_target_g()`.
+
+When FTP is known, in-ride fuelling plans and calorie tiers may use **estimated
+mechanical work (kJ)** from planned session power. See
+**[Power Training](../power-training.md)**.

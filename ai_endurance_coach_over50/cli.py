@@ -29,7 +29,7 @@ from .history import (
     LOWER_IS_BETTER,
     SCORED_FIELDS,
 )
-from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, needs_metrics_refetch
+from .metrics import DailyMetrics, available_count, fetch_metrics, fetch_activities, local_today, needs_metrics_refetch
 
 console = Console()
 
@@ -207,8 +207,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="AI Endurance Coach (50+) — Garmin-powered readiness & coaching")
     parser.add_argument(
         "--date",
-        default=date.today().isoformat(),
-        help="Target date YYYY-MM-DD (default: today)",
+        default=None,
+        help="Target date YYYY-MM-DD (default: today; ignored for live --email sends)",
     )
     parser.add_argument(
         "--fetch",
@@ -348,7 +348,10 @@ def main() -> None:
             console.print(f"\n[yellow]Next:[/yellow] {status['next_action']}")
         return
 
-    target = date.fromisoformat(args.date)
+    if args.email:
+        target = local_today()
+    else:
+        target = date.fromisoformat(args.date) if args.date else local_today()
 
     # Backfill mode: fetch historical days to prime the baseline
     if args.backfill:
@@ -401,6 +404,12 @@ def main() -> None:
     if args.email:
         from .report import run_report
 
+        if not args.dry_run and args.date and args.date != target.isoformat():
+            console.print(
+                f"[yellow]Ignoring --date {args.date} for live email — "
+                f"sending today ({target.isoformat()}).[/yellow]"
+            )
+
         sentinel = Path.home() / ".ai_endurance_coach_over50" / f"sent_{target.isoformat()}"
         if sentinel.exists() and not args.dry_run:
             console.print(f"[dim]Email already sent for {target}, skipping.[/dim]")
@@ -413,6 +422,8 @@ def main() -> None:
             _missing.append("sleep_end (sleep not yet recorded)")
         if getattr(m, "body_battery_morning", None) is None:
             _missing.append("body_battery_morning")
+        if m.date != target:
+            _missing.append(f"metrics date {m.date} != today {target}")
         if _missing and not args.dry_run:
             console.print(
                 f"[yellow]Watch hasn't synced yet — missing: {', '.join(_missing)}. "
@@ -472,8 +483,14 @@ def _setup_schedule() -> None:
         f"export PYTHONPATH={project_dir}\n"
         f"export DOTENV_PATH={env_file}\n"
         f"# Retry every 30 min until 10:00 if watch hasn't synced yet (exit 2 = not ready)\n"
+        f"START_DAY=$(date +%Y-%m-%d)\n"
         f"DEADLINE=$(date -v+3H +%s 2>/dev/null || date --date='+3 hours' +%s)\n"
         f"while true; do\n"
+        f"    TODAY=$(date +%Y-%m-%d)\n"
+        f"    if [ \"$TODAY\" != \"$START_DAY\" ]; then\n"
+        f"        echo 'Calendar day changed — exiting stale retry loop'\n"
+        f"        exit 2\n"
+        f"    fi\n"
         f"    {python} -m ai_endurance_coach_over50.cli --withings-sync --email --fetch\n"
         f"    CODE=$?\n"
         f"    [ $CODE -eq 0 ] && exit 0\n"

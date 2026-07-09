@@ -17,6 +17,7 @@ from ..history import (
     ACTIVITY_MATCH,
     baseline_stats,
     composite_score,
+    delete_advice,
     field_baseline,
     ftp_retest_due,
     get_cached_text,
@@ -33,6 +34,7 @@ from ..history import (
     load_morning_snapshot,
     load_recent_activities,
     metrics_from_snapshot,
+    morning_snapshot_premature,
     pmc_history,
     power_meter_active,
     raw_history,
@@ -43,7 +45,7 @@ from ..history import (
     tdee_history,
     z_score,
 )
-from ..metrics import DailyMetrics, fetch_activities, fetch_metrics, needs_metrics_refetch
+from ..metrics import DailyMetrics, fetch_activities, fetch_metrics, local_today, morning_metrics_ready, needs_metrics_refetch
 from ..plan import (
     COMPOUND_SESSIONS,
     PLAN_START as _PLAN_START,
@@ -166,11 +168,13 @@ def _activity_context_blurb(activities: list[dict]) -> str:
 
 def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     api = None
+    email = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    has_garmin = bool(email and password)
+
     # Load or fetch
     if force_fetch:
-        email = os.getenv("GARMIN_EMAIL", "")
-        password = os.getenv("GARMIN_PASSWORD", "")
-        if email and password:
+        if has_garmin:
             api = get_api(email, password)
             m = fetch_metrics(api, target)
             save(m)
@@ -180,15 +184,23 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
             m = load(target) or DailyMetrics(date=target)
     else:
         m = load(target) or DailyMetrics(date=target)
-        if needs_metrics_refetch(m):
-            email = os.getenv("GARMIN_EMAIL", "")
-            password = os.getenv("GARMIN_PASSWORD", "")
-            if email and password:
+        if needs_metrics_refetch(m) or (
+            target == local_today() and not morning_metrics_ready(m) and has_garmin
+        ):
+            if has_garmin:
                 api = get_api(email, password)
                 m = fetch_metrics(api, target)
                 save(m)
                 from ..hr_profile import refresh_hr_profile_if_needed
                 refresh_hr_profile_if_needed(api, force=False)
+
+    morning_snapshot = load_morning_snapshot(target)
+    if morning_snapshot and morning_snapshot_premature(morning_snapshot) and morning_metrics_ready(m):
+        delete_advice(target, mode="pre")
+        morning_snapshot = None
+
+    if force_fetch:
+        delete_advice(target, mode="pre")
 
     stats = baseline_stats(target)
     # Resting HR is intentionally excluded from the composite (SCORED_FIELDS), but
@@ -202,7 +214,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     live_comp_z = comp_z
     live_comp_label, live_comp_colour = comp_label, comp_colour
 
-    morning_snapshot = load_morning_snapshot(target)
+    if morning_snapshot is None:
+        morning_snapshot = load_morning_snapshot(target)
     if morning_snapshot:
         morning_m = metrics_from_snapshot(morning_snapshot, target)
         morning_comp_z = morning_snapshot.get("composite_z")
@@ -310,7 +323,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         pre_key = f"{date_key}:pre"
         if pre_key not in _advice_cache:
             _advice_cache[pre_key] = generate_advice(
-                morning_m, stats, morning_comp_z,
+                m, stats, live_comp_z,
                 mode="pre",
                 traffic_light=traffic_light,
             )
@@ -553,12 +566,112 @@ def _build_preplan_weeks(acts_by_date: dict) -> list[dict]:
     return weeks
 
 
+def _camp_day_dur_min(km: int, elev_m: int) -> int:
+    """Tenerife ride duration estimate — matches projection.py."""
+    return max(int((km / 25 + elev_m / 700) * 60), 30)
+
+
+def _charity_day_dur_min(km: int) -> int:
+    return max(int(km / 25 * 60), 60)
+
+
+def _compliance_weeks_unified() -> list[dict]:
+    """12-week plan + Tenerife camp grid + event-prep/charity weeks for compliance."""
+    unified: list[dict] = []
+    for w in _calendar_weeks():
+        unified.append({
+            "phase": "plan",
+            "week_num": w["week_num"],
+            "week_label": f"Wk {w['week_num']:02d}",
+            "start": w["start"],
+            "days": w["days"],
+            "phase_start": w["week_num"] == 1,
+        })
+    for i, w in enumerate(build_camp_weeks()):
+        days = []
+        for day in w["days"]:
+            if day.get("is_camp") and day.get("intensity") in ("easy", "medium", "hard"):
+                km = day.get("km", 0) or 0
+                elev = day.get("elev_m", 0) or 0
+                stype = "long" if day["intensity"] == "hard" else "bike"
+                days.append({
+                    "date": day["date"],
+                    "type": stype,
+                    "dur_min": _camp_day_dur_min(km, elev),
+                    "sub_sessions": None,
+                })
+            elif day.get("is_workout"):
+                days.append({
+                    "date": day["date"],
+                    "type": day["type"],
+                    "dur_min": day["dur_min"],
+                    "sub_sessions": None,
+                })
+            else:
+                days.append({
+                    "date": day["date"],
+                    "type": "rest",
+                    "dur_min": 0,
+                    "sub_sessions": None,
+                })
+        unified.append({
+            "phase": "camp",
+            "week_num": None,
+            "week_label": w["week_label"],
+            "start": days[0]["date"],
+            "days": days,
+            "phase_start": i == 0,
+        })
+    for i, w in enumerate(build_combined_event_weeks()):
+        days = []
+        for day in w["days"]:
+            if day.get("is_event") and not day.get("is_mersea"):
+                km = day.get("km", 0) or 0
+                days.append({
+                    "date": day["date"],
+                    "type": "long",
+                    "dur_min": _charity_day_dur_min(km),
+                    "sub_sessions": None,
+                })
+            elif day.get("is_event") and day.get("is_mersea"):
+                km = day.get("km", 0) or 0
+                days.append({
+                    "date": day["date"],
+                    "type": "ruck",
+                    "dur_min": max(int(km / 5 * 60), 60),
+                    "sub_sessions": None,
+                })
+            elif day.get("type") not in (None, "rest") and day.get("label"):
+                days.append({
+                    "date": day["date"],
+                    "type": day["type"],
+                    "dur_min": day.get("dur_min", 0),
+                    "sub_sessions": None,
+                })
+            else:
+                days.append({
+                    "date": day["date"],
+                    "type": "rest",
+                    "dur_min": 0,
+                    "sub_sessions": None,
+                })
+        unified.append({
+            "phase": "event_prep",
+            "week_num": None,
+            "week_label": w["week_label"],
+            "start": days[0]["date"],
+            "days": days,
+            "phase_start": i == 0,
+        })
+    return unified
+
+
 def _plan_completion_stats() -> dict:
-    """Compute per-week plan vs actual completion stats for the training page."""
+    """Compute per-week plan vs actual completion stats for the training/compliance pages."""
     today = date.today()
-    weeks_data = _calendar_weeks()
-    plan_end = weeks_data[-1]["days"][-1]["date"]
-    acts_by_date = load_activities_by_date(_PLAN_START, min(today, plan_end))
+    weeks_data = _compliance_weeks_unified()
+    block_end = weeks_data[-1]["days"][-1]["date"]
+    acts_by_date = load_activities_by_date(_PLAN_START, min(today, block_end))
 
     completion_weeks = []
     total_plan_sessions = total_done_sessions = 0
@@ -584,7 +697,6 @@ def _plan_completion_stats() -> dict:
             is_rest = stype == "rest"
 
             status = "rest" if is_rest else ("future" if is_future else "pending")
-            completed = None
 
             if not is_rest and not is_future:
                 plan_sessions += 1
@@ -601,7 +713,6 @@ def _plan_completion_stats() -> dict:
                     matched_acts = [a for a in day_acts if a["type_key"] in valid_keys]
                     matched = bool(matched_acts)
                     actual = int(sum(a.get("duration_seconds", 0) or 0 for a in matched_acts) / 60)
-                completed = matched
                 if matched:
                     done_sessions += 1
                     done_min += actual
@@ -627,7 +738,10 @@ def _plan_completion_stats() -> dict:
             wk_status = "past"
 
         completion_weeks.append({
+            "phase": week["phase"],
+            "phase_start": week["phase_start"],
             "week_num": week["week_num"],
+            "week_label": week["week_label"],
             "date_range": date_range,
             "plan_sessions": plan_sessions,
             "done_sessions": done_sessions,

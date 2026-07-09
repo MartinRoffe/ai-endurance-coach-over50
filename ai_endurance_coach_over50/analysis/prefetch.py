@@ -34,10 +34,10 @@ _STEP_SUMMARIES: dict[str, str] = {
     "Tempo Intervals":  "15m warm-up → 3 × (10m Z4 + 5m Z1 recovery) → 5m cool-down",
     "Long Ride":        "15m warm-up → sustained Z2 main block → 15m cool-down",
     "Long Ride (Easy)": "15m warm-up → easy Z1–2 riding → 15m cool-down",
-    "KB + MaxiClimber": "Kettlebell strength work (swings, presses, carries) then MaxiClimber full-body climbing intervals — arms and legs simultaneously. Interval protocol progresses each phase toward Norwegian 4×4 in the peak block.",
+    "KB + MaxiClimber": "Kettlebell strength work (swings, presses, carries) then MaxiClimber full-body climbing intervals — arms and legs simultaneously. Interval protocol progresses through the base and build phases.",
     "MaxiClimber":      "MaxiClimber full-body vertical climbing (arms and legs) at easy pace — deload or recovery week session.",
     "Easy MaxiClimber": "Easy-pace MaxiClimber full-body climbing for active recovery — low intensity, focus on movement quality.",
-    "Light KB":         "Light kettlebell technique and conditioning work emphasising form and movement quality over load.",
+    "Light KB":         "Short kettlebell session — technique and movement quality on deload/test weeks; in the weeks 9–11 overload block it is the single weekly strength dose: heavy but low volume, every set two reps in reserve.",
 }
 
 def _ensure_workout_desc_schema(con: sqlite3.Connection) -> None:

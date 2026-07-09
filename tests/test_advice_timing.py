@@ -7,7 +7,7 @@ from ai_endurance_coach_over50.coach_context import (
     coach_persona_brief,
 )
 from ai_endurance_coach_over50.history import save_activities
-from ai_endurance_coach_over50.history.text_cache import load_advice
+from ai_endurance_coach_over50.history.text_cache import load_advice, save_advice
 from ai_endurance_coach_over50.report import _build_advice_prompt
 from ai_endurance_coach_over50.metrics import DailyMetrics
 from ai_endurance_coach_over50.history import baseline_stats, composite_score
@@ -68,6 +68,23 @@ def test_build_advice_context_shows_post_workout_status():
     assert "THIS MORNING before the session" in ctx
 
 
+def test_build_advice_prompt_established_baseline_guardrail():
+    target = date(2026, 6, 19)
+    m = DailyMetrics(date=target, hrv_last_night=50, sleep_score=80)
+    stats = baseline_stats(target)
+    comp_z = composite_score(m, stats)
+    timing = build_advice_timing(
+        target,
+        now=datetime(2026, 6, 19, 7, 30),
+        today=target,
+    )
+    prompt = _build_advice_prompt(m, stats, comp_z, timing=timing)
+    if comp_z is not None and len(stats) >= 5:
+        assert "Baseline status: ESTABLISHED" in prompt
+        assert "do NOT warn that baselines are still building" in prompt
+    assert "context metric — excluded from composite" in prompt
+
+
 def test_build_advice_prompt_post_workout_instructions():
     target = date(2026, 6, 19)
     m = DailyMetrics(date=target, hrv_last_night=50, sleep_score=80)
@@ -113,3 +130,19 @@ def test_load_advice_pre_from_snapshot():
         advice_pre="Frozen morning advice.",
     )
     assert load_advice(target, mode="pre") == "Frozen morning advice."
+
+
+def test_daily_advice_wins_over_stale_snapshot_advice():
+    from ai_endurance_coach_over50.history import capture_morning_snapshot
+
+    target = date(2026, 7, 13)
+    capture_morning_snapshot(
+        target,
+        DailyMetrics(date=target, sleep_score=80, body_battery_morning=60),
+        composite_z=None,
+        readiness_label="Unknown",
+        traffic_light=None,
+        advice_pre="The baseline is still building.",
+    )
+    save_advice(target, "Train — readiness is above your average today.", mode="pre")
+    assert load_advice(target, mode="pre") == "Train — readiness is above your average today."

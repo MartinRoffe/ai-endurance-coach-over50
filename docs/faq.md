@@ -87,6 +87,44 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 The first Withings sync needs a one-time interactive OAuth sign-in to authorise
 access. After that it runs unattended. See [Body](tabs/health.md#body-tab).
 
+## My power meter doesn't show as active / power charts are empty
+
+The app requires **≥3 rides with power data in the last 60 days**. Sync your
+rides to Garmin, then run:
+
+```bash
+endurance-coach --activate-power 30
+```
+
+Or use **Activate power** on the Performance tab. See
+[Power Training](power-training.md).
+
+## What's the difference between Garmin PMC and Coggan TSS?
+
+**Garmin PMC** (CTL/ATL/TSB on Performance) uses Garmin's training-load units —
+good for readiness-adjacent fatigue and the event projection.
+
+**Coggan TSS / power PMC** appears when your power meter is active. It uses
+measured watts and your FTP. Use it for interval load and pacing — don't compare
+absolute TSB numbers to TrainingPeaks.
+
+## Garmin workouts didn't update after my FTP test
+
+FTP changes set a **stale workouts** flag. Re-sync manually:
+
+```bash
+endurance-coach --workouts
+```
+
+Or **Sync workouts** from the Performance tab. The app does not auto-push
+template changes.
+
+## Measured vs estimated W/kg?
+
+**Measured** — from FTP test watts ÷ body weight on test dates (primary when
+power active). **Estimated** — ACSM formula from VO₂max and weight (fallback
+before activation). See [Power Training](power-training.md#faq).
+
 ## Where is my data, and is any of it uploaded?
 
 Everything lives locally in `~/.ai_endurance_coach_over50/history.db`. The app only talks

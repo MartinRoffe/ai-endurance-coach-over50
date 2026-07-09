@@ -16,8 +16,11 @@ from .hr_plan import HR_EVENT_NAME
 from .history import (
     ACTIVITY_MATCH,
     LOWER_IS_BETTER,
+    _UNSCORED,
+    baseline_maturity,
     baseline_stats,
     composite_score,
+    delete_advice,
     get_cached_text,
     load_activities_by_date,
     load_advice,
@@ -27,18 +30,38 @@ from .history import (
     seven_day_composite_trend_csv,
     z_score,
 )
-from .metrics import DailyMetrics
+from .metrics import DailyMetrics, morning_metrics_ready
 from .llm import MODEL_FAST, MODEL_SMART
 from .coach_voice import COACH_VOICE
 from .coach_context import build_advice_context, build_advice_timing, coach_persona_brief
 
 _UNSCORED = {"training_load_chronic", "vo2_max"}
 _ADVICE_MODE_KEY = "advice_mode_v1_{}"
+_ADVICE_FP_KEY = "advice_fp_v1_{}"
 _ADVICE_MAX_TOKENS = 1024
 
 
 def _advice_mode_cache_key(target: date) -> str:
     return _ADVICE_MODE_KEY.format(target.isoformat())
+
+
+def _advice_fingerprint_key(target: date) -> str:
+    return _ADVICE_FP_KEY.format(target.isoformat())
+
+
+def _advice_fingerprint(
+    m: DailyMetrics,
+    stats: dict,
+    comp_z: Optional[float],
+) -> str:
+    maturity = baseline_maturity(m.date, stats, comp_z)
+    return "|".join([
+        f"{comp_z:.3f}" if comp_z is not None else "none",
+        "1" if maturity["established"] else "0",
+        str(m.sleep_score),
+        str(m.hrv_last_night),
+        str(m.body_battery_morning),
+    ])
 
 
 def _build_advice_prompt(
@@ -56,8 +79,25 @@ def _build_advice_prompt(
     ]
     if timing["is_today"] and timing.get("local_time"):
         lines.append(f"Local time now: {timing['local_time']} ({timing['part_of_day']})")
+    maturity = baseline_maturity(target, stats, comp_z)
     lines += [
         f"Composite readiness score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'no baseline yet'} ({label})",
+    ]
+    if maturity["established"]:
+        lines.append(
+            f"Baseline status: ESTABLISHED ({maturity['metric_count']} readiness metrics with "
+            f"30-day personal baselines over {maturity['history_days']} synced days). "
+            "HRV traffic-light and composite z-scores are fully operational — do not describe "
+            "baselines as still building."
+        )
+    else:
+        lines.append(
+            f"Baseline status: BUILDING ({maturity['metric_count']} scored metrics, "
+            f"{maturity['history_days']} synced days in the 30-day window"
+            + ("" if comp_z is not None else ", composite score unavailable")
+            + ")."
+        )
+    lines += [
         "",
         "Metric details (z-score = deviation from personal 30-day baseline, positive = better):",
     ]
@@ -69,6 +109,8 @@ def _build_advice_prompt(
             mean, std = stats[field]
             z = z_score(value, mean, std, field)
             lines.append(f"  {label_str}: {val_str}  (z={z:+.2f}, 30d avg={fmt_value(field, mean)}{unit})")
+        elif field in _UNSCORED:
+            lines.append(f"  {label_str}: {val_str}  (context metric — excluded from composite)")
         else:
             lines.append(f"  {label_str}: {val_str}  (no baseline)")
 
@@ -111,7 +153,9 @@ def _build_advice_prompt(
             "1. A clear one-line recommendation: Train / Rest / Active Recovery",
             "2. Two or three sentences explaining the key signals driving that recommendation",
             "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification within the same discipline (never running)",
-            "4. One watchout if any metric is concerning",
+            "4. One watchout if any metric or load signal is concerning — cite a specific z-score "
+            "or ACWR/PMC number. If Baseline status is ESTABLISHED, do NOT warn that baselines "
+            "are still building or that the dashboard cannot yet catch a bad morning.",
             "",
             "Keep the response concise for the morning readiness dashboard. "
             "Use plain language, no bullet markdown, just short paragraphs. "
@@ -135,13 +179,24 @@ def generate_advice(
     if mode == "post" and not timing["post_workout"]:
         return ""
 
+    if mode == "pre" and not morning_metrics_ready(m):
+        return ""
+
     mode_key = (
         f"advice_mode_post_v1_{m.date.isoformat()}"
         if mode == "post"
         else _advice_mode_cache_key(m.date)
     )
+    fp_key = _advice_fingerprint_key(m.date)
+    fingerprint = _advice_fingerprint(m, stats, comp_z)
     cached = load_advice(m.date, mode=mode)  # type: ignore[arg-type]
-    if cached and get_cached_text(mode_key) == mode:
+    cache_valid = cached and get_cached_text(mode_key) == mode
+    if mode == "pre":
+        cache_valid = cache_valid and get_cached_text(fp_key) == fingerprint
+    if cached and not cache_valid:
+        delete_advice(m.date, mode=mode)  # type: ignore[arg-type]
+        cached = None
+    if cache_valid:
         return cached
 
     advice_timing = dict(timing)
@@ -152,6 +207,9 @@ def generate_advice(
     if not api_key:
         text = _rule_based_advice(m, stats, comp_z, timing=advice_timing)
         save_advice(m.date, text, mode=mode)  # type: ignore[arg-type]
+        set_cached_text(mode_key, mode)
+        if mode == "pre":
+            set_cached_text(fp_key, fingerprint)
         if mode == "pre":
             label, _ = readiness_label(comp_z)
             maybe_capture_morning_snapshot(
@@ -184,6 +242,7 @@ def generate_advice(
         save_advice(m.date, text, mode=mode)  # type: ignore[arg-type]
         set_cached_text(mode_key, mode)
         if mode == "pre":
+            set_cached_text(fp_key, fingerprint)
             label, _ = readiness_label(comp_z)
             maybe_capture_morning_snapshot(
                 m.date, m, stats,

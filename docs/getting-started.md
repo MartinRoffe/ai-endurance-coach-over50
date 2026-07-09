@@ -80,6 +80,23 @@ endurance-coach --serve         # then open http://127.0.0.1:8743
 Visit **http://127.0.0.1:8743** and you'll land on the [Readiness](tabs/readiness.md)
 page. From there everything is point-and-click.
 
+## Power meter setup (optional)
+
+If you train with a power meter (e.g. Favero Assioma):
+
+1. Record a few outdoor rides with power enabled in Garmin Connect and sync them.
+2. Backfill power data into the local database:
+   ```bash
+   endurance-coach --activate-power 30
+   ```
+   Or use **Activate power** on the [Performance](tabs/performance.md) tab.
+3. Complete an FTP test from your plan when prompted (Readiness **power baseline**
+   or **FTP re-test** card).
+4. After FTP changes, run **Sync workouts** on Performance (or
+   `endurance-coach --workouts`) so Garmin templates pick up new %FTP targets.
+
+Full detail: **[Power Training](power-training.md)**.
+
 ## Where your data lives
 
 Everything is stored locally in a single SQLite database and a few support files
@@ -98,6 +115,7 @@ auto-migrates, so upgrades won't lose your history.
 ## Next steps
 
 - Understand what the numbers mean → **[Key Concepts](concepts.md)**
+- Power meter setup and dual-channel training → **[Power Training](power-training.md)**
 - Tour the home page → **[Readiness](tabs/readiness.md)**
 - Set up the morning email and background server → **[Email & Automation](email-and-automation.md)**
 - Explore the system design → **[Architecture](architecture.md)** (`/architecture` in the dashboard)

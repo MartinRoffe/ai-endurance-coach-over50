@@ -41,9 +41,10 @@ Tracking body composition and blood pressure over time.
   Withings, if you sync it).
 - **Blood pressure**, with each reading classified and colour-coded.
 - **Macro tiles** — today's carbs and protein plus their 14-day rolling averages.
-- **An estimated W/kg tile** — your watts-per-kilo estimate, a coarse fitness
-  proxy (see [why it's an estimate](../concepts.md#why-heart-rate-not-power)).
-- **Measured power trends** when power data is available from your meter.
+- **W/kg tile** — **measured** watts-per-kilo from FTP test history when your
+  power meter is active (primary). **Estimated** W/kg from VO₂max and weight
+  appears as fallback before activation or as secondary context on Performance.
+  See [Dual-channel training](../concepts.md#dual-channel-training-hr-and-power).
 
 ### How to use it
 

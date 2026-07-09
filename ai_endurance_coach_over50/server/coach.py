@@ -264,7 +264,7 @@ _READ_TOOLS = [
     },
     {
         "name": "get_compliance_detail",
-        "description": "Full per-week plan-vs-actual compliance breakdown across the 12-week plan.",
+        "description": "Full per-week plan-vs-actual compliance breakdown across the 12-week plan, Tenerife camp, and event prep.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -429,7 +429,8 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
             stats = _plan_completion_stats()
             lines = [f"## Plan compliance — full breakdown (overall {stats.get('overall_pct', 0)}% by volume)"]
             for w in stats.get("completion_weeks", []):
-                lines.append(f"  Wk{w['week_num']} ({w['date_range']}) [{w['status']}]: "
+                wk_lbl = w.get("week_label") or f"Wk{w['week_num']:02d}"
+                lines.append(f"  {wk_lbl} ({w['date_range']}) [{w['status']}]: "
                              f"{w['done_sessions']}/{w['plan_sessions']} sessions, {w['pct']}% volume "
                              f"({w['done_min']}/{w['plan_min']}min)")
             return "\n".join(lines)
