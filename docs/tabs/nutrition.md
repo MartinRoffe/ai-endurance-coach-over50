@@ -16,8 +16,9 @@ lunch, pre-session fuel, dinner, weekend rice-cake prep). Calorie tiers, Garmin
 logged-intake summary, and hub cards to sub-pages.
 
 Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
-(egg muffins Tue/Thu in recovery week only). Weeks 1–3 are identical; week 4 is
-recovery.
+(egg muffins Tue/Thu in recovery week only). Mon–Thu dinners are Sunday batch
+(Batch A Mon/Tue, Batch B Wed/Thu — week-specific rotation); Fri–Sun are griddle.
+Week 4 is recovery with lighter ~560 kcal dinners.
 
 ---
 
@@ -25,8 +26,9 @@ recovery.
 
 **Route:** `/nutrition/meals`
 
-4-week cycle (weeks 1–3 build, week 4 recovery). Server-rendered from
-`nutrition_plan.py` — no Set A/B breakfast rotation.
+4-week cycle (weeks 1–3 build with distinct dinner batches, week 4 recovery).
+Server-rendered from `nutrition_plan.py` — breakfasts and weekday dinners injected
+via `_assemble_meals()`.
 
 ---
 
@@ -49,9 +51,13 @@ Maltodextrin drink protocols remain optional for winter / event gut training.
 
 **Route:** `/nutrition/recipes`
 
-Sunday batch: chicken, rice, overnight oats, scotch eggs, yogurt pots. Tue/Thu (+ Sat)
-mid-morning snack is a shop-bought Nature Valley Protein bar by default (home-baked oat
-bars are an optional alternative — recipe #03). Friday eve: weekend rice cakes per calculator.
+Sunday batch: chicken, rice, overnight oats, scotch eggs, yogurt pots, **and both
+weekday dinner batches**. Tue/Thu (+ Sat) mid-morning snack is a shop-bought Nature
+Valley Protein bar by default (home-baked oat bars are an optional alternative —
+recipe #03). Friday eve: weekend rice cakes per calculator.
+
+**Weekday dinners:** `/nutrition/recipes/weekday-dinners` — 4-week A/B rotation,
+protein dessert standard, no spicy food.
 
 ---
 
@@ -59,8 +65,8 @@ bars are an optional alternative — recipe #03). Friday eve: weekend rice cakes
 
 **Route:** `/nutrition/shopping-list` and `/nutrition/lidl-shopping-list`
 
-Category filters (breakfast, lunch, weekend ride, griddle, staples). No Set A/B
-toggle.
+Category filters (breakfast, lunch, weekday dinners, weekend ride, griddle, staples).
+Week 1–4 buttons filter dinner ingredients to the current cycle week.
 
 ---
 

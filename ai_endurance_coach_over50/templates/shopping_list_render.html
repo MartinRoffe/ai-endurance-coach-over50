@@ -7,7 +7,8 @@ function initShoppingList(opts) {
   const cycleLabel = opts.cycleLabel || "";
 
   let activeCats = new Set(DEFAULT_SHOP_CATS);
-  let weekMode = opts.weekMode === "recovery" ? "recovery" : "build";
+  let cycleWeek = Math.max(0, Math.min(3, Number(opts.cycleWeek)));
+  if (Number.isNaN(cycleWeek)) cycleWeek = 0;
 
   const params = new URLSearchParams(location.search);
   const urlCats = params.get("cats");
@@ -26,12 +27,23 @@ function initShoppingList(opts) {
     }
   }
 
+  function parseCycleWeek(raw) {
+    if (raw === "0" || raw === "1" || raw === "2" || raw === "3") return Number(raw);
+    if (raw === "build") return 0;
+    if (raw === "recovery") return 3;
+    const n = Number(raw);
+    if (!Number.isNaN(n) && n >= 0 && n <= 3) return n;
+    return null;
+  }
+
   const urlWeek = params.get("week");
-  if (urlWeek === "build" || urlWeek === "recovery") {
-    weekMode = urlWeek;
+  const fromUrl = parseCycleWeek(urlWeek);
+  if (fromUrl !== null) {
+    cycleWeek = fromUrl;
   } else {
-    const savedWeek = localStorage.getItem("shopWeekMode");
-    if (savedWeek === "build" || savedWeek === "recovery") weekMode = savedWeek;
+    const savedWeek = localStorage.getItem("shopCycleWeek") || localStorage.getItem("shopWeekMode");
+    const fromSaved = parseCycleWeek(savedWeek);
+    if (fromSaved !== null) cycleWeek = fromSaved;
   }
 
   const list = document.getElementById("list");
@@ -48,18 +60,19 @@ function initShoppingList(opts) {
 
   function persistFilters() {
     localStorage.setItem("shopCategories", JSON.stringify([...activeCats]));
-    localStorage.setItem("shopWeekMode", weekMode);
+    localStorage.setItem("shopCycleWeek", String(cycleWeek));
+    localStorage.removeItem("shopWeekMode");
     const u = new URL(location.href);
     u.searchParams.delete("set");
     u.searchParams.set("cats", [...activeCats].join(","));
-    u.searchParams.set("week", weekMode);
+    u.searchParams.set("week", String(cycleWeek));
     history.replaceState(null, "", u);
     document.querySelectorAll("a.compare-link").forEach(function(a) {
       try {
         const link = new URL(a.getAttribute("href"), location.origin);
         link.searchParams.delete("set");
         link.searchParams.set("cats", [...activeCats].join(","));
-        link.searchParams.set("week", weekMode);
+        link.searchParams.set("week", String(cycleWeek));
         a.href = link.pathname + "?" + link.searchParams.toString();
       } catch (e) { /* ignore */ }
     });
@@ -99,8 +112,8 @@ function initShoppingList(opts) {
       }
       btn.classList.toggle("active", activeCats.has(btn.dataset.shopCat));
     });
-    document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
-      btn.classList.toggle("active", btn.dataset.weekMode === weekMode);
+    document.querySelectorAll("[data-cycle-week]").forEach(function(btn) {
+      btn.classList.toggle("active", Number(btn.dataset.cycleWeek) === cycleWeek);
     });
 
     const hint = document.getElementById("setHint");
@@ -109,17 +122,20 @@ function initShoppingList(opts) {
     const catText = catLabels.length === SHOP_CATEGORY_IDS.length
       ? "all categories"
       : catLabels.join(", ");
-    const weekLabel = weekMode === "recovery" ? "recovery week" : "build week";
-    const coreNote = activeCats.size <= 2 && activeCats.has("breakfast") && activeCats.has("lunch")
-      ? " — <b>≈£26–30</b> core shop (batch chicken, oats, scotch eggs, lunches). Toggle <b>Weekend ride</b> only when you need rice cakes."
+    const weekNames = ["Week 1 (build)", "Week 2 (build)", "Week 3 (build)", "Week 4 (recovery)"];
+    const weekLabel = weekNames[cycleWeek] || ("Week " + (cycleWeek + 1));
+    const coreDefault = activeCats.has("breakfast") && activeCats.has("lunch") && activeCats.has("dinner")
+      && activeCats.size === 3;
+    const coreNote = coreDefault
+      ? " — core shop now includes <b>weekday batch dinners</b>. Toggle <b>Weekend ride</b> only when you need rice cakes."
       : "";
-    hint.innerHTML = "Showing <b>" + catText + "</b> for the <b>" + weekLabel + "</b>" +
+    hint.innerHTML = "Showing <b>" + catText + "</b> for <b>" + weekLabel + "</b>" +
       (cycleLabel ? " · currently " + cycleLabel : "") + coreNote;
   }
 
   function renderList() {
     clearItems();
-    const GROUPS = shopGroupsFor(STORE, activeCats, weekMode);
+    const GROUPS = shopGroupsFor(STORE, activeCats, cycleWeek);
     GROUPS.forEach(function(g) {
       const anchor = catByName(g.after);
       if (!anchor) return;
@@ -193,11 +209,11 @@ function initShoppingList(opts) {
     });
   });
 
-  document.querySelectorAll("[data-week-mode]").forEach(function(btn) {
+  document.querySelectorAll("[data-cycle-week]").forEach(function(btn) {
     btn.addEventListener("click", function() {
-      const mode = btn.dataset.weekMode === "recovery" ? "recovery" : "build";
-      if (mode === weekMode) return;
-      weekMode = mode;
+      const next = Number(btn.dataset.cycleWeek);
+      if (next === cycleWeek) return;
+      cycleWeek = next;
       renderList();
     });
   });

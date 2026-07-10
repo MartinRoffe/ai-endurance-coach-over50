@@ -60,7 +60,7 @@ The app has two interfaces sharing the same data layer:
 - `/calendar` — unified plan/camp/event-prep calendar with completion tracking, interference flags, BTB log
 - `/training`, `/compliance` — plan completion stats and per-discipline adherence across 12-week plan + Tenerife camp + event prep (`_compliance_weeks_unified` in `server/context.py`)
 - `/nutrition` — nutrition hub (principles, calorie tiers, supplements)
-- `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/shopping-list`, `/nutrition/lidl-shopping-list` — nutrition sub-pages
+- `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/recipes/weekday-dinners`, `/nutrition/shopping-list`, `/nutrition/lidl-shopping-list` — nutrition sub-pages
 - `/architecture` — bundled architecture.html diagram (Mermaid system map)
 - `/sleep` — 30-day sleep quality history with stage breakdown
 - `/body`, `/body-refresh` — body composition and blood pressure tracking
@@ -84,7 +84,7 @@ The app has two interfaces sharing the same data layer:
 - `display.py` — `FIELD_LABELS`, `fmt_value()`, `readiness_label()`, `enrich_activity()` (duration/distance/pace formatting).
 - `client.py` — wraps `garminconnect` session/token handling. All `get_api()` calls go through here.
 
-**Nutrition surfacing** — `_build_context()` (readiness tab) packages a `nutrition_today` dict `{calories, tdee, goal, carbs, protein, balance}` from the current `DailyMetrics` and passes it to `dashboard.html`, which renders a "Today's Nutrition" card (colour-coded balance: green=deficit, amber=small surplus, red=large surplus). `_body_context()` computes 14-day rolling averages (`avg_carbs`, `avg_protein`) from `raw_history()` and exposes them as extra tiles on `body.html`. The nutrition tab (`nutrition.html`) already had conditional carbs/protein blocks — they now populate once `raw_history()` returns those columns.
+**Nutrition surfacing** — `_build_context()` (readiness tab) packages a `nutrition_today` dict `{calories, tdee, goal, carbs, protein, balance}` from the current `DailyMetrics` and passes it to `dashboard.html`, which renders a "Today's Nutrition" card (colour-coded balance: green=deficit, amber=small surplus, red=large surplus). `_body_context()` computes 14-day rolling averages (`avg_carbs`, `avg_protein`) from `raw_history()` and exposes them as extra tiles on `body.html`. The nutrition tab (`nutrition.html`) already had conditional carbs/protein blocks — they now populate once `raw_history()` returns those columns. `nutrition_plan.WEEKDAY_DINNERS` injects Mon–Thu Sunday-batch dinners (mirrors `BREAKFASTS`) via `_assemble_meals()`; recipes at `/nutrition/recipes/weekday-dinners`.
 
 **Alerts** (`alerts.py`) — `check_fatigue_alerts(today)` checks five conditions and returns a list of `{type, severity, message}` dicts: `HRV_TREND` (4 strictly descending mornings → HIGH), `TSB_DEEP` (TSB < −180 for ≥5 days → HIGH), `VOLUME_SPIKE` (actual weekly minutes > planned × 1.20 → MODERATE), `ILLNESS_RISK` (2-of-3: HRV z < −1.5, resting-HR z > +1.5 [rest_stress fallback], sleep z < −1.5 → HIGH; each signal needs ≥7 baseline samples or abstains), `MONOTONY_HIGH` (Foster monotony > 2.0 in the most recent week with ≥4 elapsed days → MODERATE). Called in `_build_context()` and `run_report()`.
 

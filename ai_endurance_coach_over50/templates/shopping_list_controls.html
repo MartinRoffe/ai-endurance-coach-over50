@@ -19,13 +19,21 @@
   <div class="set-bar" role="group" aria-label="Plan week">
     <span class="set-bar-label">Plan week</span>
     <div class="set-btns" id="weekBtns">
-      <button type="button" class="set-btn{% if week_mode != 'recovery' %} active{% endif %}" data-week-mode="build">
-        Build week
-        <span class="set-sub">Weeks 1–3 · standard shop</span>
+      <button type="button" class="set-btn{% if cycle_week == 0 %} active{% endif %}" data-cycle-week="0">
+        Week 1
+        <span class="set-sub">Traybake · beef ragù</span>
       </button>
-      <button type="button" class="set-btn{% if week_mode == 'recovery' %} active{% endif %}" data-week-mode="recovery">
-        Recovery week
-        <span class="set-sub">Week 4 · adds egg-muffin items</span>
+      <button type="button" class="set-btn{% if cycle_week == 1 %} active{% endif %}" data-cycle-week="1">
+        Week 2
+        <span class="set-sub">Coconut curry · turkey bolo</span>
+      </button>
+      <button type="button" class="set-btn{% if cycle_week == 2 %} active{% endif %}" data-cycle-week="2">
+        Week 3
+        <span class="set-sub">Chorizo rice · bean stew</span>
+      </button>
+      <button type="button" class="set-btn{% if cycle_week == 3 %} active{% endif %}" data-cycle-week="3">
+        Week 4
+        <span class="set-sub">Recovery · cottage pie + casserole</span>
       </button>
     </div>
   </div>
@@ -43,6 +51,10 @@
       <button type="button" class="set-btn" data-shop-cat="lunch">
         Lunches
         <span class="set-sub">Chicken · rice · pasta · prawns</span>
+      </button>
+      <button type="button" class="set-btn" data-shop-cat="dinner">
+        Weekday dinners
+        <span class="set-sub">Sunday batch Mon–Thu</span>
       </button>
       <button type="button" class="set-btn" data-shop-cat="ride">
         Weekend ride

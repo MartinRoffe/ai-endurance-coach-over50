@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>">
+<title>Weekday Batch Dinners — Sunday Cook</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+    --dinner:#e67e22;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:60px 40px 44px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(230,126,34,0.08) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,8vw,84px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:620px;margin-top:18px;}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  .toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:32px 0 8px;}
+  .toc a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px 14px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s,background .15s;}
+  .toc a:hover{border-color:var(--accent);background:var(--surface2);}
+  .toc a span{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+
+  section{padding:40px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;margin-bottom:6px;}
+  h2 .num{color:var(--muted);margin-right:10px;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .t-dinner{background:rgba(230,126,34,.15);color:#e67e22;border:1px solid rgba(230,126,34,.3);}
+  .t-kcal{background:rgba(241,160,53,.1);color:var(--accent2);border:1px solid rgba(241,160,53,.2);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .note{margin:14px 20px 18px;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+  .note.safety{border-left-color:var(--danger);}
+  .note.safety b{color:var(--danger);}
+
+  .macros{display:flex;flex-wrap:wrap;gap:8px;margin:0 20px 16px;}
+  .macro-pill{font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+
+  @media(max-width:680px){
+    .hero{padding:40px 20px 30px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+  }
+  @media print{
+    body{background:#fff;color:#111;}
+    .hero::before{display:none;}
+    .recipe,.toc a{break-inside:avoid;}
+    :root{--bg:#fff;--surface:#fafafa;--surface2:#f0f0f0;--border:#ccc;--text:#111;--muted:#555;}
+    a{color:#111;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'recipes' %}
+{% set recipes_section = 'recipes_weekday_dinners' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · Mon–Thu Dinners · Sunday Batch</div>
+    <h1>WEEKDAY<br><span>BATCH DINNERS</span></h1>
+    <p>Cook once on Sunday for four weekday nights. Batch A (fridge) covers Mon/Tue; Batch B (freeze → fridge Tue eve) covers Wed/Thu. Each recipe serves 2 people × 2 nights. No spicy food. Macros are <b>his portion including</b> the 150&nbsp;g protein dessert.</p>
+    {% include 'recipes_subnav.html' %}
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#batch-primer"><span>Start</span>Batch Logic</a>
+    <a href="#w1a"><span>W1 A</span>Chicken traybake</a>
+    <a href="#w1b"><span>W1 B</span>Beef &amp; lentil ragù</a>
+    <a href="#w2a"><span>W2 A</span>Coconut chicken curry</a>
+    <a href="#w2b"><span>W2 B</span>Turkey bolognese</a>
+    <a href="#w3a"><span>W3 A</span>Chicken &amp; chorizo rice</a>
+    <a href="#w3b"><span>W3 B</span>Bean &amp; beef stew</a>
+    <a href="#w4a"><span>W4 A</span>Cottage pie</a>
+    <a href="#w4b"><span>W4 B</span>Chicken casserole</a>
+    <a href="#boosters"><span>Protein</span>Easy Boosters</a>
+    <a href="#safety"><span>Safety</span>Reheat &amp; Storage</a>
+    <a href="/nutrition/recipes"><span>Batch prep</span>Cook Once · Eat All Week →</a>
+    <a href="/nutrition/recipes/griddle"><span>Weekend</span>Blackstone Griddle →</a>
+  </div>
+
+  <section id="dinners">
+    <div class="sec-label">Mon–Thu evenings — Sunday cook</div>
+    <h2><span class="num">11</span>Weekday Batch Dinners</h2>
+    <p class="lead">Four-week rotation. Build weeks (1–3) land ~700–740 kcal / 62–68&nbsp;g protein per portion. Recovery week (4) is lighter at ~560 kcal. Protein dessert (150&nbsp;g skyr or 0% Greek yogurt: +90 kcal, +15&nbsp;g P) is standard on every weekday dinner — do not skip it.</p>
+
+    <div class="recipe" id="batch-primer">
+      <div class="recipe-head">
+        <div class="recipe-title">Batch Logic</div>
+        <div class="tags"><span class="tag t-dinner">Read first</span><span class="tag t-batch">No spice</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Storage map</div>
+          <ul>
+            <li><b>Batch A</b> — fridge Sunday; eat Mon + Tue (day 1–2)</li>
+            <li><b>Batch B</b> — freeze Sunday; move to fridge Tue eve; eat Wed + Thu</li>
+            <li><b>Portions</b> — cook for 2 people × 2 nights = 4 adult portions per batch</li>
+            <li><b>His macros</b> — one adult portion + protein dessert</li>
+            <li><b>Fri–Sun</b> — Blackstone griddle (unchanged)</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Rules</div>
+          <ol>
+            <li>No chilli, no hot sauce, no spicy pastes — mild korma-style only where curry appears.</li>
+            <li>Reheat piping hot (steaming throughout). Rice dishes: cool fast, fridge promptly, reheat once only.</li>
+            <li>Label containers: week + batch + date. Freezer bags work for Batch B stews/ragùs.</li>
+            <li>Protein dessert after every Mon–Thu dinner — 150&nbsp;g skyr or 0% Greek yogurt.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- W1A -->
+    <div class="recipe" id="w1a">
+      <div class="recipe-head">
+        <div class="recipe-title">W1 A · Chicken &amp; Root-Veg Traybake + Roast Potatoes</div>
+        <div class="tags"><span class="tag t-dinner">Batch A</span><span class="tag t-time">~55 min</span><span class="tag t-makes">4 portions (2×2)</span><span class="tag t-prot">66g P</span><span class="tag t-kcal">700 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>1.2 kg</b> chicken thighs, bone-in skin-on (or ~600 g boneless)</li>
+            <li><b>800 g</b> potatoes, chunked</li>
+            <li><b>600 g</b> mixed root veg (carrot, parsnip, onion)</li>
+            <li><b>3 tbsp</b> olive oil + thyme, garlic, salt, pepper</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Oven 200 °C. Toss potatoes and root veg in oil, thyme, salt; spread on a large tray.</li>
+            <li>Season chicken; nestle among the veg. Roast 45–50 min until chicken is cooked through and potatoes are golden.</li>
+            <li>Rest 5 min. Divide into 4 equal portions (2 fridge containers × 2 nights). His plate: ~300 g cooked chicken + ~250 g roast veg/potato + dessert.</li>
+            <li>Reheat Mon/Tue: microwave or oven until piping hot; add protein dessert after.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 700 kcal · 66g P · 52g C</span>
+      </div>
+      <div class="note"><b>Where it fits:</b> Week 1 Mon/Tue. Shares the 200 °C oven with Sunday lunch chicken.</div>
+    </div>
+
+    <!-- W1B -->
+    <div class="recipe" id="w1b">
+      <div class="recipe-head">
+        <div class="recipe-title">W1 B · Beef 5% &amp; Red-Lentil Ragù + Basmati</div>
+        <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~45 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">64g P</span><span class="tag t-kcal">730 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>800 g</b> 5% beef mince</li>
+            <li><b>200 g</b> dried red lentils</li>
+            <li><b>1</b> large onion + <b>2</b> garlic cloves + <b>2</b> carrots, diced</li>
+            <li><b>700 g</b> passata + stock cube + oregano, bay</li>
+            <li><b>400 g</b> dry basmati (cook fresh or batch with Sunday rice)</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Brown mince; soft onion, garlic, carrot. Stir in lentils, passata, stock, herbs. Simmer 25–30 min until lentils are soft.</li>
+            <li>Cook basmati. Divide ragù into 4 freezer portions; freeze Sunday. Move 2 portions to fridge Tuesday evening.</li>
+            <li>Wed/Thu: reheat ragù piping hot; plate over rice; protein dessert after.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 730 kcal · 64g P · 84g C</span>
+      </div>
+      <div class="note"><b>Where it fits:</b> Week 1 Wed/Thu. Freezes well — do not leave in the fridge from Sunday to Thursday.</div>
+    </div>
+
+    <!-- W2A -->
+    <div class="recipe" id="w2a">
+      <div class="recipe-head">
+        <div class="recipe-title">W2 A · Mild Coconut Chicken Curry + Basmati</div>
+        <div class="tags"><span class="tag t-dinner">Batch A</span><span class="tag t-time">~40 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">65g P</span><span class="tag t-kcal">720 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>1 kg</b> chicken thigh fillets, diced</li>
+            <li><b>1</b> onion + <b>2</b> garlic + thumb ginger</li>
+            <li><b>3–4 tbsp</b> mild korma paste (no chilli)</li>
+            <li><b>1 × 400 ml</b> light coconut milk</li>
+            <li>Spinach handful; <b>400 g</b> dry basmati</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Soft onion; add garlic, ginger, mild korma paste 1 min. Brown chicken.</li>
+            <li>Pour in coconut milk; simmer 20 min. Wilt spinach at the end. No chilli.</li>
+            <li>Portion with rice into 4 fridge containers. Reheat Mon/Tue piping hot + dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 720 kcal · 65g P · 58g C</span>
+      </div>
+      <div class="note"><b>Where it fits:</b> Week 2 Mon/Tue. Korma-style only — check the paste label for heat.</div>
+    </div>
+
+    <!-- W2B -->
+    <div class="recipe" id="w2b">
+      <div class="recipe-head">
+        <div class="recipe-title">W2 B · Turkey Mince Bolognese + Wholewheat Spaghetti</div>
+        <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~40 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">68g P</span><span class="tag t-kcal">700 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>800 g</b> turkey breast mince</li>
+            <li><b>1</b> onion + <b>2</b> garlic + <b>2</b> carrots + celery stick</li>
+            <li><b>700 g</b> passata + oregano, bay</li>
+            <li><b>400 g</b> wholewheat spaghetti (cook night-of or portion cooked)</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Brown turkey; soft veg; add passata and herbs. Simmer 25 min.</li>
+            <li>Freeze sauce in 4 portions Sunday. Fridge Tue eve for Wed/Thu.</li>
+            <li>Cook spaghetti fresh each night (or reheat cooked pasta carefully). Sauce piping hot + dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 700 kcal · 68g P · 62g C</span>
+      </div>
+      <div class="note protein"><b>Highest protein</b> of the build-week dinners — useful when the day is running short.</div>
+    </div>
+
+    <!-- W3A -->
+    <div class="recipe" id="w3a">
+      <div class="recipe-head">
+        <div class="recipe-title">W3 A · One-Pot Chicken &amp; Chorizo Rice (Mild)</div>
+        <div class="tags"><span class="tag t-dinner">Batch A</span><span class="tag t-time">~45 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">65g P</span><span class="tag t-kcal">740 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>800 g</b> chicken thigh fillets</li>
+            <li><b>150 g</b> mild cooking chorizo, sliced</li>
+            <li><b>1</b> onion + pepper + garlic</li>
+            <li><b>400 g</b> dry basmati + stock to cover</li>
+            <li>Smoked paprika (sweet, not hot); peas optional</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Brown chicken and chorizo; soft onion/pepper. Stir in rice, paprika, stock. Cover; simmer until rice is done (~18 min).</li>
+            <li><b>Cool fast</b> — spread in shallow containers within 90 min. Fridge. Reheat once only, piping hot.</li>
+            <li>Mon/Tue portions + protein dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 740 kcal · 65g P · 60g C</span>
+      </div>
+      <div class="note safety"><b>Rice safety:</b> cool quickly, fridge promptly, reheat once to steaming hot. Do not leave cooked rice at room temp.</div>
+    </div>
+
+    <!-- W3B -->
+    <div class="recipe" id="w3b">
+      <div class="recipe-head">
+        <div class="recipe-title">W3 B · Smoky Bean &amp; Beef Stew + Mash or Bread</div>
+        <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~50 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">62g P</span><span class="tag t-kcal">710 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>700 g</b> 5% beef mince or stewing beef, diced</li>
+            <li><b>2 × 400 g</b> mixed beans, drained</li>
+            <li><b>1</b> onion + carrot + celery; garlic</li>
+            <li><b>500 g</b> passata + smoked paprika (sweet) + stock</li>
+            <li>Mash potatoes or crusty bread to serve</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Brown beef; soft veg; add beans, passata, paprika, stock. Simmer 30–35 min. No chilli.</li>
+            <li>Freeze 4 portions Sunday. Fridge Tue eve. Serve with mash or bread Wed/Thu + dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 710 kcal · 62g P · 66g C</span>
+      </div>
+    </div>
+
+    <!-- W4A -->
+    <div class="recipe" id="w4a">
+      <div class="recipe-head">
+        <div class="recipe-title">W4 A · Lean Cottage Pie + Half-Cauli Mash</div>
+        <div class="tags"><span class="tag t-dinner">Batch A · Recovery</span><span class="tag t-time">~55 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">62g P</span><span class="tag t-kcal">560 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>700 g</b> 5% beef mince</li>
+            <li>Onion, carrot, celery; <b>400 g</b> passata or stock gravy</li>
+            <li><b>500 g</b> potato + <b>500 g</b> cauliflower for mash</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Cook mince base lean (drain fat). Mash half potato / half cauliflower with a splash of milk.</li>
+            <li>Assemble in dishes or portion into 4; bake or reheat until bubbling. Lighter recovery macros.</li>
+            <li>Mon/Tue + protein dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 560 kcal · 62g P · 40g C</span>
+      </div>
+      <div class="note"><b>Where it fits:</b> Week 4 Mon/Tue — matches the 2050 kcal recovery tier.</div>
+    </div>
+
+    <!-- W4B -->
+    <div class="recipe" id="w4b">
+      <div class="recipe-head">
+        <div class="recipe-title">W4 B · Chicken &amp; Veg Casserole + Small Potatoes</div>
+        <div class="tags"><span class="tag t-dinner">Batch B · Recovery</span><span class="tag t-time">~50 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">60g P</span><span class="tag t-kcal">560 kcal</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Ingredients (2 people × 2 nights)</div>
+          <ul>
+            <li><b>900 g</b> chicken thigh fillets</li>
+            <li>Onion, leek, carrot, celery; garlic</li>
+            <li>Stock + herbs (thyme, bay); <b>600 g</b> small potatoes</li>
+            <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Method</div>
+          <ol>
+            <li>Brown chicken lightly; soft veg; cover with stock and herbs; add potatoes. Simmer or oven-braise until tender.</li>
+            <li>Freeze 4 portions Sunday. Fridge Tue eve. Wed/Thu reheat + dessert.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="macros">
+        <span class="macro-pill">His portion + dessert: 560 kcal · 60g P · 40g C</span>
+      </div>
+    </div>
+
+    <!-- Boosters -->
+    <div class="recipe" id="boosters">
+      <div class="recipe-head">
+        <div class="recipe-title">Easy Protein Boosters</div>
+        <div class="tags"><span class="tag t-prot">Hit the floor</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Standard (every Mon–Thu)</div>
+          <ul>
+            <li><b>150 g</b> skyr or 0% Greek yogurt — +90 kcal, +15 g P (already in dinner macros)</li>
+          </ul>
+          <div class="col-label" style="margin-top:16px">If the day is short</div>
+          <ul>
+            <li><b>Cottage cheese pot</b> (~200 g) — +~34 g P</li>
+            <li><b>Half-scoop whey</b> stirred into yogurt — +~12 g P</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">When to use</div>
+          <ol>
+            <li>Protein dessert is non-negotiable on weekday dinners — it is the easy lever to 60–68 g at the slot.</li>
+            <li>Reach for cottage cheese or whey-in-yogurt when Garmin / the checklist shows you will miss the daily floor.</li>
+            <li>Do not cut the dessert on recovery week — protein floor holds; calories come from the lighter main.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safety -->
+    <div class="recipe" id="safety">
+      <div class="recipe-head">
+        <div class="recipe-title">Reheat &amp; Food Safety</div>
+        <div class="tags"><span class="tag t-dinner">Storage</span></div>
+      </div>
+      <div class="recipe-body">
+        <div class="col ingredients">
+          <div class="col-label">Rules</div>
+          <ul>
+            <li>Reheat until steaming hot throughout</li>
+            <li>Batch A: fridge ≤2 days (Mon/Tue)</li>
+            <li>Batch B: freeze Sunday; thaw in fridge from Tue eve</li>
+            <li>W3 A rice: cool fast, reheat once only</li>
+          </ul>
+        </div>
+        <div class="col method">
+          <div class="col-label">Why freeze Batch B</div>
+          <ol>
+            <li>Cooked meat left in the fridge from Sunday to Thursday is day 4 — outside the comfortable window.</li>
+            <li>All four Batch B recipes freeze well (ragù, bolognese, stew, casserole).</li>
+            <li>Tuesday night: move Wed+Thu portions to the fridge so they thaw safely.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note safety"><b>Rice (W3 A):</b> cool within 90 minutes, shallow containers, fridge. Reheat once to piping hot. Never reheat rice twice.</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  Weekday batch dinners · macros match nutrition_plan.WEEKDAY_DINNERS · Fri–Sun = <a href="/nutrition/recipes/griddle">griddle</a>
+</div>
+
+</body>
+</html>

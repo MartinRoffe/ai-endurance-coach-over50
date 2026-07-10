@@ -1017,6 +1017,11 @@ async def nutrition_recipes_griddle(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes-griddle.html", context={})
 
 
+@app.get("/nutrition/recipes/weekday-dinners", response_class=HTMLResponse)
+async def nutrition_recipes_weekday_dinners(request: Request):
+    return TEMPLATES.TemplateResponse(request=request, name="recipes-weekday-dinners.html", context={})
+
+
 @app.get("/nutrition/recipes/travel", response_class=HTMLResponse)
 async def nutrition_recipes_travel(request: Request):
     ctx = _travel_checklist_context()
