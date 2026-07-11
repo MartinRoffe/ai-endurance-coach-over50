@@ -924,7 +924,7 @@ async def nutrition_plan(request: Request):
     from ..nutrition_plan import (
         SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g,
         SIMPLE_RULES, today_checklist, cycle_week_index,
-        fuel_prep_for_ride, _sunday_planned_ride_min,
+        fuel_prep_for_ride, _sunday_planned_ride_min, build_today_food,
     )
 
     recent = raw_history(3)
@@ -938,6 +938,7 @@ async def nutrition_plan(request: Request):
         pass
     cycle_week = cycle_week_index(_PLAN_START, today)
     checklist = today_checklist(_PLAN_START, today)
+    today_food = build_today_food(_PLAN_START, today)
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
     sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today) if sunday_ride_min else None
 
@@ -952,6 +953,7 @@ async def nutrition_plan(request: Request):
             "cycle_week": cycle_week,
             "simple_rules": SIMPLE_RULES,
             "checklist": checklist,
+            "today_food": today_food,
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
             "nutrition_today": nutrition_today,
@@ -994,6 +996,36 @@ async def nutrition_fuelling(request: Request):
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
             "fuel_tiers": fuel_tiers,
+        },
+    )
+
+
+@app.get("/nutrition/sunday", response_class=HTMLResponse)
+async def nutrition_sunday(request: Request):
+    today = _today()
+    from ..nutrition_plan import (
+        WEEKDAY_DINNERS, cycle_week_index,
+        fuel_prep_for_ride, _sunday_planned_ride_min,
+    )
+    cycle_week = cycle_week_index(_PLAN_START, today)
+    dinner_weeks = {}
+    for wi, batches in WEEKDAY_DINNERS.items():
+        dinner_weeks[wi] = {
+            "A": {"name": batches["A"][0], "kcal": batches["A"][2], "p": batches["A"][3], "c": batches["A"][4]},
+            "B": {"name": batches["B"][0], "kcal": batches["B"][2], "p": batches["B"][3], "c": batches["B"][4]},
+        }
+    dinners = dinner_weeks[cycle_week]
+    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
+    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today) if sunday_ride_min else None
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="sunday_prep.html",
+        context={
+            "cycle_week": cycle_week,
+            "dinners": dinners,
+            "dinner_weeks": dinner_weeks,
+            "sunday_fuel": sunday_fuel,
+            "sunday_ride_min": sunday_ride_min,
         },
     )
 

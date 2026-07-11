@@ -107,6 +107,12 @@
       {% if nutrition_pill %}
       <p style="margin-top:8px;font-family:var(--font-m);font-size:11px;color:var(--muted)">
         {{ "{:,}".format(nutrition_pill.calories) }} kcal logged · <a href="/nutrition" style="color:var(--accent);text-decoration:none">Nutrition →</a>
+        · <a href="/nutrition/sunday" style="color:var(--accent);text-decoration:none">Sunday Prep →</a>
+      </p>
+      {% else %}
+      <p style="margin-top:8px;font-family:var(--font-m);font-size:11px;color:var(--muted)">
+        <a href="/nutrition" style="color:var(--accent);text-decoration:none">Nutrition →</a>
+        · <a href="/nutrition/sunday" style="color:var(--accent);text-decoration:none">Sunday Prep →</a>
       </p>
       {% endif %}
     </div>

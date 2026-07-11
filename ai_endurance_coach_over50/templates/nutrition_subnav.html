@@ -1,5 +1,4 @@
-{# nutrition_section: overview | meals | fuelling | recipes | shopping | lidl_shopping #}
-{# recipes_section (on recipe pages): recipes | recipes_weekend | recipes_griddle #}
+{# nutrition_section: overview | meals | sunday | fuelling | recipes | shopping #}
 <style>
   .nut-subnav {
     background: rgba(17, 17, 20, 0.92);
@@ -46,8 +45,11 @@
 </style>
 <nav class="nut-subnav" aria-label="Nutrition sections">
   <div class="nut-subnav-inner">
-    <a href="/nutrition" class="{% if nutrition_section == 'overview' %}active{% endif %}">Overview</a>
-    <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">Daily Menus</a>
-    <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Ride Fuelling</a>
+    <a href="/nutrition" class="{% if nutrition_section == 'overview' %}active{% endif %}">Today</a>
+    <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">Meals</a>
+    <a href="/nutrition/sunday" class="{% if nutrition_section == 'sunday' %}active{% endif %}">Sunday Prep</a>
+    <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Fuelling</a>
+    <a href="/nutrition/recipes" class="{% if nutrition_section == 'recipes' %}active{% endif %}">Recipes</a>
+    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' or nutrition_section == 'lidl_shopping' %}active{% endif %}">Shopping</a>
   </div>
 </nav>

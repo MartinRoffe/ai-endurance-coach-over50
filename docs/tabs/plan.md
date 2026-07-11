@@ -1,13 +1,14 @@
-# Plan: Calendar, Training & Compliance
+# Plan: Sessions, Guide & Compliance
 
-**Nav:** the **Plan ▾** group → **Calendar**, **Training**, and **Compliance**.
+**Nav:** the **Plan** tab → sticky subnav **Sessions**, **Guide**, and **Compliance**.
 
-This group is your training plan: what's scheduled, how much you've done, and how
-closely you've stuck to it.
+- **Sessions** — interactive calendar (do the work, mark completion)
+- **Guide** — static programme reference (zones, weekly pattern, tables)
+- **Compliance** — adherence stats across the block
 
 ---
 
-## Calendar tab
+## Sessions
 
 **Route:** `/calendar`
 
@@ -17,7 +18,7 @@ A unified calendar of every planned session — the 12-week build plan, the
 Tenerife camp, and the event-prep block — with completion tracking and a few
 smart flags layered on top.
 
-> 📸 *Screenshot: the Calendar tab showing a training week with completion badges and a compound-session day.*
+> 📸 *Screenshot: the Sessions tab showing a training week with completion badges and a compound-session day.*
 
 ### What you'll see
 
@@ -49,24 +50,24 @@ smart flags layered on top.
 
 ---
 
-## Training tab
+## Guide
 
 **Route:** `/training`
 
 ### What it's for
 
-A summary of how much of the plan you've completed across the full training
-block (12-week plan, Tenerife camp, and event prep).
+Static programme reference — weekly pattern, zones, and the full 12-week tables.
+Use this when you want the written programme bible; use **Sessions** for day-to-day
+scheduling and completion.
 
 ### What you'll see
 
-Plan completion statistics — sessions done versus scheduled, week-by-week
-progress dots, and overall volume adherence. Camp and event-prep weeks use date
-labels (e.g. "10 Aug") instead of week numbers.
+Programme overview, zone guidance, and week-by-week session tables for the
+charity-ride build.
 
 ---
 
-## Compliance tab
+## Compliance
 
 **Route:** `/compliance`
 

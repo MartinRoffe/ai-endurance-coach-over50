@@ -140,7 +140,7 @@
     <a href="/nutrition/fuelling"><span>Protocols</span>Weekend &amp; Evening Ride Fuelling →</a>
     <a href="#sunday-prep"><span>Plan · 16</span>Sunday Breakfast Prep</a>
     <a href="#storage"><span>Plan · 17</span>Fridge Life &amp; Storage</a>
-    <a href="#schedule"><span>Plan · 18</span>Full Sunday Batch Schedule</a>
+    <a href="/nutrition/sunday"><span>Plan · 18</span>Sunday Prep (full sheet) →</a>
   </div>
 
   <!-- 01 CHICKEN -->
@@ -747,126 +747,15 @@
     <div class="note protein"><b>No more rice juggling:</b> with rice only Mon–Thu (Friday is the paella pouch, no weekend rice), a single Sunday batch of 4 portions is eaten well within its fridge life — no freezing or midweek top-up cook needed.</div>
   </section>
 
-  <!-- 18 FULL SCHEDULE — week-specific -->
+  <!-- 18 SUNDAY PREP — moved to dedicated workflow page -->
   <section id="schedule">
     <div class="sec-label">Plan — the two-and-a-half-hour Sunday</div>
-    <h2><span class="num">18</span>Sunday Cook Sheets (by week)</h2>
-    <p class="lead">Pick this week’s sheet. Every recipe you cook that Sunday is listed in one place, with a timed parallel schedule. Full Methods live on the linked cards — this is the orchestrator.</p>
-
-    <div class="week-tabs">
-      <button type="button" class="wtab" data-week="0" onclick="showCookWeek(0,this)">Week 1</button>
-      <button type="button" class="wtab" data-week="1" onclick="showCookWeek(1,this)">Week 2</button>
-      <button type="button" class="wtab" data-week="2" onclick="showCookWeek(2,this)">Week 3</button>
-      <button type="button" class="wtab" data-week="3" onclick="showCookWeek(3,this)">Week 4 — Recovery</button>
+    <h2><span class="num">18</span>Sunday Prep</h2>
+    <p class="lead">The full timed cook sheet, tickable cook list, and this cycle week’s dinner methods now live on one page.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px 22px">
+      <p style="font-size:14px;color:#cdd0bb;margin-bottom:14px">Open <b style="color:var(--text)">Sunday Prep</b> for Cycle week cook sheets + Batch A/B methods without hopping between pages.</p>
+      <a href="/nutrition/sunday" style="display:inline-block;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:10px 16px;border:1px solid var(--accent);color:var(--accent);border-radius:4px">Open Sunday Prep →</a>
     </div>
-
-    <!-- W1 -->
-    <div class="week-panel" id="cook-w0">
-      <div class="cook-list">
-        <b>Sunday cook list — Week 1</b>
-        <ul>
-          <li>Lunch: <a href="#chicken">Herb thighs (#01)</a> · <a href="#chinese-chicken">Chinese Wed (#01b)</a> · <a href="#rice">Basmati (#02)</a></li>
-          <li>Breakfast: <a href="#overnight-oats">Overnight oats (#05)</a> · <a href="#scotch-eggs">Scotch eggs (#07)</a> · <a href="#yogurt">Yogurt pots (#04)</a></li>
-          <li>Dinner A (fridge Mon/Tue): <a href="/nutrition/recipes/weekday-dinners#w1a">Chicken breast &amp; root-veg traybake</a></li>
-          <li>Dinner B (freeze → Wed/Thu): <a href="/nutrition/recipes/weekday-dinners#w1b">Beef &amp; red-lentil ragù</a></li>
-        </ul>
-      </div>
-      <table class="sched">
-        <thead><tr><th>Order</th><th>Task</th><th>Why now</th></tr></thead>
-        <tbody>
-          <tr><td>1 · 0:00</td><td>Oven 200°C. Tray <b>herb chicken (#01)</b> + <b>Chinese Wed (#01b)</b> + <b>Dinner A traybake</b> (breast fillets + root veg + potatoes).</td><td>Longest cooks share the oven.</td></tr>
-          <tr><td>2 · 0:05</td><td>Start <b>batch basmati (#02)</b>.</td><td>Passive simmer.</td></tr>
-          <tr><td>2b · 0:10</td><td>Hob: brown mince for <b>Dinner B ragù</b>; soft veg; lentils + passata; simmer 25–30 min.</td><td>Hands-off while breakfasts assemble.</td></tr>
-          <tr><td>3 · 0:15</td><td><b>2 scotch eggs (#07)</b> + <b>3 oats jars (#05)</b>.</td><td>See #16.</td></tr>
-          <tr><td>4 · 0:25</td><td>Yogurt pots (#04); move next protein-bar freezer pack if using #03.</td><td>5-min job.</td></tr>
-          <tr><td>5 · 0:40</td><td>Portion chicken + rice tubs; cool traybake → <b>Batch A fridge ×4</b>.</td><td>Cool before sealing.</td></tr>
-          <tr><td>6 · 1:00</td><td>Freeze Sat/Sun chicken; <b>Batch B ragù → freezer ×4</b>.</td><td>Wed/Thu never sit as day-4 fridge meat.</td></tr>
-          <tr><td>Weeknights</td><td>Tue eve: fry Wed egg fried rice; move Batch B to fridge. Reheat dinners piping hot + dessert.</td><td></td></tr>
-          <tr><td>Friday eve</td><td>Rice cakes — count from <a href="/nutrition/fuelling#calculator">calculator</a>.</td><td>~30 min separate.</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- W2 -->
-    <div class="week-panel" id="cook-w1">
-      <div class="cook-list">
-        <b>Sunday cook list — Week 2</b>
-        <ul>
-          <li>Lunch: <a href="#chicken">Herb thighs (#01)</a> · <a href="#chinese-chicken">Chinese Wed (#01b)</a> · <a href="#rice">Basmati (#02)</a></li>
-          <li>Breakfast: <a href="#overnight-oats">Overnight oats (#05)</a> · <a href="#scotch-eggs">Scotch eggs (#07)</a> · <a href="#yogurt">Yogurt pots (#04)</a></li>
-          <li>Dinner A (fridge Mon/Tue): <a href="/nutrition/recipes/weekday-dinners#w2a">Mild coconut chicken curry</a></li>
-          <li>Dinner B (freeze → Wed/Thu): <a href="/nutrition/recipes/weekday-dinners#w2b">Beef 5% bolognese</a></li>
-        </ul>
-      </div>
-      <table class="sched">
-        <thead><tr><th>Order</th><th>Task</th><th>Why now</th></tr></thead>
-        <tbody>
-          <tr><td>1 · 0:00</td><td>Oven 200°C. Tray <b>herb chicken (#01)</b> + <b>Chinese Wed (#01b)</b>.</td><td>Lunch batch first.</td></tr>
-          <tr><td>1b · 0:00</td><td>Hob: start <b>Dinner A coconut curry</b> (soft onion → paste → chicken → coconut milk ~20 min).</td><td>Shares Sunday hob time.</td></tr>
-          <tr><td>2 · 0:05</td><td>Start <b>batch basmati (#02)</b> — enough for lunches + curry sides if needed.</td><td></td></tr>
-          <tr><td>2b · 0:10</td><td>Second pan: <b>Dinner B beef bolognese</b> — brown mince, soft soffritto, passata, simmer 25–30 min.</td><td></td></tr>
-          <tr><td>3 · 0:15</td><td><b>2 scotch eggs</b> + <b>oats jars</b>.</td><td></td></tr>
-          <tr><td>4 · 0:25</td><td>Yogurt pots; bar pack move if needed.</td><td></td></tr>
-          <tr><td>5 · 0:40</td><td>Portion chicken/rice; curry → <b>Batch A fridge ×4</b>; bolo → <b>Batch B freezer ×4</b>.</td><td></td></tr>
-          <tr><td>Weeknights</td><td>Tue eve: egg fried rice + thaw Batch B. Cook spaghetti fresh Wed/Thu with bolo.</td><td></td></tr>
-          <tr><td>Friday eve</td><td>Rice cakes — <a href="/nutrition/fuelling#calculator">calculator</a>.</td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- W3 -->
-    <div class="week-panel" id="cook-w2">
-      <div class="cook-list">
-        <b>Sunday cook list — Week 3</b>
-        <ul>
-          <li>Lunch: <a href="#chicken">Herb thighs (#01)</a> · <a href="#chinese-chicken">Chinese Wed (#01b)</a> · <a href="#rice">Basmati (#02)</a></li>
-          <li>Breakfast: <a href="#overnight-oats">Overnight oats (#05)</a> · <a href="#scotch-eggs">Scotch eggs (#07)</a> · <a href="#yogurt">Yogurt pots (#04)</a></li>
-          <li>Dinner A (fridge Mon/Tue): <a href="/nutrition/recipes/weekday-dinners#w3a">Chicken &amp; chorizo rice</a> — cool fast</li>
-          <li>Dinner B (freeze → Wed/Thu): <a href="/nutrition/recipes/weekday-dinners#w3b">Smoky bean &amp; beef stew</a> + crusty bread</li>
-        </ul>
-      </div>
-      <table class="sched">
-        <thead><tr><th>Order</th><th>Task</th><th>Why now</th></tr></thead>
-        <tbody>
-          <tr><td>1 · 0:00</td><td>Oven 200°C. Tray <b>herb chicken</b> + <b>Chinese Wed</b>.</td><td></td></tr>
-          <tr><td>1b · 0:00</td><td>Wide pan: <b>Dinner A chicken &amp; chorizo rice</b> — brown, sofrito, rice, stock, lid ~18 min. <b>Cool in shallow tubs within 90 min.</b></td><td>Rice safety critical.</td></tr>
-          <tr><td>2 · 0:05</td><td><b>Batch basmati (#02)</b> for lunches only (dinner A has its own rice).</td><td></td></tr>
-          <tr><td>2b · 0:10</td><td>Hob: <b>Dinner B stew</b> — brown mince, soft veg, beans + passata, simmer 30–35 min.</td><td></td></tr>
-          <tr><td>3 · 0:15</td><td>Scotch eggs + oats jars.</td><td></td></tr>
-          <tr><td>5 · 0:40</td><td>Portion lunches; Dinner A fridge ×4; Dinner B freezer ×4.</td><td></td></tr>
-          <tr><td>Weeknights</td><td>Tue eve: egg fried rice + thaw Batch B. Serve stew with crusty bread.</td><td></td></tr>
-          <tr><td>Friday eve</td><td>Rice cakes — <a href="/nutrition/fuelling#calculator">calculator</a>.</td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- W4 -->
-    <div class="week-panel" id="cook-w3">
-      <div class="cook-list">
-        <b>Sunday cook list — Week 4 (recovery)</b>
-        <ul>
-          <li>Lunch: <a href="#chicken">Herb thighs (#01)</a> · <a href="#chinese-chicken">Chinese Wed (#01b)</a> · <a href="#rice">Basmati (#02)</a></li>
-          <li>Breakfast: <a href="#overnight-oats">Overnight oats (#05)</a> · <a href="#egg-muffins">Egg muffins (#06)</a> instead of scotch eggs · <a href="#yogurt">Yogurt pots (#04)</a></li>
-          <li>Dinner A (fridge Mon/Tue): <a href="/nutrition/recipes/weekday-dinners#w4a">Lean cottage pie + half-cauli mash</a></li>
-          <li>Dinner B (freeze → Wed/Thu): <a href="/nutrition/recipes/weekday-dinners#w4b">Chicken &amp; veg casserole</a></li>
-        </ul>
-      </div>
-      <table class="sched">
-        <thead><tr><th>Order</th><th>Task</th><th>Why now</th></tr></thead>
-        <tbody>
-          <tr><td>1 · 0:00</td><td>Oven 200°C. Tray <b>herb chicken</b> + <b>Chinese Wed</b>. Boil potato + cauli for cottage-pie mash.</td><td></td></tr>
-          <tr><td>1b · 0:05</td><td>Brown mince for <b>Dinner A cottage pie</b>; soft veg; passata. Assemble with mash; bake until bubbling or fridge to bake Mon.</td><td></td></tr>
-          <tr><td>2 · 0:05</td><td><b>Batch basmati (#02)</b>.</td><td></td></tr>
-          <tr><td>2b · 0:10</td><td>Casserole: brown chicken, soft veg, stock + potatoes; simmer/oven ~30–35 min → <b>freeze ×4</b>.</td><td></td></tr>
-          <tr><td>3 · 0:15</td><td><b>Egg muffins (#06)</b> (not scotch eggs) + oats jars.</td><td>Recovery breakfast swap.</td></tr>
-          <tr><td>5 · 0:40</td><td>Portion lunches; cottage pie fridge ×4; casserole freezer ×4.</td><td></td></tr>
-          <tr><td>Weeknights</td><td>Tue eve: egg fried rice + thaw Batch B.</td><td></td></tr>
-          <tr><td>Friday eve</td><td>Rice cakes — recovery Sunday often only 2 cakes (<a href="/nutrition/fuelling#calculator">calculator</a>).</td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="note" style="margin-top:16px"><b>Monthly extras:</b> protein-bar bake (#03) once a month — freeze in 4 packs of 3. Flapjack on <a href="/nutrition/recipes/weekend-fuel#flapjack">weekend-fuel</a>. Weekly task: move next bar pack freezer → tin.</div>
   </section>
 
 </div>
@@ -874,22 +763,6 @@
   Bulk-Staple Recipe &amp; Prep Guide · companion to the 4-week endurance nutrition plan · protein/calorie figures match the plan.
   <div class="pill">Print or save to PDF for the kitchen — File ▸ Print ▸ Save as PDF</div>
 </div>
-
-<script>
-const AUTO_COOK_WEEK = {{ cycle_week | default(0) }};
-function showCookWeek(i, btn) {
-  document.querySelectorAll('.week-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.wtab').forEach(b => b.classList.remove('active'));
-  const panel = document.getElementById('cook-w' + i);
-  if (panel) panel.classList.add('active');
-  if (btn) btn.classList.add('active');
-  else {
-    const t = document.querySelector('.wtab[data-week="' + i + '"]');
-    if (t) t.classList.add('active');
-  }
-}
-showCookWeek(AUTO_COOK_WEEK, null);
-</script>
 
 </body>
 </html>

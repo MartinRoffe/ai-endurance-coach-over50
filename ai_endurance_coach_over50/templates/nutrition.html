@@ -25,17 +25,23 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; min-height:100vh; }
 
-  /* HERO */
-  .hero { position:relative; padding:64px 40px 48px; overflow:hidden; border-bottom:1px solid var(--border); }
-  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:500px; height:500px; background:radial-gradient(circle,rgba(200,241,53,0.07) 0%,transparent 70%); pointer-events:none; }
-  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; margin-bottom:16px; }
-  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(48px,8vw,92px); line-height:0.92; letter-spacing:0.02em; color:var(--text); margin-bottom:24px; }
+  /* HERO — compact; today's food is the primary surface */
+  .hero { position:relative; padding:28px 40px 20px; overflow:hidden; border-bottom:1px solid var(--border); }
+  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:400px; height:400px; background:radial-gradient(circle,rgba(200,241,53,0.06) 0%,transparent 70%); pointer-events:none; }
+  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(32px,5vw,48px); line-height:0.95; letter-spacing:0.02em; color:var(--text); margin-bottom:8px; }
   .hero h1 span { color:var(--accent); }
-  .hero-sub { font-size:15px; color:var(--muted); max-width:540px; line-height:1.7; }
-  .hero-stats { display:flex; gap:32px; margin-top:36px; flex-wrap:wrap; }
-  .stat { border-left:2px solid var(--accent); padding-left:14px; }
-  .stat-val { font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--accent); line-height:1; }
-  .stat-label { font-size:11px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:2px; }
+  .hero-sub { font-size:13px; color:var(--muted); max-width:560px; line-height:1.6; }
+  .hero-meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
+  .hero-kcal { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent2); letter-spacing:0.06em; }
+
+  /* TODAY FOOD */
+  .today-food { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .today-food-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .today-food-title { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.03em; }
+  .today-food .meal-table td { padding:12px 18px; }
+  .today-food .meal-name { font-size:14px; }
+  .today-food .meal-detail { font-size:12px; line-height:1.55; }
 
   /* LAYOUT */
   .container { max-width:980px; margin:0 auto; padding:0 24px; }
@@ -195,7 +201,7 @@
   .hub-arrow { font-family:'DM Mono',monospace; font-size:10px; color:var(--accent); margin-top:12px; letter-spacing:0.06em; }
 
   @media(max-width:640px){
-    .hero{padding:40px 20px 32px;}
+    .hero{padding:24px 20px 16px;}
     .container{padding:0 14px;}
     section{padding:32px 0;}
     .calorie-strip{grid-template-columns:1fr 1fr;}
@@ -215,21 +221,71 @@
 
 <div class="hero">
   <div class="container">
-    <div class="hero-eyebrow">Nutrition Plan · Bulk-Staple Rebuild · 4-Week Repeatable Cycle</div>
-    <h1>FUEL TO<br><span>PERFORM</span></h1>
-    <p class="hero-sub">One fixed weekday pattern, Sunday batch prep, and a simple weekend fuel calculator. Bulk staples — chicken, scotch eggs, yogurt, whey, oats and rice. Protein floor {{ protein_target.low }}–{{ protein_target.high }} g/day.</p>
-    <div class="hero-stats">
-      <div class="stat"><div class="stat-val">185g+</div><div class="stat-label">Daily Protein</div></div>
-      <div class="stat"><div class="stat-val">60–90</div><div class="stat-label">g carbs/hr long rides</div></div>
-      <div class="stat"><div class="stat-val">~£30</div><div class="stat-label">Bulk-staple cost</div></div>
-      <div class="stat"><div class="stat-val">4</div><div class="stat-label">Week cycle</div></div>
+    <div class="hero-eyebrow">Nutrition · Cycle week {{ (cycle_week | default(0)) + 1 }} of 4</div>
+    <h1>EAT <span>TODAY</span></h1>
+    {% if today_food %}
+    <p class="hero-sub">{{ today_food.day_name }} · protein floor {{ protein_target.low }}–{{ protein_target.high }} g</p>
+    <div class="hero-meta">
+      <span class="badge {{ today_food.badge }}">{{ today_food.session }}</span>
+      <span class="hero-kcal">~{{ "{:,}".format(today_food.kcal_target) }} kcal target</span>
     </div>
+    {% else %}
+    <p class="hero-sub">Protein floor {{ protein_target.low }}–{{ protein_target.high }} g/day · bulk-staple plan</p>
+    {% endif %}
   </div>
 </div>
 
-{% if cal_today %}
 <div class="container">
-  <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);padding:12px 18px;border-radius:0 4px 4px 0;display:flex;gap:32px;flex-wrap:wrap;margin-top:16px">
+
+{% if today_food and today_food.meals %}
+  <section style="padding-top:24px">
+    <div class="section-label">Prescribed today</div>
+    <div class="today-food">
+      <div class="today-food-head">
+        <div class="today-food-title">{{ today_food.day_name }}</div>
+        <a href="/nutrition/meals" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Full week →</a>
+      </div>
+      <table class="meal-table">
+        {% for m in today_food.meals %}
+        <tr>
+          <td class="meal-type-cell">{{ m.type }}</td>
+          <td>
+            <div class="meal-name">{{ m.name }}</div>
+            {% if m.detail %}<div class="meal-detail">{{ m.detail }}</div>{% endif %}
+            <div class="meal-macros">
+              <span class="macro m-kcal">{{ m.macros.kcal }} kcal</span>
+              <span class="macro m-p">P: {{ m.macros.p }}g</span>
+              <span class="macro m-c">C: {{ m.macros.c }}g</span>
+              {% if m.macros.f %}<span class="macro m-f">F: {{ m.macros.f }}g</span>{% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if today_food.pre_din_p is defined %}
+      <div class="protein-bar-row">
+        <span class="pb-label">Pre-dinner P</span>
+        <div class="pb-track"><div class="pb-fill" style="width:{{ [100, (today_food.pre_din_p / protein_target.low * 100) | round | int] | min }}%"></div></div>
+        <span class="pb-val">{{ today_food.pre_din_p }}g</span>
+        {% if today_food.protein_note %}<span class="pb-note">{{ today_food.protein_note }}</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if sunday_fuel %}
+    <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);padding:12px 18px;border-radius:4px;font-size:13px;color:#b0b39a">
+      <strong style="color:var(--accent2)">This Sunday (~{{ sunday_fuel.ride_hours }} h):</strong>
+      make <strong style="color:var(--text)">{{ sunday_fuel.rice_cakes }} rice cakes</strong> Friday eve,
+      mix bottles <strong style="color:var(--text)">{{ sunday_fuel.bottles | join(' + ') }}</strong>
+      {% if sunday_fuel.carb_drink_bottles %}· <strong style="color:var(--text)">{{ sunday_fuel.carb_drink_bottles }}× carb drink</strong> (~{{ sunday_fuel.target_g_per_hr }} g/h){% endif %}
+      {% if sunday_fuel.flapjack %}· pack 1 protein bar (or flapjack){% endif %}.
+      <a href="/nutrition/fuelling" style="color:var(--accent);margin-left:6px">Full calculator →</a>
+    </div>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if cal_today %}
+  <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);padding:12px 18px;border-radius:0 4px 4px 0;display:flex;gap:32px;flex-wrap:wrap;margin-top:{% if today_food %}0{% else %}16px{% endif %}">
     <div>
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">Today logged</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent3)">{{ cal_today }} kcal</div>
@@ -266,14 +322,11 @@
     </div>
     {% endif %}
   </div>
-</div>
 {% endif %}
-
-<div class="container">
 
   <!-- FOLLOW THIS -->
   <section>
-    <div class="section-label">Start here</div>
+    <div class="section-label">Reminders</div>
     <h2>FOLLOW THIS</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:18px 20px;border-radius:0 4px 4px 0">
@@ -285,7 +338,7 @@
         </ol>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent3);padding:18px 20px;border-radius:0 4px 4px 0">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px">Today's checklist</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px">Quick checklist</div>
         <ul style="margin:0;padding-left:18px;color:#b0b39a;font-size:13px;line-height:1.7;list-style:none">
           {% for item in checklist %}
           <li style="margin-bottom:6px;padding-left:0">→ {{ item }}</li>
@@ -293,17 +346,7 @@
         </ul>
       </div>
     </div>
-    {% if sunday_fuel %}
-    <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);padding:12px 18px;border-radius:4px;font-size:13px;color:#b0b39a">
-      <strong style="color:var(--accent2)">This Sunday (~{{ sunday_fuel.ride_hours }} h):</strong>
-      make <strong style="color:var(--text)">{{ sunday_fuel.rice_cakes }} rice cakes</strong> Friday eve,
-      mix bottles <strong style="color:var(--text)">{{ sunday_fuel.bottles | join(' + ') }}</strong>
-      {% if sunday_fuel.carb_drink_bottles %}· <strong style="color:var(--text)">{{ sunday_fuel.carb_drink_bottles }}× carb drink</strong> (~{{ sunday_fuel.target_g_per_hr }} g/h){% endif %}
-      {% if sunday_fuel.flapjack %}· pack 1 protein bar (or flapjack){% endif %}.
-      <a href="/nutrition/fuelling" style="color:var(--accent);margin-left:6px">Full calculator →</a>
-    </div>
-    {% endif %}
-    <p style="margin-top:14px;font-size:13px;color:var(--muted)">Need meal-level detail? <a href="/nutrition/meals" style="color:var(--accent)">Daily menus</a> · <a href="/nutrition/recipes" style="color:var(--accent)">Batch recipes</a></p>
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)"><a href="/nutrition/meals" style="color:var(--accent)">Meals</a> · <a href="/nutrition/sunday" style="color:var(--accent)">Sunday Prep</a> · <a href="/nutrition/shopping-list" style="color:var(--accent)">Shopping</a></p>
   </section>
 
   <!-- PRINCIPLES -->
@@ -385,62 +428,32 @@
 
   <!-- SECTION HUB -->
   <section>
-    <div class="section-label">Reference</div>
-    <h2>RECIPES &amp; SHOPPING</h2>
-    <p>Each topic has its own page — daily menus and ride fuelling are in the main nav; recipes and shopping lists live here.</p>
+    <div class="section-label">Go do</div>
+    <h2>NEXT</h2>
+    <p style="margin-bottom:14px;font-size:13px;color:var(--muted)">Cycle week {{ (cycle_week | default(0)) + 1 }} of 4{% if cycle_week == 3 %} · Recovery{% endif %}. Recipe library and shopping live in the sticky nav.</p>
     <div class="hub-grid">
-      <a href="/nutrition/fuelling" class="hub-card featured">
-        <div class="hub-icon">🚴</div>
-        <div class="hub-title">Ride Fuelling</div>
-        <p class="hub-desc">Summer solids + electrolyte bottles on weekend long rides. Timelines, recovery oats stack, evening ride rules and Friday prep.</p>
-        <div class="hub-arrow">Open guide →</div>
+      <a href="/nutrition/sunday" class="hub-card featured">
+        <div class="hub-icon">🍲</div>
+        <div class="hub-title">Sunday Prep</div>
+        <p class="hub-desc">Cook list, timed schedule, and this week’s dinner methods in one place.</p>
+        <div class="hub-arrow">Open Sunday Prep →</div>
       </a>
       <a href="/nutrition/meals" class="hub-card">
         <div class="hub-icon">📅</div>
-        <div class="hub-title">Daily Menus</div>
-        <p class="hub-desc">Full 4-week meal cycle with macros and protein checkpoints. Auto-selects your current week.</p>
+        <div class="hub-title">Meals</div>
+        <p class="hub-desc">This week’s menus with macros — training badges from the calendar.</p>
         <div class="hub-arrow">View menus →</div>
       </a>
-      <a href="/nutrition/recipes" class="hub-card">
-        <div class="hub-icon">🍳</div>
-        <div class="hub-title">Cook Once · Week</div>
-        <p class="hub-desc">Batch chicken, rice, breakfasts, lunches and Sunday prep schedules.</p>
-        <div class="hub-arrow">Batch recipes →</div>
-      </a>
-      <a href="/nutrition/recipes/overnight-oats" class="hub-card">
-        <div class="hub-icon">🥣</div>
-        <div class="hub-title">Overnight Oats</div>
-        <p class="hub-desc">Shared protein base plus six flavour variants — weekday Mon/Wed/Fri rotation and post-ride recovery jars.</p>
-        <div class="hub-arrow">Flavour guide →</div>
-      </a>
-      <a href="/nutrition/recipes/weekend-fuel" class="hub-card">
+      <a href="/nutrition/fuelling" class="hub-card">
         <div class="hub-icon">🚴</div>
-        <div class="hub-title">Weekend Ride Fuel</div>
-        <p class="hub-desc">Rice cakes, flapjack and event-day drink recipes for long rides.</p>
-        <div class="hub-arrow">Ride fuel →</div>
-      </a>
-      <a href="/nutrition/recipes/griddle" class="hub-card">
-        <div class="hub-icon">🔥</div>
-        <div class="hub-title">Blackstone Griddle</div>
-        <p class="hub-desc">Flat-top method plus six Fri/Sat/Sun dinner recipes.</p>
-        <div class="hub-arrow">Griddle book →</div>
-      </a>
-      <a href="/nutrition/recipes/travel" class="hub-card">
-        <div class="hub-icon">🧳</div>
-        <div class="hub-title">Weekend Away</div>
-        <p class="hub-desc">Printable tick list for bike + ruck trips — copy to Apple Notes.</p>
-        <div class="hub-arrow">Travel checklist →</div>
+        <div class="hub-title">Fuelling</div>
+        <p class="hub-desc">Weekend ride carbs, rice-cake calculator, Friday prep.</p>
+        <div class="hub-arrow">Open guide →</div>
       </a>
       <a href="/nutrition/shopping-list" class="hub-card">
         <div class="hub-icon">🛒</div>
-        <div class="hub-title">Asda Shopping</div>
-        <p class="hub-desc">Same weekly list as Lidl — click-to-add with running total. Maltodextrin and fructose ordered separately.</p>
-        <div class="hub-arrow">Open list →</div>
-      </a>
-      <a href="/nutrition/lidl-shopping-list" class="hub-card">
-        <div class="hub-icon">🛒</div>
-        <div class="hub-title">Lidl Shopping</div>
-        <p class="hub-desc">Same weekly list as Asda — Lidl target prices. Google search links for in-store shopping.</p>
+        <div class="hub-title">Shopping</div>
+        <p class="hub-desc">Weekly list filtered by cycle week — Asda or Lidl.</p>
         <div class="hub-arrow">Open list →</div>
       </a>
     </div>

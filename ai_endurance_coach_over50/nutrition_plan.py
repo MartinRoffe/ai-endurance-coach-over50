@@ -856,19 +856,19 @@ _BADGE_BY_SESSION_TYPE = {
 _DELOAD_PLAN_WEEKS = frozenset({4, 8})
 
 _WEEK_BANNERS = {
-    0: "<strong>Week 1 — build.</strong> Fixed breakfasts; batch dinners: chicken traybake Mon/Tue, "
+    0: "<strong>Cycle week 1 — build.</strong> Fixed breakfasts; batch dinners: chicken traybake Mon/Tue, "
        "beef &amp; lentil ragù Wed/Thu; griddle Fri–Sun. "
        "Friday eve: prep Sunday ride fuel per batch calculator. "
-       "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>.",
-    1: "<strong>Week 2 — build.</strong> Batch dinners: mild coconut chicken curry Mon/Tue, "
+       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
+    1: "<strong>Cycle week 2 — build.</strong> Batch dinners: mild coconut chicken curry Mon/Tue, "
        "beef bolognese Wed/Thu; griddle Fri–Sun. "
-       "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>.",
-    2: "<strong>Week 3 — build.</strong> Batch dinners: chicken &amp; chorizo rice Mon/Tue, "
+       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
+    2: "<strong>Cycle week 3 — build.</strong> Batch dinners: chicken &amp; chorizo rice Mon/Tue, "
        "smoky bean &amp; beef stew Wed/Thu; griddle Fri–Sun. "
-       "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>.",
-    3: "<strong>Week 4 — recovery.</strong> Egg muffins Tue/Thu; lighter batch dinners "
+       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
+    3: "<strong>Cycle week 4 — recovery.</strong> Egg muffins Tue/Thu; lighter batch dinners "
        "(cottage pie Mon/Tue, chicken casserole Wed/Thu); protein floor holds. "
-       "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>.",
+       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
 }
 
 
@@ -904,16 +904,16 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
             f"<strong>This week — plan week {week_num} ({phase}).</strong> "
             "Workout badges match the <a href=\"/calendar\">training calendar</a> "
             "(including overrides). Meals follow the nutrition cycle "
-            f"(food template week {cycle_week + 1}"
+            f"(cycle week {cycle_week + 1}"
             + (" — recovery" if cycle_week == 3 else "")
             + "). "
-            "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>."
+            "<a href=\"/nutrition/sunday\">Sunday Prep</a>."
         )
     else:
         banner = (
             "<strong>This week.</strong> Workout badges match the training calendar where a "
             "session is planned; meals follow the nutrition cycle. "
-            "<a href=\"/nutrition/recipes/weekday-dinners\">Weekday dinner recipes</a>."
+            "<a href=\"/nutrition/sunday\">Sunday Prep</a>."
         )
 
     days_out = []
@@ -1023,6 +1023,38 @@ def _meal_dict(meal: tuple) -> dict:
         "detail": detail,
         "prot": prot,
         "macros": {"kcal": str(kcal), "p": str(prot), "c": str(carbs), "f": str(fat_g) if fat_g else ""},
+    }
+
+
+def build_today_food(plan_start: date, today: date) -> dict:
+    """Structured today meals for the Nutrition Today page (hero-first eat list)."""
+    from .plan import session_for_date_extended
+
+    cycle_week = cycle_week_index(plan_start, today)
+    weekday = today.weekday()
+    dtype = today_day_type(cycle_week, weekday)
+    day_data = DAY_TYPES[dtype]
+    meals = _assemble_meals(dtype, cycle_week, weekday)
+    tier = CALORIE_TIERS[day_data["calorie_tier"]]
+
+    session = session_for_date_extended(today)
+    if session is not None:
+        stype, label, dur = session
+        badge_text = _session_badge_label(stype, label, dur)
+        badge = _BADGE_BY_SESSION_TYPE.get(stype, _BADGE_BY_TYPE.get(dtype, "badge-rest"))
+    else:
+        badge_text = day_data["label"]
+        badge = _BADGE_BY_TYPE.get(dtype, "badge-rest")
+
+    return {
+        "day_name": today.strftime("%A %-d %B"),
+        "badge": badge,
+        "session": badge_text,
+        "kcal_target": tier["kcal"],
+        "meals": [_meal_dict(m) for m in meals],
+        "pre_din_p": _pre_dinner_protein(meals),
+        "protein_note": day_data["protein_note"],
+        "cycle_week": cycle_week,
     }
 
 

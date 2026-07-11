@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>">
+<title>Sunday Prep — Batch Cook</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f0c; --surface:#161713; --surface2:#1d1f1a; --border:#2a2d25;
+    --accent:#c8f135; --accent2:#f1a035; --accent3:#35c8f1; --text:#e8ead4;
+    --muted:#7a7d6a; --danger:#f14a35; --protein:#35c8f1; --carbs:#c8f135;
+    --dinner:#e67e22;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.65;}
+  a{color:var(--accent);}
+
+  .hero{position:relative;padding:48px 40px 28px;border-bottom:1px solid var(--border);overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-60px;right:-80px;width:480px;height:480px;background:radial-gradient(circle,rgba(230,126,34,0.08) 0%,transparent 70%);pointer-events:none;}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,72px);line-height:0.92;letter-spacing:0.02em;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:15px;max-width:640px;margin-top:16px;}
+  .cycle-chip{display:inline-block;margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:4px;}
+
+  .sun-mininav{
+    background:rgba(14,15,12,0.94);border-bottom:1px solid var(--border);
+    position:sticky;top:calc(var(--gr-nav-height,44px) + 44px);z-index:98;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  }
+  .sun-mininav-inner{max-width:960px;margin:0 auto;padding:0 24px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;}
+  .sun-mininav-inner::-webkit-scrollbar{display:none;}
+  .sun-mininav a{flex-shrink:0;padding:10px 14px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;}
+  .sun-mininav a:hover{color:var(--text);}
+
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+  section{padding:36px 0;border-bottom:1px solid var(--border);}
+  section:last-child{border-bottom:none;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  h2{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;margin-bottom:6px;}
+  .lead{color:#b0b39a;font-size:14px;margin-bottom:20px;max-width:680px;}
+
+  .check-list{list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .check-list li{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;color:#cdd0bb;}
+  .check-list li:last-child{border-bottom:none;}
+  .check-list li.done{opacity:0.55;text-decoration:line-through;}
+  .check-list input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;}
+  .check-list .ck-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px;}
+
+  .sched{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .sched th{background:var(--surface2);text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:11px 14px;border-bottom:1px solid var(--border);}
+  .sched td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;color:#cdd0bb;}
+  .sched tr:last-child td{border-bottom:none;}
+  .sched td:first-child{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);white-space:nowrap;width:120px;}
+  .week-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 12px;}
+  .wtab{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer;}
+  .wtab.active{border-color:var(--accent);color:var(--accent);background:var(--surface2);}
+  .week-panel{display:none;}
+  .week-panel.active{display:block;}
+  .cook-list{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin:0 0 16px;font-size:13px;color:#cdd0bb;}
+  .cook-list b{color:var(--text);}
+  .cook-list ul{margin:8px 0 0 18px;}
+  .cook-list li{margin-bottom:4px;}
+  .note{margin:14px 0 0;background:var(--surface2);border-left:3px solid var(--accent2);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12.5px;color:var(--muted);}
+  .note b{color:var(--accent2);font-weight:500;}
+  .note.protein{border-left-color:var(--protein);}
+  .note.protein b{color:var(--protein);}
+  .note.safety{border-left-color:var(--danger);}
+  .note.safety b{color:var(--danger);}
+
+  .recipe{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .recipe.hidden-week{display:none;}
+  .recipe-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .recipe-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;letter-spacing:.05em;}
+  .t-makes{background:rgba(241,160,53,.12);color:var(--accent2);border:1px solid rgba(241,160,53,.25);}
+  .t-time{background:rgba(122,125,106,.15);color:var(--muted);border:1px solid rgba(122,125,106,.25);}
+  .t-prot{background:rgba(53,200,241,.12);color:var(--protein);border:1px solid rgba(53,200,241,.25);}
+  .t-batch{background:rgba(200,241,53,.12);color:var(--accent);border:1px solid rgba(200,241,53,.25);}
+  .t-dinner{background:rgba(230,126,34,.15);color:#e67e22;border:1px solid rgba(230,126,34,.3);}
+  .t-kcal{background:rgba(241,160,53,.1);color:var(--accent2);border:1px solid rgba(241,160,53,.2);}
+  .recipe-body{display:grid;grid-template-columns:0.85fr 1.15fr;gap:0;}
+  .col{padding:18px 20px;}
+  .col.ingredients{border-right:1px solid var(--border);background:rgba(0,0,0,.12);}
+  .col-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ingredients ul{list-style:none;}
+  .ingredients li{font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);color:#cdd0bb;}
+  .ingredients li:last-child{border-bottom:none;}
+  .ingredients li b{color:var(--text);font-weight:500;}
+  .method ol{margin-left:18px;}
+  .method li{font-size:13.5px;margin-bottom:9px;color:#cdd0bb;}
+  .method li::marker{color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;}
+  .recipe .note{margin:14px 20px 18px;}
+  .macros{display:flex;flex-wrap:wrap;gap:8px;margin:0 20px 16px;}
+  .macro-pill{font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+
+  .next-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+  .next-card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;text-decoration:none;color:var(--text);transition:border-color .15s;}
+  .next-card:hover{border-color:var(--accent);}
+  .next-card span{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .next-card strong{font-size:15px;color:var(--accent);}
+
+  .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
+
+  @media(max-width:680px){
+    .hero{padding:36px 20px 24px;}
+    .recipe-body{grid-template-columns:1fr;}
+    .col.ingredients{border-right:none;border-bottom:1px solid var(--border);}
+    .container{padding:0 14px;}
+    .sun-mininav-inner{padding:0 14px;}
+  }
+  @media print{
+    .sun-mininav,.nut-subnav{display:none;}
+    body{background:#fff;color:#111;}
+    :root{--bg:#fff;--surface:#fafafa;--surface2:#f0f0f0;--border:#ccc;--text:#111;--muted:#555;}
+  }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'sunday' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow">Endurance Fuel · One Sunday · ~2½ hours</div>
+    <h1>SUNDAY<br><span>PREP</span></h1>
+    <p>Cook list, timed schedule, and this cycle week’s dinner methods in one place. Tick items as you go — ticks stay in this browser.</p>
+    <div class="cycle-chip">Cycle week {{ cycle_week + 1 }} of 4{% if cycle_week == 3 %} · Recovery{% endif %}</div>
+  </div>
+</div>
+
+<nav class="sun-mininav" aria-label="Sunday prep sections">
+  <div class="sun-mininav-inner">
+    <a href="#cook-list">Cook list</a>
+    <a href="#schedule">Schedule</a>
+    <a href="#dinner-a">Dinner A</a>
+    <a href="#dinner-b">Dinner B</a>
+    <a href="#next-steps">Next steps</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section id="cook-list">
+    <div class="sec-label">Before you start</div>
+    <h2>COOK LIST</h2>
+    <p class="lead">Tick as you finish. Switches with the cycle-week tabs below the schedule.</p>
+    <ul class="check-list" id="sundayChecklist"></ul>
+  </section>
+
+  <section id="schedule">
+    <div class="sec-label">Timed parallel cook</div>
+    <h2>SCHEDULE</h2>
+    <p class="lead">Oven and hob run in parallel. Dinner methods for this week are below the sheet — component recipes (chicken, rice, oats) open in Recipes.</p>
+    {% include 'partials/sunday_cook_sheets.html' %}
+  </section>
+
+  <section id="dinners">
+    <div class="sec-label">Mon–Thu · this cycle week</div>
+    <h2>DINNER METHODS</h2>
+    <p class="lead">Batch A fridge Mon/Tue · Batch B freeze Sunday, fridge Tue eve for Wed/Thu. <a href="/nutrition/recipes/weekday-dinners">All weeks →</a></p>
+    <div id="dinner-a"></div>
+    <div id="dinner-b"></div>
+    {% include 'partials/weekday_dinner_cards.html' %}
+  </section>
+
+  <section id="next-steps">
+    <div class="sec-label">After cooking</div>
+    <h2>NEXT STEPS</h2>
+    <div class="next-grid">
+      <a class="next-card" href="/nutrition/shopping-list">
+        <span>Buy</span>
+        <strong>Shopping list →</strong>
+      </a>
+      <a class="next-card" href="/nutrition/fuelling#calculator">
+        <span>Friday eve</span>
+        <strong>Rice cake calculator →</strong>
+      </a>
+      <a class="next-card" href="/nutrition/recipes#chicken">
+        <span>Components</span>
+        <strong>Chicken · rice · oats →</strong>
+      </a>
+      <a class="next-card" href="/nutrition/meals">
+        <span>Eat</span>
+        <strong>Daily menus →</strong>
+      </a>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  Sunday Prep · cycle week {{ cycle_week + 1 }} of 4 · print-friendly
+</div>
+
+<script>
+const AUTO_COOK_WEEK = {{ cycle_week | default(0) }};
+const DINNER_WEEKS = {{ dinner_weeks | tojson }};
+const DINNER_IDS = {
+  0: ['w1a', 'w1b'],
+  1: ['w2a', 'w2b'],
+  2: ['w3a', 'w3b'],
+  3: ['w4a', 'w4b'],
+};
+
+function checkItemsForWeek(week) {
+  const d = DINNER_WEEKS[String(week)] || DINNER_WEEKS[week] || DINNER_WEEKS['0'];
+  const breakfast = week === 3
+    ? 'Overnight oats · egg muffins · yogurt pots'
+    : 'Overnight oats · scotch eggs · yogurt pots';
+  return [
+    {id:'lunch', label:'Lunch', text:'Herb thighs + Chinese Wed + basmati'},
+    {id:'breakfast', label:'Breakfast', text: breakfast},
+    {id:'dinnerA', label:'Dinner A', text: d.A.name + ' (fridge Mon/Tue)'},
+    {id:'dinnerB', label:'Dinner B', text: d.B.name + ' (freeze → Wed/Thu)'},
+    {id:'portion', label:'Portion', text:'Fridge Batch A ×4 · freeze Batch B ×4' + (week === 0 ? ' · Sat/Sun chicken' : '')},
+  ];
+}
+
+function storageKey(week) {
+  return 'sunday_prep_v1_w' + week;
+}
+
+function loadTicks(week) {
+  try { return JSON.parse(localStorage.getItem(storageKey(week)) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function saveTick(week, id, checked) {
+  const data = loadTicks(week);
+  data[id] = checked;
+  localStorage.setItem(storageKey(week), JSON.stringify(data));
+}
+
+function renderChecklist(week) {
+  const ul = document.getElementById('sundayChecklist');
+  const ticks = loadTicks(week);
+  const items = checkItemsForWeek(week);
+  ul.innerHTML = items.map(item => {
+    const checked = !!ticks[item.id];
+    return `<li class="${checked ? 'done' : ''}">
+      <input type="checkbox" data-id="${item.id}" ${checked ? 'checked' : ''}>
+      <div><span class="ck-label">${item.label}</span>${item.text}</div>
+    </li>`;
+  }).join('');
+  ul.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', () => {
+      saveTick(week, input.dataset.id, input.checked);
+      input.closest('li').classList.toggle('done', input.checked);
+    });
+  });
+}
+
+function showDinnerCards(week) {
+  const show = DINNER_IDS[week] || DINNER_IDS[0];
+  document.querySelectorAll('.recipe[id^="w"]').forEach(el => {
+    const on = show.includes(el.id);
+    el.classList.toggle('hidden-week', !on);
+    if (el.id === show[0]) el.id = show[0]; // keep anchors
+  });
+  // Re-stamp dinner-a / dinner-b scroll targets via empty anchors already above
+  const a = document.getElementById(show[0]);
+  const b = document.getElementById(show[1]);
+  const anchorA = document.getElementById('dinner-a');
+  const anchorB = document.getElementById('dinner-b');
+  if (a && anchorA) anchorA.style.scrollMarginTop = '120px';
+  if (b && anchorB) {
+    // move visual order: dinners already in DOM order; anchors sit above cards
+  }
+}
+
+function showCookWeek(i, btn) {
+  document.querySelectorAll('#schedule .week-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#schedule .wtab').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('cook-w' + i);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  else {
+    const t = document.querySelector('#schedule .wtab[data-week="' + i + '"]');
+    if (t) t.classList.add('active');
+  }
+  renderChecklist(i);
+  showDinnerCards(i);
+  // Sync dinner-a / dinner-b: scroll targets point at visible cards
+  const ids = DINNER_IDS[i];
+  const aCard = document.getElementById(ids[0]);
+  const bCard = document.getElementById(ids[1]);
+  const da = document.getElementById('dinner-a');
+  const db = document.getElementById('dinner-b');
+  if (aCard && da) {
+    da.removeAttribute('id');
+    // keep stable ids on mininav: put id on first visible card's previous sibling placeholders
+  }
+}
+
+// Stable mininav: dinner-a/b are empty placeholders; click scrolls to first/second visible recipe
+document.querySelector('.sun-mininav a[href="#dinner-a"]').addEventListener('click', (e) => {
+  e.preventDefault();
+  const week = parseInt(document.querySelector('#schedule .wtab.active')?.dataset.week || AUTO_COOK_WEEK, 10);
+  document.getElementById(DINNER_IDS[week][0])?.scrollIntoView({behavior:'smooth', block:'start'});
+});
+document.querySelector('.sun-mininav a[href="#dinner-b"]').addEventListener('click', (e) => {
+  e.preventDefault();
+  const week = parseInt(document.querySelector('#schedule .wtab.active')?.dataset.week || AUTO_COOK_WEEK, 10);
+  document.getElementById(DINNER_IDS[week][1])?.scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+showCookWeek(AUTO_COOK_WEEK, null);
+</script>
+
+</body>
+</html>

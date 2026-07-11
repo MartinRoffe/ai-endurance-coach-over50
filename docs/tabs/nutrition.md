@@ -1,38 +1,50 @@
 # Nutrition
 
-**Nav:** top-level **Nutrition** tab (not under Health).
+**Nav:** top-level **Nutrition** tab.
 
-Sub-pages use a sticky bar below the main navigation: Overview · Daily Menus ·
-Ride Fuelling · Recipes · Asda · Lidl.
+Sticky subnav: **Today** · **Meals** · **Sunday Prep** · **Fuelling** · **Recipes** ·
+**Shopping**.
+
+Use **Cycle week 1–4** for the food rotation (not training-plan week numbers).
+Week 4 is the recovery cycle week.
 
 ---
 
-## Overview
+## Today
 
 **Route:** `/nutrition`
 
-**Follow This** section at the top: five simple rules + today's checklist (breakfast,
-lunch, pre-session fuel, dinner, weekend rice-cake prep). Calorie tiers, Garmin
-logged-intake summary, and hub cards to sub-pages.
+Five simple rules, today's checklist, Garmin logged-intake strip, and primary CTAs
+to Sunday Prep, Meals, Fuelling, and Shopping.
 
 Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
 (egg muffins Tue/Thu in recovery week only). Mon–Thu dinners are Sunday batch
-(Batch A Mon/Tue, Batch B Wed/Thu — week-specific rotation); Fri–Sun are griddle.
-Week 4 is recovery with lighter ~560 kcal dinners.
+(Batch A Mon/Tue, Batch B Wed/Thu — cycle-week rotation); Fri–Sun are griddle.
 
 ---
 
-## Daily Menus
+## Meals
 
 **Route:** `/nutrition/meals`
 
 4-week cycle (weeks 1–3 build with distinct dinner batches, week 4 recovery).
 Server-rendered from `nutrition_plan.py` — breakfasts and weekday dinners injected
-via `_assemble_meals()`.
+via `_assemble_meals()`. **This week** shows training-calendar badges; meal-pattern
+tabs are cycle weeks 1–4.
 
 ---
 
-## Ride Fuelling
+## Sunday Prep
+
+**Route:** `/nutrition/sunday`
+
+Primary Sunday batch workflow: tickable cook list, timed parallel schedule for the
+current cycle week, and inline Dinner A / Dinner B methods. Links out to Shopping,
+Friday rice-cake calculator, and component recipes.
+
+---
+
+## Fuelling
 
 **Route:** `/nutrition/fuelling`
 
@@ -47,17 +59,16 @@ Maltodextrin drink protocols remain optional for winter / event gut training.
 
 ---
 
-## Recipes & Prep
+## Recipes
 
 **Route:** `/nutrition/recipes`
 
-Sunday batch: chicken, rice, overnight oats, scotch eggs, yogurt pots, **and both
-weekday dinner batches**. Tue/Thu (+ Sat) mid-morning snack is a shop-bought Nature
-Valley Protein bar by default (home-baked oat bars are an optional alternative —
-recipe #03). Friday eve: weekend rice cakes per calculator.
+Component recipes (chicken, rice, breakfasts, lunches) plus fridge/storage rules.
+Recipe library sub-tabs: overnight oats, weekend ride fuel, griddle, weekday
+dinners (all cycle weeks), travel checklist.
 
-**Weekday dinners:** `/nutrition/recipes/weekday-dinners` — 4-week A/B rotation,
-protein dessert standard, no spicy food.
+**Weekday dinners archive:** `/nutrition/recipes/weekday-dinners` — full 4-week A/B
+methods (also inlined for the active week on Sunday Prep).
 
 ---
 
@@ -66,7 +77,7 @@ protein dessert standard, no spicy food.
 **Route:** `/nutrition/shopping-list` and `/nutrition/lidl-shopping-list`
 
 Category filters (breakfast, lunch, weekday dinners, weekend ride, griddle, staples).
-Week 1–4 buttons filter dinner ingredients to the current cycle week.
+Cycle week 1–4 buttons filter dinner ingredients to the current food cycle.
 
 ---
 
@@ -74,9 +85,8 @@ Week 1–4 buttons filter dinner ingredients to the current cycle week.
 
 Carbs and protein logged in your Garmin food diary appear on:
 
-- The **Readiness** tab nutrition card (including **ride work kJ** when today's
-  ride has power data)
-- The **Nutrition** overview banner
+- The **Today** readiness pill (link into Nutrition)
+- The **Nutrition** Today banner
 - The **Body** tab macro tiles (today + 14-day averages)
 - **Coach** context (simple rules + checklist lead the nutrition block)
 

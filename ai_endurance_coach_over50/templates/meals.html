@@ -203,9 +203,9 @@
 
 <div class="hero" style="padding:40px 40px 32px">
   <div class="container">
-    <div class="hero-eyebrow">This week from the calendar · Food templates on a 4-week cycle</div>
+    <div class="hero-eyebrow">Cycle week {{ (cycle_week | default(0)) + 1 }} of 4 · Training badges from the calendar</div>
     <h1 style="font-size:clamp(40px,7vw,64px);margin-bottom:12px">DAILY<br><span>MENUS</span></h1>
-    <p class="hero-sub">Workout badges match the <a href="/calendar" style="color:var(--accent)">training calendar</a>. Meals follow the bulk-staple food cycle. Tap a day to expand. Sunday includes on-bike and recovery fuelling — see the <a href="/nutrition/fuelling" style="color:var(--accent)">Ride Fuelling guide</a> for full protocols.</p>
+    <p class="hero-sub">Workout badges match the <a href="/calendar" style="color:var(--accent)">training calendar</a>. Meals follow the bulk-staple <strong style="color:var(--text)">food cycle</strong> (not training plan week numbers). Tap a day to expand. Sunday includes on-bike and recovery fuelling — see the <a href="/nutrition/fuelling" style="color:var(--accent)">Fuelling guide</a>.</p>
   </div>
 </div>
 
@@ -216,7 +216,7 @@
     <h2>THIS WEEK + FOOD TEMPLATES</h2>
 
     <div class="week-banner" style="margin-bottom:16px">
-      <p><strong>Fixed weekday pattern:</strong> overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu (egg muffins Tue/Thu in recovery week only). Batch dinners Mon–Thu (A Mon/Tue, B Wed/Thu — week-specific rotation); griddle Fri–Sun. <a href="/nutrition/recipes/weekday-dinners" style="color:var(--accent)">Dinner recipes</a> · <a href="/nutrition/recipes#sunday-prep" style="color:var(--accent)">Sunday prep</a>.</p>
+      <p><strong>Fixed weekday pattern:</strong> overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu (egg muffins Tue/Thu in recovery week only). Batch dinners Mon–Thu (A Mon/Tue, B Wed/Thu — cycle-week rotation); griddle Fri–Sun. <a href="/nutrition/sunday" style="color:var(--accent)">Sunday Prep</a> · <a href="/nutrition/recipes/weekday-dinners" style="color:var(--accent)">All dinner recipes</a>.</p>
     </div>
 
     <div class="week-tabs">
@@ -226,7 +226,7 @@
       <button class="wtab" onclick="showWeek('w3',this)">Meal pattern 3</button>
       <button class="wtab" onclick="showWeek('w4',this)">Meal pattern 4 — Recovery</button>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Meal pattern tabs show the repeating food templates (generic workout labels). Use <strong style="color:var(--text)">This week</strong> for badges that match the calendar.</p>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Meal pattern tabs are <strong style="color:var(--text)">cycle weeks 1–4</strong> (food templates). Use <strong style="color:var(--text)">This week</strong> for badges that match the training calendar — those week numbers are different.</p>
 
     <div id="wthis" class="week-panel active"></div>
     <div id="w1" class="week-panel"></div>

@@ -228,7 +228,9 @@
   <!-- ── Calorie Balance ──────────────────────────────────────────────── -->
   {% if cal_ctx %}
   <div class="card" style="padding:20px 24px;margin-bottom:16px">
-    <p class="eyebrow" style="margin-bottom:16px;color:#60a5fa">Calorie Balance <button type="button" class="gr-tip-trigger" data-tip="A 250–500 kcal daily deficit supports body recomposition while preserving muscle and training quality. Above 500 kcal deficit risks muscle loss and impaired recovery. On hard training days, eat close to maintenance." aria-label="More info" aria-expanded="false">?</button></p>
+    <p class="eyebrow" style="margin-bottom:16px;color:#60a5fa">Calorie Balance <button type="button" class="gr-tip-trigger" data-tip="A 250–500 kcal daily deficit supports body recomposition while preserving muscle and training quality. Above 500 kcal deficit risks muscle loss and impaired recovery. On hard training days, eat close to maintenance." aria-label="More info" aria-expanded="false">?</button>
+      <a href="/nutrition" style="margin-left:10px;font-family:var(--font-m);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);text-decoration:none">Nutrition plan →</a>
+    </p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:{% if cal_values %}20{% else %}0{% endif %}px">
 
       {% if cal_ctx.today_consumed is defined %}
