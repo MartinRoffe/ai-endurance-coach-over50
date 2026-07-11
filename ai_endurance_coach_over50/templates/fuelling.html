@@ -152,7 +152,7 @@
   <div class="container">
     <div class="hero-eyebrow">Homemade sports nutrition · Masters athlete</div>
     <h1>RIDE<br><span>FUELLING</span></h1>
-    <p class="hero-sub">In-ride solids are for <b>weekend long rides only</b> — rice cakes + electrolyte bottles (no carb powder). Weekday 60 min rides: banana before, nothing on the bike. Maltodextrin bottles optional for winter / event gut training.</p>
+    <p class="hero-sub">In-ride solids are for <b>weekend long rides only</b> — rice cakes + electrolyte bottles. From rides ≥2.5 h, add maltodextrin/fructose <b>carb drink bottles</b> to hit the gut-training ladder (60→75→90 g/h). Weekday 60 min rides: banana before, nothing on the bike.</p>
     <div class="page-toc">
       <a href="#context"><span>Start here</span>Two ride types</a>
       <a href="#physiology"><span>Why it matters</span>Over-50 physiology</a>
@@ -171,7 +171,7 @@
   {% if sunday_fuel %}
   <section style="padding-top:32px;padding-bottom:0">
     <div class="callout carbs" style="margin-bottom:0">
-      <p><b>This week's Sunday ride (~{{ sunday_fuel.ride_hours }} h):</b> make <b>{{ sunday_fuel.rice_cakes }} standard rice cakes</b> Friday eve, mix bottles <b>{{ sunday_fuel.bottles | join(' + ') }}</b>{% if sunday_fuel.flapjack %} · pack 1 protein bar (or flapjack){% endif %}. Build recovery oats jar the night before.</p>
+      <p><b>This week's Sunday ride (~{{ sunday_fuel.ride_hours }} h):</b> make <b>{{ sunday_fuel.rice_cakes }} standard rice cakes</b> Friday eve, mix bottles <b>{{ sunday_fuel.bottles | join(' + ') }}</b>{% if sunday_fuel.carb_drink_bottles %} · <b>{{ sunday_fuel.carb_drink_bottles }}× carb drink</b> (target ~{{ sunday_fuel.target_g_per_hr }} g/h){% endif %}{% if sunday_fuel.flapjack %} · pack 1 protein bar (or flapjack){% endif %}. Build recovery oats jar the night before.</p>
     </div>
   </section>
   {% endif %}
@@ -179,10 +179,10 @@
   <section id="calculator">
     <div class="sec-label">Batch calculator</div>
     <h2>HOW MANY RICE CAKES?</h2>
-    <p class="lead">One rule: <b>~2 rice cakes per ride-hour + 1 spare</b> (~27 g carbs each → ~55 g/hr). Prep Friday evening — rice cakes need ~24 h in the fridge.</p>
+    <p class="lead">Rice cakes cover ~55 g/h solids (~27 g each, ~2 cakes/hour + 1 spare). On rides ≥150 min, <b>carb drink bottles</b> close the gap to the gut-training target (60 → 75 → 90 g/h by plan phase). Prep Friday evening — rice cakes need ~24 h in the fridge.</p>
     <table class="data-table">
       <thead>
-        <tr><th>Planned ride</th><th>Rice cakes to make</th><th>Electrolyte bottles</th><th>Also pack</th></tr>
+        <tr><th>Planned ride</th><th>Rice cakes</th><th>Electrolyte</th><th>Carb drinks</th><th>Target g/h</th><th>Also pack</th></tr>
       </thead>
       <tbody>
         {% for tier in fuel_tiers %}
@@ -190,6 +190,8 @@
           <td>{% if tier.ride_hours <= 1.5 %}≤1.5 h{% elif tier.ride_hours <= 2.25 %}2 h{% elif tier.ride_hours <= 3.25 %}2.5–3 h{% elif tier.ride_hours <= 4.25 %}3.5–4 h{% elif tier.ride_hours <= 5.25 %}4.5–5 h{% else %}5.5–6 h{% endif %}</td>
           <td class="hi">{{ tier.rice_cakes }}</td>
           <td>{{ tier.bottles | join(' + ') }}</td>
+          <td>{% if tier.carb_drink_bottles %}{{ tier.carb_drink_bottles }}×{% else %}—{% endif %}</td>
+          <td>~{{ tier.target_g_per_hr }}</td>
           <td>{% if tier.flapjack %}1 protein bar (or flapjack){% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
@@ -234,7 +236,7 @@
       </div>
     </div>
     <div class="callout carbs" style="margin-top:16px">
-      <p><b>Weekend long rides:</b> hit carb targets with rice cakes + electrolyte bottles. Pack count from the calculator above. <b>Event prep (charity / Haute Route):</b> add maltodextrin bottles for gut training if needed.</p>
+      <p><b>Weekend long rides:</b> rice cakes + electrolyte bottles for solids/hydration; from ≥150 min add maltodextrin/fructose carb drinks to hit 60→75→90 g/h. <b>Camp / event days:</b> rehearse the full race mix (80–90 g/h from hour 1).</p>
     </div>
   </section>
 

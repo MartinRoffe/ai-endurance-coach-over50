@@ -298,6 +298,7 @@
       <strong style="color:var(--accent2)">This Sunday (~{{ sunday_fuel.ride_hours }} h):</strong>
       make <strong style="color:var(--text)">{{ sunday_fuel.rice_cakes }} rice cakes</strong> Friday eve,
       mix bottles <strong style="color:var(--text)">{{ sunday_fuel.bottles | join(' + ') }}</strong>
+      {% if sunday_fuel.carb_drink_bottles %}· <strong style="color:var(--text)">{{ sunday_fuel.carb_drink_bottles }}× carb drink</strong> (~{{ sunday_fuel.target_g_per_hr }} g/h){% endif %}
       {% if sunday_fuel.flapjack %}· pack 1 protein bar (or flapjack){% endif %}.
       <a href="/nutrition/fuelling" style="color:var(--accent);margin-left:6px">Full calculator →</a>
     </div>
@@ -313,7 +314,11 @@
       <div class="principle-card pc-protein">
         <div class="principle-icon">🥩</div>
         <div class="principle-title">Protein First</div>
-        <p>185–200g daily (2.0–2.2 g/kg at ~92 kg) protects muscle over 50. Every meal anchored to a protein source. Greek-yogurt portion at breakfast + lunch Mon–Thu; home-mixed whey shake Wed/Thu/Fri/Sat. Saturday: chicken lunch (not eggs) + yogurt post-ruck + evening shake. Eggs on the weekend.</p>
+        <p>Protein floor <strong>{{ protein_target.low }}–{{ protein_target.high }} g/day</strong>
+          ({{ protein_target.basis }}) protects muscle over 50 — lean-mass based when body fat is known.
+          Every meal anchored to a protein source. Greek-yogurt portion at breakfast + lunch Mon–Thu;
+          home-mixed whey shake Wed/Thu/Fri/Sat. Saturday: chicken lunch (not eggs) + yogurt post-ruck
+          + evening shake. Strength days: 20–40 g peri-session protein. Eggs on the weekend.</p>
       </div>
       <div class="principle-card pc-carbs">
         <div class="principle-icon">🔋</div>

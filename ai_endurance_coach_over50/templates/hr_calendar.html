@@ -192,9 +192,9 @@
     <div class="mb-3 mt-2 flex items-baseline gap-3 phase-{{ week.phase.colour }}" style="padding-left:10px">
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.06em" class="phase-label-{{ week.phase.colour }}">{{ week.phase.label }}</h2>
       <span style="font-family:'DM Mono',monospace;font-size:11px;color:#71717a">
-        {% if week.phase.name == "base"     %}Aerobic engine · gym strength · 7–11 hrs/wk{% endif %}
-        {% if week.phase.name == "build"    %}FTP + VO2 max · TTE extension · 10–14 hrs/wk{% endif %}
-        {% if week.phase.name == "specific" %}Back-to-back days · mountain camp · 14–16 hrs/wk{% endif %}
+        {% if week.phase.name == "base"     %}Aerobic engine + gym · Tenerife Christmas volume camp (wks 12–13){% endif %}
+        {% if week.phase.name == "build"    %}FTP · VO2 · TTE · wk 14 absorbs Christmas camp · 10–14 hrs/wk{% endif %}
+        {% if week.phase.name == "specific" %}Back-to-back days · Tenerife race-sim camp (wk 31) · 14–16 hrs/wk{% endif %}
         {% if week.phase.name == "peak"     %}Multi-day simulation · peak durability · 14–17 hrs/wk{% endif %}
         {% if week.phase.name == "taper"    %}Arrive fresh · 60% → 40% volume{% endif %}
       </span>
@@ -204,6 +204,30 @@
     <div class="rounded border" style="border-color:#c2410c;background:rgba(194,65,12,0.08);padding:10px 14px;margin-bottom:10px">
       <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#fb923c;margin:0 0 4px 0">🌡 {{ heat_protocol.title }}</p>
       <p style="font-size:12px;color:#d4d4d8;line-height:1.5;margin:0">{{ heat_protocol.note }}</p>
+    </div>
+    {% endif %}
+
+    {% if week.phase.name == "base" and week.week_num == 12 and camp_nutrition_xmas %}
+    <div class="rounded border" style="border-color:#059669;background:rgba(5,150,105,0.08);padding:10px 14px;margin-bottom:10px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#34d399;margin:0 0 4px 0">🍽 {{ camp_nutrition_xmas.label }} — camp nutrition</p>
+      <p style="font-size:12px;color:#d4d4d8;line-height:1.5;margin:0">
+        Hard days {{ camp_nutrition_xmas.hard_day_kcal }} kcal · {{ camp_nutrition_xmas.carbs_g_per_kg }} g/kg carbs ·
+        protein {{ camp_nutrition_xmas.protein_g_per_kg }} g/kg · on-bike {{ camp_nutrition_xmas.on_bike_g_per_hr }} g/h ·
+        {{ camp_nutrition_xmas.recovery_window }}. UK deficit tiers suspended.
+        {{ camp_nutrition_xmas.easy_day_note }}
+      </p>
+    </div>
+    {% endif %}
+
+    {% if week.phase.name == "specific" and week.week_num == 31 and camp_nutrition_may %}
+    <div class="rounded border" style="border-color:#7c3aed;background:rgba(124,58,237,0.08);padding:10px 14px;margin-bottom:10px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#a78bfa;margin:0 0 4px 0">🍽 {{ camp_nutrition_may.label }} — camp nutrition</p>
+      <p style="font-size:12px;color:#d4d4d8;line-height:1.5;margin:0">
+        Hard days {{ camp_nutrition_may.hard_day_kcal }} kcal · {{ camp_nutrition_may.carbs_g_per_kg }} g/kg carbs ·
+        protein {{ camp_nutrition_may.protein_g_per_kg }} g/kg · on-bike {{ camp_nutrition_may.on_bike_g_per_hr }} g/h ·
+        rehearse Haute Route fuelling under stage-sim fatigue. UK deficit tiers suspended.
+        {{ camp_nutrition_may.easy_day_note }}
+      </p>
     </div>
     {% endif %}
 
@@ -383,6 +407,12 @@ const SESSION_INFO = {
     { name: "Z2 Block",  time: "Main",      desc: "Zone 2 throughout — conversational pace, full sentences. Back off any gradient that pushes HR into Z3." },
     { name: "Cool-down", time: "10 min",    desc: "Easy spin out" },
   ], note: "Fuel every 45 min on rides over 90 min (60–90g carbs/hr). The bulk of your aerobic adaptation comes from here." },
+
+  "Heat Z2": { steps: [
+    { name: "Setup", time: "Pre-ride", desc: "Extra layers outdoors, or indoor trainer with NO fan. Controlled heat stimulus — not a hard workout." },
+    { name: "Heat Z2", time: "60 min", desc: "Steady Z2 only. Sodium 500–800 mg/h. Weigh before and after to calibrate fluid loss." },
+    { name: "Cool", time: "After", desc: "Rehydrate aggressively. Do not stack intensity on heat days." },
+  ], note: "Plasma-volume expansion — 5 scheduled sessions in the final 10 days; last one is event − 3 days." },
 
   "Z2 Steady": { steps: [
     { name: "Warm-up",   time: "10 min", desc: "Easy spin" },
@@ -648,29 +678,68 @@ const SESSION_INFO = {
     { name: "Easy Finish", time: "Rest",      desc: "Continue easy, end feeling fresh" },
   ], note: "Arrival day. Scope the roads, find the coffee stops — resist the urge to test the big climbs on Day 1." },
 
-  "Camp — Mountain Stage": { steps: [
-    { name: "Pacing",    time: "Full ride",    desc: "First proper mountain day. Pace for 5+ days ahead — Z2 on flats, Z3 on climbs, no Z4." },
-    { name: "Fuelling",  time: "Every 45 min", desc: "Mountain riding burns more than expected — fuel proactively from the start" },
-    { name: "Descents",  time: "Downhills",   desc: "Control on descents — save energy, stay safe. Not the day to practise cornering limits." },
-  ], note: "Respect the terrain. A 2000m+ climb is not the same as a local hill — the sustained gradient compounds fatigue differently." },
+  "Camp — Stage Sim 1": { steps: [
+    { name: "Pacing",   time: "Full ride",    desc: "Race-week Day 1 energy. Z2 flats, Z3 climbs, never Z4 — you have a full stage block ahead." },
+    { name: "Fuelling", time: "Every 30–45 min", desc: "Rehearse Haute Route carb/sodium targets from the first hour. This is practice, not a training experiment." },
+    { name: "Reserve",  time: "Full",         desc: "Finish with something left. Stage Sim 2 is tomorrow." },
+  ], note: "First race-simulation stage. The adaptation is consecutive mountain days — not a single heroic effort." },
 
-  "Camp — Summit Day": { steps: [
-    { name: "Pacing",   time: "Full ride",    desc: "Biggest day of camp. Start easier than feels necessary — seriously." },
-    { name: "Fuelling", time: "Every 30 min", desc: "Altitude can suppress appetite. Fuel by the clock, not by hunger." },
-    { name: "Summit",   time: "Final climb",  desc: "Pace the final climb — you still have days ahead. Getting up in good shape beats climbing fast and blowing up." },
-  ], note: "Peak volume day of camp. Reaching the summit in good shape matters far more than climbing time." },
+  "Camp — Stage Sim 2": { steps: [
+    { name: "Morning",  time: "Pre-ride",     desc: "Recovery breakfast + fluids. Legs may feel flat — that is the point." },
+    { name: "Pacing",   time: "Full ride",    desc: "Same discipline as Day 1. Tired legs on long climbs is Haute Route reality." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Do not under-fuel because appetite is low — clock-based carbs." },
+  ], note: "Back-to-back mountain fatigue. Completing this well matters more than average power." },
 
-  "Camp — Back-to-Back Day 1": { steps: [
-    { name: "Pacing",   time: "Full ride",    desc: "Conservative start. 5–6 hour days in the mountains demand early patience." },
-    { name: "Fuelling", time: "Every 30 min", desc: "Race-level nutrition from the first hour — full calories on long mountain days" },
-    { name: "Reserve",  time: "Full",         desc: "Save something for Day 2. The hardest part of Day 1 is holding back." },
-  ], note: "Day 1 of the camp back-to-back. The most common mistake is going too hard on Day 1 and destroying Day 2." },
+  "Camp — Active Recovery": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Z1 only — spin the legs out. No climbs, no efforts, no HR targets." },
+  ], note: "Mid-camp recovery day (race-week easy/TT analogue). Sleep, eat, hydrate aggressively — tomorrow's block depends on today." },
 
-  "Camp — Back-to-Back Day 2": { steps: [
-    { name: "Morning",  time: "Pre-ride",     desc: "Aggressive recovery breakfast. Legs may feel surprisingly good or terrible — both are normal at camp." },
-    { name: "Main",     time: "Full ride",    desc: "Tired legs in the mountains. This is the adaptation stimulus — dig in and stay patient." },
-    { name: "Fuelling", time: "Every 30 min", desc: "Don't cut corners on nutrition on Day 2 — that's exactly when it costs you most." },
-  ], note: "Completing Day 2 of camp is a milestone. This replicates the Haute Route's mid-week grind." },
+  "Camp — Stage Sim 3": { steps: [
+    { name: "Pacing",   time: "Full ride",    desc: "Second block opener. Conservative early — the mid-camp rest bought you one reset, not a free pass." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Race-level nutrition. Treat this like Haute Route Day 5 energy management." },
+    { name: "Reserve",  time: "Full",         desc: "Stage Sim 4 tomorrow. Hold back on the last climb." },
+  ], note: "Second stage block. This is where camp becomes race rehearsal." },
+
+  "Camp — Stage Sim 4": { steps: [
+    { name: "Morning",  time: "Pre-ride",     desc: "Aggressive recovery breakfast. Expect heavy legs." },
+    { name: "Main",     time: "Full ride",    desc: "Finish the camp block with controlled Z2/Z3 climbing — no heroics on the last day." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Last chance to validate the race nutrition plan under deep fatigue." },
+  ], note: "Camp closer. Completing four stage-sim days with discipline is the Haute Route dress rehearsal." },
+
+  // ── Christmas Tenerife volume camp ───────────────────────────────────────
+  "Tenerife — Leg Openers": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Coastal Z1–2 after travel. Coffee allowed. No Teide today." },
+  ], note: "Camp opener. Move the legs, learn the roads, sleep well tonight." },
+
+  "Tenerife — Tamaimo / Teno": { steps: [
+    { name: "Main", time: "Full ride", desc: "Medium mountain day — first real climbing of camp. Stay conversational on the climbs." },
+  ], note: "Build into the overload. Save the deep well for Teide days." },
+
+  "Tenerife — Christmas Easy": { steps: [
+    { name: "Coffee Spin", time: "Full ride", desc: "Z1–2 only. Short coastal loop. Celebrate, don't train." },
+  ], note: "Christmas Day. Keep it joyful and short — the hard days resume tomorrow." },
+
+  "Tenerife — Teide West": { steps: [
+    { name: "Pacing",   time: "Full climb", desc: "First Teide ascent of camp. Z2–low Z3 on the climb. Cap surges." },
+    { name: "Fuelling", time: "Every 30–45 min", desc: "Altitude + duration — fuel by the clock." },
+  ], note: "Hard day 1 of the Christmas overload. Descend safely; recover hard tonight." },
+
+  "Tenerife — Masca + North": { steps: [
+    { name: "Pacing", time: "Full ride", desc: "Long hard day — Masca wall + north coast. Steady climbing, no races." },
+  ], note: "Second hard day of week 2. Respect the cumulative load from Teide West." },
+
+  "Tenerife — Active Recovery": { steps: [
+    { name: "Easy Spin", time: "Full ride", desc: "Z1 only. Flat/coastal. Protect tomorrow's Teide loop." },
+  ], note: "Active recovery between hard mountain days." },
+
+  "Tenerife — Teide Full Loop": { steps: [
+    { name: "Pacing", time: "Full ride", desc: "West up, south down. Biggest pure Teide day — patience on the ascent." },
+  ], note: "Hard day before the finale. Finish in control." },
+
+  "Tenerife — Camp Finale": { steps: [
+    { name: "Pacing", time: "Full ride", desc: "Masca + Teide double — camp queen stage. Start easier than ego wants." },
+    { name: "Fuelling", time: "Every 30 min", desc: "Last hire day. Empty the legs, not the glycogen early." },
+  ], note: "Christmas camp finale on the last bike-hire day. Celebrate at the bottom — then travel rest." },
 };
 
 function _buildStep(s, i) {
@@ -753,7 +822,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHrModal
     [ 35, 42, 'rgba(249,115, 22,0.12)', 'rgba(249,115, 22,0.55)', 'PEAK'],
     [ 43, 45, 'rgba(244, 63, 94,0.12)', 'rgba(244, 63, 94,0.55)', 'TAPER'],
   ];
-  // Mountain camp: week 31 = index 30
+  // Tenerife camps: Christmas volume wks 12–13 (idx 11–12); May race-sim wk 31 (idx 30)
+  const XMAS_CAMP = [11, 12];
   const CAMP_IDX = 30;
 
   const G = '#18181b';
@@ -778,15 +848,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHrModal
         ctx.fillText(name, (x1 + x2) / 2, top + 4);
       });
 
-      // Mountain camp highlight
-      const cx1 = x.getPixelForValue(CAMP_IDX);
-      const cx2 = x.getPixelForValue(CAMP_IDX);
-      const cw   = x.getPixelForValue(CAMP_IDX + 1) - cx1;
-      ctx.fillStyle = 'rgba(251,146,60,0.22)';
-      ctx.fillRect(cx1, top, cw, bottom - top);
-      ctx.fillStyle = 'rgba(251,146,60,0.80)';
-      ctx.textAlign = 'center';
-      ctx.fillText('CAMP', cx1 + cw / 2, top + 4);
+      // Tenerife camp highlights
+      function paintCamp(fromIdx, toIdx, label) {
+        const x1 = x.getPixelForValue(fromIdx);
+        const x2 = x.getPixelForValue(toIdx);
+        const w  = x.getPixelForValue(toIdx + 1) - x1;
+        ctx.fillStyle = 'rgba(251,146,60,0.22)';
+        ctx.fillRect(x1, top, w, bottom - top);
+        ctx.fillStyle = 'rgba(251,146,60,0.80)';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x1 + w / 2, top + 4);
+      }
+      paintCamp(XMAS_CAMP[0], XMAS_CAMP[1], 'XMAS');
+      paintCamp(CAMP_IDX, CAMP_IDX, 'MAY');
 
       ctx.restore();
     }

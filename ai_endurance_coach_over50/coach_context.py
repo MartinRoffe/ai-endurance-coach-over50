@@ -592,8 +592,18 @@ def _current_training_phase(today: date) -> tuple[str, str]:
 def _section_phase_nutrition(today: date) -> list[str]:
     """Current phase + 14-day energy balance, with an explicit conflict flag when a
     sustained deficit coincides with a build/peak/camp block (deficits belong in base)."""
+    from .nutrition_plan import camp_nutrition_window
+
     label, cat = _current_training_phase(today)
     lines = ["## Training Phase & Nutrition Periodization", f"  Current phase: {label}"]
+    camp = camp_nutrition_window(today)
+    if camp:
+        lines.append(
+            f"  CAMP WINDOW ACTIVE — {camp['label']} ({camp['start'].isoformat()} → "
+            f"{camp['end'].isoformat()}): suspend UK deficit; hard days "
+            f"{camp['hard_day_kcal']} kcal, {camp['carbs_g_per_kg']} g/kg carbs."
+        )
+        cat = "camp"
     try:
         rows = raw_history(14)
         tdee_by: dict[str, Any] = {}
@@ -1243,6 +1253,10 @@ def build_coach_context() -> str:
             marker = (f"  ← current (wk {cur_hr_week})"
                       if cur_hr_week and ph["week_start"] <= cur_hr_week <= ph["week_end"] else "")
             hr_phase_parts.append(f"  {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}{marker}")
+        hr_phase_parts.append(
+            "  Camps: Christmas Tenerife volume (wks 12–13, bike 23–31 Dec 2026); "
+            "May Tenerife race-sim (wk 31)."
+        )
         hr_phase_parts.append("  Full week-by-week sessions available via the get_hr_plan tool.")
         hr_phase_parts.append("")
         hr_phase_parts += hr_2012_lessons_context()

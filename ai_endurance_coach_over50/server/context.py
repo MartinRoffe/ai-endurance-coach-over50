@@ -791,7 +791,7 @@ def _travel_checklist_context() -> dict:
         "cycle_week_label": labels[cycle_week],
         "week_mode": week_mode,
         "sunday_ride_min": sunday_ride_min,
-        "sunday_fuel": fuel_prep_for_ride(sunday_ride_min),
+        "sunday_fuel": fuel_prep_for_ride(sunday_ride_min, ref_date=today),
         "sat_label": sat_sess[1] if sat_sess else "Saturday ruck",
         "sat_dur_min": sat_sess[2] if sat_sess else None,
         "sun_label": sun_sess[1] if sun_sess else "Sunday long ride",

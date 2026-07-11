@@ -79,6 +79,12 @@ def test_no_gousto_in_plan_surfaces():
     assert "gousto" not in blob.lower()
 
 
+def test_w2_batch_b_is_beef_bolognese():
+    name = WEEKDAY_DINNERS[1]["B"][0].lower()
+    assert "beef" in name and "bolognese" in name
+    assert "turkey" not in name
+
+
 def test_recovery_collapsed_card_names_both_batches():
     week = build_meal_week(3)
     assert week["recovery"] is True

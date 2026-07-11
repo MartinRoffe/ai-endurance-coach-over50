@@ -43,9 +43,10 @@ mountain event in late August 2027.
 
 ### What you'll see
 
-- **A 46-week phased plan** — Base, Build, Specific Build (with a mountain camp),
-  Peak (including two three-day simulation blocks), and Taper — laid out as a
-  calendar mirroring the [main calendar](plan.md).
+- **A 46-week phased plan** — Base (including a Christmas Tenerife volume
+  camp), Build (with a post-camp absorption week), Specific Build (Tenerife
+  race-simulation camp), Peak (including two three-day simulation blocks), and
+  Taper — laid out as a calendar mirroring the [main calendar](plan.md).
 - **A CTL projection** across the full plan, so you can see your fitness build
   toward the event.
 - **The seven event stages**, each with its distance, elevation, and key climb.

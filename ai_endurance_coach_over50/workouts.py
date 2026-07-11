@@ -591,6 +591,7 @@ _BUILDERS: dict[str, Any] = {
     "FTP Final Test":   lambda d: _ftp_test("FTP Final Test", d),
     "Long Ride (Moderate)": lambda d: _hr_long_ride("Long Ride Moderate", d),
     "Easy Endurance":   lambda d: _z2_endurance(d),
+    "Heat Z2":          lambda d: _z2_endurance(d),
     "Leg Openers":      lambda d: _easy_prep_ride(d),
     "Back-to-Back Day 1": lambda d: _hr_long_ride("Back-to-Back Day 1", d),
     "Back-to-Back Day 2": lambda d: _hr_long_ride("Back-to-Back Day 2", d),
@@ -602,6 +603,18 @@ _BUILDERS: dict[str, Any] = {
     "Camp — Summit Day": lambda d: _hr_long_ride("Camp Summit Day", d),
     "Camp — Back-to-Back Day 1": lambda d: _hr_long_ride("Camp BTB Day 1", d),
     "Camp — Back-to-Back Day 2": lambda d: _hr_long_ride("Camp BTB Day 2", d),
+    "Camp — Stage Sim 1": lambda d: _hr_long_ride("Camp Stage Sim 1", d),
+    "Camp — Stage Sim 2": lambda d: _hr_long_ride("Camp Stage Sim 2", d),
+    "Camp — Stage Sim 3": lambda d: _hr_long_ride("Camp Stage Sim 3", d),
+    "Camp — Stage Sim 4": lambda d: _hr_long_ride("Camp Stage Sim 4", d),
+    "Tenerife — Leg Openers": lambda d: _easy_prep_ride(d),
+    "Tenerife — Tamaimo / Teno": lambda d: _hr_long_ride("Tenerife Tamaimo", d),
+    "Tenerife — Christmas Easy": lambda d: _z2_endurance(d),
+    "Tenerife — Teide West": lambda d: _hr_long_ride("Tenerife Teide West", d),
+    "Tenerife — Masca + North": lambda d: _hr_long_ride("Tenerife Masca North", d),
+    "Tenerife — Active Recovery": lambda d: _recovery_spin(d),
+    "Tenerife — Teide Full Loop": lambda d: _hr_long_ride("Tenerife Teide Loop", d),
+    "Tenerife — Camp Finale": lambda d: _hr_long_ride("Tenerife Camp Finale", d),
     "Simulation Day 1": lambda d: _hr_long_ride("Simulation Day 1", d),
     "Simulation Day 2": lambda d: _hr_long_ride("Simulation Day 2", d),
     "Simulation Day 3": lambda d: _hr_long_ride("Simulation Day 3", d),
@@ -778,7 +791,7 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
     """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
 
     Covers the 12-week plan plus the camp-window spins (`CAMP_GRID_WORKOUTS`,
-    Aug 10–11/28/30) and the event-prep block (`EVENT_PREP_DAYS`, Aug 31 – Sep 11).
+    Aug 10–11/29–30) and the event-prep block (`EVENT_PREP_DAYS`, Aug 31 – Sep 11).
     Tenerife camp days themselves are unstructured rides and are never pushed.
     """
     schedule: dict[tuple[str, int], list[str]] = defaultdict(list)

@@ -107,20 +107,65 @@
 <div class="container">
 
   <div class="toc">
+    <a href="#sunday-this-week"><span>Start</span>Sunday cook this week</a>
     <a href="#batch-primer"><span>Start</span>Batch Logic</a>
     <a href="#w1a"><span>W1 A</span>Chicken traybake</a>
     <a href="#w1b"><span>W1 B</span>Beef &amp; lentil ragù</a>
     <a href="#w2a"><span>W2 A</span>Coconut chicken curry</a>
-    <a href="#w2b"><span>W2 B</span>Turkey bolognese</a>
+    <a href="#w2b"><span>W2 B</span>Beef bolognese</a>
     <a href="#w3a"><span>W3 A</span>Chicken &amp; chorizo rice</a>
     <a href="#w3b"><span>W3 B</span>Bean &amp; beef stew</a>
     <a href="#w4a"><span>W4 A</span>Cottage pie</a>
     <a href="#w4b"><span>W4 B</span>Chicken casserole</a>
     <a href="#boosters"><span>Protein</span>Easy Boosters</a>
     <a href="#safety"><span>Safety</span>Reheat &amp; Storage</a>
-    <a href="/nutrition/recipes"><span>Batch prep</span>Cook Once · Eat All Week →</a>
+    <a href="/nutrition/recipes#schedule"><span>Batch prep</span>Full Sunday sheets →</a>
     <a href="/nutrition/recipes/griddle"><span>Weekend</span>Blackstone Griddle →</a>
   </div>
+
+  <section id="sunday-this-week">
+    <div class="sec-label">This Sunday</div>
+    <h2>SUNDAY COOK — THIS WEEK</h2>
+    <p class="lead">Full timed sheets (lunches + breakfasts + dinners) live on the <a href="/nutrition/recipes#schedule">batch prep schedule</a>. Dinner Methods are on this page. Auto-selects your nutrition cycle week.</p>
+    <div class="week-tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">
+      <button type="button" class="wtab" data-week="0" onclick="showDinnerWeek(0,this)" style="font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer">Week 1</button>
+      <button type="button" class="wtab" data-week="1" onclick="showDinnerWeek(1,this)" style="font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer">Week 2</button>
+      <button type="button" class="wtab" data-week="2" onclick="showDinnerWeek(2,this)" style="font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer">Week 3</button>
+      <button type="button" class="wtab" data-week="3" onclick="showDinnerWeek(3,this)" style="font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer">Week 4</button>
+    </div>
+    <div class="cook-panel" id="dw0" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#cdd0bb">
+      <b style="color:var(--text)">Week 1 dinners</b>
+      <ul style="margin:8px 0 0 18px">
+        <li>Batch A: <a href="#w1a">Chicken breast &amp; root-veg traybake</a> (fridge Mon/Tue)</li>
+        <li>Batch B: <a href="#w1b">Beef &amp; red-lentil ragù</a> (freeze → Wed/Thu)</li>
+        <li>Also Sunday: lunch chicken/rice + oats + scotch eggs — <a href="/nutrition/recipes#schedule">full sheet</a></li>
+      </ul>
+    </div>
+    <div class="cook-panel" id="dw1" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#cdd0bb">
+      <b style="color:var(--text)">Week 2 dinners</b>
+      <ul style="margin:8px 0 0 18px">
+        <li>Batch A: <a href="#w2a">Mild coconut chicken curry</a></li>
+        <li>Batch B: <a href="#w2b">Beef 5% bolognese</a></li>
+        <li>Also Sunday: lunch chicken/rice + oats + scotch eggs — <a href="/nutrition/recipes#schedule">full sheet</a></li>
+      </ul>
+    </div>
+    <div class="cook-panel" id="dw2" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#cdd0bb">
+      <b style="color:var(--text)">Week 3 dinners</b>
+      <ul style="margin:8px 0 0 18px">
+        <li>Batch A: <a href="#w3a">Chicken &amp; chorizo rice</a> (cool fast)</li>
+        <li>Batch B: <a href="#w3b">Smoky bean &amp; beef stew</a> + crusty bread</li>
+        <li>Also Sunday: lunch chicken/rice + oats + scotch eggs — <a href="/nutrition/recipes#schedule">full sheet</a></li>
+      </ul>
+    </div>
+    <div class="cook-panel" id="dw3" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#cdd0bb">
+      <b style="color:var(--text)">Week 4 dinners (recovery)</b>
+      <ul style="margin:8px 0 0 18px">
+        <li>Batch A: <a href="#w4a">Lean cottage pie</a></li>
+        <li>Batch B: <a href="#w4b">Chicken &amp; veg casserole</a></li>
+        <li>Breakfast swap: egg muffins instead of scotch eggs — <a href="/nutrition/recipes#schedule">full sheet</a></li>
+      </ul>
+    </div>
+  </section>
 
   <section id="dinners">
     <div class="sec-label">Mon–Thu evenings — Sunday cook</div>
@@ -159,33 +204,35 @@
     <div class="recipe" id="w1a">
       <div class="recipe-head">
         <div class="recipe-title">W1 A · Chicken &amp; Root-Veg Traybake + Roast Potatoes</div>
-        <div class="tags"><span class="tag t-dinner">Batch A</span><span class="tag t-time">~55 min</span><span class="tag t-makes">4 portions (2×2)</span><span class="tag t-prot">66g P</span><span class="tag t-kcal">700 kcal</span></div>
+        <div class="tags"><span class="tag t-dinner">Batch A</span><span class="tag t-time">~50 min</span><span class="tag t-makes">4 portions (2×2)</span><span class="tag t-prot">66g P</span><span class="tag t-kcal">700 kcal</span></div>
       </div>
       <div class="recipe-body">
         <div class="col ingredients">
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
-            <li><b>1.2 kg</b> chicken thighs, bone-in skin-on (or ~600 g boneless)</li>
-            <li><b>800 g</b> potatoes, chunked</li>
-            <li><b>600 g</b> mixed root veg (carrot, parsnip, onion)</li>
-            <li><b>3 tbsp</b> olive oil + thyme, garlic, salt, pepper</li>
+            <li><b>700 g</b> chicken breast fillets (boneless, skinless)</li>
+            <li><b>800 g</b> potatoes, cut into ~3 cm chunks</li>
+            <li><b>600 g</b> mixed root veg (carrot, parsnip, onion), chunked</li>
+            <li><b>3 tbsp</b> olive oil · <b>1 tsp</b> dried thyme · <b>2</b> garlic cloves, crushed · salt + pepper</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Oven 200 °C. Toss potatoes and root veg in oil, thyme, salt; spread on a large tray.</li>
-            <li>Season chicken; nestle among the veg. Roast 45–50 min until chicken is cooked through and potatoes are golden.</li>
-            <li>Rest 5 min. Divide into 4 equal portions (2 fridge containers × 2 nights). His plate: ~300 g cooked chicken + ~250 g roast veg/potato + dessert.</li>
-            <li>Reheat Mon/Tue: microwave or oven until piping hot; add protein dessert after.</li>
+            <li>Heat oven to <b>200°C fan</b>. Line a large baking tray (or two if crowded — veg needs space to crisp).</li>
+            <li>Pat chicken dry with kitchen paper. Toss potatoes and root veg with <b>2 tbsp</b> oil, thyme, salt and pepper. Spread in a single layer.</li>
+            <li>Rub chicken with the remaining oil, crushed garlic, salt and pepper. Nestle the fillets among the veg — not stacked.</li>
+            <li>Roast <b>25–35 min</b> until potatoes are golden and chicken is cooked through (no pink, juices run clear, <b>75°C+</b> in the thickest part). If veg needs longer, lift the chicken onto a plate and give the tray 5–10 min more.</li>
+            <li>Rest chicken 5 min, then slice or leave whole. Divide into <b>4 equal portions</b> in fridge containers (2 people × Mon/Tue). His plate target: ~½ of one night’s chicken + ~250 g roast veg/potato.</li>
+            <li>Cool within 1 hour, lid on, fridge. Reheat Mon/Tue until piping hot; add the protein dessert after.</li>
           </ol>
         </div>
       </div>
       <div class="macros">
         <span class="macro-pill">His portion + dessert: 700 kcal · 66g P · 52g C</span>
       </div>
-      <div class="note"><b>Where it fits:</b> Week 1 Mon/Tue. Shares the 200 °C oven with Sunday lunch chicken.</div>
+      <div class="note"><b>Where it fits:</b> Week 1 Mon/Tue. Shares the 200°C oven with Sunday lunch chicken (#01). Breast fillets cook faster than bone-in — use the thermometer, not the old 45–50 min timing.</div>
     </div>
 
     <!-- W1B -->
@@ -199,19 +246,24 @@
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
             <li><b>800 g</b> 5% beef mince</li>
-            <li><b>200 g</b> dried red lentils</li>
-            <li><b>1</b> large onion + <b>2</b> garlic cloves + <b>2</b> carrots, diced</li>
-            <li><b>700 g</b> passata + stock cube + oregano, bay</li>
-            <li><b>400 g</b> dry basmati (cook fresh or batch with Sunday rice)</li>
+            <li><b>200 g</b> dried red lentils (rinsed)</li>
+            <li><b>1</b> large onion + <b>2</b> garlic cloves + <b>2</b> carrots, diced small</li>
+            <li><b>700 g</b> passata · <b>1</b> stock cube · oregano · <b>1</b> bay leaf</li>
+            <li><b>1 tbsp</b> olive oil · salt + pepper</li>
+            <li><b>400 g</b> dry basmati (cook fresh each night, or use Sunday batch rice)</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Brown mince; soft onion, garlic, carrot. Stir in lentils, passata, stock, herbs. Simmer 25–30 min until lentils are soft.</li>
-            <li>Cook basmati. Divide ragù into 4 freezer portions; freeze Sunday. Move 2 portions to fridge Tuesday evening.</li>
-            <li>Wed/Thu: reheat ragù piping hot; plate over rice; protein dessert after.</li>
+            <li>Rinse the red lentils in a sieve under cold water until the water runs clearer.</li>
+            <li>Heat <b>1 tbsp</b> oil in a large deep frying pan or casserole on medium-high. Add the mince; break it up with a wooden spoon. Cook 6–8 min until browned (no pink clumps). Tip into a bowl if the pan is crowded; return when veg is soft.</li>
+            <li>Lower to medium. Soften onion, carrot and garlic 5–7 min until the onion looks translucent, not browned.</li>
+            <li>Stir mince back in with lentils, passata, crumbled stock cube, oregano, bay, salt and pepper. Add a splash of water if it looks very thick. Bring to a gentle bubble.</li>
+            <li>Simmer uncovered <b>25–30 min</b>, stirring now and then, until lentils are soft (no hard centre) and the sauce is thick. Fish out the bay leaf.</li>
+            <li>Cool slightly, then divide into <b>4 freezer tubs</b>. Freeze Sunday. Tuesday evening: move 2 tubs to the fridge for Wed/Thu.</li>
+            <li>Eat nights: reheat ragù until piping hot; cook or reheat basmati; plate; protein dessert after.</li>
           </ol>
         </div>
       </div>
@@ -231,20 +283,23 @@
         <div class="col ingredients">
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
-            <li><b>1 kg</b> chicken thigh fillets, diced</li>
-            <li><b>1</b> onion + <b>2</b> garlic + thumb ginger</li>
-            <li><b>3–4 tbsp</b> mild korma paste (no chilli)</li>
+            <li><b>1 kg</b> chicken thigh fillets, diced into bite-size pieces</li>
+            <li><b>1</b> onion, sliced · <b>2</b> garlic cloves, crushed · thumb ginger, grated</li>
+            <li><b>3–4 tbsp</b> mild korma paste (check label — no chilli)</li>
             <li><b>1 × 400 ml</b> light coconut milk</li>
-            <li>Spinach handful; <b>400 g</b> dry basmati</li>
+            <li><b>1 tbsp</b> oil · large handful spinach · <b>400 g</b> dry basmati</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Soft onion; add garlic, ginger, mild korma paste 1 min. Brown chicken.</li>
-            <li>Pour in coconut milk; simmer 20 min. Wilt spinach at the end. No chilli.</li>
-            <li>Portion with rice into 4 fridge containers. Reheat Mon/Tue piping hot + dessert.</li>
+            <li>Heat oil in a large saucepan on medium. Soften the onion 5–6 min until translucent (not brown).</li>
+            <li>Add garlic, ginger and korma paste. Stir 1 min until it smells fragrant and coats the onion.</li>
+            <li>Add the diced chicken; stir to coat. Cook 4–5 min until the outside turns from pink to white.</li>
+            <li>Pour in the coconut milk; scrape the bottom of the pan. Bring to a gentle simmer (small bubbles, not a hard boil).</li>
+            <li>Simmer <b>~20 min</b>, stirring occasionally, until chicken is cooked through (cut the largest piece — no pink). Wilt the spinach in for the last 2 min.</li>
+            <li>Cook basmati (or use Sunday batch). Divide curry + rice into <b>4 fridge containers</b> (Mon/Tue × 2 people). Cool, fridge, reheat piping hot + dessert.</li>
           </ol>
         </div>
       </div>
@@ -257,33 +312,36 @@
     <!-- W2B -->
     <div class="recipe" id="w2b">
       <div class="recipe-head">
-        <div class="recipe-title">W2 B · Turkey Mince Bolognese + Wholewheat Spaghetti</div>
-        <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~40 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">68g P</span><span class="tag t-kcal">700 kcal</span></div>
+        <div class="recipe-title">W2 B · Beef 5% Bolognese + Wholewheat Spaghetti</div>
+        <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~45 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">68g P</span><span class="tag t-kcal">700 kcal</span></div>
       </div>
       <div class="recipe-body">
         <div class="col ingredients">
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
-            <li><b>800 g</b> turkey breast mince</li>
-            <li><b>1</b> onion + <b>2</b> garlic + <b>2</b> carrots + celery stick</li>
-            <li><b>700 g</b> passata + oregano, bay</li>
-            <li><b>400 g</b> wholewheat spaghetti (cook night-of or portion cooked)</li>
+            <li><b>800 g</b> 5% beef mince</li>
+            <li><b>1</b> onion + <b>2</b> garlic cloves + <b>2</b> carrots + <b>1</b> celery stick, all diced small</li>
+            <li><b>700 g</b> passata · oregano · <b>1</b> bay leaf · salt + pepper</li>
+            <li><b>1 tbsp</b> olive oil</li>
+            <li><b>400 g</b> wholewheat spaghetti (cook night-of)</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Brown turkey; soft veg; add passata and herbs. Simmer 25 min.</li>
-            <li>Freeze sauce in 4 portions Sunday. Fridge Tue eve for Wed/Thu.</li>
-            <li>Cook spaghetti fresh each night (or reheat cooked pasta carefully). Sauce piping hot + dessert.</li>
+            <li>Heat oil in a large deep pan on medium-high. Brown the beef mince 6–8 min, breaking it up, until no pink remains.</li>
+            <li>Lower heat to medium. Add onion, carrot, celery and garlic. Soften 6–8 min until the onion is translucent and the carrot is starting to soften.</li>
+            <li>Stir in passata, oregano, bay, salt and pepper. Bring to a gentle bubble, then simmer uncovered <b>25–30 min</b> until thick and rich. Stir every few minutes so it doesn’t catch. Remove bay leaf.</li>
+            <li>Cool slightly; divide sauce into <b>4 freezer tubs</b>. Freeze Sunday. Tuesday evening: move 2 tubs to the fridge.</li>
+            <li>Wed/Thu: reheat sauce until piping hot. Boil spaghetti in salted water per pack (usually 10–12 min) until just tender; drain. Plate sauce over pasta; protein dessert after.</li>
           </ol>
         </div>
       </div>
       <div class="macros">
         <span class="macro-pill">His portion + dessert: 700 kcal · 68g P · 62g C</span>
       </div>
-      <div class="note protein"><b>Highest protein</b> of the build-week dinners — useful when the day is running short.</div>
+      <div class="note protein"><b>Highest protein</b> of the build-week dinners — useful when the day is running short. Proper beef bolognese with 5% mince keeps fat in check.</div>
     </div>
 
     <!-- W3A -->
@@ -296,20 +354,23 @@
         <div class="col ingredients">
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
-            <li><b>800 g</b> chicken thigh fillets</li>
+            <li><b>800 g</b> chicken thigh fillets, cut into large chunks</li>
             <li><b>150 g</b> mild cooking chorizo, sliced</li>
-            <li><b>1</b> onion + pepper + garlic</li>
-            <li><b>400 g</b> dry basmati + stock to cover</li>
-            <li>Smoked paprika (sweet, not hot); peas optional</li>
+            <li><b>1</b> onion, diced · <b>1</b> pepper, diced · <b>2</b> garlic cloves</li>
+            <li><b>400 g</b> dry basmati · <b>~800 ml</b> hot chicken stock (enough to cover by ~1 cm)</li>
+            <li><b>1 tsp</b> smoked paprika (sweet, not hot) · peas optional · <b>1 tbsp</b> oil</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Brown chicken and chorizo; soft onion/pepper. Stir in rice, paprika, stock. Cover; simmer until rice is done (~18 min).</li>
-            <li><b>Cool fast</b> — spread in shallow containers within 90 min. Fridge. Reheat once only, piping hot.</li>
-            <li>Mon/Tue portions + protein dessert.</li>
+            <li>Heat oil in a wide lidded pan on medium-high. Brown chicken chunks 4–5 min; add chorizo 2–3 min until it releases orange fat. Move meat to a plate.</li>
+            <li>Soft onion and pepper 5 min in the same pan; add garlic and paprika 1 min.</li>
+            <li>Stir in the dry rice so every grain is coated. Return chicken and chorizo. Pour in hot stock to cover by about 1 cm; stir once.</li>
+            <li>Bring to a simmer, lid on, medium-low. Cook <b>~18 min</b> without lifting the lid often. Rice should be tender and liquid absorbed. Rest lid-on 5 min. Stir through peas if using.</li>
+            <li><b>Cool fast:</b> spread into shallow containers within 90 min. Fridge. Reheat once only until steaming hot.</li>
+            <li>Divide into 4 Mon/Tue portions; protein dessert after reheating.</li>
           </ol>
         </div>
       </div>
@@ -322,32 +383,37 @@
     <!-- W3B -->
     <div class="recipe" id="w3b">
       <div class="recipe-head">
-        <div class="recipe-title">W3 B · Smoky Bean &amp; Beef Stew + Mash or Bread</div>
+        <div class="recipe-title">W3 B · Smoky Bean &amp; Beef Stew + Crusty Bread</div>
         <div class="tags"><span class="tag t-dinner">Batch B</span><span class="tag t-time">~50 min</span><span class="tag t-makes">4 portions</span><span class="tag t-prot">62g P</span><span class="tag t-kcal">710 kcal</span></div>
       </div>
       <div class="recipe-body">
         <div class="col ingredients">
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
-            <li><b>700 g</b> 5% beef mince or stewing beef, diced</li>
-            <li><b>2 × 400 g</b> mixed beans, drained</li>
-            <li><b>1</b> onion + carrot + celery; garlic</li>
-            <li><b>500 g</b> passata + smoked paprika (sweet) + stock</li>
-            <li>Mash potatoes or crusty bread to serve</li>
+            <li><b>700 g</b> 5% beef mince</li>
+            <li><b>2 × 400 g</b> mixed beans, drained and rinsed</li>
+            <li><b>1</b> onion + <b>1</b> carrot + <b>1</b> celery stick, diced · <b>2</b> garlic cloves</li>
+            <li><b>500 g</b> passata · <b>1 tsp</b> smoked paprika (sweet) · <b>1</b> stock cube · splash of water</li>
+            <li><b>1 tbsp</b> oil · crusty bread to serve (not mash — keeps shopping simple)</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Brown beef; soft veg; add beans, passata, paprika, stock. Simmer 30–35 min. No chilli.</li>
-            <li>Freeze 4 portions Sunday. Fridge Tue eve. Serve with mash or bread Wed/Thu + dessert.</li>
+            <li>Heat oil in a large casserole or deep pan on medium-high. Brown the mince 6–8 min until no pink remains.</li>
+            <li>Add onion, carrot, celery and garlic; soften 5–7 min.</li>
+            <li>Stir in beans, passata, paprika, crumbled stock cube and a splash of water. Bring to a gentle simmer.</li>
+            <li>Simmer uncovered <b>30–35 min</b>, stirring occasionally, until thick and the carrot is tender. Taste; add salt if needed. No chilli.</li>
+            <li>Cool; divide into <b>4 freezer tubs</b>. Freeze Sunday; fridge Tuesday evening for Wed/Thu.</li>
+            <li>Reheat piping hot; serve with crusty bread; protein dessert after.</li>
           </ol>
         </div>
       </div>
       <div class="macros">
         <span class="macro-pill">His portion + dessert: 710 kcal · 62g P · 66g C</span>
       </div>
+      <div class="note"><b>Where it fits:</b> Week 3 Wed/Thu. Bread side — no extra mash potatoes to shop for.</div>
     </div>
 
     <!-- W4A -->
@@ -361,17 +427,22 @@
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
             <li><b>700 g</b> 5% beef mince</li>
-            <li>Onion, carrot, celery; <b>400 g</b> passata or stock gravy</li>
-            <li><b>500 g</b> potato + <b>500 g</b> cauliflower for mash</li>
+            <li><b>1</b> onion + <b>1</b> carrot + <b>1</b> celery stick, diced · <b>2</b> garlic cloves</li>
+            <li><b>400 g</b> passata (or stock + 1 tbsp tomato purée for a lighter gravy)</li>
+            <li><b>500 g</b> potato + <b>500 g</b> cauliflower florets · splash of milk · salt + pepper</li>
+            <li><b>1 tbsp</b> oil</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Cook mince base lean (drain fat). Mash half potato / half cauliflower with a splash of milk.</li>
-            <li>Assemble in dishes or portion into 4; bake or reheat until bubbling. Lighter recovery macros.</li>
-            <li>Mon/Tue + protein dessert.</li>
+            <li>Heat oven to <b>200°C fan</b> if baking assembled pies. Boil potato chunks and cauliflower in salted water ~15 min until both are soft when pierced.</li>
+            <li>Meanwhile, brown mince in oil 6–8 min; soft onion, carrot, celery and garlic 5 min. Stir in passata; simmer 10 min until thick. Season.</li>
+            <li>Drain veg well. Mash with a splash of milk, salt and pepper until fairly smooth (a few cauliflower lumps are fine).</li>
+            <li>Divide mince into 4 ovenproof dishes or one large dish marked into quarters. Spread mash on top; rough the surface with a fork.</li>
+            <li>Bake <b>20–25 min</b> until the top is lightly golden and the filling is bubbling at the edges. Or fridge the assembled portions and bake/reheat Mon/Tue until bubbling.</li>
+            <li>Cool leftovers promptly. Protein dessert after eating.</li>
           </ol>
         </div>
       </div>
@@ -392,16 +463,21 @@
           <div class="col-label">Ingredients (2 people × 2 nights)</div>
           <ul>
             <li><b>900 g</b> chicken thigh fillets</li>
-            <li>Onion, leek, carrot, celery; garlic</li>
-            <li>Stock + herbs (thyme, bay); <b>600 g</b> small potatoes</li>
+            <li><b>1</b> onion + <b>1</b> leek + <b>1</b> carrot + <b>1</b> celery stick, sliced · <b>2</b> garlic cloves</li>
+            <li><b>~600 ml</b> chicken stock · thyme · <b>1</b> bay leaf</li>
+            <li><b>600 g</b> small potatoes, halved if large · <b>1 tbsp</b> oil</li>
             <li>Per serving dessert: <b>150 g</b> skyr / 0% Greek yogurt</li>
           </ul>
         </div>
         <div class="col method">
           <div class="col-label">Method</div>
           <ol>
-            <li>Brown chicken lightly; soft veg; cover with stock and herbs; add potatoes. Simmer or oven-braise until tender.</li>
-            <li>Freeze 4 portions Sunday. Fridge Tue eve. Wed/Thu reheat + dessert.</li>
+            <li>Heat oil in a large casserole on medium-high. Brown chicken lightly 3–4 min per side (it will finish cooking in the liquid). Move to a plate.</li>
+            <li>Soft onion, leek, carrot, celery and garlic 5–7 min in the same pan.</li>
+            <li>Return chicken; add potatoes, stock, thyme and bay. Liquid should almost cover — add a splash of water if needed. Bring to a simmer.</li>
+            <li>Lid on, medium-low <b>30–35 min</b> (or oven 180°C fan, same time) until chicken is cooked through (75°C+) and potatoes are tender when pierced. Remove bay leaf.</li>
+            <li>Cool; divide into <b>4 freezer tubs</b>. Freeze Sunday; fridge Tuesday evening.</li>
+            <li>Wed/Thu: reheat until piping hot; protein dessert after.</li>
           </ol>
         </div>
       </div>
@@ -473,6 +549,25 @@
 <div class="footer">
   Weekday batch dinners · macros match nutrition_plan.WEEKDAY_DINNERS · Fri–Sun = <a href="/nutrition/recipes/griddle">griddle</a>
 </div>
+
+<script>
+const AUTO_DINNER_WEEK = {{ cycle_week | default(0) }};
+function showDinnerWeek(i, btn) {
+  document.querySelectorAll('.cook-panel').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('.wtab').forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--muted)';
+  });
+  const panel = document.getElementById('dw' + i);
+  if (panel) panel.style.display = 'block';
+  const active = btn || document.querySelector('.wtab[data-week="' + i + '"]');
+  if (active) {
+    active.style.borderColor = 'var(--accent)';
+    active.style.color = 'var(--accent)';
+  }
+}
+showDinnerWeek(AUTO_DINNER_WEEK, null);
+</script>
 
 </body>
 </html>

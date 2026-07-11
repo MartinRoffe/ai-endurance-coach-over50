@@ -939,7 +939,7 @@ async def nutrition_plan(request: Request):
     cycle_week = cycle_week_index(_PLAN_START, today)
     checklist = today_checklist(_PLAN_START, today)
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = fuel_prep_for_ride(sunday_ride_min) if sunday_ride_min else None
+    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today) if sunday_ride_min else None
 
     m = load(today) or DailyMetrics(date=today)
     nutrition_today = build_nutrition_today(m, today)
@@ -969,13 +969,14 @@ async def nutrition_plan(request: Request):
 @app.get("/nutrition/meals", response_class=HTMLResponse)
 async def nutrition_meals(request: Request):
     today = _today()
-    from ..nutrition_plan import build_meal_week, cycle_week_index
+    from ..nutrition_plan import build_meal_week, build_this_meal_week, cycle_week_index
     cycle_week = cycle_week_index(_PLAN_START, today)
+    this_week = build_this_meal_week(_PLAN_START, today)
     weeks = [build_meal_week(i) for i in range(4)]
     return TEMPLATES.TemplateResponse(
         request=request,
         name="meals.html",
-        context={"cycle_week": cycle_week, "weeks": weeks},
+        context={"cycle_week": cycle_week, "this_week": this_week, "weeks": weeks},
     )
 
 
@@ -984,8 +985,8 @@ async def nutrition_fuelling(request: Request):
     today = _today()
     from ..nutrition_plan import fuel_prep_for_ride, _sunday_planned_ride_min
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = fuel_prep_for_ride(sunday_ride_min) if sunday_ride_min else None
-    fuel_tiers = [fuel_prep_for_ride(m) for m in (90, 120, 180, 240, 300, 360)]
+    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=date.today()) if sunday_ride_min else None
+    fuel_tiers = [fuel_prep_for_ride(m, ref_date=date.today()) for m in (90, 120, 180, 240, 300, 360)]
     return TEMPLATES.TemplateResponse(
         request=request,
         name="fuelling.html",
@@ -999,7 +1000,13 @@ async def nutrition_fuelling(request: Request):
 
 @app.get("/nutrition/recipes", response_class=HTMLResponse)
 async def nutrition_recipes(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="recipes.html", context={})
+    today = _today()
+    from ..nutrition_plan import cycle_week_index
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="recipes.html",
+        context={"cycle_week": cycle_week_index(_PLAN_START, today)},
+    )
 
 
 @app.get("/nutrition/recipes/weekend-fuel", response_class=HTMLResponse)
@@ -1019,7 +1026,13 @@ async def nutrition_recipes_griddle(request: Request):
 
 @app.get("/nutrition/recipes/weekday-dinners", response_class=HTMLResponse)
 async def nutrition_recipes_weekday_dinners(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="recipes-weekday-dinners.html", context={})
+    today = _today()
+    from ..nutrition_plan import cycle_week_index
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="recipes-weekday-dinners.html",
+        context={"cycle_week": cycle_week_index(_PLAN_START, today)},
+    )
 
 
 @app.get("/nutrition/recipes/travel", response_class=HTMLResponse)
@@ -1093,6 +1106,8 @@ def haute_route_view(request: Request):
     except Exception:
         weeks = build_hr_calendar_weeks()
 
+    from ..nutrition_plan import CAMP_NUTRITION
+
     ctx = {
         "active_tab":    "haute_route",
         "hr_subnav":     "plan",
@@ -1109,6 +1124,8 @@ def haute_route_view(request: Request):
         "stage_plans":   stage_plans,
         "peak_decoupling_flags": peak_decoupling_flags,
         "power_meter_active": power_meter_active(),
+        "camp_nutrition_xmas": {"label": "Christmas Tenerife (HR volume camp)", **CAMP_NUTRITION},
+        "camp_nutrition_may": {"label": "May Tenerife (HR race-sim camp)", **CAMP_NUTRITION},
         "power_familiarization_note": (
             "Power familiarization bridge (14 Sep – 4 Oct 2026): "
             "bed in the pedals and learn to pace by watts before the formal Haute Route base block. "

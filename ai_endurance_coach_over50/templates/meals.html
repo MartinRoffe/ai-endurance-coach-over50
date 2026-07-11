@@ -203,30 +203,33 @@
 
 <div class="hero" style="padding:40px 40px 32px">
   <div class="container">
-    <div class="hero-eyebrow">4-Week Repeatable Cycle · Auto-selects current week</div>
+    <div class="hero-eyebrow">This week from the calendar · Food templates on a 4-week cycle</div>
     <h1 style="font-size:clamp(40px,7vw,64px);margin-bottom:12px">DAILY<br><span>MENUS</span></h1>
-    <p class="hero-sub">Every meal, macro and protein checkpoint for the bulk-staple plan. Tap a day to expand. Sunday includes on-bike and recovery fuelling — see the <a href="/nutrition/fuelling" style="color:var(--accent)">Ride Fuelling guide</a> for full protocols.</p>
+    <p class="hero-sub">Workout badges match the <a href="/calendar" style="color:var(--accent)">training calendar</a>. Meals follow the bulk-staple food cycle. Tap a day to expand. Sunday includes on-bike and recovery fuelling — see the <a href="/nutrition/fuelling" style="color:var(--accent)">Ride Fuelling guide</a> for full protocols.</p>
   </div>
 </div>
 
 <div class="container">
 
   <section>
-    <div class="section-label">4-Week Repeatable Cycle</div>
-    <h2>DAILY MENUS</h2>
+    <div class="section-label">Daily Menus</div>
+    <h2>THIS WEEK + FOOD TEMPLATES</h2>
 
     <div class="week-banner" style="margin-bottom:16px">
       <p><strong>Fixed weekday pattern:</strong> overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu (egg muffins Tue/Thu in recovery week only). Batch dinners Mon–Thu (A Mon/Tue, B Wed/Thu — week-specific rotation); griddle Fri–Sun. <a href="/nutrition/recipes/weekday-dinners" style="color:var(--accent)">Dinner recipes</a> · <a href="/nutrition/recipes#sunday-prep" style="color:var(--accent)">Sunday prep</a>.</p>
     </div>
 
     <div class="week-tabs">
-      <button class="wtab active" onclick="showWeek('w1',this)">Week 1</button>
-      <button class="wtab" onclick="showWeek('w2',this)">Week 2</button>
-      <button class="wtab" onclick="showWeek('w3',this)">Week 3</button>
-      <button class="wtab" onclick="showWeek('w4',this)">Week 4 — Recovery</button>
+      <button class="wtab active" onclick="showWeek('wthis',this)">This week</button>
+      <button class="wtab" onclick="showWeek('w1',this)">Meal pattern 1</button>
+      <button class="wtab" onclick="showWeek('w2',this)">Meal pattern 2</button>
+      <button class="wtab" onclick="showWeek('w3',this)">Meal pattern 3</button>
+      <button class="wtab" onclick="showWeek('w4',this)">Meal pattern 4 — Recovery</button>
     </div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Meal pattern tabs show the repeating food templates (generic workout labels). Use <strong style="color:var(--text)">This week</strong> for badges that match the calendar.</p>
 
-    <div id="w1" class="week-panel active"></div>
+    <div id="wthis" class="week-panel active"></div>
+    <div id="w1" class="week-panel"></div>
     <div id="w2" class="week-panel"></div>
     <div id="w3" class="week-panel"></div>
     <div id="w4" class="week-panel"></div>
@@ -235,7 +238,7 @@
 </div><!-- /container -->
 
 <script>
-const AUTO_WEEK = {{ cycle_week }};
+const THIS_WEEK = {{ this_week | tojson }};
 const WEEKS = {{ weeks | tojson }};
 
 function macroHtml(m) {
@@ -247,7 +250,6 @@ function renderDay(day) {
   const barPct = Math.min(100, Math.round(day.preDinP / 185 * 100));
   const barColor = day.preDinP >= 120 ? 'var(--accent)' : day.preDinP >= 100 ? 'var(--protein)' : 'var(--accent2)';
   const noteClass = day.noteWarn ? 'pb-note pb-warn' : 'pb-note';
-  const bannerClass = day.badge === 'badge-recovery' ? ' recovery' : '';
   return `
 <div class="day-card" onclick="toggleDay(this)">
   <div class="day-header">
@@ -287,18 +289,10 @@ function buildWeekPanel(weekData) {
   return `<div class="${cls}"><p>${weekData.banner}</p></div>${weekData.days.map(renderDay).join('')}`;
 }
 
+document.getElementById('wthis').innerHTML = buildWeekPanel(THIS_WEEK);
 ['w1', 'w2', 'w3', 'w4'].forEach((id, i) => {
   document.getElementById(id).innerHTML = buildWeekPanel(WEEKS[i]);
 });
-
-if (AUTO_WEEK > 0) {
-  const _allTabs = document.querySelectorAll('.wtab');
-  const _allPanels = document.querySelectorAll('.week-panel');
-  _allTabs[0].classList.remove('active');
-  _allPanels[0].classList.remove('active');
-  if (_allTabs[AUTO_WEEK]) { _allTabs[AUTO_WEEK].classList.add('active'); }
-  if (_allPanels[AUTO_WEEK]) { _allPanels[AUTO_WEEK].classList.add('active'); }
-}
 
 function showWeek(id, btn) {
   document.querySelectorAll('.week-panel').forEach(p => p.classList.remove('active'));

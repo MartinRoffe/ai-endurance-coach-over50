@@ -19,15 +19,15 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("bike",     "Zone 2 Steady",        60),
         ("ruck",     "Ruck + KB",           105),   # Sun 24 — Ruck 8 kg then KB
     ],
-    # WK 02
+    # WK 02 — softened volume jump from wk 1 (masters-safe ramp, ~5.9 h)
     [
         ("rest",     "Rest",                  0),   # Mon 25 — rest (recovery/sleep; long ride moved to Wed)
         ("strength", "KB + MaxiClimber",     45),
         ("long",     "Long Ride",            90),   # Wed 27 — moved from Mon
-        ("strength", "KB + MaxiClimber",     45),
+        ("rest",     "Rest",                  0),   # Thu — was second strength; cut to limit wk1→2 jump
         ("bike",     "Zone 2 Steady",        60),
         ("ruck",     "Ruck  8–10 kg",        70),
-        ("long",     "Long Ride",           105),
+        ("long",     "Long Ride",            90),   # trimmed from 105m
     ],
     # WK 03
     [
@@ -654,23 +654,25 @@ def build_camp_weeks() -> list[dict]:
 
 
 # Non-camp workout days that sit within the Tenerife grid window (Aug 10–30).
-# Aug 10–11: pre-camp activation; Aug 28–30: first recovery days post-camp.
+# Aug 10–11: pre-camp activation; Aug 29–30: post-camp soak (finale was 24 Aug).
+# Aug 28 left empty (full rest) so first event-prep quality (5 Sep) sits ≥10 days
+# after the camp finale with a gentler lead-in.
 CAMP_GRID_WORKOUTS: dict[date, dict] = {
     date(2026, 8, 10): {"type": "bike",  "label": "Easy Spin",     "dur_min": 45},
     date(2026, 8, 11): {"type": "bike",  "label": "Zone 2 Steady", "dur_min": 60},
-    date(2026, 8, 28): {"type": "bike",  "label": "Easy Spin",     "dur_min": 45},
-    date(2026, 8, 30): {"type": "bike",  "label": "Recovery Spin", "dur_min": 60},
+    date(2026, 8, 29): {"type": "bike",  "label": "Easy Spin",     "dur_min": 30},
+    date(2026, 8, 30): {"type": "bike",  "label": "Recovery Spin", "dur_min": 45},
 }
 
 # ── Ghent–Amsterdam Event Prep ────────────────────────────────────────────────
-# AI-designed periodised block: recovery → sweetspot build → back-to-back simulation → taper.
-# Aug 31–Sep 3: recovery rides to absorb the Tenerife gains.
+# Recovery → soft Z2 → sweetspot → back-to-back simulation → taper.
+# Softened 31 Aug–3 Sep so first quality (5 Sep) is ≥10 days after 24 Aug finale.
 # Sep 5–9: event-specific quality (sweetspot, 4.5h + 2h back-to-back, tempo sharpener).
 # Sep 11: short activation; Sep 12: full rest before the start.
 EVENT_PREP_DAYS: list[dict] = [
-    {"date": date(2026, 8, 31), "type": "bike",  "label": "Easy Spin",           "dur_min": 45},
-    {"date": date(2026, 9,  1), "type": "bike",  "label": "Zone 2 Steady",       "dur_min": 90},
-    {"date": date(2026, 9,  3), "type": "long",  "label": "Z2 Endurance",        "dur_min": 120},
+    {"date": date(2026, 8, 31), "type": "bike",  "label": "Easy Spin",           "dur_min": 30},
+    {"date": date(2026, 9,  1), "type": "bike",  "label": "Easy Spin",           "dur_min": 45},
+    {"date": date(2026, 9,  3), "type": "long",  "label": "Z2 Endurance",        "dur_min": 90},
     {"date": date(2026, 9,  5), "type": "tempo", "label": "Sweetspot Intervals", "dur_min": 90},
     {"date": date(2026, 9,  6), "type": "long",  "label": "Pre-Event Long Ride",  "dur_min": 270},
     {"date": date(2026, 9,  7), "type": "long",  "label": "Long Ride (Easy)",    "dur_min": 120},  # only true BTB rehearsal for the 190+120 km event
@@ -717,7 +719,13 @@ def build_event_prep_weeks() -> list[dict]:
 
 
 MERSEA_EVENT_DAYS: list[dict] = [
-    {"date": date(2026, 9, 20), "label": "Round Mersea", "km": 22},
+    {
+        "date": date(2026, 9, 20),
+        "label": "Round Mersea (optional)",
+        "km": 22,
+        "optional": True,
+        "note": "Recovery week after the charity ride — optional easy outing, not a goal race.",
+    },
 ]
 
 # ── Ghent–Amsterdam Charity Ride ──────────────────────────────────────────────
@@ -767,6 +775,8 @@ def build_combined_event_weeks() -> list[dict]:
                     "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
                     "is_event": True, "is_mersea": True,
                     "label": mersea["label"], "km": mersea["km"],
+                    "optional": mersea.get("optional", False),
+                    "note": mersea.get("note"),
                     "is_today": d == today, "is_past": d < today,
                     "type": "mersea",
                 })
