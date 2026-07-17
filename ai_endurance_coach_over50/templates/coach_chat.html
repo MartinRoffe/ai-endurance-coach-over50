@@ -247,6 +247,72 @@
     s = s.replace(/\u00b1/g, ' plus or minus ');
     s = s.replace(/\u00d7/g, ' times ');
 
+    // Spoken dates (before unit/acronym passes)
+    const MONTHS = {
+      jan: 'January', feb: 'February', mar: 'March', apr: 'April',
+      may: 'May', jun: 'June', jul: 'July', aug: 'August',
+      sep: 'September', oct: 'October', nov: 'November', dec: 'December',
+    };
+    const DOWS = {
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
+    };
+    const MONTH_FULL = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    function dayOrdinal(n) {
+      const d = parseInt(n, 10);
+      const mod = d % 100;
+      if (mod >= 11 && mod <= 13) return d + 'th';
+      switch (d % 10) {
+        case 1: return d + 'st';
+        case 2: return d + 'nd';
+        case 3: return d + 'rd';
+        default: return d + 'th';
+      }
+    }
+    function speakDayMonth(day, monKey, year) {
+      const month = MONTHS[monKey.toLowerCase()] || monKey;
+      const core = 'the ' + dayOrdinal(day) + ' of ' + month;
+      return year ? core + ', ' + year : core;
+    }
+
+    // 2026-07-17 → July 17th, 2026
+    s = s.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function(_, y, m, d) {
+      const mi = parseInt(m, 10) - 1;
+      if (mi < 0 || mi > 11) return y + ' ' + m + ' ' + d;
+      return MONTH_FULL[mi] + ' ' + dayOrdinal(d) + ', ' + y;
+    });
+    // Fri 17 Jul / Fri 17 Jul 2026
+    s = s.replace(
+      /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+(\d{4}))?\b/gi,
+      function(_, dow, day, mon, year) {
+        const weekday = DOWS[dow.toLowerCase()] || dow;
+        return weekday + ' ' + speakDayMonth(day, mon, year);
+      }
+    );
+    // 17 Jul / 17 Jul 2026
+    s = s.replace(
+      /\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+(\d{4}))?\b/gi,
+      function(_, day, mon, year) {
+        return speakDayMonth(day, mon, year);
+      }
+    );
+    // Bare weekday abbrev when still left (e.g. "Mon:" lists)
+    s = s.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g, function(m) {
+      return DOWS[m.toLowerCase()] || m;
+    });
+    // 07:30 / 7:30 → half-past style where clear, else "7 30"
+    s = s.replace(/\b(\d{1,2}):(\d{2})\b/g, function(_, h, min) {
+      const hour = parseInt(h, 10);
+      if (min === '00') return String(hour) + " o'clock";
+      if (min === '15') return 'quarter past ' + hour;
+      if (min === '30') return 'half past ' + hour;
+      if (min === '45') return 'quarter to ' + ((hour % 12) + 1);
+      return hour + ' ' + min;
+    });
+
     // Units
     s = s.replace(/\bW\/kg\b/gi, 'watts per kilo');
     s = s.replace(/\bg\/h\b/gi, 'grams per hour');
@@ -286,7 +352,6 @@
     ];
     acronyms.forEach(function(pair) { s = s.replace(pair[0], pair[1]); });
 
-    s = s.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$1 $2 $3');
     s = s.replace(/\s*\|\s*/g, ', ');
     s = s.replace(/\s{2,}/g, ' ');
     s = s.replace(/\n{2,}/g, '. ');
