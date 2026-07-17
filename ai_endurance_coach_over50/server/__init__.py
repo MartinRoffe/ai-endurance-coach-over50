@@ -925,10 +925,9 @@ async def nutrition_plan(request: Request):
         SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g,
         SIMPLE_RULES, today_checklist, cycle_week_index,
         fuel_prep_for_ride, _sunday_planned_ride_min, build_today_food,
+        in_camp_nutrition_window,
     )
 
-    recent = raw_history(3)
-    today_nut = next((r for r in reversed(recent) if r.get("calories_consumed") is not None), None)
     _tdee_today = None
     try:
         _rows = tdee_history(1)
@@ -940,7 +939,9 @@ async def nutrition_plan(request: Request):
     checklist = today_checklist(_PLAN_START, today)
     today_food = build_today_food(_PLAN_START, today)
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today) if sunday_ride_min else None
+    sunday_fuel = None
+    if sunday_ride_min and not in_camp_nutrition_window(today):
+        sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today)
 
     m = load(today) or DailyMetrics(date=today)
     nutrition_today = build_nutrition_today(m, today)
@@ -957,10 +958,10 @@ async def nutrition_plan(request: Request):
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
             "nutrition_today": nutrition_today,
-            "cal_today":     int(today_nut["calories_consumed"])    if today_nut and today_nut.get("calories_consumed")    else None,
+            "cal_today":     int(m.calories_consumed)    if m.calories_consumed is not None    else None,
             "tdee_today":    int(round(_tdee_today)) if _tdee_today else None,
-            "carbs_today":   round(today_nut["carbs_consumed"])     if today_nut and today_nut.get("carbs_consumed")       else None,
-            "protein_today": round(today_nut["protein_consumed"])   if today_nut and today_nut.get("protein_consumed")     else None,
+            "carbs_today":   round(m.carbs_consumed)     if m.carbs_consumed is not None       else None,
+            "protein_today": round(m.protein_consumed)   if m.protein_consumed is not None     else None,
             "supplements":   [{"name": n, "dose": d, "why": w} for n, d, w in SUPPLEMENTS],
             "supplement_disclaimer": _SUPPLEMENT_DISCLAIMER,
             "protein_target": protein_target_g(),
@@ -1093,6 +1094,28 @@ async def architecture_diagram(_=Depends(_require_auth)):
     if not _ARCHITECTURE_HTML.is_file():
         raise HTTPException(status_code=404, detail="architecture.html not found")
     return HTMLResponse(content=_ARCHITECTURE_HTML.read_text(encoding="utf-8"))
+
+
+@app.get("/help", response_class=HTMLResponse)
+@app.get("/help/{page_id}", response_class=HTMLResponse)
+def help_view(request: Request, page_id: Optional[str] = None):
+    from .help_docs import DEFAULT_HELP_PAGE, HELP_NAV, render_help_page
+
+    pid = page_id or DEFAULT_HELP_PAGE
+    page = render_help_page(pid)
+    if page is None:
+        raise HTTPException(status_code=404, detail=f"Help page not found: {pid}")
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="help.html",
+        context={
+            "page_id": page.page_id,
+            "page_title": page.title,
+            "body_html": page.html,
+            "embed_architecture": page.embed_architecture,
+            "help_nav": HELP_NAV,
+        },
+    )
 
 
 @app.get("/tenerife", response_class=HTMLResponse)

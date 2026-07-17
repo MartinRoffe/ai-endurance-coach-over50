@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**User-facing docs:** [docs/README.md](docs/README.md) (user guide), [docs/power-training.md](docs/power-training.md) (power meter onboarding and dual-channel model).
+**User-facing docs:** in-app **Help** at `/help` (renders [docs/](docs/README.md)); [docs/power-training.md](docs/power-training.md) for power meter onboarding.
 
 ## Commands
 
@@ -39,7 +39,7 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 
 ## Architecture
 
-**Visual diagram:** open [architecture.html](../architecture.html) in the repo root, or visit `/architecture` on the running dashboard. Covers system overview, module map, data flow, SQLite schema, dashboard tabs, power-meter pipeline, and coach chat.
+**Visual diagram:** open **Help → Architecture** (`/help/architecture`), fullscreen `/architecture`, or [architecture.html](../architecture.html) in the repo root. Covers system overview, module map, data flow, SQLite schema, dashboard tabs, power-meter pipeline, and coach chat.
 
 **Package layout (facade pattern).** The three largest former modules are packages whose `__init__.py` re-exports every name (including private `_names`), so `from .history import X` style imports work unchanged:
 - `history/` — `db.py` (`DB_PATH`, `_conn()`, all `_ensure_*_schema` helpers), `text_cache.py`, `metrics_store.py`, `activities_store.py`, `body_store.py`, `coach_store.py`, `training_store.py`. **Tests must monkeypatch `history.db.DB_PATH`** (the package-level `history.DB_PATH` re-export is a snapshot `_conn()` never reads); `tests/conftest.py` does this for every test.
@@ -62,6 +62,7 @@ The app has two interfaces sharing the same data layer:
 - `/nutrition` — nutrition hub (principles, calorie tiers, supplements)
 - `/nutrition/meals`, `/nutrition/fuelling`, `/nutrition/recipes`, `/nutrition/recipes/weekday-dinners`, `/nutrition/shopping-list`, `/nutrition/lidl-shopping-list` — nutrition sub-pages
 - `/architecture` — bundled architecture.html diagram (Mermaid system map)
+- `/help`, `/help/{page}` — in-app Help centre (Markdown user guide + Architecture embed + AI docs)
 - `/sleep` — 30-day sleep quality history with stage breakdown
 - `/body`, `/body-refresh` — body composition and blood pressure tracking
 - `/withings-sync` — push Withings measurements to Garmin, then refresh body data

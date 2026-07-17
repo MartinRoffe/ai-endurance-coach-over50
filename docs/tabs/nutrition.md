@@ -2,8 +2,12 @@
 
 **Nav:** top-level **Nutrition** tab.
 
-Sticky subnav: **Today** · **Meals** · **Sunday Prep** · **Fuelling** · **Recipes** ·
-**Shopping**.
+Sticky subnav primaries: **Today** · **Sunday Prep** · **Shopping**.
+
+Secondary (More): **Fuelling** · **This week** (meal week-viewer).
+
+Legacy recipe URLs (`/nutrition/recipes*`) stay for deep links from Sunday Prep
+components; they are not primary tabs.
 
 Use **Cycle week 1–4** for the food rotation (not training-plan week numbers).
 Week 4 is the recovery cycle week.
@@ -14,8 +18,11 @@ Week 4 is the recovery cycle week.
 
 **Route:** `/nutrition`
 
-Five simple rules, today's checklist, Garmin logged-intake strip, and primary CTAs
-to Sunday Prep, Meals, Fuelling, and Shopping.
+Prescribed meal table for the day (from `build_today_food()`), meals-total vs
+intake target, and Garmin logged strip (logged / intake target / vs plan / carbs /
+protein). Short Sunday-fuel callout when a long ride is upcoming.
+
+Dinner and breakfast methods live on **Sunday Prep**, not a separate recipes hub.
 
 Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
 (egg muffins Tue/Thu in recovery week only). Mon–Thu dinners are Sunday batch
@@ -23,9 +30,47 @@ Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
 
 ---
 
-## Meals
+## Calorie targets: burn vs target vs logged
 
-**Route:** `/nutrition/meals`
+Three distinct numbers appear across Nutrition and Body:
+
+- **Burn (TDEE)** — today's estimated expenditure: Katch-McArdle BMR + Garmin
+  active calories + 28-day weight-trend calibration. Shown on the Body tab as
+  "TDEE Today". It is *incomplete until end of day*, so mid-day "vs burn"
+  comparisons are informational only.
+- **Intake target** — what you should eat: **stable TDEE** (7-day average of
+  calibrated daily burn, preferring days with real active-calorie data) minus a
+  session-type deficit — rest/recovery −350, training −250, ruck −150, long
+  ride −50 (plus ~175 kcal per ride-hour beyond 2 h) — floored at 1,600 kcal.
+  Computed by `resolve_calorie_target()`; Tenerife camp windows suspend the
+  deficit entirely.
+- **Logged** — what the Garmin food diary says you ate.
+
+Prescribed meals in `nutrition_plan.py` are portioned so each day type's meal
+kcal sum lands within ~100 kcal of its target at the design TDEE (~2,000).
+Flexible carb/fat slots (rice, snacks, dessert starch, on-bike fuel) scale
+further when stable TDEE drifts — protein anchors stay fixed. The Today page
+flags any gap portions cannot close without cutting protein.
+
+**Calibration confidence** (Body tab): `high` / `limited` / `inactive` reflects
+intake coverage, weigh-ins, body-comp freshness, and whether the correction is
+near the ±25% clamp.
+
+**Camp mode** (Tenerife windows): UK batch meals and weekday "nothing on the bike"
+rules are suspended. Nutrition Today shows camp fuelling from actual ride
+intensity; see `/tenerife` for the hard-day template.
+
+**Recipe macros:** plated weekday-dinner figures follow
+`nutrition_plan.WEEKDAY_DINNERS` (build **620 kcal**, recovery **560 kcal**,
+including the 150 g protein dessert). Cook the full batch; plate the smaller
+carb side listed on each dinner card. Do not use the old ~700–740 “full side”
+figures — those overshot the intake target.
+
+---
+
+## This week (Meals)
+
+**Route:** `/nutrition/meals` (secondary nav)
 
 4-week cycle (weeks 1–3 build with distinct dinner batches, week 4 recovery).
 Server-rendered from `nutrition_plan.py` — breakfasts and weekday dinners injected
@@ -39,14 +84,15 @@ tabs are cycle weeks 1–4.
 **Route:** `/nutrition/sunday`
 
 Primary Sunday batch workflow: tickable cook list, timed parallel schedule for the
-current cycle week, and inline Dinner A / Dinner B methods. Links out to Shopping,
-Friday rice-cake calculator, and component recipes.
+current cycle week, inline Dinner A / Dinner B methods, and a **Components** list
+(chicken, rice, oats, scotch eggs / muffins, yogurt pots, oat bars) linking to
+legacy recipe methods. Quiet links to Shopping and the rice-cake calculator.
 
 ---
 
 ## Fuelling
 
-**Route:** `/nutrition/fuelling`
+**Route:** `/nutrition/fuelling` (secondary nav)
 
 **Weekends only** for in-ride solids:
 
@@ -59,16 +105,16 @@ Maltodextrin drink protocols remain optional for winter / event gut training.
 
 ---
 
-## Recipes
+## Recipes (legacy deep links)
 
-**Route:** `/nutrition/recipes`
+**Routes:** `/nutrition/recipes` and subpaths (overnight oats, weekend fuel,
+griddle, weekday dinners archive, travel checklist).
 
-Component recipes (chicken, rice, breakfasts, lunches) plus fridge/storage rules.
-Recipe library sub-tabs: overnight oats, weekend ride fuel, griddle, weekday
-dinners (all cycle weeks), travel checklist.
+Still available for bookmarks and Sunday Prep component links. Prefer **Sunday
+Prep** for the active week’s cook day.
 
-**Weekday dinners archive:** `/nutrition/recipes/weekday-dinners` — full 4-week A/B
-methods (also inlined for the active week on Sunday Prep).
+**Weekday dinners archive:** `/nutrition/recipes/weekday-dinners` — full 4-week
+A/B methods (same partial as Sunday Prep; plated macros match `WEEKDAY_DINNERS`).
 
 ---
 
@@ -76,8 +122,9 @@ methods (also inlined for the active week on Sunday Prep).
 
 **Route:** `/nutrition/shopping-list` and `/nutrition/lidl-shopping-list`
 
-Category filters (breakfast, lunch, weekday dinners, weekend ride, griddle, staples).
-Cycle week 1–4 buttons filter dinner ingredients to the current food cycle.
+Primary tab. Category filters (breakfast, lunch, weekday dinners, weekend ride,
+griddle, staples). Cycle week 1–4 buttons filter dinner ingredients to the
+current food cycle. Switch stores via the Asda / Lidl controls on the page.
 
 ---
 

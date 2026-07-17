@@ -168,3 +168,47 @@ def planned_session_kj(ftp_w: int, pct_lo: float, pct_hi: float, dur_min: int) -
     mid_pct = (pct_lo + pct_hi) / 2.0 / 100.0
     avg_w = ftp_w * mid_pct
     return ride_kj(avg_w, dur_min * 60)
+
+
+# ── Intake targets (stable TDEE − session-type deficit) ─────────────────────
+# Targets are anchored to a stable multi-day TDEE (see history.stable_tdee_kcal),
+# not today's partial burn — early-day active-calorie totals understate true TDEE.
+
+MIN_INTAKE_KCAL = 1600
+
+# kcal below stable TDEE by nutrition day type (long ≈ maintenance for fuelling).
+INTAKE_DEFICIT_BY_TIER: dict[str, int] = {
+    "rest": 350,
+    "training": 250,
+    "ruck": 150,
+    "long": 50,
+    "recovery": 350,
+}
+
+# Extra intake per hour of long ride beyond a 2 h baseline (kcal/h).
+LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
+
+
+def intake_target_kcal(
+    tdee: Optional[float],
+    tier_key: str,
+    *,
+    long_ride_extra_min: int = 0,
+) -> Optional[int]:
+    """Prescribed intake (kcal) from calibrated TDEE and day type.
+
+    Returns None when ``tdee`` is unknown (caller should fall back to static tiers).
+    """
+    if tdee is None:
+        return None
+    try:
+        burn = float(tdee)
+    except (TypeError, ValueError):
+        return None
+    if burn <= 0:
+        return None
+    deficit = INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
+    target = round(burn) - deficit
+    if tier_key == "long" and long_ride_extra_min > 0:
+        target += round(LONG_RIDE_EXTRA_KCAL_PER_HOUR * (long_ride_extra_min / 60.0))
+    return max(MIN_INTAKE_KCAL, target)

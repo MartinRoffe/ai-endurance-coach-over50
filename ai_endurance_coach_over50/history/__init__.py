@@ -50,6 +50,7 @@ from .metrics_store import (  # noqa: F401
     load_morning_snapshot,
     maybe_capture_morning_snapshot,
     metrics_from_snapshot,
+    metrics_row_for_date,
     morning_snapshot_premature,
     raw_history,
     save,
@@ -80,7 +81,9 @@ from .body_store import (  # noqa: F401
     pmc_history,
     save_blood_pressure,
     save_body_metrics,
+    stable_tdee_kcal,
     tdee_calibration,
+    tdee_calibration_backtest,
     tdee_history,
     vo2_history,
 )

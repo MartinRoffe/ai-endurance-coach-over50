@@ -73,6 +73,7 @@ launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 | `endurance-coach --backfill 30` | Pull the last *N* days from Garmin to build your baseline |
 | `endurance-coach --activate-power 30` | Backfill power ingest, TSS, decoupling, and FTP seed (7–90 days; also `GET /activate-power` on Performance) |
 | `endurance-coach --workouts [--dry-run]` | Upload the plan's structured cycling workouts to Garmin Connect and schedule them on their dates |
+| `endurance-coach --withings-sync` | Push recent Withings measurements to Garmin, then continue the fetch |
 | `endurance-coach --setup-schedule` | Install the macOS launchd agents (daily email + server) |
 
 ### About `--workouts`

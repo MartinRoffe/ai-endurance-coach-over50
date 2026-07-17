@@ -34,6 +34,16 @@ Without it:
 
 Add the key and restart the server.
 
+## Coach voice (MIC) is missing or doesn't work
+
+Push-to-talk on the **Coach** tab uses the browser's Web Speech API — no extra
+server setup. The **MIC** button only appears when the browser supports speech
+recognition (Chrome is the most reliable; Firefox often has no STT). Allow
+microphone access when prompted, and open the dashboard at
+`http://127.0.0.1:8743` (a plain LAN IP may block the mic). Text chat always
+works; plan changes still need **Apply** on the confirmation card. See
+[Coach](tabs/coach.md).
+
 ## The AI text is stale / I want to regenerate it
 
 AI output is cached so it doesn't regenerate (and re-bill) on every page load.
@@ -118,6 +128,15 @@ endurance-coach --workouts
 
 Or **Sync workouts** from the Performance tab. The app does not auto-push
 template changes.
+
+## I applied a plan change but Garmin didn't update
+
+**Apply** always saves the local override (Calendar and email will show it). The
+Garmin push for that date is **best-effort** — if the API fails or the session
+couldn't be built, the confirmation may report a Garmin error while the local
+plan still changed. Retry later, or run a full **Sync workouts** /
+`endurance-coach --workouts` to rebuild the schedule. See
+[How the app works](how-it-works.md#how-a-plan-change-works).
 
 ## Measured vs estimated W/kg?
 

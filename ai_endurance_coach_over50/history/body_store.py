@@ -343,11 +343,64 @@ def latest_bmr() -> Optional[float]:
     return bmr_katch_mcardle(row["weight_kg"], row["fat_pct"])
 
 
+def _latest_body_comp_date() -> Optional[date]:
+    """Most recent body-composition reading with weight + fat%."""
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        row = con.execute(
+            "SELECT date FROM body_metrics "
+            "WHERE weight_kg IS NOT NULL AND fat_pct IS NOT NULL "
+            "ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    if not row:
+        return None
+    d = row["date"]
+    if hasattr(d, "isoformat"):
+        return d if isinstance(d, date) else date.fromisoformat(str(d))
+    return date.fromisoformat(str(d))
+
+
+def _calibration_confidence(
+    cal: dict,
+    *,
+    paired_days: int,
+    window_days: int,
+    readings: list[tuple[str, float]],
+    body_comp_age_days: Optional[int],
+) -> dict:
+    """Score calibration trustworthiness without changing the correction."""
+    if not cal:
+        return {"level": "inactive", "reasons": ["guardrails not met"]}
+
+    reasons: list[str] = []
+    coverage = paired_days / window_days if window_days else 0.0
+    if coverage < 0.70:
+        reasons.append(f"intake logged on {round(coverage * 100)}% of days (<70%)")
+    if len(readings) <= 5:
+        reasons.append("only minimum weigh-ins (5)")
+    if cal.get("span_days", 0) < 21:
+        reasons.append("weight trend span under 21 days")
+    if body_comp_age_days is not None and body_comp_age_days > 14:
+        reasons.append(f"body composition {body_comp_age_days} days old")
+    model_avg = float(cal.get("model_avg") or 0)
+    correction = float(cal.get("correction") or 0)
+    if model_avg > 0 and abs(correction) >= 0.24 * model_avg:
+        reasons.append("correction near ±25% clamp")
+
+    return {
+        "level": "high" if not reasons else "limited",
+        "reasons": reasons,
+        "intake_coverage_pct": round(coverage * 100),
+        "body_comp_age_days": body_comp_age_days,
+    }
+
+
 def tdee_calibration(window_days: int = _CALIBRATION_WINDOW_DAYS) -> Optional[dict]:
     """Empirical TDEE calibration from trailing weight trend + logged intake.
 
-    Returns a correction dict when guardrails pass (≥10 intake days, ≥5 weigh-ins
-    spanning ≥14 days), else None.
+    Intake and model TDEE are averaged over the **same** days (both present).
+    Returns a correction dict when guardrails pass (≥10 paired intake days,
+    ≥5 weigh-ins spanning ≥14 days), else None.
     """
     from ..energy import (
         empirical_tdee,
@@ -374,32 +427,105 @@ def tdee_calibration(window_days: int = _CALIBRATION_WINDOW_DAYS) -> Optional[di
         return None
 
     comps, activity_cal_by_date = _load_tdee_inputs(window_days)
-    model_vals: list[float] = []
+    paired_intake: list[float] = []
+    paired_model: list[float] = []
     for row in intake_rows:
         d_iso = row["date"].isoformat() if hasattr(row["date"], "isoformat") else str(row["date"])
         _, _, _, model = _tdee_model_for_day(d_iso, row, comps, activity_cal_by_date)
         if model is not None:
-            model_vals.append(float(model))
-    if not model_vals:
+            paired_intake.append(float(row["calories_consumed"]))
+            paired_model.append(float(model))
+    if len(paired_intake) < 10:
         return None
 
-    avg_intake = sum(r["calories_consumed"] for r in intake_rows) / len(intake_rows)
-    model_avg = sum(model_vals) / len(model_vals)
+    avg_intake = sum(paired_intake) / len(paired_intake)
+    model_avg = sum(paired_model) / len(paired_model)
     empirical = empirical_tdee(avg_intake, slope)
     correction = round(tdee_correction(model_avg, empirical))
     span_days = (
         date.fromisoformat(readings[-1][0]) - date.fromisoformat(readings[0][0])
     ).days
 
-    return {
+    latest_bc = _latest_body_comp_date()
+    bc_age = (date.today() - latest_bc).days if latest_bc else None
+
+    cal = {
         "correction": correction,
         "empirical_tdee": round(empirical),
         "model_avg": round(model_avg),
+        "avg_intake": round(avg_intake),
         "slope_kg_per_day": round(slope, 5),
-        "n_intake_days": len(intake_rows),
+        "n_intake_days": len(paired_intake),
         "n_weighins": len(readings),
         "span_days": span_days,
         "window_days": window_days,
+    }
+    cal["confidence"] = _calibration_confidence(
+        cal,
+        paired_days=len(paired_intake),
+        window_days=window_days,
+        readings=readings,
+        body_comp_age_days=bc_age,
+    )
+    return cal
+
+
+def tdee_calibration_backtest(
+    window_days: int = _CALIBRATION_WINDOW_DAYS,
+    holdout_days: int = 14,
+) -> Optional[dict]:
+    """Read-only check: does calibrated TDEE predict held-out weight trend?
+
+    Uses the trailing ``holdout_days`` as validation: compares observed weight
+    slope (kg/day) with the slope implied by average (intake − calibrated TDEE).
+  """
+    from ..energy import KCAL_PER_KG
+
+    total_days = window_days + holdout_days
+    hist = raw_history(total_days)
+    if len(hist) < window_days + 7:
+        return None
+
+    cal = tdee_calibration(window_days)
+    if cal is None:
+        return None
+
+    stable = stable_tdee_kcal(min(7, window_days))
+    if stable is None:
+        return None
+
+    holdout = hist[-holdout_days:]
+    intake_vals = [r["calories_consumed"] for r in holdout if r.get("calories_consumed") is not None]
+    if len(intake_vals) < max(5, holdout_days // 2):
+        return None
+
+    avg_intake = sum(intake_vals) / len(intake_vals)
+    predicted_slope = (avg_intake - stable) / KCAL_PER_KG
+
+    start = (date.today() - timedelta(days=holdout_days - 1)).isoformat()
+    with _conn() as con:
+        _ensure_body_metrics_schema(con)
+        weight_rows = con.execute(
+            "SELECT date, weight_kg FROM body_metrics "
+            "WHERE date >= ? AND weight_kg IS NOT NULL ORDER BY date",
+            (start,),
+        ).fetchall()
+    from ..energy import weight_trend_kg_per_day
+    readings = [(r["date"], float(r["weight_kg"])) for r in weight_rows]
+    observed_slope = weight_trend_kg_per_day(readings)
+    if observed_slope is None:
+        return None
+
+    error_kg_per_day = predicted_slope - observed_slope
+    return {
+        "holdout_days": holdout_days,
+        "stable_tdee": stable,
+        "avg_intake_holdout": round(avg_intake),
+        "predicted_slope_kg_per_day": round(predicted_slope, 5),
+        "observed_slope_kg_per_day": round(observed_slope, 5),
+        "error_kg_per_day": round(error_kg_per_day, 5),
+        "n_intake_days": len(intake_vals),
+        "n_weighins": len(readings),
     }
 
 
@@ -436,3 +562,18 @@ def tdee_history(days: int = 14) -> list[dict]:
             "tdee": corrected,
         })
     return result
+
+
+def stable_tdee_kcal(days: int = 7) -> Optional[float]:
+    """Mean calibrated TDEE over recent days — the intake-prescription burn.
+
+    Prefers days with a real (non-estimated) Garmin active-calorie total when
+    at least 3 exist; otherwise averages whatever days have a TDEE. Returns
+    None when no day in the window has one.
+    """
+    rows = [r for r in tdee_history(days) if r.get("tdee") is not None]
+    if not rows:
+        return None
+    solid = [r for r in rows if not r.get("active_estimated")]
+    use = solid if len(solid) >= 3 else rows
+    return round(sum(float(r["tdee"]) for r in use) / len(use))

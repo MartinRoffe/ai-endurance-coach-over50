@@ -50,9 +50,11 @@ def test_mon_tue_share_batch_a_wed_differs(cycle_week: int):
 @pytest.mark.parametrize("cycle_week", range(3))
 @pytest.mark.parametrize("weekday", range(4))
 def test_build_week_dinner_kcal(cycle_week: int, weekday: int):
+    # Build-week dinners are sized to the stable-TDEE targets (~620 kcal)
+    # and stay heavier than the ~560 kcal recovery-week batches.
     dinner = weekday_dinner(cycle_week, weekday)
     assert dinner is not None
-    assert dinner[3] >= 650
+    assert 600 <= dinner[3] <= 650
 
 
 @pytest.mark.parametrize("weekday", range(4))

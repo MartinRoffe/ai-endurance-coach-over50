@@ -1,4 +1,4 @@
-{# nutrition_section: overview | meals | sunday | fuelling | recipes | shopping #}
+{# nutrition_section: overview | meals | sunday | fuelling | recipes | shopping | lidl_shopping #}
 <style>
   .nut-subnav {
     background: rgba(17, 17, 20, 0.92);
@@ -14,6 +14,7 @@
     margin: 0 auto;
     padding: 0 24px;
     display: flex;
+    align-items: stretch;
     gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
@@ -38,18 +39,52 @@
     color: var(--accent);
     border-bottom-color: var(--accent);
   }
+  .nut-subnav-more {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-left: 8px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+  }
+  .nut-subnav-more-label {
+    display: flex;
+    align-items: center;
+    padding: 12px 8px 12px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .nut-subnav-more a {
+    padding: 12px 12px;
+    font-size: 10px;
+    opacity: 0.85;
+  }
+  .nut-subnav-more a.active {
+    opacity: 1;
+  }
   @media (max-width: 640px) {
     .nut-subnav-inner { padding: 0 14px; }
     .nut-subnav a { padding: 10px 12px; font-size: 10px; }
+    .nut-subnav-more { margin-left: 4px; padding-left: 8px; }
+    .nut-subnav-more a { padding: 10px 10px; font-size: 9px; }
+    .nut-subnav-more-label { display: none; }
   }
 </style>
 <nav class="nut-subnav" aria-label="Nutrition sections">
   <div class="nut-subnav-inner">
     <a href="/nutrition" class="{% if nutrition_section == 'overview' %}active{% endif %}">Today</a>
-    <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">Meals</a>
     <a href="/nutrition/sunday" class="{% if nutrition_section == 'sunday' %}active{% endif %}">Sunday Prep</a>
-    <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Fuelling</a>
-    <a href="/nutrition/recipes" class="{% if nutrition_section == 'recipes' %}active{% endif %}">Recipes</a>
-    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' or nutrition_section == 'lidl_shopping' %}active{% endif %}">Shopping</a>
+    <a href="/nutrition/lidl-shopping-list" class="{% if nutrition_section == 'lidl_shopping' %}active{% endif %}">Lidl</a>
+    <a href="/nutrition/shopping-list" class="{% if nutrition_section == 'shopping' %}active{% endif %}">Asda</a>
+    <div class="nut-subnav-more" aria-label="More nutrition pages">
+      <span class="nut-subnav-more-label">More</span>
+      <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Fuelling</a>
+      <a href="/nutrition/meals" class="{% if nutrition_section == 'meals' %}active{% endif %}">This week</a>
+    </div>
   </div>
 </nav>

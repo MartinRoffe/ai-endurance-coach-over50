@@ -5,7 +5,10 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from .alerts import check_fatigue_alerts
-from .analysis import retrieve_relevant_analyses
+from .analysis import (
+    load_analyses_for_activities,
+    retrieve_relevant_analyses,
+)
 from .hr_profile import format_hr_profile_lines
 from .power_profile import build_power_profile, format_power_profile_lines
 from .history import (
@@ -13,6 +16,7 @@ from .history import (
     acclimation_latest,
     baseline_stats,
     composite_score,
+    ftp_retest_due,
     get_cached_text,
     get_coach_memory,
     get_plan_override,
@@ -23,17 +27,20 @@ from .history import (
     list_plan_overrides,
     load,
     load_activities_by_date,
+    load_advice,
     load_body_metrics,
     load_blood_pressure,
     load_btb_summary,
     load_durability,
     load_ftp_tests,
     load_fuelling_logs,
+    load_morning_snapshot,
     load_power_durability,
     load_recent_activities,
     load_session_rpe,
     pmc_history,
     power_meter_active,
+    power_pmc_history,
     raw_history,
     sleep_history,
     tdee_calibration,
@@ -136,6 +143,217 @@ def _acwr_line(m: Optional["DailyMetrics"]) -> Optional[str]:
     status = getattr(m, "acwr_status", None)
     status_txt = f" ({status.replace('_', ' ').lower()})" if status else ""
     return f"ACWR (acute:chronic, unitless): {acwr:.2f}{status_txt}"
+
+
+def _truncate_advice(text: str, max_chars: int = 500) -> str:
+    """First two paragraphs of locked morning advice, capped for context size."""
+    paras = [p.strip() for p in text.strip().split("\n\n") if p.strip()]
+    clipped = "\n\n".join(paras[:2]) if paras else text.strip()
+    if len(clipped) > max_chars:
+        return clipped[: max_chars - 1].rstrip() + "…"
+    return clipped
+
+
+def _section_today_readiness(m: DailyMetrics, comp_z: Optional[float]) -> list[str]:
+    """Live readiness from daily_metrics — AM BB labelled separately from current."""
+    lines = [
+        "## Today's Readiness",
+        f"Composite z-score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'n/a'}",
+        f"HRV: {m.hrv_last_night}  |  Sleep score: {m.sleep_score}  |  "
+        f"Body battery (AM): {m.body_battery_morning}  |  "
+        f"Body battery (now): {m.body_battery_current}",
+        f"Avg stress: {m.avg_stress}  |  Rest stress: {m.rest_stress}  |  "
+        f"Resting HR: {m.resting_hr}  |  VO2max: {m.vo2_max}",
+    ]
+    extra: list[str] = []
+    if m.hrv_weekly_avg is not None or m.hrv_status:
+        bits = []
+        if m.hrv_weekly_avg is not None:
+            bits.append(f"HRV weekly avg {m.hrv_weekly_avg}")
+        if m.hrv_status:
+            bits.append(f"status {m.hrv_status}")
+        extra.append("  " + "  |  ".join(bits))
+    if m.training_status_label:
+        extra.append(f"  Training status: {m.training_status_label}")
+    if m.training_load_acute is not None or m.training_load_chronic is not None:
+        extra.append(
+            f"  Load acute: {m.training_load_acute}  |  chronic: {m.training_load_chronic}"
+        )
+    if m.total_steps is not None or m.active_calories is not None:
+        bits = []
+        if m.total_steps is not None:
+            bits.append(f"steps {int(m.total_steps)}")
+        if m.active_calories is not None:
+            bits.append(f"active kcal {int(m.active_calories)}")
+        extra.append("  " + "  |  ".join(bits))
+    lines.extend(extra)
+    return lines
+
+
+def _section_morning_gate(today: date) -> list[str]:
+    """Frozen morning snapshot + truncated locked pre-advice for alignment with Today tab."""
+    snap = load_morning_snapshot(today)
+    advice = load_advice(today, mode="pre")
+    if snap is None and not advice:
+        return []
+    lines = ["## Morning Gate (locked)"]
+    if snap:
+        captured = snap.get("captured_at") or "—"
+        label = snap.get("readiness_label") or "—"
+        comp = snap.get("composite_z")
+        comp_str = f"{comp:+.2f}σ" if comp is not None else "n/a"
+        lines.append(f"  Captured: {captured}  |  readiness {label} ({comp_str})")
+        tl = snap.get("traffic_light_status")
+        if tl:
+            reason = snap.get("traffic_light_reason") or ""
+            lines.append(f"  Traffic light: {tl.upper()}" + (f" — {reason}" if reason else ""))
+        lines.append(
+            f"  AM: HRV {snap.get('hrv_last_night')}  |  sleep {snap.get('sleep_score')}  |  "
+            f"body battery {snap.get('body_battery_morning')}  |  RHR {snap.get('resting_hr')}"
+        )
+        if advice is None and snap.get("advice_pre"):
+            advice = snap["advice_pre"]
+    if advice:
+        lines.append("  Locked advice (excerpt):")
+        for para in _truncate_advice(advice).split("\n\n"):
+            lines.append(f"    {para}")
+    return lines
+
+
+def _section_power_pmc() -> list[str]:
+    """Coggan TSS CTL/ATL/TSB — separate units from Garmin PMC."""
+    if not power_meter_active():
+        return []
+    try:
+        hist = power_pmc_history(days=14)
+    except Exception:
+        return []
+    if not hist:
+        return []
+    latest = hist[-1]
+    lines = [
+        "## Power PMC (Coggan TSS)",
+        f"  CTL: {latest.get('ctl')}  |  ATL: {latest.get('atl')}  |  "
+        f"TSB: {latest.get('tsb')}  (as of {latest.get('date')})",
+    ]
+    if len(hist) >= 8:
+        week_ago = hist[-8]
+        lines.append(
+            f"  7d ago: CTL {week_ago.get('ctl')}  |  ATL {week_ago.get('atl')}  |  "
+            f"TSB {week_ago.get('tsb')}"
+        )
+    return lines
+
+
+def _section_weekly_briefing(today: date) -> list[str]:
+    monday = today - timedelta(days=today.weekday())
+    text = get_cached_text(f"weekly_briefing_v3_{monday.isoformat()}")
+    if not text:
+        return []
+    lines = ["## Weekly Briefing (this week)", "  " + text.replace("\n", "\n  ")]
+    return lines
+
+
+def _section_today_session_prescriptions(today: date) -> list[str]:
+    """Cached nutrition targets + in-ride fuelling for today's planned session."""
+    from .nutrition_plan import camp_nutrition_window
+
+    if camp_nutrition_window(today):
+        return []  # camp macros come from nutrition_coach_context camp mode
+
+    sess = session_for_date_extended(today) or hr_session_for_date(today)
+    if sess is None or sess[0] == "rest":
+        return []
+    stype, label, dur = sess
+    ov = get_plan_override(today.isoformat())
+    if ov:
+        stype = ov.get("session_type") or stype
+        label = ov.get("label") or label
+        dur = ov.get("duration_min") or dur
+    lines: list[str] = []
+    try:
+        from .analysis import _load_fuelling_plans, _load_nutrition_targets, fuelling_session_key
+        goal = "perform" if today >= HR_PLAN_START else "cut"
+        targets = _load_nutrition_targets()
+        key = f"{goal}_v2_{stype}_{dur}"
+        tgt = targets.get(key)
+        if tgt is None:
+            other = "cut" if goal == "perform" else "perform"
+            tgt = targets.get(f"{other}_v2_{stype}_{dur}")
+        if tgt:
+            lines += [
+                "## Today's Nutrition Target (cached)",
+                f"  Session: {label} ({stype}, {dur}min)",
+                f"  {tgt.get('kcal')} kcal  |  P {tgt.get('protein_g')}g  |  "
+                f"C {tgt.get('carbs_g')}g  |  F {tgt.get('fat_g')}g",
+            ]
+            if tgt.get("brief"):
+                lines.append(f"  {tgt['brief']}")
+        if stype in _BIKE_TYPES and dur >= 75:
+            plan = _load_fuelling_plans().get(fuelling_session_key(stype, dur))
+            if plan:
+                if not lines:
+                    lines.append(f"## Today's Fuelling Plan (cached) — {label} ({dur}min)")
+                else:
+                    lines.append("## Today's Fuelling Plan (cached)")
+                lines.append(
+                    f"  {plan.get('carbs_g_per_hr')}g carbs/h  |  "
+                    f"total {plan.get('total_carbs_g')}g  |  "
+                    f"{plan.get('fluid_ml_per_hr')}ml/h  |  "
+                    f"{plan.get('sodium_mg_per_hr')}mg sodium/h"
+                )
+                if plan.get("brief"):
+                    lines.append(f"  {plan['brief']}")
+    except Exception:
+        return lines
+    return lines
+
+
+def _section_recent_analyses(recent_acts: list[dict], limit: int = 3) -> list[str]:
+    """Last few activity analyses regardless of discipline (complements RAG)."""
+    if not recent_acts:
+        return []
+    try:
+        enriched = load_analyses_for_activities(recent_acts[:8])
+    except Exception:
+        return []
+    with_text = [a for a in enriched if (a.get("analysis_text") or "").strip()]
+    if not with_text:
+        return []
+    lines = ["## Recent Session Analyses (last few, any discipline)"]
+    for a in with_text[:limit]:
+        text = (a.get("analysis_text") or "").strip().replace("\n", " ")
+        summary = (text[:280] + "…") if len(text) > 280 else text
+        lines.append(f"  {a.get('date')} — {a.get('name') or a.get('type_key')}")
+        lines.append(f"    {summary}")
+    return lines
+
+
+def _section_ftp_flags(today: date) -> list[str]:
+    lines: list[str] = []
+    try:
+        due = ftp_retest_due(today, plan_start=PLAN_START)
+        if due:
+            if due.get("last_date"):
+                lines.append(
+                    f"  FTP retest due: last test {due['last_date']} "
+                    f"({due['age_days']} days ago)"
+                )
+            else:
+                lines.append("  FTP retest due: no test on record (3+ weeks into plan)")
+    except Exception:
+        pass
+    try:
+        stale = get_cached_text("workouts_stale_ftp")
+        if stale:
+            lines.append(
+                f"  Garmin workouts stale after new FTP ({stale}W) — re-sync %FTP targets"
+            )
+    except Exception:
+        pass
+    if not lines:
+        return []
+    return ["## FTP / Workout Sync Flags", *lines]
 
 
 def _section_pmc(today_pmc: dict, m: Optional["DailyMetrics"] = None) -> list[str]:
@@ -841,6 +1059,16 @@ def build_coach_context() -> str:
         z45 = int(((a.get("hr_zone_4_sec") or 0) + (a.get("hr_zone_5_sec") or 0)) / 60)
         if z45 > 0:
             parts.append(f"Z4+5 {z45}min")
+        np_w = a.get("norm_power_w")
+        avg_w = a.get("avg_power_w")
+        if np_w:
+            parts.append(f"NP {int(np_w)}W")
+        elif avg_w:
+            parts.append(f"avg {int(avg_w)}W")
+        if a.get("tss") is not None:
+            parts.append(f"TSS {a['tss']:.0f}" if isinstance(a["tss"], float) else f"TSS {a['tss']}")
+        if a.get("intensity_factor") is not None:
+            parts.append(f"IF {a['intensity_factor']:.2f}")
         act_lines.append("  " + ", ".join(parts))
 
     overrides = list_plan_overrides()
@@ -924,13 +1152,14 @@ def build_coach_context() -> str:
                 if avg_p:
                     macro_line += f"  |  Avg protein: {avg_p}g/day"
                 body_parts.append(macro_line)
-            # Today's macros
-            today_nut_c = next((r for r in reversed(history_14) if r.get("calories_consumed") is not None), None)
-            if today_nut_c:
+            # Today's macros (calendar today — not the most recent logged day)
+            from .history import metrics_row_for_date
+            today_nut_c = metrics_row_for_date(history_14, today)
+            if today_nut_c and today_nut_c.get("calories_consumed") is not None:
                 today_c = int(today_nut_c["calories_consumed"])
                 today_carbs_c = round(today_nut_c["carbs_consumed"]) if today_nut_c.get("carbs_consumed") is not None else None
                 today_prot_c  = round(today_nut_c["protein_consumed"]) if today_nut_c.get("protein_consumed") is not None else None
-                _tt = _tdee_by_date.get(_row_iso(today_nut_c))
+                _tt = _tdee_by_date.get(today.isoformat())
                 today_tdee_c  = int(round(_tt)) if _tt else None
                 parts = [f"Today logged: {today_c:,} kcal"]
                 if today_tdee_c:
@@ -1284,6 +1513,12 @@ def build_coach_context() -> str:
     commitment_parts = _section_commitments(today)
     session_note_parts = _section_session_notes(today)
     phase_nutrition_parts = _section_phase_nutrition(today)
+    morning_gate_parts = _section_morning_gate(today)
+    power_pmc_parts = _section_power_pmc()
+    weekly_briefing_parts = _section_weekly_briefing(today)
+    session_rx_parts = _section_today_session_prescriptions(today)
+    recent_analysis_parts = _section_recent_analyses(recent_acts)
+    ftp_flag_parts = _section_ftp_flags(today)
 
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
@@ -1293,14 +1528,16 @@ def build_coach_context() -> str:
         *([*commitment_parts, ""] if commitment_parts else []),
         *([*session_note_parts, ""] if session_note_parts else []),
         *_section_pmc(today_pmc, m),
+        *(["", *power_pmc_parts] if power_pmc_parts else []),
         "",
-        "## Today's Readiness",
-        f"Composite z-score: {f'{comp_z:+.2f}σ' if comp_z is not None else 'n/a'}",
-        f"HRV: {m.hrv_last_night}  |  Sleep score: {m.sleep_score}  |  Body battery (AM): {m.body_battery_morning}  "
-        f"|  Avg stress: {m.avg_stress}  |  Resting HR: {m.resting_hr}  |  VO2max: {m.vo2_max}",
+        *_section_today_readiness(m, comp_z),
         *tl_parts,
+        *(["", *morning_gate_parts] if morning_gate_parts else []),
         "",
         *([*baseline_parts, ""] if baseline_parts else []),
+        *([*weekly_briefing_parts, ""] if weekly_briefing_parts else []),
+        *([*session_rx_parts, ""] if session_rx_parts else []),
+        *([*ftp_flag_parts, ""] if ftp_flag_parts else []),
         *([*phase_nutrition_parts, ""] if phase_nutrition_parts else []),
         *([*alert_parts, ""] if alert_parts else []),
         *([*interference_parts, ""] if interference_parts else []),
@@ -1332,6 +1569,7 @@ def build_coach_context() -> str:
         "",
         "## Recent Activities (last 14 days)",
         *(act_lines or ["  None recorded"]),
+        *([" ", *recent_analysis_parts] if recent_analysis_parts else []),
         *([" ", *rpe_parts] if rpe_parts else []),
         *([" ", *fuel_parts] if fuel_parts else []),
         *([" ", *btb_parts] if btb_parts else []),

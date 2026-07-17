@@ -114,8 +114,9 @@ auto-migrates, so upgrades won't lose your history.
 
 ## Next steps
 
+- See the whole product story → **[How the app works](how-it-works.md)** (also **Help** in the app)
 - Understand what the numbers mean → **[Key Concepts](concepts.md)**
 - Power meter setup and dual-channel training → **[Power Training](power-training.md)**
 - Tour the home page → **[Readiness](tabs/readiness.md)**
 - Set up the morning email and background server → **[Email & Automation](email-and-automation.md)**
-- Explore the system design → **[Architecture](architecture.md)** (`/architecture` in the dashboard)
+- Explore the system design → **[Architecture](architecture.md)** (`/help/architecture` or `/architecture`)

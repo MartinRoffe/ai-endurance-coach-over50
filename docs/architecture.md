@@ -1,29 +1,13 @@
 # Architecture Diagram
 
-For a visual, interactive map of how the app fits together — modules, data
-flow, SQLite schema, dashboard tabs, power-meter pipeline, and coach chat — open
-the architecture diagram.
+Interactive Mermaid map of how the app fits together — modules, data flow,
+SQLite schema, dashboard tabs, power-meter pipeline, and coach chat.
 
-## View it
-
-**In the running dashboard** (after `endurance-coach --serve`):
-
-```
-http://127.0.0.1:8743/architecture
-```
-
-**From a clone** (no server needed):
-
-```
-open architecture.html
-```
-
-Or open `architecture.html` from the repository root in any browser.
+Use this when onboarding to the codebase or tracing where a feature lives. For
+day-to-day product use, start with [How the app works](how-it-works.md). For how
+Claude is prompted and tooled, see [AI Architecture](ai-architecture.md).
 
 ## What's inside
-
-The diagram is a standalone HTML page with Mermaid flowcharts and reference
-tables covering:
 
 - **System overview** — CLI + FastAPI sharing the same core modules
 - **Module map** — `metrics.py`, `history/` (SQLite stores), `analysis/` (power,
@@ -36,10 +20,9 @@ tables covering:
   gate, Coggan TSS, and coaching surfaces
 - **Coach chat** — context assembly, tools, streaming, and memory
 
+In the Help centre the live diagram is embedded below this intro. You can also
+open it fullscreen at `/architecture` in the dashboard, or open
+`architecture.html` from the repository root in any browser.
+
 For user-facing power setup and dual-channel behaviour, see
 **[Power Training](power-training.md)**.
-
-Use it when onboarding to the codebase or tracing where a feature lives. The
-text module list in the [project README](../README.md#architecture) and
-[CLAUDE.md](../CLAUDE.md) stays the quick reference; the HTML diagram is the
-full picture.

@@ -50,6 +50,55 @@ def _drop_stubs(work_laps: list[dict]) -> list[dict]:
     return [l for l in work_laps if _lap_dur(l) >= 0.5 * med]
 
 
+def _merge_lap_group(laps: list[dict]) -> dict:
+    """Collapse consecutive same-step work laps into one duration-weighted rep."""
+    if len(laps) == 1:
+        return laps[0]
+    total = sum(_lap_dur(l) for l in laps)
+    merged = dict(laps[0])
+    merged["duration"] = total
+    merged.pop("elapsedDuration", None)
+    hr_secs = sum(_lap_dur(l) for l in laps if l.get("averageHR"))
+    if hr_secs:
+        merged["averageHR"] = sum(
+            float(l["averageHR"]) * _lap_dur(l) for l in laps if l.get("averageHR")
+        ) / hr_secs
+    max_hrs = [l["maxHR"] for l in laps if l.get("maxHR")]
+    if max_hrs:
+        merged["maxHR"] = max(max_hrs)
+    pwr_secs = sum(_lap_dur(l) for l in laps if l.get("averagePower") is not None)
+    if pwr_secs:
+        merged["averagePower"] = sum(
+            float(l["averagePower"]) * _lap_dur(l)
+            for l in laps if l.get("averagePower") is not None
+        ) / pwr_secs
+    return merged
+
+
+def _merge_same_step_laps(work_laps: list[dict]) -> list[dict]:
+    """Merge consecutive ACTIVE/INTERVAL laps that share a ``wktStepIndex``.
+
+    Garmin often emits a single timed workout step as two (or more) lapDTOs —
+    e.g. a 15-min sweetspot step split into ~10 + ~5 min — both tagged ACTIVE
+    with the same step index. Without merging, each half becomes a fake "rep".
+    Laps with no step index are left unmerged (manual lap presses).
+    """
+    if not work_laps:
+        return work_laps
+    groups: list[list[dict]] = []
+    for lap in work_laps:
+        step = lap.get("wktStepIndex")
+        if (
+            groups
+            and step is not None
+            and groups[-1][0].get("wktStepIndex") == step
+        ):
+            groups[-1].append(lap)
+        else:
+            groups.append([lap])
+    return [_merge_lap_group(g) for g in groups]
+
+
 def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
     """Pick out only the work-interval laps from a structured workout.
 
@@ -58,6 +107,9 @@ def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
     carries its own sequential ``wktStepIndex`` (i.e. the workout was built as
     sequential steps rather than a single repeat block — in which case the
     "repeated step with highest HR" heuristic would only catch one rep).
+
+    Consecutive ACTIVE/INTERVAL laps that share a step index are merged so a
+    mid-interval auto-lap does not inflate the rep count.
 
     Falls back to the repeated-step heuristic when intensity tags are absent.
     Returns None when laps carry no usable structure so the caller can fall back
@@ -79,7 +131,7 @@ def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
             l for l in pool
             if (l.get("intensityType") or "").upper() in _WORK_INTENSITIES
         ]
-        work_laps = _drop_stubs(work_laps)
+        work_laps = _drop_stubs(_merge_same_step_laps(work_laps))
         if work_laps:
             return work_laps
 
@@ -98,7 +150,7 @@ def _work_laps_from_steps(hr_laps: list[dict]) -> Optional[list[dict]]:
     pool = repeated or groups
     work_step = max(pool, key=lambda si: sum(l["averageHR"] for l in pool[si]) / len(pool[si]))
     work_laps = [l for l in hr_laps if l.get("wktStepIndex") == work_step]
-    return _drop_stubs(work_laps) or None
+    return _drop_stubs(_merge_same_step_laps(work_laps)) or None
 
 
 def _lap_dur(l: dict) -> float:

@@ -36,7 +36,15 @@
     min-height: 0 !important;
     max-height: none !important;
   }
-  .coach-chat-card #proposal-cards { flex-shrink: 0; }
+  /* Multi-proposal: shrink + scroll so a second card isn't clipped below the fold */
+  .coach-chat-card #proposal-cards {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: min(42vh, 380px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+  }
   .coach-chat-card .coach-chat-input-row { flex-shrink: 0; }
 </style>
 

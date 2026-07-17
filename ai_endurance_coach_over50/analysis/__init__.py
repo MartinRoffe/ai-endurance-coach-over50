@@ -27,6 +27,7 @@ from .intervals import (  # noqa: F401
     _ftp_effort_from_summary,
     _lap_dur,
     _lap_power,
+    _merge_same_step_laps,
     _work_laps_from_steps,
 )
 from .power import (  # noqa: F401

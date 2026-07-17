@@ -1,19 +1,24 @@
 # User Guide
 
 A complete walkthrough of the AI Endurance Coach dashboard — what every tab shows,
-how to read each chart, and what the buttons do. If you just want to install and
-run the app, start with the [project README](../README.md); come here when you
-want to understand and use it day to day.
+how to read each chart, and what the buttons do.
+
+**In the running app:** open **Help** in the top nav
+(`http://127.0.0.1:8743/help`). That is the primary way to read this guide —
+product workflow through coach chat, plus Architecture and AI Architecture for
+the technical side. The Markdown files here are the authoring source the Help
+centre renders.
+
+If you just want to install and run the app, start with the
+[project README](../README.md).
 
 > 📸 *Screenshot: the dashboard home page with the top navigation bar visible.*
 
 ## How this guide is organised
 
-The pages below mirror the app's own navigation bar, so you can read top to
-bottom or jump straight to the tab you're looking at.
-
 | Page | Covers |
 |------|--------|
+| **[How the app works](how-it-works.md)** | End-to-end story: morning workflow, plan changes, coach chat, data flow |
 | **[Getting Started](getting-started.md)** | Install, configure your `.env`, first run, connecting your Garmin account |
 | **[Key Concepts](concepts.md)** | The mental model: readiness score, training load (CTL/ATL/TSB), the HRV traffic light, and the dual-channel HR + power model |
 | **[Power Training](power-training.md)** | Power meter setup, activation, measured FTP/TSS, and what stays HR-primary vs watts-primary |
@@ -23,28 +28,31 @@ bottom or jump straight to the tab you're looking at.
 | **[Health](tabs/health.md)** | The **Health ▾** group: Sleep and Body |
 | **[Nutrition](tabs/nutrition.md)** | Top-level **Nutrition** tab — meal plan, ride fuelling, recipes, shopping |
 | **[Events](tabs/events.md)** | The **Events ▾** group: the Tenerife camp and the Haute Route Alpes 2027 plan |
-| **[Coach](tabs/coach.md)** | The AI coach chat — context, plan-change proposals, and memory |
-| **[Architecture](architecture.md)** | Visual system diagram — modules, data flow, database, tabs, power pipeline |
+| **[Coach](tabs/coach.md)** | The AI coach chat — context, plan-change proposals, Memory, and commitments |
 | **[Email & Automation](email-and-automation.md)** | The daily email, the Monday briefing, scheduling, and the command-line flags |
 | **[FAQ & Troubleshooting](faq.md)** | Missing data, sign-in problems, clearing stale AI text, and protecting the dashboard |
 
+### For developers
+
+| Page | Covers |
+|------|--------|
+| **[Architecture](architecture.md)** | Interactive Mermaid system map (also `/architecture` fullscreen) |
+| **[AI Architecture](ai-architecture.md)** | Context engineering, model routing, tools, caching |
+| **[Coach chat walkthrough](coach-chat-walkthrough.md)** | One coach message end-to-end (browser → SSE → Apply) |
+
 ## The navigation bar at a glance
 
-The bar across the top of every page has these items. Four are dropdown
-groups — hover or tap to reveal the pages inside:
+The bar across the top of every page has these items:
 
 - **Readiness** — the home page (your single-page morning check-in).
 - **Performance ▾** → Performance · Analysis
 - **Plan ▾** → Calendar · Training · Compliance
-- **Nutrition** — meal plan hub with sub-pages (Daily Menus · Ride Fuelling · Recipes · Shopping)
+- **Nutrition** — meal plan hub with sub-pages
 - **Health ▾** → Sleep · Body
 - **Events ▾** → Tenerife · Haute Route
 - **Coach** — chat with your AI coach.
 - **Memory** — durable coach memo across sessions.
-
-For a **system architecture diagram** (modules, data flow, database schema),
-see **[Architecture](architecture.md)** or open `/architecture` in the running
-dashboard.
+- **Help** — this guide, rendered in the app (`/help`).
 
 Wherever you see a small **ⓘ** next to a label, hover or tap it for a short
 plain-language explanation of that metric.
@@ -63,13 +71,11 @@ training terms but follow the same rule: green is the comfortable end, red is th
 
 ## Want a PDF?
 
-The whole guide can be exported to a single PDF:
+Optional offline export (the in-app Help centre is preferred for sharing):
 
 ```bash
 bash docs/build-pdf.sh   # produces docs/user-guide.pdf
 ```
-
-Includes **Power Training** (`power-training.md`) after Key Concepts.
 
 This needs [`pandoc`](https://pandoc.org/) and a LaTeX engine installed
 (`brew install pandoc basictex` on macOS). The Markdown files here are the

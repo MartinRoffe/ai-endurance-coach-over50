@@ -40,7 +40,15 @@ Tracking body composition and blood pressure over time.
 - **Body composition** — weight, body-fat %, and muscle mass from Garmin (and
   Withings, if you sync it).
 - **Blood pressure**, with each reading classified and colour-coded.
-- **Macro tiles** — today's carbs and protein plus their 14-day rolling averages.
+- **Calorie Balance** — today's logged intake, **TDEE Today** (today's burn —
+  incomplete until end of day), the **Intake Target** (stable 7-day TDEE minus
+  the session-type deficit — the number to eat toward), and "vs Burn" / "vs
+  Plan" gaps. The vs-Burn judgement is withheld while the day is still in
+  progress. **Calibration confidence** (`high` / `limited` / `inactive`) shows
+  whether the 28-day weight-trend correction is trustworthy. See
+  [Nutrition](nutrition.md#calorie-targets-burn-vs-target-vs-logged).
+- **Macro tiles** — today's carbs and protein (with the lean-mass protein
+  floor) plus their 14-day rolling averages.
 - **W/kg tile** — **measured** watts-per-kilo from FTP test history when your
   power meter is active (primary). **Estimated** W/kg from VO₂max and weight
   appears as fallback before activation or as secondary context on Performance.

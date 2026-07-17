@@ -4,11 +4,14 @@ Personal training readiness dashboard powered by Garmin Connect data and Claude 
 Fetches daily metrics (HRV, sleep, stress, recovery), scores them against a 30-day
 rolling baseline, and delivers a daily email briefing and live web dashboard.
 
-**📖 [User Guide](docs/README.md)** — full walkthrough of every tab and feature.
+**Help** — full walkthrough inside the dashboard at
+[`/help`](http://127.0.0.1:8743/help) (How the app works → tabs → Coach, plus
+Architecture and AI Architecture). Markdown sources live in [`docs/`](docs/README.md).
 
 **⚡ [Power Training](docs/power-training.md)** — power meter setup, dual-channel HR + watts, TSS/PMC.
 
-**🏗 [Architecture diagram](docs/architecture.md)** — interactive Mermaid map of modules, data flow, and database schema (`/architecture` in the dashboard, or `architecture.html` in the repo root).
+**🏗 Architecture** — interactive Mermaid map in Help (**For developers** → Architecture)
+or fullscreen at `/architecture` ([docs/architecture.md](docs/architecture.md)).
 
 ## Features
 

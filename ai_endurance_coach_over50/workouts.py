@@ -403,19 +403,28 @@ def _sweetspot_ride(dur_min: int) -> CyclingWorkout:
 
 
 def _over_unders(dur_min: int) -> CyclingWorkout:
-    # 15m warmup + 3×(8m Z4 under + 2m Z5 over + 5m Z1 recovery) + 15m cooldown = 75m
+    # 15m warmup + 2 sets x [4 x (2m over @105-110% FTP + 2m under @95-100% FTP)],
+    # 5m Z1 between sets + 10m cooldown = 62m. Matches the "surge and settle" rhythm
+    # description in analysis/prefetch.py and the interval-detection window in
+    # analysis/intervals.py (840-1200s = 14-20m per 16m set).
     ftp_w = _latest_ftp_w()
+
+    def _ou_set(step_order: int):
+        return create_repeat_group(
+            iterations=4,
+            workout_steps=[
+                _quality_interval(1, 120, ftp_w, 1.05, 1.10, 5, 5),
+                _quality_interval(2, 120, ftp_w, 0.95, 1.00, 4, 4),
+            ],
+            step_order=step_order,
+        )
+
     return _make(f"Over-Unders {dur_min}m", [
         create_warmup_step(900.0, step_order=1),
-        _quality_interval(2, 480, ftp_w, 0.95, 1.00, 4, 4),
-        _quality_interval(3, 120, ftp_w, 1.05, 1.10, 5, 5),
-        _recovery(4, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(5, 480, ftp_w, 0.95, 1.00, 4, 4),
-        _quality_interval(6, 120, ftp_w, 1.05, 1.10, 5, 5),
-        _recovery(7, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(8, 480, ftp_w, 0.95, 1.00, 4, 4),
-        _quality_interval(9, 120, ftp_w, 1.05, 1.10, 5, 5),
-        create_cooldown_step(900.0, step_order=10),
+        _ou_set(2),
+        _recovery(3, 300, _hr_zone_target(), 1, 1),
+        _ou_set(4),
+        create_cooldown_step(600.0, step_order=5),
     ], dur_min)
 
 

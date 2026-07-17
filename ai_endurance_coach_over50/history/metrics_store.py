@@ -270,6 +270,16 @@ def raw_history(days: int = 14) -> list[dict]:
     return result
 
 
+def metrics_row_for_date(rows: list[dict], target: date) -> Optional[dict]:
+    """Return one day's row from ``raw_history()`` output (includes empty days)."""
+    iso = target.isoformat()
+    for r in rows:
+        d = r["date"]
+        if (d.isoformat() if hasattr(d, "isoformat") else str(d)) == iso:
+            return r
+    return None
+
+
 def sleep_history(days: int = 30) -> list[dict]:
     """Return one dict per day (oldest first) for the last `days` days.
 

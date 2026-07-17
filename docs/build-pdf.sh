@@ -16,6 +16,7 @@ cd "$(dirname "$0")"
 
 FILES=(
   README.md
+  how-it-works.md
   getting-started.md
   concepts.md
   power-training.md

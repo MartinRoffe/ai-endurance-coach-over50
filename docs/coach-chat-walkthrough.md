@@ -25,7 +25,12 @@ sense.
 
 ## 1. The browser sends the message — `templates/coach_chat.html`
 
-When you hit Enter, `sendCoachMessage()` (~line 177) renders your message bubble, drops an
+Optional **push-to-talk** in the same template uses the browser Web Speech API:
+recognition fills the input, then the same `POST` runs; speech synthesis can read
+the final reply aloud. No server audio endpoint — mic/TTS never touch Anthropic
+or SQLite. Plan-change **Apply** stays click-only.
+
+When you hit Enter (or voice auto-sends), `sendCoachMessage()` renders your message bubble, drops an
 empty assistant bubble with a blinking `▋` cursor, then:
 
 ```js
@@ -40,7 +45,7 @@ Note what it does **not** send: any history. The conversation lives server-side,
 only ever sends the latest message. That keeps the client dumb and lets history survive a page
 reload.
 
-The response is not JSON — it's a stream. Lines ~210–253 are a hand-rolled SSE reader: read
+The response is not JSON — it's a stream. A hand-rolled SSE reader: read
 bytes → decode → split on `\n\n` (the SSE event delimiter) → for each `data: {...}` line, parse
 and switch on `event.type`. Four event types arrive:
 
@@ -49,13 +54,13 @@ and switch on `event.type`. Four event types arrive:
 | `text`     | append the token, redraw the bubble (the live-typing effect) |
 | `tool`     | show a hint, e.g. "🔍 checking your sleep history…" |
 | `proposal` | push a plan-change card with APPLY / DISMISS |
-| `done` / `error` | finalise or show an error |
+| `done` / `error` | finalise (and optionally speak the reply) or show an error |
 
 This is the client half of the contract; the server emits exactly these shapes.
 
 ---
 
-## 2. The endpoint assembles the conversation — `server.py` → `coach_chat_stream` (~line 2871)
+## 2. The endpoint assembles the conversation — `server/__init__.py` → `coach_chat_stream` (~line 2871)
 
 ```python
 history = load_coach_history(limit=20)
@@ -77,7 +82,7 @@ wraps a *generator* (`_stream_coach_sse`), so FastAPI streams whatever the gener
 Inside `_stream_coach_sse` (~line 2806), two lines build the entire prompt:
 
 ```python
-context = _build_coach_context()
+context = build_coach_context()
 system  = _coach_system() + f"\n\n## Current Context\n{context}"
 ```
 
@@ -101,9 +106,9 @@ Composed in layers by `_coach_system()` (~line 2323):
    `power_meter_active()`; HR for readiness, HRV, and fatigue (see
    [Power Training](power-training.md)).
 4. **`ATHLETE_CONSTRAINTS`** — the hard rules ("NEVER suggest running").
-5. **`_build_coach_context()`** glued on under a `## Current Context` header.
+5. **`build_coach_context()`** glued on under a `## Current Context` header.
 
-### `_build_coach_context()` = the live data dump — `coach_context.py` (~line 431)
+### `build_coach_context()` = the live data dump — `coach_context.py` (~line 431)
 
 ~25 markdown sections, string-appended from SQLite: today's PMC (CTL/ATL/TSB), readiness
 z-score, HRV traffic light, sleep, body composition, nutrition, compliance, zone distribution,
@@ -195,15 +200,15 @@ Claude is even called, so it survives a dropped connection.
 Browser (coach_chat.html)
   └─ POST /coach-chat-stream { message }           ← only the new message
         │
-server.py: coach_chat_stream
+server/__init__.py: coach_chat_stream
   ├─ load_coach_history(20)  ────────────────────  short-term memory (SQLite)
   └─ StreamingResponse(_stream_coach_sse)
         │
 _stream_coach_sse
   ├─ save user message (survives drops)
-  ├─ system = _coach_system() + _build_coach_context()
-  │     _coach_system()        = COACH_VOICE + rules + HR note + constraints
-  │     _build_coach_context() = ~25 live data sections + memo + RAG
+  ├─ system = _coach_system() + build_coach_context()
+  │     _coach_system()       = COACH_VOICE + rules + HR note + constraints
+  │     build_coach_context() = ~25 live data sections + memo + RAG
   ├─ agent loop (≤6 turns):
   │     client.messages.stream(system, tools, messages=convo)
   │       ├─ text tokens      → yield SSE 'text'   → live typing
@@ -224,9 +229,9 @@ Browser: APPLY button
 |------|-------------------|
 | `templates/coach_chat.html` | Chat UI + SSE reader + proposal cards |
 | `templates/coach_tab.html` | Page shell that includes the chat widget |
-| `server.py` | Endpoint, system prompt, tool defs, agent loop, streaming, persistence |
+| `server/coach.py` | Endpoint, system prompt, tool defs, agent loop, streaming, persistence |
 | `coach_voice.py` | `COACH_VOICE`, `ATHLETE_CONSTRAINTS`, `hr_channel_note` |
 | `coach_context.py` | `build_coach_context()` — the live data dump |
 | `analysis.py` | `retrieve_relevant_analyses` (RAG), `load_analysis` (read tool) |
-| `history.py` | `coach_conversations`, `coach_memory`, `plan_overrides` tables |
+| `history/` | `coach_conversations`, `coach_memory`, `plan_overrides` tables |
 | `workouts.py` | `apply_override_to_garmin` (the best-effort Garmin push) |

@@ -12,6 +12,7 @@ from ai_endurance_coach_over50.history import (
     save,
     save_body_metrics,
     tdee_calibration,
+    tdee_calibration_backtest,
     tdee_history,
 )
 from ai_endurance_coach_over50.metrics import DailyMetrics
@@ -104,6 +105,19 @@ def test_tdee_calibration_returns_negative_correction():
     assert cal["n_intake_days"] >= 10
     assert cal["n_weighins"] >= 5
     assert cal["span_days"] >= 14
+    assert "confidence" in cal
+    assert cal["confidence"]["level"] in ("high", "limited")
+    assert "avg_intake" in cal
+
+
+def test_tdee_calibration_backtest_runs_on_seeded_data():
+    _seed_losing_trend_with_intake()
+    bt = tdee_calibration_backtest(window_days=28, holdout_days=14)
+    # May be None if holdout weigh-ins insufficient — when present, has slopes
+    if bt is not None:
+        assert "predicted_slope_kg_per_day" in bt
+        assert "observed_slope_kg_per_day" in bt
+        assert "error_kg_per_day" in bt
 
 
 def test_tdee_history_applies_correction():

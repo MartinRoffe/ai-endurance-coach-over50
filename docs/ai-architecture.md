@@ -20,7 +20,7 @@ it's the most important thing to understand about this app.
 
 The pattern is the same everywhere:
 
-1. **Pull** structured data out of SQLite — `history.py`
+1. **Pull** structured data out of SQLite — `history/`
 2. **Format** it into a plain-text prompt — `coach_context.py`, the `_build_*_prompt` helpers
 3. **Call** Claude with a `system` prompt (who it is + the rules) and `messages` (the request)
 
@@ -152,7 +152,7 @@ for the simple version first.
 
 ---
 
-## Tool use / the agentic loop — `server.py` → `_call_coach` (~line 2672)
+## Tool use / the agentic loop — `server/coach.py` → `_call_coach` (~line 2672)
 
 This is the most advanced pattern in the app and the most worth your time. The coach is given
 tools:
@@ -223,7 +223,7 @@ confirmation — the model proposes, the human disposes.
 
 ---
 
-## Agent memory — `server.py` → `_regenerate_coach_memory` (~line 2758)
+## Agent memory — `server/coach.py` → `_regenerate_coach_memory` (~line 2758)
 
 The coach has two tiers of memory:
 
@@ -247,7 +247,7 @@ give an assistant continuity without an ever-growing (and ever-more-expensive) c
 
 ## Two supporting patterns
 
-**Streaming — `server.py` → `_stream_coach_sse` (~line 2806).** Uses `client.messages.stream`
+**Streaming — `server/coach.py` → `_stream_coach_sse` (~line 2806).** Uses `client.messages.stream`
 plus Server-Sent Events so the reply appears token-by-token in the browser instead of arriving
 all at once. Same tool loop as above, wrapped in a streaming context manager. Streaming is
 purely a UX improvement — the total work is identical, it just *feels* faster.
@@ -268,8 +268,8 @@ Read these in order, easiest to hardest:
 2. `report.py` → `generate_advice` and `_build_advice_prompt` — a single Claude call + its prompt.
 3. `coach_context.py` → `build_advice_context`, then `build_coach_context` — context engineering at two scales.
 4. `analysis.py` → `retrieve_relevant_analyses` — retrieval as SQL.
-5. `server.py` → `_call_coach` and `_COACH_TOOL` / `_READ_TOOLS` — the tool-use agent loop.
-6. `server.py` → `_regenerate_coach_memory` — LLM-compressed long-term memory.
+5. `server/coach.py` → `_call_coach` and `_COACH_TOOL` / `_READ_TOOLS` — the tool-use agent loop.
+6. `server/coach.py` → `_regenerate_coach_memory` — LLM-compressed long-term memory.
 
 By the end you'll have seen single-shot calls, prompt engineering, retrieval, function-calling
 agents, streaming, caching, and memory — which is most of an applied-AI-engineering syllabus,
@@ -293,6 +293,6 @@ intuition for prompt engineering — faster than any amount of reading, includin
 | `coach_context.py` | Builds the big context blocks for advice + chat |
 | `report.py` | Daily advice, weekly briefing, email text (single-shot calls + rule-based fallback) |
 | `analysis.py` | Post-workout analysis pipeline, RAG retrieval, prefetch generators |
-| `server.py` | Coach chat: system prompt, tool definitions, agent loop, streaming, memory |
+| `server/coach.py` | Coach chat: system prompt, tool definitions, agent loop, streaming, memory |
 | `modulation.py` | Rule-based HRV traffic light (non-LLM decision logic the prompts reference) |
 | `alerts.py` | Rule-based fatigue alerts (also surfaced into context) |

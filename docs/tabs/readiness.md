@@ -50,8 +50,11 @@ via the same Apply flow as HRV modulation.
 
 - **Apply a session change.** On an amber or red traffic-light day (or when the
   FTP-retest or power-baseline card appears), click **Apply**. This records a
-  one-day override on your plan — the swap then shows up on the [Calendar](plan.md) and in the daily
-  email. Green days just show a "session as planned" pill, nothing to do.
+  one-day override on your plan — the swap then shows up on the [Calendar](plan.md)
+  and in the daily email — and **best-effort pushes that single date to Garmin**
+  (unschedules that day's plan workouts, schedules the new one). Green days just
+  show a "session as planned" pill, nothing to do. Same funnel as coach plan
+  proposals — see [How the app works](../how-it-works.md#how-a-plan-change-works).
 - **Refresh the data.** The **Refresh** action force-fetches fresh data straight
   from Garmin and clears the cached AI advice for the day — use it if you synced
   your watch after the dashboard already loaded.

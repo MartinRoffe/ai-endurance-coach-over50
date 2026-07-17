@@ -46,7 +46,14 @@ smart flags layered on top.
   record how the second day felt (a fatigue rating plus a note). This builds a
   back-to-back history the coach can reference.
 - **Apply a session change** from the same modulation flow used on the home page,
-  where offered.
+  where offered — local override plus a best-effort single-date Garmin push.
+
+### Sync workouts vs Apply
+
+| Action | What it does |
+|--------|----------------|
+| **Apply** (Readiness / Coach) | One-day override + surgical Garmin push for that date only |
+| **Sync workouts** / `--workouts` | Full re-upload: unschedule the plan range, rebuild templates, re-schedule all dates (override-aware). Use after FTP changes when %FTP targets are stale |
 
 ---
 

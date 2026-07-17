@@ -50,11 +50,16 @@ def test_tempo_falls_back_to_hr_without_power():
 def test_over_unders_power_targets():
     _activate_power_meter(250)
     steps = _work_steps(_over_unders(75))
-    under = steps[1]
-    over = steps[2]
-    assert under.targetType["workoutTargetTypeKey"] == "power.lap"
-    assert under.targetValueOne == round(250 * 0.95)
+    set1 = steps[1].workoutSteps
+    over, under = set1[0], set1[1]
+    assert steps[1].numberOfIterations == 4
+    assert over.targetType["workoutTargetTypeKey"] == "power.lap"
     assert over.targetValueOne == round(250 * 1.05)
+    assert under.targetValueOne == round(250 * 0.95)
+    # second set (after the 5m recovery) mirrors the first
+    set2 = steps[3].workoutSteps
+    assert steps[3].numberOfIterations == 4
+    assert set2[0].targetValueOne == round(250 * 1.05)
 
 
 def test_threshold_ride_power_targets():

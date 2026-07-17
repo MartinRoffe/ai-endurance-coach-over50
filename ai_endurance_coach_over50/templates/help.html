@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <title>{{ page_title }} · Help</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    .help-layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 820px) {
+      .help-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px 16px 64px;
+      }
+    }
+    .help-side {
+      position: sticky;
+      top: 64px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    @media (max-width: 820px) {
+      .help-side {
+        position: static;
+        max-height: none;
+        border: 1px solid var(--border);
+        border-radius: 2px;
+        background: var(--surface);
+        padding: 14px 16px;
+      }
+    }
+    .help-side-label {
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 18px 0 8px;
+    }
+    .help-side-label:first-child { margin-top: 0; }
+    .help-side a {
+      display: block;
+      font-family: var(--font-b);
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 5px 0;
+      border-left: 2px solid transparent;
+      padding-left: 10px;
+      margin-left: -2px;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .help-side a:hover { color: var(--text); }
+    .help-side a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+    .help-article {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 28px 32px 36px;
+    }
+    @media (max-width: 820px) {
+      .help-article { padding: 20px 16px 28px; }
+    }
+    .help-kicker {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .help-body {
+      font-family: var(--font-b);
+      font-weight: 300;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+    .help-body > *:first-child { margin-top: 0; }
+    .help-body h1 {
+      font-family: var(--font-d);
+      font-size: 36px;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      font-weight: 400;
+      margin: 0 0 16px;
+      line-height: 1.15;
+    }
+    .help-body h2 {
+      font-family: var(--font-m);
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 32px 0 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .help-body h2:first-of-type { border-top: none; padding-top: 0; }
+    .help-body h3 {
+      font-family: var(--font-b);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      margin: 22px 0 8px;
+    }
+    .help-body p { margin: 0 0 14px; }
+    .help-body a { color: var(--accent); text-decoration: none; }
+    .help-body a:hover { text-decoration: underline; }
+    .help-body strong { color: var(--text); font-weight: 500; }
+    .help-body ul, .help-body ol {
+      margin: 0 0 14px;
+      padding-left: 1.35em;
+    }
+    .help-body li { margin: 4px 0; }
+    .help-body blockquote {
+      margin: 0 0 16px;
+      padding: 10px 14px;
+      border-left: 2px solid var(--border2);
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .help-body code {
+      font-family: var(--font-m);
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1px 5px;
+      color: var(--text);
+    }
+    .help-body pre {
+      background: #0c0c0e;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      margin: 0 0 16px;
+    }
+    .help-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text-dim);
+    }
+    .help-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 18px;
+      font-size: 14px;
+    }
+    .help-body th, .help-body td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .help-body th {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--surface2);
+      font-weight: 400;
+    }
+    .help-body hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+    .help-arch-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 8px 0 16px;
+    }
+    .help-arch-actions a {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+    .help-arch-actions a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .help-arch-frame {
+      width: 100%;
+      height: min(78vh, 920px);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: #09090b;
+    }
+  </style>
+</head>
+<body>
+{% set active_tab = 'help' %}
+{% include 'nav.html' %}
+
+<div class="help-layout">
+  <nav class="help-side" aria-label="Help sections">
+    {% for section_label, items in help_nav %}
+      <div class="help-side-label">{{ section_label }}</div>
+      {% for pid, label in items %}
+        <a href="/help/{{ pid }}" class="{% if pid == page_id %}active{% endif %}">{{ label }}</a>
+      {% endfor %}
+    {% endfor %}
+  </nav>
+
+  <article class="help-article">
+    <p class="help-kicker">Help</p>
+    <div class="help-body">
+      {{ body_html | safe }}
+    </div>
+    {% if embed_architecture %}
+      <div class="help-arch-actions">
+        <a href="/architecture" target="_blank" rel="noopener">Open fullscreen</a>
+      </div>
+      <iframe class="help-arch-frame" src="/architecture" title="Architecture diagram" loading="lazy"></iframe>
+    {% endif %}
+  </article>
+</div>
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    document.querySelectorAll('.help-body pre code.language-mermaid').forEach(function (el) {
+      var pre = el.parentElement;
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = el.textContent;
+      pre.replaceWith(div);
+    });
+    mermaid.run({ querySelector: '.help-body .mermaid' }).catch(function () {});
+  }
+</script>
+</body>
+</html>

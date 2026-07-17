@@ -34,6 +34,7 @@ from ..history import (
     load_morning_snapshot,
     load_recent_activities,
     metrics_from_snapshot,
+    metrics_row_for_date,
     morning_snapshot_premature,
     pmc_history,
     power_meter_active,
@@ -41,11 +42,19 @@ from ..history import (
     save,
     save_activities,
     seven_day_composite_trend_csv,
+    stable_tdee_kcal,
     tdee_calibration,
     tdee_history,
     z_score,
 )
 from ..metrics import DailyMetrics, fetch_activities, fetch_metrics, local_today, morning_metrics_ready, needs_metrics_refetch
+from ..nutrition_plan import (
+    DAY_TYPES,
+    cycle_week_index,
+    protein_target_g,
+    resolve_calorie_target,
+    today_day_type,
+)
 from ..plan import (
     COMPOUND_SESSIONS,
     PLAN_START as _PLAN_START,
@@ -1212,25 +1221,26 @@ def _body_context() -> dict[str, Any]:
         cal_ctx["days_logged"]    = len(con_vals)
         if cal_ctx["avg_tdee"]:
             cal_ctx["avg_deficit"] = cal_ctx["avg_tdee"] - cal_ctx["avg_consumed"]
-    # Today's specific values (most recent row with data)
-    today_nut = next((r for r in reversed(recent_metrics) if r.get("calories_consumed") is not None), None)
+    # Today's specific values (calendar today — not the most recent logged day)
+    _today = date.today()
+    today_nut = metrics_row_for_date(recent_metrics, _today)
     if today_nut:
-        _today_iso = _row_iso(today_nut)
-        cal_ctx["today_consumed"] = today_nut.get("calories_consumed")
-        cal_ctx["today_tdee"]     = _tdee_by_date.get(_today_iso)
-        cal_ctx["today_bmr"]      = _bmr_by_date.get(_today_iso)
-        cal_ctx["today_active"]   = _active_by_date.get(_today_iso)
-        cal_ctx["today_active_estimated"] = _active_est_by_date.get(_today_iso)
-        cal_ctx["today_goal"]     = today_nut.get("calorie_goal")
-        if today_nut.get("carbs_consumed") is not None:
-            cal_ctx["today_carbs"] = round(today_nut["carbs_consumed"])
-        if today_nut.get("protein_consumed") is not None:
-            cal_ctx["today_protein"] = round(today_nut["protein_consumed"])
+        _today_iso = _today.isoformat()
+        if today_nut.get("calories_consumed") is not None:
+            cal_ctx["today_consumed"] = today_nut.get("calories_consumed")
+            cal_ctx["today_goal"]     = today_nut.get("calorie_goal")
+            if today_nut.get("carbs_consumed") is not None:
+                cal_ctx["today_carbs"] = round(today_nut["carbs_consumed"])
+            if today_nut.get("protein_consumed") is not None:
+                cal_ctx["today_protein"] = round(today_nut["protein_consumed"])
+        if _tdee_by_date.get(_today_iso) is not None:
+            cal_ctx["today_tdee"]     = _tdee_by_date.get(_today_iso)
+            cal_ctx["today_bmr"]      = _bmr_by_date.get(_today_iso)
+            cal_ctx["today_active"]   = _active_by_date.get(_today_iso)
+            cal_ctx["today_active_estimated"] = _active_est_by_date.get(_today_iso)
         # Activities that rolled up into today's Garmin active-calorie total
         try:
-            from datetime import date as _date
-            _td = _date.fromisoformat(_today_iso)
-            _acts = load_activities_by_date(_td, _td).get(_today_iso, [])
+            _acts = load_activities_by_date(_today, _today).get(_today_iso, [])
             _contrib = []
             for a in _acts:
                 if a.get("calories") is None:
@@ -1246,6 +1256,37 @@ def _body_context() -> dict[str, Any]:
                 cal_ctx["today_activities"] = _contrib
         except Exception:
             pass
+    # Intake target from stable TDEE — independent of today's partial burn.
+    try:
+        _stable = stable_tdee_kcal(7)
+        if _stable is not None:
+            _cycle_week = cycle_week_index(_PLAN_START, _today)
+            _dtype = today_day_type(_cycle_week, _today.weekday())
+            _tier_key = DAY_TYPES[_dtype]["calorie_tier"]
+            _session = session_for_date_extended(_today)
+            _stype = _session[0] if _session else None
+            _sdur = _session[2] if _session else None
+            _target = resolve_calorie_target(
+                _stable,
+                _tier_key,
+                _today,
+                session_dur_min=_sdur if _stype in ("long", "bike") else None,
+                session_type=_stype,
+            )
+            cal_ctx["today_intake_target"] = _target["kcal"]
+            cal_ctx["intake_from_tdee"] = _target.get("from_tdee", False)
+            cal_ctx["stable_tdee"] = round(_stable)
+            if _target.get("planned_deficit") is not None:
+                cal_ctx["today_plan_deficit"] = _target["planned_deficit"]
+    except Exception:
+        pass
+    # Protein floor (lean-mass based) for the Protein Today tile.
+    try:
+        _pt = protein_target_g()
+        cal_ctx["protein_low"] = _pt["low"]
+        cal_ctx["protein_high"] = _pt["high"]
+    except Exception:
+        pass
     # 14-day macro averages
     carbs_vals   = [r["carbs_consumed"]   for r in recent_metrics if r.get("carbs_consumed")   is not None]
     protein_vals = [r["protein_consumed"] for r in recent_metrics if r.get("protein_consumed") is not None]
@@ -1261,6 +1302,13 @@ def _body_context() -> dict[str, Any]:
             cal_ctx["empirical_tdee"] = _cal["empirical_tdee"]
             cal_ctx["tdee_model_avg"] = _cal["model_avg"]
             cal_ctx["calibration_n_days"] = _cal["n_intake_days"]
+            conf = _cal.get("confidence") or {}
+            cal_ctx["calibration_confidence"] = conf.get("level", "inactive")
+            cal_ctx["calibration_reasons"] = conf.get("reasons", [])
+            cal_ctx["calibration_coverage_pct"] = conf.get("intake_coverage_pct")
+        else:
+            cal_ctx["calibration_confidence"] = "inactive"
+            cal_ctx["calibration_reasons"] = ["guardrails not met — using uncorrected model TDEE"]
     except Exception:
         pass
 

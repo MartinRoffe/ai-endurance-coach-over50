@@ -248,22 +248,52 @@
         {% if cal_ctx.today_bmr and cal_ctx.today_active is not none %}
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">{{ cal_ctx.today_bmr | int | format_thousands }} BMR + {{ cal_ctx.today_active | int | format_thousands }} active</p>
         {% else %}
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal (activity-adjusted)</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal · estimated burn</p>
         {% endif %}
         {% if cal_ctx.tdee_correction is defined %}
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">calibrated {{ "%+d"|format(cal_ctx.tdee_correction) }} kcal/day from 28-day weight trend</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">calibrated {{ "%+d"|format(cal_ctx.tdee_correction) }} kcal/day from 28-day weight trend{% if cal_ctx.calibration_confidence is defined %} · confidence {{ cal_ctx.calibration_confidence }}{% endif %}</p>
+        {% if cal_ctx.calibration_reasons is defined and cal_ctx.calibration_confidence == 'limited' %}
+        <p style="font-family:var(--font-m);font-size:10px;color:#fbbf24;margin-top:2px">{{ cal_ctx.calibration_reasons | join(' · ') }}</p>
+        {% elif cal_ctx.calibration_confidence is defined and cal_ctx.calibration_confidence == 'inactive' %}
+        <p style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px">calibration inactive — intake target may use static fallback</p>
         {% endif %}
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if cal_ctx.today_intake_target is defined %}
+      <div>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Intake Target</p>
+        <p style="font-family:var(--font-d);font-size:28px;color:#60a5fa;letter-spacing:0.04em;line-height:1">{{ cal_ctx.today_intake_target | int | format_thousands }}</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal · eat toward{% if cal_ctx.intake_from_tdee and cal_ctx.stable_tdee is defined and cal_ctx.today_plan_deficit is defined %} (stable TDEE {{ cal_ctx.stable_tdee | format_thousands }} {% if cal_ctx.today_plan_deficit >= 0 %}− {{ cal_ctx.today_plan_deficit }}{% else %}+ {{ -cal_ctx.today_plan_deficit }}{% endif %} kcal){% endif %}</p>
       </div>
       {% endif %}
 
       {% if cal_ctx.today_consumed is defined and cal_ctx.today_tdee %}
       {% set today_deficit = cal_ctx.today_tdee - cal_ctx.today_consumed %}
+      {% set day_in_progress = cal_ctx.today_intake_target is defined and cal_ctx.today_consumed < cal_ctx.today_intake_target * 0.7 %}
       <div>
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Today's Deficit</p>
-        <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.04em;line-height:1;color:{% if today_deficit > 0 %}#a3e635{% elif today_deficit < -200 %}#f87171{% else %}#fbbf24{% endif %}">
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">vs Burn</p>
+        {% if day_in_progress %}
+        <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.04em;line-height:1;color:var(--muted)">{{ "%+d"|format(today_deficit | int) }}</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal · day in progress — judge at end of day</p>
+        {% else %}
+        <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.04em;line-height:1;color:{% if today_deficit > 700 %}#fbbf24{% elif today_deficit > 250 %}#a3e635{% elif today_deficit > -100 %}#fbbf24{% else %}#f87171{% endif %}">
           {{ "%+d"|format(today_deficit | int) }}
         </p>
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal · {% if today_deficit > 700 %}aggressive cut{% elif today_deficit > 300 %}healthy deficit{% elif today_deficit > -100 %}maintenance{% else %}surplus{% endif %}</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal · {% if today_deficit > 700 %}large deficit — fuel more on hard days{% elif today_deficit > 250 %}healthy deficit{% elif today_deficit > -100 %}maintenance{% else %}surplus{% endif %}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if cal_ctx.today_consumed is defined and cal_ctx.today_intake_target is defined %}
+      {% set plan_gap = cal_ctx.today_intake_target - cal_ctx.today_consumed %}
+      <div>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">vs Plan</p>
+        <p style="font-family:var(--font-d);font-size:28px;letter-spacing:0.04em;line-height:1;color:{% if plan_gap > 400 %}#fbbf24{% elif plan_gap > 0 %}#a3e635{% else %}#f87171{% endif %}">
+          {{ "%+d"|format(plan_gap | int) }}
+        </p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">kcal left to target</p>
       </div>
       {% endif %}
 
@@ -297,7 +327,7 @@
       <div>
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Protein Today</p>
         <p style="font-family:var(--font-d);font-size:28px;color:#38bdf8;letter-spacing:0.04em;line-height:1">{{ cal_ctx.today_protein }}</p>
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">g · target 160g+</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">g{% if cal_ctx.protein_low is defined %} · floor {{ cal_ctx.protein_low }}–{{ cal_ctx.protein_high }}g{% else %} · target 160g+{% endif %}</p>
       </div>
       {% endif %}
 

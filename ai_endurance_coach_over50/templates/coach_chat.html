@@ -12,7 +12,9 @@
     <p id="chat-empty" style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;padding:32px 0">Ask your coach anything about your training...</p>
   </div>
 
-  <div id="proposal-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:12px"></div>
+  <div id="proposal-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch"></div>
+
+  <p id="voice-status" style="display:none;font-family:var(--font-m);font-size:11px;color:var(--muted);margin:0 0 8px;letter-spacing:0.04em"></p>
 
   <div class="coach-chat-input-row" style="display:flex;gap:8px;align-items:flex-end">
     <textarea id="coach-input" rows="1" placeholder="e.g. How is my training load looking this week?"
@@ -20,6 +22,12 @@
       onfocus="this.style.borderColor='rgba(99,102,241,0.5)'" onblur="this.style.borderColor='var(--border)'"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px'"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCoachMessage()}"></textarea>
+    <button type="button" id="mic-btn" title="Push to talk" aria-label="Push to talk"
+      style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap">MIC</button>
+    <button type="button" id="tts-mute-btn" title="Mute coach speech" aria-label="Mute coach speech"
+      style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap">SPEAK</button>
+    <select id="tts-voice" title="Coach voice" aria-label="Coach voice"
+      style="display:none;max-width:140px;height:40px;background:#111113;border:1px solid var(--border);color:var(--muted);font-family:var(--font-m);font-size:11px;padding:0 6px;border-radius:2px;flex-shrink:0;outline:none"></select>
     <button id="send-btn" onclick="sendCoachMessage()"
       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;background:var(--accent);color:var(--text);border:none;padding:10px 20px;cursor:pointer;border-radius:2px;white-space:nowrap;flex-shrink:0;height:40px">SEND</button>
   </div>
@@ -28,6 +36,380 @@
 <script>
 (function() {
   let _proposals = [];
+
+  // ── Voice (Web Speech API) ─────────────────────────────────────────
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const _ttsSupported = typeof window.speechSynthesis !== 'undefined';
+  let _recognition = null;
+  let _listening = false;
+  let _voiceBaseText = '';
+  let _autoSendOnStop = false;
+  let _ttsMuted = localStorage.getItem('coach_tts_muted') === '1';
+
+  const micBtn = document.getElementById('mic-btn');
+  const muteBtn = document.getElementById('tts-mute-btn');
+  const voiceStatus = document.getElementById('voice-status');
+
+  function setVoiceStatus(msg) {
+    if (!msg) {
+      voiceStatus.style.display = 'none';
+      voiceStatus.textContent = '';
+      return;
+    }
+    voiceStatus.textContent = msg;
+    voiceStatus.style.display = 'block';
+  }
+
+  function syncMicUI() {
+    if (!micBtn || micBtn.style.display === 'none') return;
+    if (_listening) {
+      micBtn.style.borderColor = 'rgba(99,102,241,0.7)';
+      micBtn.style.color = 'var(--accent)';
+      micBtn.style.background = 'rgba(99,102,241,0.12)';
+      micBtn.textContent = 'STOP';
+      micBtn.title = 'Stop listening';
+      setVoiceStatus('Listening… click STOP when finished');
+    } else {
+      micBtn.style.borderColor = 'var(--border)';
+      micBtn.style.color = 'var(--muted)';
+      micBtn.style.background = 'none';
+      micBtn.textContent = 'MIC';
+      micBtn.title = 'Push to talk';
+      if (voiceStatus.textContent.indexOf('Listening') !== -1) {
+        setVoiceStatus('');
+      }
+    }
+  }
+
+  function syncMuteUI() {
+    if (!muteBtn || muteBtn.style.display === 'none') return;
+    muteBtn.textContent = _ttsMuted ? 'MUTED' : 'SPEAK';
+    muteBtn.title = _ttsMuted ? 'Unmute coach speech' : 'Mute coach speech';
+    muteBtn.setAttribute('aria-label', muteBtn.title);
+    muteBtn.style.color = _ttsMuted ? 'var(--muted)' : 'var(--text-dim)';
+    muteBtn.style.borderColor = _ttsMuted ? 'var(--border)' : 'rgba(99,102,241,0.35)';
+  }
+
+  function stopTTS() {
+    if (_ttsSupported) window.speechSynthesis.cancel();
+    if (_ttsResumeTimer) {
+      clearInterval(_ttsResumeTimer);
+      _ttsResumeTimer = null;
+    }
+  }
+
+  // Stream speech as sentences arrive (don't wait for the full reply).
+  let _ttsSpoken = 0;
+  let _ttsFillerSaid = false;
+  let _ttsResumeTimer = null;
+
+  function ensureTTSAlive() {
+    // Chrome sometimes pauses speechSynthesis mid-utterance; nudge it.
+    if (_ttsResumeTimer || !_ttsSupported) return;
+    _ttsResumeTimer = setInterval(function() {
+      if (!_ttsSupported || !window.speechSynthesis.speaking) {
+        clearInterval(_ttsResumeTimer);
+        _ttsResumeTimer = null;
+        return;
+      }
+      window.speechSynthesis.resume();
+    }, 4000);
+  }
+
+  function enqueueSpeech(raw) {
+    if (!_ttsSupported || _ttsMuted || !raw) return;
+    const clean = forSpeech(raw);
+    if (!clean) return;
+    const voice = selectedVoice();
+    const utter = new SpeechSynthesisUtterance(clean);
+    if (voice) utter.voice = voice;
+    utter.rate = 1;
+    utter.pitch = 1;
+    window.speechSynthesis.speak(utter);
+    ensureTTSAlive();
+  }
+
+  /** Queue any newly completed sentences from the live reply; flush remainder when final. */
+  function feedTTS(accumulated, final) {
+    if (!_ttsSupported || _ttsMuted || !accumulated) return;
+    const text = accumulated;
+    let start = _ttsSpoken;
+
+    while (start < text.length) {
+      const slice = text.slice(start);
+      let cut = -1;
+      for (let i = 0; i < slice.length; i++) {
+        const ch = slice[i];
+        if (ch !== '.' && ch !== '!' && ch !== '?') continue;
+        // Skip decimals / version-ish numbers (e.g. 3.5, v2.1)
+        if (ch === '.' && /\d/.test(slice[i - 1] || '') && /\d/.test(slice[i + 1] || '')) continue;
+        const after = slice[i + 1];
+        if (after === undefined) {
+          if (final) cut = i + 1;
+          break;
+        }
+        if (/\s/.test(after)) {
+          cut = i + 1;
+          break;
+        }
+      }
+      if (cut < 0) break;
+
+      const sentence = slice.slice(0, cut).trim();
+      let next = start + cut;
+      while (next < text.length && /\s/.test(text[next])) next++;
+
+      // Incomplete trailing fragment while still streaming — wait
+      if (!final && next >= text.length && !/[.!?]$/.test(sentence)) break;
+
+      if (sentence) enqueueSpeech(sentence);
+      start = next;
+      _ttsSpoken = start;
+    }
+
+    if (final) {
+      const rest = text.slice(_ttsSpoken).trim();
+      if (rest) enqueueSpeech(rest);
+      _ttsSpoken = text.length;
+    }
+  }
+
+  function resetTTSStream() {
+    stopTTS();
+    _ttsSpoken = 0;
+    _ttsFillerSaid = false;
+  }
+
+  // Default = browser voice. User picks from the dropdown (saved in localStorage).
+  const voiceSelect = document.getElementById('tts-voice');
+  let _coachVoice = null;
+
+  function selectedVoice() {
+    if (!_ttsSupported) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    const saved = localStorage.getItem('coach_tts_voice') || '';
+    if (saved) {
+      const match = voices.find(function(v) { return v.voiceURI === saved || v.name === saved; });
+      if (match) return match;
+    }
+    return null; // system default — usually better than our guesses
+  }
+
+  function populateVoiceSelect() {
+    if (!_ttsSupported || !voiceSelect) return;
+    const voices = (window.speechSynthesis.getVoices() || []).filter(function(v) {
+      return (v.lang || '').toLowerCase().startsWith('en');
+    });
+    if (!voices.length) return;
+    const prev = localStorage.getItem('coach_tts_voice') || '';
+    voiceSelect.innerHTML = '';
+    const def = document.createElement('option');
+    def.value = '';
+    def.textContent = 'Default';
+    voiceSelect.appendChild(def);
+    voices.forEach(function(v) {
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI || v.name;
+      opt.textContent = v.name.replace(/^.*?Voice\s+/i, '').slice(0, 28);
+      voiceSelect.appendChild(opt);
+    });
+    voiceSelect.value = prev;
+    if (voiceSelect.value !== prev) voiceSelect.value = '';
+    voiceSelect.style.display = '';
+    _coachVoice = selectedVoice();
+  }
+
+  if (_ttsSupported) {
+    populateVoiceSelect();
+    window.speechSynthesis.addEventListener('voiceschanged', populateVoiceSelect);
+    voiceSelect.addEventListener('change', function() {
+      localStorage.setItem('coach_tts_voice', voiceSelect.value);
+      _coachVoice = selectedVoice();
+      // Preview so you can hear the pick immediately
+      stopTTS();
+      const sample = new SpeechSynthesisUtterance('How is your form looking this week?');
+      if (_coachVoice) sample.voice = _coachVoice;
+      sample.rate = 1;
+      window.speechSynthesis.speak(sample);
+    });
+  }
+
+  /** Expand coaching shorthand into athlete-facing spoken English. */
+  function forSpeech(text) {
+    let s = String(text);
+    s = s.replace(/\*\*(.+?)\*\*/g, '$1');
+    s = s.replace(/`([^`]+)`/g, '$1');
+    s = s.replace(/#{1,6}\s*/g, '');
+    s = s.replace(/^\s*[-*•]\s+/gm, '');
+    s = s.replace(/[🔍✓]/g, '');
+    s = s.replace(/→/g, ' to ');
+    s = s.replace(/—|–/g, ', ');
+    s = s.replace(/\u00b1/g, ' plus or minus ');
+    s = s.replace(/\u00d7/g, ' times ');
+
+    // Units
+    s = s.replace(/\bW\/kg\b/gi, 'watts per kilo');
+    s = s.replace(/\bg\/h\b/gi, 'grams per hour');
+    s = s.replace(/\b%FTP\b/gi, 'percent of threshold');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?FTP\b/gi, '$1 percent of threshold');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*w\/kg\b/gi, '$1 watts per kilo');
+    s = s.replace(/(\d+)\s*min(?:ute)?s?\b/gi, '$1 minutes');
+    s = s.replace(/(\d+)\s*hrs?\b/gi, function(_, n) {
+      return n === '1' ? '1 hour' : n + ' hours';
+    });
+    s = s.replace(/(\d+)\s*bpm\b/gi, '$1 beats per minute');
+    s = s.replace(/(\d+)\s*kcal\b/gi, '$1 calories');
+    s = s.replace(/(\d+)\s*kJ\b/g, '$1 kilojoules');
+    s = s.replace(/(\d+)\s*ms\b/gi, '$1 milliseconds');
+    s = s.replace(/(\d+)\s*W\b/g, '$1 watts');
+    s = s.replace(/(\d+)\s*kg\b/gi, '$1 kilos');
+
+    s = s.replace(/\bZ([1-5])\b/g, 'zone $1');
+
+    // Athlete-facing wording (not letter-by-letter spelling)
+    const acronyms = [
+      [/\bVO2\s*max\b/gi, 'V O 2 max'],
+      [/\bVO₂max\b/gi, 'V O 2 max'],
+      [/\bLTHR\b/g, 'lactate threshold heart rate'],
+      [/\bACWR\b/g, 'acute to chronic ratio'],
+      [/\bHRV\b/g, 'heart rate variability'],
+      [/\bRHR\b/g, 'resting heart rate'],
+      [/\bRPE\b/g, 'perceived effort'],
+      [/\bTSS\b/g, 'training stress'],
+      [/\bTSB\b/g, 'form'],
+      [/\bCTL\b/g, 'fitness'],
+      [/\bATL\b/g, 'fatigue'],
+      [/\be?FTP\b/g, 'threshold power'],
+      [/\bPMC\b/g, 'training load chart'],
+      [/\bBTB\b/g, 'back to back'],
+      [/\bNP\b/g, 'normalised power'],
+    ];
+    acronyms.forEach(function(pair) { s = s.replace(pair[0], pair[1]); });
+
+    s = s.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$1 $2 $3');
+    s = s.replace(/\s*\|\s*/g, ', ');
+    s = s.replace(/\s{2,}/g, ' ');
+    s = s.replace(/\n{2,}/g, '. ');
+    s = s.replace(/\n/g, '. ');
+    s = s.replace(/\.{2,}/g, '.');
+    s = s.replace(/\s+([,.;:])/g, '$1');
+    return s.trim();
+  }
+
+  function speakCoachReply(text) {
+    // Legacy full-reply path — prefer feedTTS during streaming.
+    resetTTSStream();
+    feedTTS(text || '', true);
+  }
+
+  function resizeInput() {
+    const input = document.getElementById('coach-input');
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+  }
+
+  function stopListening(opts) {
+    opts = opts || {};
+    _autoSendOnStop = !!opts.autoSend;
+    if (!_recognition || !_listening) {
+      _listening = false;
+      syncMicUI();
+      return;
+    }
+    try { _recognition.stop(); } catch (e) {}
+  }
+
+  function startListening() {
+    if (!SpeechRecognition || !_recognition) return;
+    const sendBtn = document.getElementById('send-btn');
+    if (sendBtn.disabled) return;
+    stopTTS();
+    const input = document.getElementById('coach-input');
+    _voiceBaseText = input.value.trim();
+    _autoSendOnStop = true;
+    try {
+      _recognition.start();
+    } catch (e) {
+      // Already started — ignore
+    }
+  }
+
+  function toggleListening() {
+    if (_listening) stopListening({autoSend: true});
+    else startListening();
+  }
+
+  if (SpeechRecognition) {
+    _recognition = new SpeechRecognition();
+    _recognition.continuous = false;
+    _recognition.interimResults = true;
+    _recognition.lang = navigator.language || 'en-GB';
+
+    _recognition.onstart = function() {
+      _listening = true;
+      syncMicUI();
+    };
+
+    _recognition.onresult = function(event) {
+      let interim = '';
+      let finalText = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      const input = document.getElementById('coach-input');
+      const pieces = [_voiceBaseText, (finalText || interim).trim()].filter(Boolean);
+      input.value = pieces.join(pieces[0] && pieces[1] ? ' ' : '');
+      resizeInput();
+    };
+
+    _recognition.onerror = function(event) {
+      _listening = false;
+      syncMicUI();
+      if (event.error === 'not-allowed') {
+        setVoiceStatus('Microphone blocked — allow access for this site, or type instead');
+      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        setVoiceStatus('Could not hear that — try again or type');
+      } else {
+        setVoiceStatus('');
+      }
+    };
+
+    _recognition.onend = function() {
+      const wasAuto = _autoSendOnStop;
+      _listening = false;
+      _autoSendOnStop = false;
+      syncMicUI();
+      setVoiceStatus('');
+      const input = document.getElementById('coach-input');
+      const text = input.value.trim();
+      if (wasAuto && text) {
+        // Brief pause so the athlete can glance at the transcript before send
+        setTimeout(function() {
+          if (!document.getElementById('send-btn').disabled) sendCoachMessage();
+        }, 350);
+      }
+    };
+
+    micBtn.style.display = '';
+    micBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleListening();
+    });
+  }
+
+  if (_ttsSupported) {
+    muteBtn.style.display = '';
+    syncMuteUI();
+    muteBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      _ttsMuted = !_ttsMuted;
+      localStorage.setItem('coach_tts_muted', _ttsMuted ? '1' : '0');
+      if (_ttsMuted) stopTTS();
+      syncMuteUI();
+    });
+  }
 
   function mdToHtml(text) {
     return text
@@ -67,6 +449,14 @@
     return bubble;
   }
 
+  function _hideProposalsIfEmpty() {
+    const container = document.getElementById('proposal-cards');
+    if (!_proposals.length) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+    }
+  }
+
   function renderProposals(proposals) {
     _proposals = proposals.filter(p => p && p.session_type);
     const container = document.getElementById('proposal-cards');
@@ -75,15 +465,11 @@
       container.style.display = 'none';
       return;
     }
-    _proposals.forEach((proposal, idx) => {
+    _proposals.forEach((proposal) => {
       const card = window.PlanChange.render(container, proposal, {showDismiss: true});
+      card.style.marginBottom = '0';
       card.addEventListener('planchange:applied', (e) => {
         _proposals = _proposals.filter(p => p.date !== proposal.date);
-        const container = document.getElementById('proposal-cards');
-        if (!_proposals.length) {
-          container.style.display = 'none';
-          container.innerHTML = '';
-        }
         const data = e.detail.data || {};
         const g = data.garmin || {};
         const sync = g.pushed
@@ -91,15 +477,19 @@
           : ' Saved locally — Garmin sync failed.';
         const durText = data.duration_min ? `**${data.duration_min} min**` : '**rest day**';
         renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to ${durText}.${sync}`);
+        // Drop the synced card so any remaining proposal stays reachable
+        setTimeout(() => {
+          if (card.parentNode) card.remove();
+          _hideProposalsIfEmpty();
+        }, 900);
       });
       card.addEventListener('planchange:dismissed', () => {
         _proposals = _proposals.filter(p => p.date !== proposal.date);
-        if (!_proposals.length) {
-          container.style.display = 'none';
-        }
+        _hideProposalsIfEmpty();
       });
     });
     container.style.display = 'flex';
+    container.scrollTop = 0;
   }
 
   window.dismissProposal = function(idx) {
@@ -119,10 +509,15 @@
     const btn = document.getElementById('send-btn');
     const text = input.value.trim();
     if (!text || btn.disabled) return;
+
+    if (_listening) stopListening({autoSend: false});
+    resetTTSStream();
+
     input.value = '';
     input.style.height = 'auto';
     btn.disabled = true;
     btn.textContent = '…';
+    if (micBtn) micBtn.disabled = true;
     dismissProposal();
     renderMessage('user', text);
 
@@ -139,6 +534,7 @@
     document.getElementById('chat-messages').scrollTop = 99999;
 
     let accumulated = '';
+    let streamDone = false;
 
     try {
       const res = await fetch('/coach-chat-stream', {
@@ -167,6 +563,7 @@
               accumulated += event.chunk;
               updateBubble(bubble, accumulated, true);
               document.getElementById('chat-messages').scrollTop = 99999;
+              feedTTS(accumulated, false);
             } else if (event.type === 'tool') {
               if (!accumulated) {
                 const labels = {
@@ -178,6 +575,10 @@
                 };
                 bubble.innerHTML = '<span style="color:var(--muted)">🔍 checking ' +
                   (labels[event.name] || 'your data') + '…</span>';
+                if (!_ttsFillerSaid) {
+                  _ttsFillerSaid = true;
+                  enqueueSpeech('One moment, checking your data.');
+                }
               }
             } else if (event.type === 'proposal' && event.data && event.data.session_type) {
               const existing = _proposals.some(p => p.date === event.data.date);
@@ -185,26 +586,35 @@
               renderProposals(_proposals);
             } else if (event.type === 'done') {
               if (accumulated) updateBubble(bubble, accumulated, false);
+              streamDone = true;
+              feedTTS(accumulated, true);
             } else if (event.type === 'error') {
               bubble.innerHTML = '<p style="color:var(--muted)">Something went wrong. Please try again.</p>';
+              stopTTS();
             }
           } catch(e) {}
         }
       }
+      if (!streamDone && accumulated) feedTTS(accumulated, true);
     } catch(e) {
       bubble.innerHTML = '<p style="color:var(--muted)">Connection error. Please try again.</p>';
+      stopTTS();
     } finally {
       btn.disabled = false;
       btn.textContent = 'SEND';
+      if (micBtn) micBtn.disabled = false;
       input.focus();
     }
   };
 
   window.clearChatHistory = async function() {
     if (!confirm('Clear the conversation history?')) return;
+    stopListening({autoSend: false});
+    stopTTS();
     await fetch('/coach-history', {method: 'DELETE'});
     document.getElementById('chat-messages').innerHTML = '<p id="chat-empty" style="font-family:var(--font-m);font-size:12px;color:var(--muted);text-align:center;padding:32px 0">Ask your coach anything about your training...</p>';
     dismissProposal();
+    setVoiceStatus('');
   };
 
   async function loadHistory() {
@@ -213,6 +623,17 @@
       const history = await res.json();
       history.forEach(m => renderMessage(m.role, m.content));
       if (history.length) document.getElementById('chat-messages').scrollTop = 99999;
+      // Re-show the latest pending proposal card(s) so a refresh doesn't lose them
+      for (let i = history.length - 1; i >= 0; i--) {
+        const m = history[i];
+        if (m.role !== 'assistant' || !m.proposal) continue;
+        try {
+          const raw = typeof m.proposal === 'string' ? JSON.parse(m.proposal) : m.proposal;
+          const props = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+          if (props.length) renderProposals(props);
+        } catch (e) {}
+        break;
+      }
     } catch(e) {}
   }
 

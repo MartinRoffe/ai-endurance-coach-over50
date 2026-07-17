@@ -97,11 +97,12 @@
   .macros{display:flex;flex-wrap:wrap;gap:8px;margin:0 20px 16px;}
   .macro-pill{font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);}
 
-  .next-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
-  .next-card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;text-decoration:none;color:var(--text);transition:border-color .15s;}
-  .next-card:hover{border-color:var(--accent);}
-  .next-card span{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-  .next-card strong{font-size:15px;color:var(--accent);}
+  .comp-list{list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .comp-list li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;color:#cdd0bb;}
+  .comp-list li:last-child{border-bottom:none;}
+  .comp-list a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--accent);white-space:nowrap;}
+  .quiet-footer{padding:24px 0 48px;font-size:13px;color:var(--muted);}
+  .quiet-footer a{margin-right:14px;}
 
   .footer{padding:30px 24px 60px;color:var(--muted);font-size:12px;text-align:center;}
 
@@ -141,7 +142,7 @@
     <a href="#schedule">Schedule</a>
     <a href="#dinner-a">Dinner A</a>
     <a href="#dinner-b">Dinner B</a>
-    <a href="#next-steps">Next steps</a>
+    <a href="#components">Components</a>
   </div>
 </nav>
 
@@ -157,41 +158,65 @@
   <section id="schedule">
     <div class="sec-label">Timed parallel cook</div>
     <h2>SCHEDULE</h2>
-    <p class="lead">Oven and hob run in parallel. Dinner methods for this week are below the sheet — component recipes (chicken, rice, oats) open in Recipes.</p>
+    <p class="lead">Oven and hob run in parallel. Dinner methods for this week are below; lunch/breakfast components are linked under Components.</p>
     {% include 'partials/sunday_cook_sheets.html' %}
   </section>
 
   <section id="dinners">
     <div class="sec-label">Mon–Thu · this cycle week</div>
     <h2>DINNER METHODS</h2>
-    <p class="lead">Batch A fridge Mon/Tue · Batch B freeze Sunday, fridge Tue eve for Wed/Thu. <a href="/nutrition/recipes/weekday-dinners">All weeks →</a></p>
+    <p class="lead">Batch A fridge Mon/Tue · Batch B freeze Sunday, fridge Tue eve for Wed/Thu. Cook the full batch; <b>plate the smaller carb side</b> listed on each card so macros match Today (620 kcal build / 560 recovery, protein dessert included).</p>
     <div id="dinner-a"></div>
     <div id="dinner-b"></div>
     {% include 'partials/weekday_dinner_cards.html' %}
   </section>
 
-  <section id="next-steps">
-    <div class="sec-label">After cooking</div>
-    <h2>NEXT STEPS</h2>
-    <div class="next-grid">
-      <a class="next-card" href="/nutrition/shopping-list">
-        <span>Buy</span>
-        <strong>Shopping list →</strong>
-      </a>
-      <a class="next-card" href="/nutrition/fuelling#calculator">
-        <span>Friday eve</span>
-        <strong>Rice cake calculator →</strong>
-      </a>
-      <a class="next-card" href="/nutrition/recipes#chicken">
-        <span>Components</span>
-        <strong>Chicken · rice · oats →</strong>
-      </a>
-      <a class="next-card" href="/nutrition/meals">
-        <span>Eat</span>
-        <strong>Daily menus →</strong>
-      </a>
-    </div>
+  <section id="components">
+    <div class="sec-label">Also cook today</div>
+    <h2>COMPONENTS</h2>
+    <p class="lead">Lunch chicken, rice, and breakfast prep for the week. Open the method when you hit that step on the schedule.</p>
+    <ul class="comp-list">
+      <li>
+        <span><b>Batch-roasted chicken</b> — herb thighs for Mon–Thu lunches</span>
+        <a href="/nutrition/recipes#chicken">Method →</a>
+      </li>
+      <li>
+        <span><b>Chinese soy chicken</b> — Wednesday lunch glaze</span>
+        <a href="/nutrition/recipes#chinese-chicken">Method →</a>
+      </li>
+      <li>
+        <span><b>Big-batch basmati</b> — weekday lunch rice</span>
+        <a href="/nutrition/recipes#rice">Method →</a>
+      </li>
+      <li>
+        <span><b>Overnight oats jars</b> — Mon/Wed/Fri breakfast</span>
+        <a href="/nutrition/recipes#overnight-oats">Method →</a>
+      </li>
+      <li>
+        <span><b>Scotch eggs</b> — Tue/Thu breakfast (build weeks)</span>
+        <a href="/nutrition/recipes#scotch-eggs">Method →</a>
+      </li>
+      <li>
+        <span><b>Egg &amp; veg muffins</b> — Tue/Thu breakfast (recovery week only)</span>
+        <a href="/nutrition/recipes#egg-muffins">Method →</a>
+      </li>
+      <li>
+        <span><b>Greek yogurt pots</b> — breakfast / lunch protein top-ups</span>
+        <a href="/nutrition/recipes#yogurt">Method →</a>
+      </li>
+      <li>
+        <span><b>Protein oat bars</b> — optional Tue/Thu AM snack</span>
+        <a href="/nutrition/recipes#oatbars">Method →</a>
+      </li>
+    </ul>
   </section>
+
+  <div class="quiet-footer">
+    <a href="/nutrition/lidl-shopping-list">Lidl shop</a>
+    <a href="/nutrition/shopping-list">Asda shop</a>
+    <a href="/nutrition/fuelling#calculator">Rice-cake calculator</a>
+    <a href="/nutrition">Eat today</a>
+  </div>
 
 </div>
 
