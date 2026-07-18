@@ -25,10 +25,10 @@ sense.
 
 ## 1. The browser sends the message — `templates/coach_chat.html`
 
-Optional **push-to-talk** in the same template uses the browser Web Speech API:
-recognition fills the input, then the same `POST` runs; speech synthesis can read
-the final reply aloud. No server audio endpoint — mic/TTS never touch Anthropic
-or SQLite. Plan-change **Apply** stays click-only.
+Optional **push-to-talk** in the same template uses the browser Web Speech API for
+recognition (fills the input → same `POST`). Replies are spoken via **ElevenLabs**
+when `ELEVENLABS_API_KEY` is set (`POST /coach-tts`), otherwise browser
+`speechSynthesis`. Plan-change **Apply** stays click-only.
 
 When you hit Enter (or voice auto-sends), `sendCoachMessage()` renders your message bubble, drops an
 empty assistant bubble with a blinking `▋` cursor, then:

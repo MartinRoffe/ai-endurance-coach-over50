@@ -662,6 +662,30 @@ def _maybe_update_memo_bg(api_key: str) -> None:
         ).start()
 
 
+def _coach_user_error_message(exc: BaseException) -> str:
+    """Map Anthropic failures to a safe athlete-facing chat message."""
+    text = str(exc).lower()
+    if any(
+        s in text
+        for s in (
+            "credit balance",
+            "too low to access",
+            "purchase credits",
+            "plans & billing",
+            "billing hard limit",
+        )
+    ):
+        return (
+            "Claude API credits are exhausted — top up at console.anthropic.com, "
+            "then try again."
+        )
+    if isinstance(exc, _anthropic.RateLimitError) or "rate_limit" in text or "rate limit" in text:
+        return "Claude API rate limit hit — wait a moment and try again."
+    if isinstance(exc, _anthropic.AuthenticationError) or "invalid x-api-key" in text:
+        return "Claude API key is invalid — check ANTHROPIC_API_KEY in .env."
+    return "Coach is temporarily unavailable — check the server logs."
+
+
 def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
     """Sync generator yielding SSE events for the coach chat stream."""
     # Save user message immediately so it survives connection drops or server restarts.
@@ -722,10 +746,10 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
         save_coach_message("assistant", full_reply, json.dumps(proposals) if proposals else None)
         _maybe_update_memo_bg(api_key)
 
-    except Exception:
+    except Exception as exc:
         # Don't leak raw exception text (may contain key/account details)
         logger.exception("coach-chat-stream failed")
-        yield f"data: {json.dumps({'type': 'error', 'message': 'Coach is temporarily unavailable — check the server logs.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'message': _coach_user_error_message(exc)})}\n\n"
 
     yield f"data: {json.dumps({'type': 'done'})}\n\n"
 

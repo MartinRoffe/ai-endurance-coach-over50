@@ -16,6 +16,7 @@ _UNSCORED = {
     "training_load_chronic", "vo2_max", "total_steps", "active_calories",
     "calories_consumed", "calorie_goal", "calorie_goal_adjusted",
     "carbs_consumed", "protein_consumed",
+    "water_intake_ml", "water_goal_ml",
     # acclimation + resting HR — consumed by illness/heat features, not the composite
     "heat_acclimation_pct", "altitude_acclimation", "resting_hr",
     # load context — surfaced via ACWR tile and Performance tab, not morning readiness
@@ -241,7 +242,8 @@ def raw_history(days: int = 14) -> list[dict]:
             """SELECT date, hrv_last_night, sleep_score, avg_stress, rest_stress,
                       resting_hr, total_steps, active_calories,
                       calories_consumed, calorie_goal, calorie_goal_adjusted,
-                      carbs_consumed, protein_consumed
+                      carbs_consumed, protein_consumed,
+                      water_intake_ml, water_goal_ml
                FROM daily_metrics
                WHERE date >= ? AND date <= ?
                ORDER BY date""",
@@ -266,6 +268,8 @@ def raw_history(days: int = 14) -> list[dict]:
             "calorie_goal_adjusted":   row.get("calorie_goal_adjusted"),
             "carbs_consumed":          row.get("carbs_consumed"),
             "protein_consumed":        row.get("protein_consumed"),
+            "water_intake_ml":         row.get("water_intake_ml"),
+            "water_goal_ml":           row.get("water_goal_ml"),
         })
     return result
 

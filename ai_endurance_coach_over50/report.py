@@ -1173,10 +1173,43 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
     lines += [
         "Latest body composition readings:",
         f"  Weight: {_f(latest.get('weight_kg'))} kg  |  Body fat: {_f(latest.get('fat_pct'))}%  |  Muscle mass: {_f(latest.get('muscle_mass_kg'))} kg",
-        f"  Bone mass: {_f(latest.get('bone_mass_kg'), 2)} kg  |  Hydration: {_f(latest.get('hydration_pct'))}%  |  Visceral fat index: {_f(latest.get('visceral_fat'), 0)}",
+        f"  Bone mass: {_f(latest.get('bone_mass_kg'), 2)} kg  |  Body water (bioimpedance TBW): {_f(latest.get('hydration_pct'))}%  |  Visceral fat index: {_f(latest.get('visceral_fat'), 0)}",
         f"  BMI: {_f(latest.get('bmi'))}  |  Metabolic age: {_f(latest.get('metabolic_age'), 0)} years",
+        "  Note: Body water % is scale bioimpedance total body water, NOT fluid intake. "
+        "Typical adult male range ~50–65%. Day-to-day swings track glycogen and measurement "
+        "conditions more than glasses of water.",
         "",
     ]
+
+    # Fluid intake from Garmin hydration log (distinct from body-water %)
+    def _metric_iso(r):
+        d = r.get("date")
+        return d.isoformat() if hasattr(d, "isoformat") else str(d or "")
+
+    intake_rows = [r for r in recent_metrics if r.get("water_intake_ml") is not None]
+    if intake_rows:
+        today_iso = today.isoformat()
+        today_row = next(
+            (r for r in reversed(recent_metrics)
+             if _metric_iso(r) == today_iso and r.get("water_intake_ml") is not None),
+            None,
+        )
+        src = today_row or intake_rows[-1]
+        intake_ml = src["water_intake_ml"]
+        goal_ml = src.get("water_goal_ml")
+        src_iso = _metric_iso(src)
+        avg_intake = sum(r["water_intake_ml"] for r in intake_rows) / len(intake_rows)
+        intake_line = f"  Logged: {intake_ml / 1000:.1f} L"
+        if src_iso != today_iso:
+            intake_line += f" (last log {src_iso})"
+        if goal_ml:
+            intake_line += f"  |  Garmin goal: {goal_ml / 1000:.1f} L"
+        intake_line += f"  |  14-day avg (logged days): {avg_intake / 1000:.1f} L"
+        lines += [
+            "Fluid intake (Garmin hydration log — use this for any fluid advice):",
+            intake_line,
+            "",
+        ]
 
     # Weight & fat trend — weekly snapshots
     weight_rows = [r for r in body_rows if r.get("weight_kg") is not None]
@@ -1308,11 +1341,14 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
            "(lighter = easier climbing at the same effort), without citing watts."),
         "2. Body composition quality — is weight change driven by fat loss, muscle loss, or both?",
         "   Flag if muscle mass is declining (suggests need for more protein / strength work).",
-        "3. One encouraging finding or specific concern from the data (visceral fat, hydration, metabolic age, BP trend).",
+        "3. One encouraging finding or specific concern from the data (visceral fat, metabolic age, BP trend).",
         "4. One actionable recommendation for the next 4 weeks given the athlete's training load and event timeline.",
         "",
         "Keep it under 180 words. Short paragraphs, no headers or bullets. Address the athlete as 'you'.",
         "Reference actual numbers from the data.",
+        "Do NOT recommend drinking more water or flag 'low hydration' based on body-water % "
+        "unless the value is a clear outlier outside ~45–70% (or missing). "
+        "Fluid intake advice belongs only to the Garmin hydration log when present.",
     ]
     return "\n".join(lines)
 
@@ -1463,7 +1499,7 @@ def generate_body_analysis(body_rows: list[dict], latest: dict, pmc_today: dict,
     if not latest or not body_rows:
         return ""
 
-    cache_key = f"body_analysis_v1_{date.today().isoformat()}"
+    cache_key = f"body_analysis_v2_{date.today().isoformat()}"
     cached = get_cached_text(cache_key)
     if cached:
         return cached

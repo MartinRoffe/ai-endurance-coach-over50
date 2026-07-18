@@ -36,12 +36,16 @@ Add the key and restart the server.
 
 ## Coach voice (MIC) is missing or doesn't work
 
-Push-to-talk on the **Coach** tab uses the browser's Web Speech API — no extra
-server setup. The **MIC** button only appears when the browser supports speech
-recognition (Chrome is the most reliable; Firefox often has no STT). Allow
-microphone access when prompted, and open the dashboard at
-`http://127.0.0.1:8743` (a plain LAN IP may block the mic). Text chat always
-works; plan changes still need **Apply** on the confirmation card. See
+Push-to-talk on the **Coach** tab uses the browser's Web Speech API for
+**listening** — Chrome is the most reliable. Allow microphone access when
+prompted, and open the dashboard at `http://127.0.0.1:8743` (a plain LAN IP may
+block the mic).
+
+**Speaking** uses [ElevenLabs](https://elevenlabs.io) when `ELEVENLABS_API_KEY`
+is set in `.env` (and in `~/.ai_endurance_coach_over50/.env` if you use
+launchd). Without it, replies use the browser's built-in voice. Optional:
+`ELEVENLABS_VOICE_ID` to pick a different voice. Restart the server after
+changing keys. Text chat always works; plan changes still need **Apply**. See
 [Coach](tabs/coach.md).
 
 ## The AI text is stale / I want to regenerate it
@@ -147,5 +151,6 @@ before activation). See [Power Training](power-training.md#faq).
 ## Where is my data, and is any of it uploaded?
 
 Everything lives locally in `~/.ai_endurance_coach_over50/history.db`. The app only talks
-to **Garmin** (to read your data), **Gmail** (if you enabled email), and
-**Anthropic** (if you enabled the AI features). Nothing else leaves your machine.
+to **Garmin** (to read your data), **Gmail** (if you enabled email),
+**Anthropic** (if you enabled the AI features), and **ElevenLabs** (if you set
+`ELEVENLABS_API_KEY` for coach speech). Nothing else leaves your machine.

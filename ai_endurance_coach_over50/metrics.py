@@ -73,6 +73,9 @@ class DailyMetrics:
     calorie_goal_adjusted: Optional[float] = None # Garmin intake GOAL adjusted for activity (NOT expenditure; real TDEE computed in energy.py)
     carbs_consumed: Optional[float] = None        # grams of carbohydrate logged
     protein_consumed: Optional[float] = None      # grams of protein logged
+    # Fluid intake (Garmin hydration log — not bioimpedance body-water %)
+    water_intake_ml: Optional[float] = None       # ml logged in Garmin Connect / watch
+    water_goal_ml: Optional[float] = None         # Garmin daily hydration goal (ml)
 
 
 def local_today() -> date:
@@ -360,6 +363,19 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                 m.protein_consumed = float(protein)
     except Exception as e:
         logger.debug("Nutrition fetch failed: %s", e)
+
+    # --- Fluid intake (Garmin hydration log) ---
+    try:
+        hyd = api.get_hydration_data(date_str)
+        if isinstance(hyd, dict):
+            intake = _first_present(hyd, "valueInML", "value_in_ml", "value")
+            if intake is not None:
+                m.water_intake_ml = float(intake)
+            goal = _first_present(hyd, "goalInML", "goal_in_ml", "goal")
+            if goal is not None:
+                m.water_goal_ml = float(goal)
+    except Exception as e:
+        logger.debug("Hydration intake fetch failed: %s", e)
 
     return m
 

@@ -147,9 +147,17 @@
 
     {% if latest_body and latest_body.hydration_pct %}
     <div class="card" style="padding:20px 22px">
-      <p class="eyebrow" style="margin-bottom:6px">Hydration</p>
+      <p class="eyebrow" style="margin-bottom:6px">Body water <button type="button" class="gr-tip-trigger" data-tip="Bioimpedance total body water from your scale — not glasses of water drunk. Typical adult male ~50–65%. Day-to-day swings track glycogen and measurement conditions more than fluid intake." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ "%.1f"|format(latest_body.hydration_pct) }}</p>
       <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">%</p>
+    </div>
+    {% endif %}
+
+    {% if water_intake_l is not none %}
+    <div class="card" style="padding:20px 22px">
+      <p class="eyebrow" style="margin-bottom:6px">Water intake <button type="button" class="gr-tip-trigger" data-tip="Fluid logged in Garmin Connect / your watch today. Log water there; it imports on refresh." aria-label="More info" aria-expanded="false">?</button></p>
+      <p style="font-family:var(--font-d);font-size:32px;letter-spacing:0.06em;color:var(--text);line-height:1">{{ "%.1f"|format(water_intake_l) }}</p>
+      <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:4px">L today{% if water_goal_l is not none %} · goal {{ "%.1f"|format(water_goal_l) }} L{% endif %}</p>
     </div>
     {% endif %}
 
@@ -414,10 +422,10 @@
     </div>
     {% endif %}
 
-    <!-- Hydration chart -->
+    <!-- Body water chart -->
     {% if hydration_values and hydration_values | select | list %}
     <div class="card" style="padding:28px">
-      <p class="eyebrow" style="margin-bottom:16px">Hydration % — 90 Day Trend</p>
+      <p class="eyebrow" style="margin-bottom:16px">Body water % — 90 Day Trend</p>
       <div style="position:relative;height:200px">
         <canvas id="hydrationChart"></canvas>
       </div>

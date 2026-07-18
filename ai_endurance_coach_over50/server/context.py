@@ -1187,6 +1187,21 @@ def _body_context() -> dict[str, Any]:
     recent_metrics = raw_history(14)
     body_analysis = generate_body_analysis(body_rows, latest_body or {}, pmc_today, recent_metrics)
 
+    # Today's fluid intake from Garmin hydration log (distinct from body-water %)
+    today_iso = local_today().isoformat()
+    water_today = next(
+        (r for r in reversed(recent_metrics)
+         if (r["date"].isoformat() if hasattr(r["date"], "isoformat") else str(r["date"])) == today_iso
+         and r.get("water_intake_ml") is not None),
+        None,
+    )
+    water_intake_l = (water_today["water_intake_ml"] / 1000.0) if water_today else None
+    water_goal_l = (
+        water_today["water_goal_ml"] / 1000.0
+        if water_today and water_today.get("water_goal_ml") is not None
+        else None
+    )
+
     # TDEE per day = Katch-McArdle BMR (body comp) + measured active calories.
     _tdee_by_date = {}
     _bmr_by_date = {}
@@ -1342,6 +1357,8 @@ def _body_context() -> dict[str, Any]:
         "muscle_values": muscle_values,
         "hydration_dates": _short(hydration_dates),
         "hydration_values": hydration_values,
+        "water_intake_l": water_intake_l,
+        "water_goal_l": water_goal_l,
         "bp_dates": _short(bp_dates),
         "bp_sys": bp_sys,
         "bp_dia": bp_dia,

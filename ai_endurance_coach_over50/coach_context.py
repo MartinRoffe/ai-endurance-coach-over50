@@ -1086,9 +1086,11 @@ def build_coach_context() -> str:
             f"Body fat: {_bf(latest_b.get('fat_pct'))}%  |  "
             f"Muscle mass: {_bf(latest_b.get('muscle_mass_kg'))} kg",
             f"Visceral fat: {_bf(latest_b.get('visceral_fat'), 0)}  |  "
-            f"Hydration: {_bf(latest_b.get('hydration_pct'))}%  |  "
+            f"Body water (bioimpedance TBW): {_bf(latest_b.get('hydration_pct'))}%  |  "
             f"BMI: {_bf(latest_b.get('bmi'))}  |  "
             f"Metabolic age: {_bf(latest_b.get('metabolic_age'), 0)}",
+            "Note: Body water % is scale bioimpedance, NOT fluid intake "
+            "(typical adult male ~50–65%). Do not advise drinking more from this number alone.",
         ]
         # Weight trend: first vs last reading
         weight_rows = [r for r in body_rows if r.get("weight_kg") is not None]
@@ -1104,8 +1106,29 @@ def build_coach_context() -> str:
                 f"= {rate:+.2f} kg/week",
                 f"Projected weight at Tenerife (13 Aug, {weeks_to_tenerife} weeks): {projected:.1f} kg",
             ]
-        # Calorie intake from Garmin food log
+        # Fluid intake from Garmin hydration log
         history_14 = raw_history(14)
+        intake_rows = [r for r in history_14 if r.get("water_intake_ml") is not None]
+        if intake_rows:
+            today_iso = today.isoformat()
+            today_intake = next(
+                (r for r in reversed(history_14)
+                 if (r["date"].isoformat() if hasattr(r["date"], "isoformat") else str(r["date"])) == today_iso
+                 and r.get("water_intake_ml") is not None),
+                None,
+            )
+            src = today_intake or intake_rows[-1]
+            avg_ml = sum(r["water_intake_ml"] for r in intake_rows) / len(intake_rows)
+            fluid_line = f"Today: {src['water_intake_ml'] / 1000:.1f} L"
+            if src.get("water_goal_ml"):
+                fluid_line += f" (goal {src['water_goal_ml'] / 1000:.1f} L)"
+            fluid_line += f"  |  14-day avg (logged days): {avg_ml / 1000:.1f} L"
+            body_parts += [
+                "## Fluid Intake (Garmin hydration log)",
+                fluid_line,
+                "Use this for fluid advice — not body-water %.",
+            ]
+        # Calorie intake from Garmin food log
         # TDEE = Katch-McArdle BMR (body comp) + measured active calories, per day.
         _tdee_by_date = {}
         try:
@@ -1188,7 +1211,7 @@ def build_coach_context() -> str:
                 body_parts.append("  |  ".join(parts))
 
         # Inject cached AI advisor text if available
-        cached_body = get_cached_text(f"body_analysis_v1_{today.isoformat()}")
+        cached_body = get_cached_text(f"body_analysis_v2_{today.isoformat()}")
         if cached_body:
             body_parts += ["", "Coach's body composition analysis (from Body tab):", cached_body]
         body_parts.append("")

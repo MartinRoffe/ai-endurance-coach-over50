@@ -42,6 +42,8 @@ Open `.env` and fill in what you need. Only the first two are required:
 | `GARMIN_EMAIL` | ✓ | Your Garmin Connect login email |
 | `GARMIN_PASSWORD` | ✓ | Your Garmin Connect password |
 | `ANTHROPIC_API_KEY` | — | Enables AI advice, the coach chat, and workout analysis |
+| `ELEVENLABS_API_KEY` | — | Optional natural coach voice (ElevenLabs Flash); browser TTS otherwise |
+| `ELEVENLABS_VOICE_ID` | — | Optional voice id (default: Daniel, British male) |
 | `GMAIL_ADDRESS` | — | The address the daily email is sent **from** |
 | `GMAIL_APP_PASSWORD` | — | A Gmail App Password (not your normal password) |
 | `REPORT_TO` | — | Who the email goes **to** (defaults to `GMAIL_ADDRESS`) |

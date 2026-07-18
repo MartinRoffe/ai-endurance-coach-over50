@@ -11,7 +11,7 @@ import os
 from datetime import date, timedelta
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -31,6 +31,7 @@ from ..body import fetch_blood_pressure, fetch_body_composition
 from ..client import get_api
 from ..coach_context import build_coach_context as _build_coach_context
 from ..display import enrich_activity
+from ..tts import synthesize as _tts_synthesize, tts_configured as _tts_configured
 from ..history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -1393,6 +1394,33 @@ async def coach_chat_stream(body: _CoachChatRequest):
     )
 
 
+class _CoachTtsRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2500)
+    previous_text: str = ""
+
+
+@app.get("/coach-tts-status")
+async def coach_tts_status():
+    enabled = _tts_configured()
+    return JSONResponse({
+        "enabled": enabled,
+        "provider": "elevenlabs" if enabled else None,
+    })
+
+
+@app.post("/coach-tts")
+async def coach_tts(body: _CoachTtsRequest):
+    if not _tts_configured():
+        raise HTTPException(status_code=503, detail="ElevenLabs not configured")
+    try:
+        audio = _tts_synthesize(body.text, previous_text=body.previous_text or "")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return Response(content=audio, media_type="audio/mpeg")
+
+
 @app.get("/coach")
 async def coach_tab_view(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="coach_tab.html", context={"active_tab": "coach"})
@@ -1465,7 +1493,7 @@ def regenerate_advice_endpoint(mode: str = "post"):
 
 @app.post("/regenerate-body-advice")
 def regenerate_body_advice_endpoint():
-    set_cached_text(f"body_analysis_v1_{_today().isoformat()}", "")
+    set_cached_text(f"body_analysis_v2_{_today().isoformat()}", "")
     ctx = _body_context()
     return JSONResponse({"analysis": ctx["body_analysis"]})
 

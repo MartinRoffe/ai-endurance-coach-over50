@@ -22,8 +22,8 @@
       onfocus="this.style.borderColor='rgba(99,102,241,0.5)'" onblur="this.style.borderColor='var(--border)'"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px'"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCoachMessage()}"></textarea>
-    <button type="button" id="mic-btn" title="Push to talk" aria-label="Push to talk"
-      style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap">MIC</button>
+    <button type="button" id="mic-btn" title="Hold to talk" aria-label="Hold to talk"
+      style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap;touch-action:none;-webkit-user-select:none;user-select:none">MIC</button>
     <button type="button" id="tts-mute-btn" title="Mute coach speech" aria-label="Mute coach speech"
       style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap">SPEAK</button>
     <select id="tts-voice" title="Coach voice" aria-label="Coach voice"
@@ -41,7 +41,6 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const _ttsSupported = typeof window.speechSynthesis !== 'undefined';
   let _recognition = null;
-  let _listening = false;
   let _voiceBaseText = '';
   let _autoSendOnStop = false;
   let _ttsMuted = localStorage.getItem('coach_tts_muted') === '1';
@@ -60,27 +59,6 @@
     voiceStatus.style.display = 'block';
   }
 
-  function syncMicUI() {
-    if (!micBtn || micBtn.style.display === 'none') return;
-    if (_listening) {
-      micBtn.style.borderColor = 'rgba(99,102,241,0.7)';
-      micBtn.style.color = 'var(--accent)';
-      micBtn.style.background = 'rgba(99,102,241,0.12)';
-      micBtn.textContent = 'STOP';
-      micBtn.title = 'Stop listening';
-      setVoiceStatus('Listening… click STOP when finished');
-    } else {
-      micBtn.style.borderColor = 'var(--border)';
-      micBtn.style.color = 'var(--muted)';
-      micBtn.style.background = 'none';
-      micBtn.textContent = 'MIC';
-      micBtn.title = 'Push to talk';
-      if (voiceStatus.textContent.indexOf('Listening') !== -1) {
-        setVoiceStatus('');
-      }
-    }
-  }
-
   function syncMuteUI() {
     if (!muteBtn || muteBtn.style.display === 'none') return;
     muteBtn.textContent = _ttsMuted ? 'MUTED' : 'SPEAK';
@@ -91,6 +69,17 @@
   }
 
   function stopTTS() {
+    _audioGen += 1;
+    _audioQueue = [];
+    _pumping = false;
+    if (_audioPlaying) {
+      try {
+        _audioPlaying.pause();
+        _audioPlaying.removeAttribute('src');
+        _audioPlaying.load();
+      } catch (e) {}
+      _audioPlaying = null;
+    }
     if (_ttsSupported) window.speechSynthesis.cancel();
     if (_ttsResumeTimer) {
       clearInterval(_ttsResumeTimer);
@@ -102,6 +91,12 @@
   let _ttsSpoken = 0;
   let _ttsFillerSaid = false;
   let _ttsResumeTimer = null;
+  let _elEnabled = false;
+  let _audioGen = 0;
+  let _audioQueue = [];
+  let _audioPlaying = null;
+  let _pumping = false;
+  let _lastElText = '';
 
   function ensureTTSAlive() {
     // Chrome sometimes pauses speechSynthesis mid-utterance; nudge it.
@@ -116,10 +111,8 @@
     }, 4000);
   }
 
-  function enqueueSpeech(raw) {
-    if (!_ttsSupported || _ttsMuted || !raw) return;
-    const clean = forSpeech(raw);
-    if (!clean) return;
+  function speakBrowser(clean) {
+    if (!_ttsSupported) return;
     const voice = selectedVoice();
     const utter = new SpeechSynthesisUtterance(clean);
     if (voice) utter.voice = voice;
@@ -129,9 +122,73 @@
     ensureTTSAlive();
   }
 
+  function playBlob(blob, gen) {
+    return new Promise(function(resolve) {
+      if (gen !== _audioGen) { resolve(); return; }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      _audioPlaying = audio;
+      const done = function() {
+        if (_audioPlaying === audio) _audioPlaying = null;
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onended = done;
+      audio.onerror = done;
+      audio.play().catch(done);
+    });
+  }
+
+  async function pumpAudioQueue() {
+    if (_pumping) return;
+    _pumping = true;
+    while (_audioQueue.length) {
+      const item = _audioQueue.shift();
+      if (item.gen !== _audioGen) continue;
+      try {
+        const blob = await item.ready;
+        if (item.gen !== _audioGen) continue;
+        if (!blob) {
+          speakBrowser(item.text);
+          continue;
+        }
+        await playBlob(blob, item.gen);
+      } catch (e) {
+        if (item.gen === _audioGen) speakBrowser(item.text);
+      }
+    }
+    _pumping = false;
+  }
+
+  function enqueueElevenLabs(clean) {
+    const gen = _audioGen;
+    const previous = _lastElText;
+    _lastElText = clean;
+    const ready = fetch('/coach-tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: clean, previous_text: previous}),
+    }).then(function(res) {
+      if (!res.ok) throw new Error('tts ' + res.status);
+      return res.blob();
+    }).catch(function() { return null; });
+    _audioQueue.push({gen: gen, text: clean, ready: ready});
+    pumpAudioQueue();
+  }
+
+  function enqueueSpeech(raw) {
+    if (_ttsMuted || !raw) return;
+    if (!_elEnabled && !_ttsSupported) return;
+    const clean = forSpeech(raw);
+    if (!clean) return;
+    if (_elEnabled) enqueueElevenLabs(clean);
+    else speakBrowser(clean);
+  }
+
   /** Queue any newly completed sentences from the live reply; flush remainder when final. */
   function feedTTS(accumulated, final) {
-    if (!_ttsSupported || _ttsMuted || !accumulated) return;
+    if (_ttsMuted || !accumulated) return;
+    if (!_elEnabled && !_ttsSupported) return;
     const text = accumulated;
     let start = _ttsSpoken;
 
@@ -178,6 +235,7 @@
     stopTTS();
     _ttsSpoken = 0;
     _ttsFillerSaid = false;
+    _lastElText = '';
   }
 
   // Default = browser voice. User picks from the dropdown (saved in localStorage).
@@ -196,7 +254,7 @@
   }
 
   function populateVoiceSelect() {
-    if (!_ttsSupported || !voiceSelect) return;
+    if (!_ttsSupported || !voiceSelect || _elEnabled) return;
     const voices = (window.speechSynthesis.getVoices() || []).filter(function(v) {
       return (v.lang || '').toLowerCase().startsWith('en');
     });
@@ -234,6 +292,20 @@
     });
   }
 
+  // Prefer ElevenLabs when configured; hide the browser voice picker.
+  fetch('/coach-tts-status').then(function(r) { return r.json(); }).then(function(j) {
+    _elEnabled = !!(j && j.enabled);
+    if (_elEnabled) {
+      if (voiceSelect) voiceSelect.style.display = 'none';
+      if (muteBtn) {
+        muteBtn.style.display = '';
+        syncMuteUI();
+      }
+      setVoiceStatus('Natural voice (ElevenLabs)');
+      setTimeout(function() { setVoiceStatus(''); }, 2500);
+    }
+  }).catch(function() {});
+
   /** Expand coaching shorthand into athlete-facing spoken English. */
   function forSpeech(text) {
     let s = String(text);
@@ -243,67 +315,138 @@
     s = s.replace(/^\s*[-*•]\s+/gm, '');
     s = s.replace(/[🔍✓]/g, '');
     s = s.replace(/→/g, ' to ');
-    s = s.replace(/—|–/g, ', ');
     s = s.replace(/\u00b1/g, ' plus or minus ');
     s = s.replace(/\u00d7/g, ' times ');
 
-    // Spoken dates (before unit/acronym passes)
+    // Spoken dates — do this before turning dashes into commas (ranges use –)
     const MONTHS = {
-      jan: 'January', feb: 'February', mar: 'March', apr: 'April',
-      may: 'May', jun: 'June', jul: 'July', aug: 'August',
-      sep: 'September', oct: 'October', nov: 'November', dec: 'December',
+      jan: 'January', january: 'January',
+      feb: 'February', february: 'February',
+      mar: 'March', march: 'March',
+      apr: 'April', april: 'April',
+      may: 'May',
+      jun: 'June', june: 'June',
+      jul: 'July', july: 'July',
+      aug: 'August', august: 'August',
+      sep: 'September', sept: 'September', september: 'September',
+      oct: 'October', october: 'October',
+      nov: 'November', november: 'November',
+      dec: 'December', december: 'December',
     };
     const DOWS = {
-      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
-      fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
+      mon: 'Monday', monday: 'Monday',
+      tue: 'Tuesday', tues: 'Tuesday', tuesday: 'Tuesday',
+      wed: 'Wednesday', wednesday: 'Wednesday',
+      thu: 'Thursday', thur: 'Thursday', thurs: 'Thursday', thursday: 'Thursday',
+      fri: 'Friday', friday: 'Friday',
+      sat: 'Saturday', saturday: 'Saturday',
+      sun: 'Sunday', sunday: 'Sunday',
     };
     const MONTH_FULL = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
     ];
-    function dayOrdinal(n) {
+    const ORD_WORDS = [
+      '', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh',
+      'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth',
+      'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth',
+      'nineteenth', 'twentieth', 'twenty-first', 'twenty-second', 'twenty-third',
+      'twenty-fourth', 'twenty-fifth', 'twenty-sixth', 'twenty-seventh',
+      'twenty-eighth', 'twenty-ninth', 'thirtieth', 'thirty-first',
+    ];
+    const ONES = [
+      '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+      'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+      'seventeen', 'eighteen', 'nineteen',
+    ];
+    const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty'];
+    function dayWord(n) {
       const d = parseInt(n, 10);
-      const mod = d % 100;
-      if (mod >= 11 && mod <= 13) return d + 'th';
-      switch (d % 10) {
-        case 1: return d + 'st';
-        case 2: return d + 'nd';
-        case 3: return d + 'rd';
-        default: return d + 'th';
-      }
+      return ORD_WORDS[d] || String(d);
+    }
+    function underSixty(n) {
+      n = parseInt(n, 10);
+      if (n < 20) return ONES[n];
+      return TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '');
+    }
+    function yearWords(y) {
+      y = parseInt(y, 10);
+      if (y >= 2010 && y <= 2099) return 'twenty ' + underSixty(y % 100);
+      if (y >= 2000 && y <= 2009) return 'two thousand and ' + ONES[y % 100];
+      return String(y);
+    }
+    function monthName(key) {
+      return MONTHS[String(key).toLowerCase()] || key;
     }
     function speakDayMonth(day, monKey, year) {
-      const month = MONTHS[monKey.toLowerCase()] || monKey;
-      const core = 'the ' + dayOrdinal(day) + ' of ' + month;
-      return year ? core + ', ' + year : core;
+      const core = 'the ' + dayWord(day) + ' of ' + monthName(monKey);
+      return year ? core + ', ' + yearWords(year) : core;
     }
+    const MON_RE = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+    const DOW_RE = 'Mon(?:day)?|Tue(?:s(?:day)?)?|Wed(?:nesday)?|Thu(?:r(?:s(?:day)?)?)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?';
 
-    // 2026-07-17 → July 17th, 2026
+    // 13–27 Aug / 13-27 August (before dash→comma)
+    s = s.replace(
+      new RegExp('\\b(\\d{1,2})\\s*[–—-]\\s*(\\d{1,2})\\s+(' + MON_RE + ')\\b', 'gi'),
+      function(_, d1, d2, mon) {
+        return 'the ' + dayWord(d1) + ' to the ' + dayWord(d2) + ' of ' + monthName(mon);
+      }
+    );
+    // 13 Aug–27 Aug
+    s = s.replace(
+      new RegExp('\\b(\\d{1,2})\\s+(' + MON_RE + ')\\s*[–—-]\\s*(\\d{1,2})\\s+(' + MON_RE + ')\\b', 'gi'),
+      function(_, d1, m1, d2, m2) {
+        return 'the ' + dayWord(d1) + ' of ' + monthName(m1) +
+          ' to the ' + dayWord(d2) + ' of ' + monthName(m2);
+      }
+    );
+
+    // Now safe to soften remaining dashes
+    s = s.replace(/—|–/g, ', ');
+
+    // 2026-07-17 → July the seventeenth, twenty twenty-six
     s = s.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function(_, y, m, d) {
       const mi = parseInt(m, 10) - 1;
-      if (mi < 0 || mi > 11) return y + ' ' + m + ' ' + d;
-      return MONTH_FULL[mi] + ' ' + dayOrdinal(d) + ', ' + y;
+      if (mi < 0 || mi > 11) return yearWords(y) + ' ' + m + ' ' + d;
+      return MONTH_FULL[mi] + ' the ' + dayWord(d) + ', ' + yearWords(y);
     });
-    // Fri 17 Jul / Fri 17 Jul 2026
+    // Fri 17 Jul / Friday, 17 July 2026
     s = s.replace(
-      /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+(\d{4}))?\b/gi,
+      new RegExp('\\b(' + DOW_RE + ')[,\\s]+(\\d{1,2})(?:st|nd|rd|th)?\\s+(' + MON_RE + ')(?:\\s+(\\d{4}))?\\b', 'gi'),
       function(_, dow, day, mon, year) {
-        const weekday = DOWS[dow.toLowerCase()] || dow;
+        const weekday = DOWS[dow.toLowerCase()] || DOWS[dow.toLowerCase().slice(0, 3)] || dow;
         return weekday + ' ' + speakDayMonth(day, mon, year);
       }
     );
-    // 17 Jul / 17 Jul 2026
+    // Jul 17 / July 17th, 2026 (US order)
     s = s.replace(
-      /\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+(\d{4}))?\b/gi,
-      function(_, day, mon, year) {
+      new RegExp('\\b(' + MON_RE + ')\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?\\b', 'gi'),
+      function(match, mon, day, year) {
+        const d = parseInt(day, 10);
+        if (d < 1 || d > 31) return match;
         return speakDayMonth(day, mon, year);
       }
     );
-    // Bare weekday abbrev when still left (e.g. "Mon:" lists)
-    s = s.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g, function(m) {
+    // 17 Jul / 17th July / 17 Jul 2026
+    s = s.replace(
+      new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(' + MON_RE + ')(?:\\s+(\\d{4}))?\\b', 'gi'),
+      function(match, day, mon, year) {
+        const d = parseInt(day, 10);
+        if (d < 1 || d > 31) return match;
+        return speakDayMonth(day, mon, year);
+      }
+    );
+    // Bare weekday abbrev still left (e.g. "Mon:" lists)
+    s = s.replace(/\b(Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun)\b/g, function(m) {
       return DOWS[m.toLowerCase()] || m;
     });
-    // 07:30 / 7:30 → half-past style where clear, else "7 30"
+    // Bare month abbrev still left ("Jul", "Sep.", chart labels) — never leave "Jul" for TTS
+    s = s.replace(/\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\b/gi, function(m) {
+      return monthName(m.replace(/\.$/, ''));
+    });
+    // Standalone years that look like years in prose (after ISO handled)
+    s = s.replace(/\b(20[2-9]\d)\b/g, function(_, y) { return yearWords(y); });
+    // 07:30 / 7:30
     s = s.replace(/\b(\d{1,2}):(\d{2})\b/g, function(_, h, min) {
       const hour = parseInt(h, 10);
       if (min === '00') return String(hour) + " o'clock";
@@ -373,100 +516,254 @@
     input.style.height = Math.min(input.scrollHeight, 160) + 'px';
   }
 
-  function stopListening(opts) {
-    opts = opts || {};
-    _autoSendOnStop = !!opts.autoSend;
-    if (!_recognition || !_listening) {
-      _listening = false;
-      syncMicUI();
-      return;
-    }
-    try { _recognition.stop(); } catch (e) {}
+  // Mic / STT — strict state machine + hold-to-talk (avoids click toggle races).
+  // idle → starting → listening → stopping → idle
+  let _micState = 'idle';
+  let _micGen = 0;
+  let _pendingStop = false;
+  let _finalTranscript = '';
+
+  function setMicState(next) {
+    _micState = next;
+    syncMicUI();
   }
 
-  function startListening() {
-    if (!SpeechRecognition || !_recognition) return;
-    const sendBtn = document.getElementById('send-btn');
-    if (sendBtn.disabled) return;
-    stopTTS();
+  function syncMicUI() {
+    if (!micBtn || micBtn.style.display === 'none') return;
+    const sendBusy = document.getElementById('send-btn').disabled;
+    const trans = _micState === 'starting' || _micState === 'stopping';
+    micBtn.disabled = trans || sendBusy;
+    micBtn.style.opacity = (trans || sendBusy) ? '0.55' : '1';
+    micBtn.style.cursor = micBtn.disabled ? 'default' : 'pointer';
+
+    if (_micState === 'listening' || _micState === 'starting') {
+      micBtn.style.borderColor = 'rgba(99,102,241,0.7)';
+      micBtn.style.color = 'var(--accent)';
+      micBtn.style.background = 'rgba(99,102,241,0.12)';
+      micBtn.textContent = 'HOLD';
+      micBtn.title = 'Release to send';
+      if (_micState === 'starting') setVoiceStatus('Starting mic… hold to talk');
+      else setVoiceStatus('Listening… release to send');
+    } else if (_micState === 'stopping') {
+      micBtn.style.borderColor = 'rgba(99,102,241,0.7)';
+      micBtn.style.color = 'var(--accent)';
+      micBtn.style.background = 'rgba(99,102,241,0.12)';
+      micBtn.textContent = '…';
+      micBtn.title = 'Stopping…';
+      setVoiceStatus('Stopping…');
+    } else {
+      micBtn.style.borderColor = 'var(--border)';
+      micBtn.style.color = 'var(--muted)';
+      micBtn.style.background = 'none';
+      micBtn.textContent = 'MIC';
+      micBtn.title = 'Hold to talk';
+      const vs = voiceStatus.textContent || '';
+      if (/Listening|Starting mic|Stopping|hold to talk|release to send/i.test(vs)) {
+        setVoiceStatus('');
+      }
+    }
+  }
+
+  function detachRecognition(r) {
+    if (!r) return;
+    r.onstart = null;
+    r.onresult = null;
+    r.onerror = null;
+    r.onend = null;
+  }
+
+  function abortRecognitionSilent() {
+    if (!_recognition) return;
+    const r = _recognition;
+    detachRecognition(r);
+    try { r.abort(); } catch (e) {}
+    _recognition = null;
+  }
+
+  function finishMicSession(gen, wasAuto) {
+    if (gen !== _micGen) return;
+    _pendingStop = false;
+    _recognition = null;
+    setMicState('idle');
     const input = document.getElementById('coach-input');
-    _voiceBaseText = input.value.trim();
-    _autoSendOnStop = true;
-    try {
-      _recognition.start();
-    } catch (e) {
-      // Already started — ignore
+    const text = (input.value || '').trim();
+    if (wasAuto && text && text !== _voiceBaseText) {
+      setTimeout(function() {
+        if (gen !== _micGen) return;
+        if (!document.getElementById('send-btn').disabled) sendCoachMessage();
+      }, 200);
+    } else if (!(voiceStatus.textContent || '').match(/blocked|No mic|network|hiccup|No speech/)) {
+      setVoiceStatus('');
     }
   }
 
-  function toggleListening() {
-    if (_listening) stopListening({autoSend: true});
-    else startListening();
-  }
+  function makeRecognition(gen) {
+    const r = new SpeechRecognition();
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+    r.lang = navigator.language || 'en-GB';
 
-  if (SpeechRecognition) {
-    _recognition = new SpeechRecognition();
-    _recognition.continuous = false;
-    _recognition.interimResults = true;
-    _recognition.lang = navigator.language || 'en-GB';
-
-    _recognition.onstart = function() {
-      _listening = true;
-      syncMicUI();
+    r.onstart = function() {
+      if (gen !== _micGen) return;
+      if (_pendingStop) {
+        // Released before Chrome finished starting — stop immediately
+        _pendingStop = false;
+        setMicState('stopping');
+        try { r.stop(); } catch (e) { try { r.abort(); } catch (e2) {} }
+        return;
+      }
+      setMicState('listening');
     };
 
-    _recognition.onresult = function(event) {
+    r.onresult = function(event) {
+      if (gen !== _micGen) return;
       let interim = '';
-      let finalText = '';
-      for (let i = 0; i < event.results.length; i++) {
-        const r = event.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interim += r[0].transcript;
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) _finalTranscript += t;
+        else interim += t;
       }
       const input = document.getElementById('coach-input');
-      const pieces = [_voiceBaseText, (finalText || interim).trim()].filter(Boolean);
-      input.value = pieces.join(pieces[0] && pieces[1] ? ' ' : '');
+      const spoken = (_finalTranscript + (interim ? ' ' + interim : '')).trim();
+      const pieces = [_voiceBaseText, spoken].filter(Boolean);
+      input.value = pieces.join(pieces.length === 2 ? ' ' : '');
       resizeInput();
     };
 
-    _recognition.onerror = function(event) {
-      _listening = false;
-      syncMicUI();
-      if (event.error === 'not-allowed') {
+    r.onerror = function(event) {
+      if (gen !== _micGen) return;
+      const err = event.error || '';
+      if (err === 'aborted') return; // onend follows
+      if (err === 'not-allowed' || err === 'service-not-allowed') {
         setVoiceStatus('Microphone blocked — allow access for this site, or type instead');
-      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
-        setVoiceStatus('Could not hear that — try again or type');
-      } else {
-        setVoiceStatus('');
+        return;
       }
+      if (err === 'no-speech') {
+        setVoiceStatus('No speech heard — hold MIC and try again');
+        return;
+      }
+      if (err === 'audio-capture') {
+        setVoiceStatus('No microphone found');
+        return;
+      }
+      if (err === 'network') {
+        setVoiceStatus('Speech service network error — try again');
+        return;
+      }
+      setVoiceStatus('Mic hiccup — hold MIC again');
     };
 
-    _recognition.onend = function() {
+    r.onend = function() {
+      if (gen !== _micGen) return;
       const wasAuto = _autoSendOnStop;
-      _listening = false;
       _autoSendOnStop = false;
-      syncMicUI();
-      setVoiceStatus('');
-      const input = document.getElementById('coach-input');
-      const text = input.value.trim();
-      if (wasAuto && text) {
-        // Brief pause so the athlete can glance at the transcript before send
-        setTimeout(function() {
-          if (!document.getElementById('send-btn').disabled) sendCoachMessage();
-        }, 350);
-      }
+      finishMicSession(gen, wasAuto);
     };
 
+    return r;
+  }
+
+  function stopListening(opts) {
+    opts = opts || {};
+    if (_micState === 'idle' || _micState === 'stopping') return;
+
+    _autoSendOnStop = !!opts.autoSend;
+
+    if (_micState === 'starting') {
+      // Don't abort mid-start (races Chrome) — stop as soon as onstart fires
+      _pendingStop = true;
+      return;
+    }
+
+    // listening
+    setMicState('stopping');
+    if (!_recognition) {
+      finishMicSession(_micGen, _autoSendOnStop);
+      return;
+    }
+    try {
+      _recognition.stop();
+    } catch (e) {
+      try { _recognition.abort(); } catch (e2) {}
+      finishMicSession(_micGen, _autoSendOnStop);
+    }
+  }
+
+  function startListening() {
+    if (!SpeechRecognition) return;
+    if (_micState !== 'idle') return;
+    const sendBtn = document.getElementById('send-btn');
+    if (sendBtn.disabled) {
+      setVoiceStatus('Wait for the coach to finish…');
+      return;
+    }
+
+    stopTTS();
+    const input = document.getElementById('coach-input');
+    _voiceBaseText = input.value.trim();
+    _finalTranscript = '';
+    _autoSendOnStop = true;
+    _pendingStop = false;
+    _micGen += 1;
+    const gen = _micGen;
+
+    abortRecognitionSilent();
+    setMicState('starting');
+    _recognition = makeRecognition(gen);
+
+    try {
+      _recognition.start();
+    } catch (e) {
+      // Prior session still tearing down — one delayed retry, same generation
+      abortRecognitionSilent();
+      setTimeout(function() {
+        if (gen !== _micGen || _micState !== 'starting') return;
+        _recognition = makeRecognition(gen);
+        try {
+          _recognition.start();
+        } catch (e2) {
+          setVoiceStatus('Could not start mic — try again');
+          finishMicSession(gen, false);
+        }
+      }, 300);
+    }
+  }
+
+  if (SpeechRecognition) {
     micBtn.style.display = '';
-    micBtn.addEventListener('click', function(e) {
+    // Hold-to-talk: press/hold starts, release stops + sends. No click toggle races.
+    micBtn.addEventListener('pointerdown', function(e) {
+      if (e.button != null && e.button !== 0) return;
       e.preventDefault();
-      toggleListening();
+      try { micBtn.setPointerCapture(e.pointerId); } catch (err) {}
+      startListening();
+    });
+    function endHold(e) {
+      e.preventDefault();
+      stopListening({autoSend: true});
+    }
+    micBtn.addEventListener('pointerup', endHold);
+    micBtn.addEventListener('pointercancel', endHold);
+    micBtn.addEventListener('lostpointercapture', function() {
+      if (_micState === 'listening' || _micState === 'starting') {
+        stopListening({autoSend: true});
+      }
+    });
+    // Keyboard: Space toggles for accessibility (hold not practical from keydown alone)
+    micBtn.addEventListener('keydown', function(e) {
+      if (e.key !== ' ' && e.key !== 'Enter') return;
+      e.preventDefault();
+      if (_micState === 'idle') startListening();
+      else if (_micState === 'listening') stopListening({autoSend: true});
     });
   }
 
   if (_ttsSupported) {
     muteBtn.style.display = '';
     syncMuteUI();
+  }
+  if (muteBtn) {
     muteBtn.addEventListener('click', function(e) {
       e.preventDefault();
       _ttsMuted = !_ttsMuted;
@@ -575,7 +872,7 @@
     const text = input.value.trim();
     if (!text || btn.disabled) return;
 
-    if (_listening) stopListening({autoSend: false});
+    if (_micState !== 'idle') stopListening({autoSend: false});
     resetTTSStream();
 
     input.value = '';
@@ -654,7 +951,11 @@
               streamDone = true;
               feedTTS(accumulated, true);
             } else if (event.type === 'error') {
-              bubble.innerHTML = '<p style="color:var(--muted)">Something went wrong. Please try again.</p>';
+              bubble.textContent = '';
+              const p = document.createElement('p');
+              p.style.color = 'var(--muted)';
+              p.textContent = event.message || 'Something went wrong. Please try again.';
+              bubble.appendChild(p);
               stopTTS();
             }
           } catch(e) {}
