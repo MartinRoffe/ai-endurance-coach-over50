@@ -32,6 +32,7 @@ from ..client import get_api
 from ..coach_context import build_coach_context as _build_coach_context
 from ..display import enrich_activity
 from ..tts import synthesize as _tts_synthesize, tts_configured as _tts_configured
+from ..search import search as app_search
 from ..history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -1406,6 +1407,12 @@ async def coach_tts_status():
         "enabled": enabled,
         "provider": "elevenlabs" if enabled else None,
     })
+
+
+@app.get("/api/search")
+async def api_search(q: str = "", limit: int = 25):
+    limit = max(1, min(limit, 50))
+    return JSONResponse({"results": app_search(q, limit=limit)})
 
 
 @app.post("/coach-tts")

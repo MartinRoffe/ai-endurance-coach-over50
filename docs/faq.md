@@ -2,6 +2,13 @@
 
 Short answers to the things most likely to trip you up.
 
+## How do I find something quickly in the app?
+
+Use the **search box** in the top nav (right side), or press **⌘K** (Mac) /
+**Ctrl+K** (Windows/Linux). It searches pages, Help, plan sessions, nutrition
+menus and recipes, shopping items, and recent activities. Arrow keys move
+through results; Enter opens the selected hit.
+
 ## My readiness tiles (HRV, sleep, body battery) are empty
 
 Those metrics only exist **after your watch syncs the overnight data**. First

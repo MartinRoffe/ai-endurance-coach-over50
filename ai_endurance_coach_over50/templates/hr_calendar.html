@@ -45,6 +45,7 @@
     .sess-event { background: #091525; border-color: #0ea5e9; color: #7dd3fc; }
 
     .today-ring { outline: 2px solid #a3e635; outline-offset: 2px; }
+    .search-focus-ring { outline: 2px solid #a3e635; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(163,230,53,0.2); }
     .is-past    { opacity: 0.42; }
     .day-header { color: #c4c4cc; font-family: 'DM Mono', monospace; font-size: 11px;
                   letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
@@ -264,6 +265,7 @@
                   {% if day.is_past %}is-past{% endif %}
                   {% if is_clickable %}clickable-session{% endif %}"
            style="min-height:60px"
+           data-cal-date="{{ day.date.isoformat() }}"
            {% if is_clickable %}
              data-label="{{ day.label }}"
              data-dur-fmt="{{ day.dur_fmt }}"
@@ -316,6 +318,7 @@
                   {% if day.is_today %}today-ring{% endif %}
                   {% if day.is_past %}is-past{% endif %}"
            style="min-height:72px"
+           data-cal-date="{{ day.date.isoformat() }}"
            data-label="{{ day.label }}"
            data-stage="{{ day.day_num_stage }}"
            data-km="{{ day.km }}"
@@ -905,6 +908,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHrModal
 })();
 </script>
 {% endif %}
+
+<script>
+(function () {
+  const d = new URLSearchParams(location.search).get('date');
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+  const el = document.querySelector('[data-cal-date="' + d + '"]');
+  if (!el) return;
+  el.classList.add('search-focus-ring');
+  setTimeout(function () { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80);
+})();
+</script>
 
 </body>
 </html>

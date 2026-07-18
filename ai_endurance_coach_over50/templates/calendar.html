@@ -23,6 +23,7 @@
     .sess-camp-rest   { background: #111114; border-color: #27272a; color: #52525b; }
     a.no-underline    { text-decoration: none; }
     .today-ring    { outline: 2px solid #a3e635; outline-offset: 2px; }
+    .search-focus-ring { outline: 2px solid #a3e635; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(163,230,53,0.2); }
     .is-past       { opacity: 0.4; }
     .day-header    { color: #c4c4cc; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
     .clickable-session { cursor: pointer; }
@@ -181,6 +182,7 @@
                     {% if day.is_today %}today-ring{% endif %}
                     {% if day.is_past %}is-past{% endif %}
                     {% if is_missed or (is_clickable and not is_missed and not is_compound) %}clickable-session{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}"
              {% if is_missed %}
                data-date="{{ day.date.isoformat() }}"
                data-label="{{ day.label }}"
@@ -298,6 +300,7 @@
                     {% if day.is_today %}today-ring{% endif %}
                     {% if day.is_past %}is-past{% endif %}
                     {% if is_clickable %}clickable-session{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}"
              {% if is_clickable %}
                data-label="{{ day.label }}"
                data-dur="{{ day.dur_min }}"
@@ -319,6 +322,7 @@
         <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-recovery
                     {% if day.is_today %}today-ring{% endif %}
                     {% if day.is_past %}is-past{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}"
              title="{{ day.note or 'Optional recovery outing — not a goal race' }}">
           <div class="flex items-start justify-between mb-0.5">
             <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
@@ -330,7 +334,8 @@
         {% elif day.is_event and not day.is_mersea %}
         <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-charity
                     {% if day.is_today %}today-ring{% endif %}
-                    {% if day.is_past %}is-past{% endif %}">
+                    {% if day.is_past %}is-past{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}">
           <div class="flex items-start justify-between mb-0.5">
             <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
             <span class="text-[11px] text-sky-400 font-semibold">D{{ day.day_num_ride }}</span>
@@ -344,6 +349,7 @@
                     {% if day.is_today %}today-ring{% endif %}
                     {% if day.is_past %}is-past{% endif %}
                     {% if is_clickable %}clickable-session{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}"
              {% if is_clickable %}
                data-label="{{ day.label }}"
                data-dur="{{ day.dur_min }}"
@@ -951,6 +957,17 @@
       </div>
     </div>
   </div>
+
+  <script>
+  (function () {
+    const d = new URLSearchParams(location.search).get('date');
+    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const el = document.querySelector('[data-cal-date="' + d + '"]');
+    if (!el) return;
+    el.classList.add('search-focus-ring');
+    setTimeout(function () { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80);
+  })();
+  </script>
 
 </body>
 </html>

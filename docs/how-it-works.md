@@ -101,6 +101,9 @@ open [Architecture](architecture.md). For how prompts and tools are built, open
 
 ## Where to go next
 
+Use the top-nav **search** box (or **⌘K** / **Ctrl+K**) to jump to pages, Help,
+plan sessions, recipes, and shopping items.
+
 | Topic | Page |
 |-------|------|
 | Install and first run | [Getting Started](getting-started.md) |
