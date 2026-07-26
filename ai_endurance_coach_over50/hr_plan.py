@@ -54,7 +54,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  60),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("endurance", "Z2 Steady",              60),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",              90),
@@ -64,7 +64,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  60),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 2×20",   75),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             120),
@@ -74,7 +74,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  60),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 2×20",   75),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             150),
@@ -94,7 +94,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  60),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 2×20",   90),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             150),
@@ -104,7 +104,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 2×20",   90),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             180),
@@ -114,7 +114,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 3×15",   90),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             180),
@@ -134,7 +134,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 3×20",  105),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             210),
@@ -144,7 +144,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 3×20",  105),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             240),
@@ -155,7 +155,7 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("rest",      "Rest",                    0),
         ("endurance", "Z2 Endurance",           60),
         ("sweetspot", "Low Cadence Sweetspot",  75),
-        ("recovery",  "Recovery + Core",        45),
+        ("recovery",  "KB + Trunk",              45),
         ("tempo",     "Tempo Intervals 3×20",  105),
         ("gym",       "Gym — Strength",         60),
         ("long",      "Long Ride",             270),
@@ -778,6 +778,23 @@ def hr_session_for_date(d: date) -> tuple[str, str, int] | None:
     return HR_TRAINING_WEEKS[week_idx][day_idx]
 
 
+# HR-plan strength/recovery labels that open the shared KB session modal.
+# The 46-week block uses the same Lebe Stark + single-leg programme as the
+# charity plan (see /position) — one strength vocabulary across both plans.
+_HR_STRENGTH_LABELS = {
+    "KB + Trunk", "Strength + Core", "Recovery + Core",
+    "Gym — Strength", "Gym — Maintenance",
+}
+
+
+def _hr_strength_spec(label: str) -> dict | None:
+    """Position-programme KB spec for an HR strength slot, video links included."""
+    if label not in _HR_STRENGTH_LABELS:
+        return None
+    from .plan import POSITION_KB_SPEC_A, POSITION_KB_SPEC_B, _enrich_kb_spec
+    return _enrich_kb_spec(POSITION_KB_SPEC_B if "Gym" in label else POSITION_KB_SPEC_A)
+
+
 def build_hr_calendar_weeks() -> list[dict]:
     """Return one dict per training week for template rendering."""
     from .history import list_plan_overrides, load_ftp_tests
@@ -825,6 +842,7 @@ def build_hr_calendar_weeks() -> list[dict]:
                 "power_watts": power_watts_range(ftp_w, pt) if ftp_w else (
                     pt if isinstance(pt, str) else None
                 ),
+                "kb_spec": _hr_strength_spec(label),
             })
         weeks.append({
             "week_num": week_num,

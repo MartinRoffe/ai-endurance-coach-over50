@@ -101,8 +101,8 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
     ],
     # WK 10
     [
-        ("rest",     "Rest",                  0),
-        ("strength", "Light KB",             25),   # heavy/low-volume dose — 4×4 dropped
+        ("strength", "Light KB",             30),   # 2nd KB — active recovery after Sun 255′; leaves Wed Threshold clean
+        ("strength", "Light KB",             25),   # Lebe Stark follow-along (+ single-leg); see /position
         ("tempo",    "Threshold Ride",       90),   # Q1
         ("bike",     "Z2 Endurance",         90),
         ("tempo",    "Low Cadence Ride",     75),   # Q2 — strength-endurance, replaces dropped gym stimulus
@@ -112,9 +112,9 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
     # WK 11
     [
         ("bike",     "Recovery Spin",        60),   # back-to-back day 2 after Wk10 Sun 255m long ride
-        ("strength", "Light KB",             25),   # 4×4 dropped
+        ("strength", "Light KB",             25),   # Lebe Stark + trunk block → /position
         ("bike",     "Z2 Endurance",         90),   # extended from 60m
-        ("bike",     "Easy Ride",            45),   # freed from Light KB — 1 strength/week
+        ("strength", "Light KB",             30),   # 2nd Light KB (was Easy Ride) — Lebe Stark + suitcase
         ("bike",     "Easy Prep Ride",       60),
         ("rest",     "Rest",                  0),   # full rest before the 5 hr event simulation (was Easy Ruck)
         ("long",     "Long Ride",           300),   # extended from 210m — 5 hr event simulation
@@ -124,9 +124,9 @@ TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("bike",     "Recovery Spin",        60),   # event sim: day 2 tired legs after Wk11 Sun 300m ride
         ("strength", "Light KB",             30),
         ("ftp",      "Final FTP Test",       60),
-        ("strength", "Easy MaxiClimber",     20),
+        ("strength", "Light KB",             30),   # strength rebuild outranks Maxi this taper week
         ("bike",     "Easy Spin",            45),
-        ("bike",     "Easy Spin",            45),   # was Celebration Ruck — keep legs cycling-fresh into camp
+        ("rest",     "Rest",                  0),   # full rest before final long ride into camp (was Easy Spin/Celebration Ruck)
         ("long",     "Long Ride (Easy)",    120),
     ],
 ]
@@ -167,8 +167,8 @@ MAXI_INTERVALS: dict[int, dict] = {
 def maxi_target_zone(d: date) -> str | None:
     """Prescribed HR-zone target for the MaxiClimber session on date `d`.
 
-    The `norwegian`/`easy` flags on the week's MAXI_INTERVALS spec decide the
-    zone. This mapping is duplicated in JS in the calendar modal (calendar.html)
+    The `easy` flag on the week's MAXI_INTERVALS spec decides the zone. This
+    mapping is duplicated in JS in the calendar modal (calendar.html)
     — keep the two in sync if you change a zone here.
     Returns None when `d` has no MaxiClimber spec (outside the 12-week plan).
     """
@@ -178,8 +178,6 @@ def maxi_target_zone(d: date) -> str | None:
     spec = MAXI_INTERVALS.get(delta // 7 + 1)
     if not spec:
         return None
-    if spec.get("norwegian"):
-        return "Z4–5 (85–95% max HR) — Norwegian 4×4 protocol"
     if spec.get("easy"):
         return "Z1–2 (easy aerobic / deload)"
     return "Z2–3 (60–80% max HR)"
@@ -206,6 +204,8 @@ KB_VIDEO_URLS: dict[str, str] = {
     "KB Half-Kneeling Press": "https://www.youtube.com/watch?v=5cUBtrQ5LPQ",
     "KB Windmill":            "https://www.youtube.com/watch?v=1N1Qs9FO4GU",
     "Single-Arm Swing":       "https://www.youtube.com/watch?v=ANjKto7aSH0",
+    # Position-programme follow-along (defined below as _LEBE_STARK_20)
+    "Lebe Stark 20-min Over-40": "https://www.youtube.com/watch?v=3i5ml0UOEa0",
 }
 
 # ── "Rucksack then Kettlebell" — standalone Saturday strength session ──────────
@@ -327,45 +327,44 @@ KB_FULL_SPECS: dict[int, dict] = {
             {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 10/s", "target": "Rotational stability"},
         ]
     },
-    9: {
-        "note": "Peak loading. KB block first, then Norwegian 4×4 on MaxiClimber.",
-        "exercises": [
-            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
-            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
-            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 12",   "target": "Quad + hip mobility"},
-            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 10/s", "target": "Balance + hip stability"},
-            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 30m/s","target": "Lateral core"},
-            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 10/s", "target": "Anti-rotation + shoulder"},
-            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
-            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 12/s", "target": "Rotational stability"},
-        ]
-    },
-    10: {
-        "note": "Match or exceed last week. KB block first, then Norwegian 4×4.",
-        "exercises": [
-            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "4 × 5",    "target": "Posterior chain"},
-            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "4 × 15",   "target": "Explosive hip extension"},
-            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 12",   "target": "Quad + hip mobility"},
-            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 10/s", "target": "Balance + hip stability"},
-            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "3 × 30m/s","target": "Lateral core"},
-            {"id": "C2", "name": "KB Half-Kneeling Press", "sets_reps": "3 × 10/s", "target": "Anti-rotation + shoulder"},
-            {"id": "D1", "name": "KB Windmill",            "sets_reps": "3 × 5/s",  "target": "Thoracic rotation"},
-            {"id": "D2", "name": "Single-Arm Swing",       "sets_reps": "3 × 12/s", "target": "Rotational stability"},
-        ]
-    },
-    11: {
-        "note": "Taper — A+B+C only before the Norwegian 4×4.",
-        "exercises": [
-            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "3 × 5",    "target": "Posterior chain"},
-            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "3 × 12",   "target": "Explosive hip extension"},
-            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 10",   "target": "Quad + hip mobility"},
-            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 8/s",  "target": "Balance + hip stability"},
-            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "2 × 20m/s","target": "Lateral core"},
-        ]
-    },
+    # Weeks 9–12 carry no "KB + MaxiClimber" sessions (see MAXI_INTERVALS note) —
+    # their strength days use the Lebe Stark position specs in KB_SPECS instead.
 }
 
 # Abbreviated KB circuit for Light KB / post-ruck sessions.
+# Weeks 9–12 and bridge: Lebe Stark follow-along + optional bolt-ons (see /position).
+# Cycling schedule dates are unchanged — only modal content lives here.
+_LEBE_STARK_20 = "https://www.youtube.com/watch?v=3i5ml0UOEa0"
+_POSITION_NOTE = (
+    "Lebe Stark “Perfect 20-Minute Workout For Men Over 40” follow-along — 2 RIR; "
+    "halve reps on unfamiliar moves for the first fortnight. "
+    f"Video: {_LEBE_STARK_20}. "
+    "Trunk & shoulder block follows the strength work (ride days stay just rides) — cues/timers → /position"
+)
+
+_SINGLE_LEG = [
+    {"id": "L1", "name": "Split Squat",              "sets_reps": "3 × 8/s",  "target": "Single-leg squat pattern"},
+    {"id": "L2", "name": "Step-Down",                "sets_reps": "2 × 8/s",  "target": "Eccentric knee control"},
+    {"id": "L3", "name": "Single-Leg Glute Bridge",  "sets_reps": "2 × 10/s", "target": "Glute / pelvis stability"},
+]
+
+# Shared Light KB for bridge / event-prep soft days (not week-indexed).
+POSITION_KB_SPEC_A: dict = {
+    "note": f"Strength 1 — {_POSITION_NOTE}. Bolt on the single-leg block (~8 min) after the video.",
+    "exercises": [
+        {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body strength · 2 RIR"},
+        *_SINGLE_LEG,
+    ],
+}
+
+POSITION_KB_SPEC_B: dict = {
+    "note": f"Strength 2 — {_POSITION_NOTE}. Finish with suitcase carries (24 kg now; 32 kg from Oct).",
+    "exercises": [
+        {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body strength · 2 RIR"},
+        {"id": "C1", "name": "KB Suitcase Carry",         "sets_reps": "3 × 30m/s",    "target": "Anti-lateral-flexion · extra set on right"},
+    ],
+}
+
 KB_SPECS: dict[int, dict] = {
     1: {
         "note": "After the ruck — abbreviated. Hip hinge quality over volume.",
@@ -409,22 +408,33 @@ KB_SPECS: dict[int, dict] = {
             {"id": "B1", "name": "KB Goblet Squat",     "sets_reps": "2 × 8",  "target": "Quad + mobility"},
         ]
     },
-    11: {
-        "note": "Taper — reduce volume, maintain intensity. A+B+C blocks.",
+    9: {
+        "note": f"Strength rebuild Phase 1. {_POSITION_NOTE}",
         "exercises": [
-            {"id": "A1", "name": "KB Deadlift",            "sets_reps": "3 × 5",   "target": "Posterior chain"},
-            {"id": "A2", "name": "KB Swing (Two-Hand)",    "sets_reps": "3 × 12",  "target": "Explosive hip extension"},
-            {"id": "B1", "name": "KB Goblet Squat",        "sets_reps": "3 × 10",  "target": "Quad + hip mobility"},
-            {"id": "B2", "name": "Single-Leg KB Deadlift", "sets_reps": "3 × 8/s", "target": "Balance + hip stability"},
-            {"id": "C1", "name": "KB Suitcase Carry",      "sets_reps": "2 × 20m/s","target": "Lateral core"},
+            {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body · 2 RIR"},
+            *_SINGLE_LEG,
+        ]
+    },
+    10: {
+        "note": f"Strength rebuild Phase 1 — 2× this week. {_POSITION_NOTE}",
+        "exercises": [
+            {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body · 2 RIR"},
+            *_SINGLE_LEG,
+            {"id": "C1", "name": "KB Suitcase Carry",         "sets_reps": "3 × 30m/s",    "target": "Anti-lateral-flexion · extra set on right"},
+        ]
+    },
+    11: {
+        "note": f"Taper week — keep both sessions, stay well clear of failure. {_POSITION_NOTE}",
+        "exercises": [
+            {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body · stop early"},
+            *_SINGLE_LEG,
         ]
     },
     12: {
-        "note": "Final strength session — stay fresh. Just the essentials.",
+        "note": f"Camp taper — stay fresh; still hit both strength days. {_POSITION_NOTE}",
         "exercises": [
-            {"id": "A1", "name": "KB Deadlift",         "sets_reps": "2 × 5",  "target": "Posterior chain"},
-            {"id": "A2", "name": "KB Swing (Two-Hand)", "sets_reps": "2 × 10", "target": "Explosive hip extension"},
-            {"id": "B1", "name": "KB Goblet Squat",     "sets_reps": "2 × 8",  "target": "Quad + mobility"},
+            {"id": "V1", "name": "Lebe Stark 20-min Over-40", "sets_reps": "Follow-along", "target": "Full-body · light"},
+            {"id": "C1", "name": "KB Suitcase Carry",         "sets_reps": "2 × 30m/s",    "target": "Anti-lateral-flexion"},
         ]
     },
 }
@@ -449,7 +459,8 @@ def session_for_date(d: date) -> tuple[str, str, int] | None:
 
 
 def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
-    """Like session_for_date but also covers camp buffer days, Tenerife, event prep and charity ride."""
+    """Like session_for_date but also covers camp buffer days, Tenerife, event prep,
+    charity ride, and the post-charity position bridge through HR Base start."""
     result = session_for_date(d)
     if result is not None:
         return result
@@ -478,6 +489,11 @@ def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
     for cr in CHARITY_DAYS:
         if cr["date"] == d:
             return ("bike", f"{cr['label']} ({cr['km']}km charity ride)", 0)
+
+    # Post-charity → Haute Route bridge (absorption + strength rebuild)
+    bridge = POSITION_BRIDGE_DAYS.get(d)
+    if bridge:
+        return (bridge["type"], bridge["label"], bridge["dur_min"])
 
     return None
 
@@ -670,15 +686,17 @@ CAMP_GRID_WORKOUTS: dict[date, dict] = {
 # Sep 5–9: event-specific quality (sweetspot, 4.5h + 2h back-to-back, tempo sharpener).
 # Sep 11: short activation; Sep 12: full rest before the start.
 EVENT_PREP_DAYS: list[dict] = [
-    {"date": date(2026, 8, 31), "type": "bike",  "label": "Easy Spin",           "dur_min": 30},
-    {"date": date(2026, 9,  1), "type": "bike",  "label": "Easy Spin",           "dur_min": 45},
-    {"date": date(2026, 9,  3), "type": "long",  "label": "Z2 Endurance",        "dur_min": 90},
-    {"date": date(2026, 9,  5), "type": "tempo", "label": "Sweetspot Intervals", "dur_min": 90},
-    {"date": date(2026, 9,  6), "type": "long",  "label": "Pre-Event Long Ride",  "dur_min": 270},
-    {"date": date(2026, 9,  7), "type": "long",  "label": "Long Ride (Easy)",    "dur_min": 120},  # only true BTB rehearsal for the 190+120 km event
-    {"date": date(2026, 9,  8), "type": "bike",  "label": "Recovery Spin",       "dur_min": 45},
-    {"date": date(2026, 9,  9), "type": "tempo", "label": "Tempo Intervals",     "dur_min": 75},
-    {"date": date(2026, 9, 11), "type": "bike",  "label": "Easy Prep Ride",      "dur_min": 30},
+    {"date": date(2026, 8, 31), "type": "bike",     "label": "Easy Spin",           "dur_min": 30},
+    {"date": date(2026, 9,  1), "type": "bike",     "label": "Easy Spin",           "dur_min": 45},
+    {"date": date(2026, 9,  2), "type": "strength", "label": "Light KB",            "dur_min": 30},  # soft day — Lebe Stark + single-leg
+    {"date": date(2026, 9,  3), "type": "long",     "label": "Z2 Endurance",        "dur_min": 90},
+    {"date": date(2026, 9,  5), "type": "tempo",    "label": "Sweetspot Intervals", "dur_min": 90},
+    {"date": date(2026, 9,  6), "type": "long",     "label": "Pre-Event Long Ride",  "dur_min": 270},
+    {"date": date(2026, 9,  7), "type": "long",     "label": "Long Ride (Easy)",    "dur_min": 120},  # only true BTB rehearsal for the 190+120 km event
+    {"date": date(2026, 9,  8), "type": "bike",     "label": "Recovery Spin",       "dur_min": 45},
+    {"date": date(2026, 9,  9), "type": "tempo",    "label": "Tempo Intervals",     "dur_min": 75},
+    {"date": date(2026, 9, 10), "type": "strength", "label": "Light KB",            "dur_min": 30},  # soft day — Lebe Stark + suitcase
+    {"date": date(2026, 9, 11), "type": "bike",     "label": "Easy Prep Ride",      "dur_min": 30},
 ]
 
 
@@ -746,7 +764,11 @@ def charity_event_summary() -> str:
 
 
 def build_combined_event_weeks() -> list[dict]:
-    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions, charity ride days, and Mersea goal."""
+    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions, charity ride days, and Mersea goal.
+
+    Rest cells in the post-charity window (15–20 Sep) are filled from POSITION_BRIDGE_DAYS
+    so Light KB / easy Z2 appear without a duplicate calendar section.
+    """
     today = date.today()
     prep_by_date = {d["date"]: d for d in EVENT_PREP_DAYS}
     charity_by_date = {d["date"]: d for d in CHARITY_DAYS}
@@ -782,26 +804,39 @@ def build_combined_event_weeks() -> list[dict]:
                 })
             elif prep:
                 dur = prep["dur_min"]
-                if dur < 60:
-                    dur_fmt = f"{dur}m"
-                elif dur % 60:
-                    dur_fmt = f"{dur // 60}h{dur % 60:02d}m"
-                else:
-                    dur_fmt = f"{dur // 60}h"
                 cells.append({
                     "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
                     "is_event": False,
                     "type": prep["type"], "label": prep["label"],
-                    "dur_fmt": dur_fmt, "dur_min": dur,
+                    "dur_fmt": _fmt_dur_min(dur), "dur_min": dur,
+                    "kb_spec": (
+                        _enrich_kb_spec(
+                            POSITION_KB_SPEC_A if d.weekday() == 1 else POSITION_KB_SPEC_B
+                        )
+                        if prep["type"] == "strength" else None
+                    ),
                     "is_today": d == today, "is_past": d < today,
                 })
             else:
-                cells.append({
-                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
-                    "is_event": False,
-                    "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
-                    "is_today": d == today, "is_past": d < today,
-                })
+                bridge = POSITION_BRIDGE_DAYS.get(d)
+                if bridge:
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "is_event": False,
+                        "type": bridge["type"], "label": bridge["label"],
+                        "dur_fmt": _fmt_dur_min(bridge["dur_min"]),
+                        "dur_min": bridge["dur_min"],
+                        "kb_spec": bridge.get("kb_spec"),
+                        "is_today": d == today, "is_past": d < today,
+                    })
+                else:
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "is_event": False,
+                        "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
+                        "kb_spec": None,
+                        "is_today": d == today, "is_past": d < today,
+                    })
         weeks.append({"week_label": wk_start.strftime("%-d %b"), "days": cells})
     return weeks
 
@@ -832,3 +867,130 @@ def build_charity_weeks() -> list[dict]:
                 })
         weeks.append({"week_label": wk_start.strftime("%-d %b"), "days": cells})
     return weeks
+
+
+# ── Post-charity → Haute Route bridge (15 Sep – 4 Oct 2026) ───────────────────
+# Low-volume absorption + strength rebuild. 2× Light KB/week (Lebe Stark); trunk on ride days.
+# Mersea (20 Sep) stays optional on the event calendar; bridge Z2 that day is skipped.
+POSITION_BRIDGE_START = date(2026, 9, 15)
+POSITION_BRIDGE_END = date(2026, 10, 4)  # day before HR_PLAN_START
+
+# Mon–Sun template repeated across the bridge window.
+_BRIDGE_WEEK_TEMPLATE: list[tuple[str, str, int]] = [
+    ("rest",     "Rest",             0),
+    ("strength", "Light KB",        35),
+    ("bike",     "Z2 Easy",         60),
+    ("strength", "Light KB",        35),
+    ("rest",     "Rest",             0),
+    ("bike",     "Z2 Endurance",    75),
+    ("long",     "Long Ride (Easy)", 90),
+]
+
+
+def _fmt_dur_min(dur: int) -> str:
+    if dur < 60:
+        return f"{dur}m"
+    if dur % 60:
+        return f"{dur // 60}h{dur % 60:02d}m"
+    return f"{dur // 60}h"
+
+
+def _build_position_bridge_days() -> dict[date, dict]:
+    out: dict[date, dict] = {}
+    d = POSITION_BRIDGE_START
+    while d <= POSITION_BRIDGE_END:
+        stype, label, dur = _BRIDGE_WEEK_TEMPLATE[d.weekday()]
+        # Leave Mersea day free of a planned bridge ride (optional outing stays primary)
+        if d == date(2026, 9, 20) and stype != "strength":
+            d += timedelta(days=1)
+            continue
+        if stype != "rest":
+            out[d] = {
+                "type": stype,
+                "label": label,
+                "dur_min": dur,
+                "kb_spec": (
+                    _enrich_kb_spec(POSITION_KB_SPEC_A if d.weekday() == 1 else POSITION_KB_SPEC_B)
+                    if stype == "strength" else None
+                ),
+            }
+        d += timedelta(days=1)
+    return out
+
+
+# Built after _enrich_kb_spec / POSITION_KB_SPEC_* exist (same module, later in file).
+POSITION_BRIDGE_DAYS: dict[date, dict] = {}
+
+
+def build_bridge_weeks() -> list[dict]:
+    """Mon–Sun rows for the bridge after Mersea week (22 Sep – 4 Oct).
+
+    15–21 Sep is already shown on the combined event calendar (with bridge fill-ins).
+    """
+    today = date.today()
+    grid_start = date(2026, 9, 21)  # Monday after Mersea week
+    n_weeks = ((POSITION_BRIDGE_END - grid_start).days // 7) + 1
+    weeks = []
+    for wk in range(max(n_weeks, 0)):
+        wk_start = grid_start + timedelta(weeks=wk)
+        if wk_start > POSITION_BRIDGE_END:
+            break
+        cells = []
+        for day_off in range(7):
+            d = wk_start + timedelta(days=day_off)
+            if d > POSITION_BRIDGE_END:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
+                    "kb_spec": None,
+                    "is_today": d == today, "is_past": d < today,
+                    "out_of_bridge": True,
+                })
+                continue
+            bridge = POSITION_BRIDGE_DAYS.get(d)
+            if bridge:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "type": bridge["type"], "label": bridge["label"],
+                    "dur_fmt": _fmt_dur_min(bridge["dur_min"]),
+                    "dur_min": bridge["dur_min"],
+                    "kb_spec": bridge.get("kb_spec"),
+                    "is_today": d == today, "is_past": d < today,
+                    "out_of_bridge": False,
+                })
+            else:
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "type": "rest", "label": None, "dur_fmt": None, "dur_min": 0,
+                    "kb_spec": None,
+                    "is_today": d == today, "is_past": d < today,
+                    "out_of_bridge": False,
+                })
+        weeks.append({
+            "week_label": wk_start.strftime("%-d %b"),
+            "days": cells,
+        })
+    return weeks
+
+
+def kb_spec_for_date(d: date) -> dict | None:
+    """Return enriched KB modal spec for Light KB on plan / prep / bridge dates."""
+    bridge = POSITION_BRIDGE_DAYS.get(d)
+    if bridge and bridge.get("kb_spec"):
+        return bridge["kb_spec"]
+    for ep in EVENT_PREP_DAYS:
+        if ep["date"] == d and ep["type"] == "strength":
+            return _enrich_kb_spec(
+                POSITION_KB_SPEC_A if d.weekday() == 1 else POSITION_KB_SPEC_B
+            )
+    sess = session_for_date(d)
+    if sess and sess[0] == "strength" and "KB" in sess[1]:
+        delta = (d - PLAN_START).days
+        if 0 <= delta < _PLAN_DAYS:
+            week_num = delta // 7 + 1
+            return _enrich_kb_spec(KB_SPECS.get(week_num) or POSITION_KB_SPEC_A)
+    return None
+
+
+# Initialise after helpers exist (POSITION_KB_SPEC_* and _enrich_kb_spec are above).
+POSITION_BRIDGE_DAYS.update(_build_position_bridge_days())

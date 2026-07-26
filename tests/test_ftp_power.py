@@ -80,6 +80,13 @@ def test_extract_ramp_ftp_filters_lap_duration():
     assert _extract_ramp_ftp(_SplitsApi(laps), 1) == {}
 
 
+def test_estimate_lthr_from_effort_discounts_20min():
+    from ai_endurance_coach_over50.analysis.intervals import estimate_lthr_from_effort
+    assert estimate_lthr_from_effort(181, "FTP Re-test") == round(181 * 0.95)
+    assert estimate_lthr_from_effort(181, "Ramp Test") is None
+    assert estimate_lthr_from_effort(None, "FTP Test") is None
+
+
 def test_ramp_builder_shape():
     w = _ramp_test(45)
     steps = w.workoutSegments[0].workoutSteps

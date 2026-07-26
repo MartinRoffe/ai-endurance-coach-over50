@@ -36,9 +36,11 @@ change Thursday?" and it answers with your numbers in mind.
   how your week is shaping up — anything a coach with your data could answer.
   Type as usual, or use optional **push-to-talk**: click **MIC**, speak, click
   **STOP** (or wait for silence) — the transcript lands in the box and sends
-  automatically. Replies are spoken aloud (**SPEAK** / **MUTED** toggles
-  that): with `ELEVENLABS_API_KEY` set you get a natural cloud voice; otherwise
-  the browser voice is used. Plan-change cards still need a click on **Apply**.
+  automatically. Replies are spoken aloud by default — use **VOICE ON** /
+  **VOICE OFF** in the chat header to disable speech when you don't want it
+  (preference is saved in the browser). With `ELEVENLABS_API_KEY` set you get a
+  natural cloud voice; otherwise the browser voice is used. Plan-change cards
+  still need a click on **Apply**.
 - **Accept or decline plan changes.** When the coach suggests a concrete change
   (a different duration or a session-type swap), it appears as a **confirmation
   card**, not an automatic edit. Approve it and the change is saved as a one-day

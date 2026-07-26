@@ -9,7 +9,29 @@ _FTP_SESSION_LABELS = {
     "FTP Baseline Test", "FTP Final Test",
 }
 _RAMP_SESSION_LABELS = {"Ramp Test", "FTP Ramp Test"}
-_ALL_FTP_LABELS = _FTP_SESSION_LABELS | _RAMP_SESSION_LABELS
+# Threshold Ride: also extract 20-min FTP estimate when FIT ingest is unavailable,
+# but keep it in _INTERVAL_CONFIG so lap mining still grades the 2×20 blocks.
+_FTP_FALLBACK_LABELS = {"Threshold Ride"}
+_ALL_FTP_LABELS = _FTP_SESSION_LABELS | _RAMP_SESSION_LABELS | _FTP_FALLBACK_LABELS
+
+# Parallel to FTP watts (95% of 20-min power): all-out 20-min avg HR sits above
+# true LTHR. Ramp peak-lap HR is near-max and is not used as an LTHR estimate.
+_LTHR_FROM_20MIN_FACTOR = 0.95
+
+
+def estimate_lthr_from_effort(
+    effort_avg_hr: Optional[float],
+    session_label: Optional[str] = None,
+) -> Optional[int]:
+    """Convert measured FTP-effort avg HR into an LTHR estimate for ftp_tests.
+
+    Returns None for ramp tests (1-min peak HR ≠ LTHR) or missing HR.
+    """
+    if effort_avg_hr is None:
+        return None
+    if session_label in _RAMP_SESSION_LABELS:
+        return None
+    return round(float(effort_avg_hr) * _LTHR_FROM_20MIN_FACTOR)
 
 # effort_min/max in seconds — range that identifies a single effort lap
 _INTERVAL_CONFIG: dict[str, dict] = {
@@ -19,10 +41,29 @@ _INTERVAL_CONFIG: dict[str, dict] = {
     "Hill Repeats":        {"effort_min": 120,  "effort_max": 330,  "name": "Hill rep"},
     "Threshold Ride":      {"effort_min": 900,  "effort_max": 1500, "name": "Threshold block"},
     "Over-Unders":         {"effort_min": 840,  "effort_max": 1200, "name": "OU set"},
-    # MaxiClimber work intervals: 90–240 s across all plan weeks (easy → Norwegian 4×4)
+    # Strength-endurance / cadence sessions (plan + Haute Route vocabulary)
+    "Low Cadence Ride":       {"effort_min": 420,  "effort_max": 540,  "name": "Low-cadence block"},
+    "Low Cadence":            {"effort_min": 180,  "effort_max": 300,  "name": "Low-cadence block"},
+    "Low Cadence Sweetspot":  {"effort_min": 600,  "effort_max": 780,  "name": "Low-cadence SS block"},
+    "Cadence Drills":         {"effort_min": 240,  "effort_max": 360,  "name": "Cadence drill"},
+    # MaxiClimber work intervals: 90–240 s across all plan weeks (easy → progressive)
     "MaxiClimber":         {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
     "Easy MaxiClimber":    {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
     "KB + MaxiClimber":    {"effort_min": 80,   "effort_max": 260,  "name": "Climbing interval"},
+}
+
+# Prescribed targets injected into analysis prompts when interval reps are mined.
+_INTERVAL_PRESCRIBED: dict[str, str] = {
+    "Low Cadence Ride":      "60–65 rpm · 88–94% FTP (sweetspot torque)",
+    "Low Cadence":           "60–70 rpm · Z3 / tempo watts",
+    "Low Cadence Sweetspot": "60–70 rpm · 88–94% FTP",
+    "Cadence Drills":        "95–100 rpm · Zone 2 power/HR",
+    "Tempo Intervals":       "76–88% FTP",
+    "Sweetspot Intervals":   "88–93% FTP",
+    "Sweetspot Ride":        "88–93% FTP",
+    "Threshold Ride":        "95–100% FTP (2×20)",
+    "Over-Unders":           "under 95–100% / over 105–110% FTP",
+    "Hill Repeats":          "106–120% FTP",
 }
 
 # Interval sessions are discipline-specific. On a compound day (e.g.

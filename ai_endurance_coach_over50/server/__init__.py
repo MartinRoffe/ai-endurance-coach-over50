@@ -55,10 +55,13 @@ from ..history import (
     load_durability,
     load_ftp_tests,
     load_fuelling_logs,
+    load_interval_analyses,
+    load_fit_activity_meta,
     load_power_durability,
     load_recent_activities,
     load_session_rpe,
     load_wkg_goal,
+    mark_stale_ftp_accepted,
     measured_wkg_history,
     save_wkg_goal,
     pmc_history,
@@ -78,6 +81,7 @@ from ..history import (
     set_plan_override,
     sleep_history,
     tdee_history,
+    upsert_ftp_test,
     vo2_history,
     weekly_monotony_strain,
     weekly_tss,
@@ -354,6 +358,21 @@ def analysis_view(request: Request):
     except Exception:
         pass
 
+    # Attach FIT interval analyses when present
+    for a in activities:
+        try:
+            aid = a.get("activity_id")
+            if aid is None:
+                continue
+            intervals = load_interval_analyses(int(aid))
+            if intervals:
+                a["fit_intervals"] = intervals
+            meta = load_fit_activity_meta(int(aid))
+            if meta:
+                a["fit_meta"] = meta
+        except Exception:
+            pass
+
     gut_training = None
     try:
         from ..history import gut_training_summary
@@ -426,6 +445,82 @@ async def wkg_goal_endpoint(body: _WkgGoalRequest, _=Depends(_require_auth)):
 @app.get("/api/ftp-tests")
 async def api_ftp_tests(_=Depends(_require_auth)):
     return JSONResponse(load_ftp_tests())
+
+
+class _AcceptFtpRequest(BaseModel):
+    ftp_w: int
+    date: Optional[str] = None
+    activity_id: Optional[int] = None
+    ftp_hr: Optional[int] = None
+
+
+@app.post("/accept-ftp-estimate")
+async def accept_ftp_estimate(body: _AcceptFtpRequest, _=Depends(_require_auth)):
+    """Persist proposed FTP from threshold evidence; mark workouts stale."""
+    from ..analysis.power import _mark_workouts_stale
+    if body.ftp_w <= 0:
+        return JSONResponse({"ok": False, "error": "invalid ftp_w"}, status_code=422)
+    test_date = body.date or date.today().isoformat()
+    upsert_ftp_test(
+        test_date,
+        body.activity_id,
+        body.ftp_hr,
+        None,
+        note="Accepted FIT threshold estimate",
+        ftp_w=body.ftp_w,
+    )
+    _mark_workouts_stale(body.ftp_w)
+    if body.activity_id:
+        try:
+            mark_stale_ftp_accepted(int(body.activity_id))
+        except Exception:
+            pass
+    return JSONResponse({"ok": True, "ftp_w": body.ftp_w, "date": test_date})
+
+
+@app.post("/upload-fit")
+async def upload_fit(request: Request, _=Depends(_require_auth)):
+    """Parse an uploaded FIT file, match to an activity, persist interval metrics."""
+    from fastapi import UploadFile, File
+    form = await request.form()
+    upload = form.get("file") or form.get("fit")
+    if upload is None:
+        return JSONResponse({"ok": False, "error": "no file"}, status_code=422)
+    raw = await upload.read()
+    if not raw:
+        return JSONResponse({"ok": False, "error": "empty file"}, status_code=422)
+    try:
+        from ..analysis.fit_ingest import match_activity_by_start, parse_fit
+        from ..analysis.fit_pipeline import process_fit_session
+        fit = parse_fit(raw)
+        acts = load_recent_activities(days=60)
+        matched = match_activity_by_start(fit.start_time, acts) if fit.start_time else None
+        if matched is None:
+            # Fall back: optional activity_id form field
+            aid = form.get("activity_id")
+            if aid:
+                matched = next(
+                    (a for a in acts if str(a.get("activity_id")) == str(aid)),
+                    None,
+                )
+        if matched is None:
+            return JSONResponse({
+                "ok": False,
+                "error": "no matching activity within ±2 min of FIT start",
+                "fit_start": fit.start_time.isoformat() if fit.start_time else None,
+            }, status_code=404)
+        result = process_fit_session(fit, matched)
+        return JSONResponse({
+            "ok": True,
+            "activity_id": matched["activity_id"],
+            "date": matched.get("date"),
+            "n_intervals": len(result.get("intervals") or []),
+            "stale_ftp": (result.get("meta") or {}).get("stale_ftp"),
+            "hr_calibration": (result.get("meta") or {}).get("hr_calibration"),
+            "intervals": result.get("intervals") or [],
+        })
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 
 @app.post("/log-btb")
@@ -835,6 +930,10 @@ async def calendar_view(request: Request):
         unified.append({**w, "phase": "camp", "phase_start": i == 0})
     for i, w in enumerate(ctx["combined_event_weeks"]):
         unified.append({**w, "phase": "event_prep", "phase_start": i == 0})
+    for i, w in enumerate(ctx.get("bridge_weeks") or []):
+        unified.append({**w, "phase": "bridge", "phase_start": i == 0})
+    for i, w in enumerate(ctx.get("hr_teaser_weeks") or []):
+        unified.append({**w, "phase": "hr_teaser", "phase_start": i == 0})
     ctx["unified_weeks"] = unified
 
     # Per-day pacing & fuelling plans for the two charity-ride days (AI, cached).
@@ -1007,10 +1106,11 @@ async def nutrition_fuelling(request: Request):
 async def nutrition_sunday(request: Request):
     today = _today()
     from ..nutrition_plan import (
-        WEEKDAY_DINNERS, cycle_week_index,
+        WEEKDAY_DINNERS, prep_cycle_week_index,
         fuel_prep_for_ride, _sunday_planned_ride_min,
     )
-    cycle_week = cycle_week_index(_PLAN_START, today)
+    # Fri–Sun: cook for next week's Mon–Thu (not the week ending today).
+    cycle_week = prep_cycle_week_index(_PLAN_START, today)
     dinner_weeks = {}
     for wi, batches in WEEKDAY_DINNERS.items():
         dinner_weeks[wi] = {
@@ -1062,11 +1162,11 @@ async def nutrition_recipes_griddle(request: Request):
 @app.get("/nutrition/recipes/weekday-dinners", response_class=HTMLResponse)
 async def nutrition_recipes_weekday_dinners(request: Request):
     today = _today()
-    from ..nutrition_plan import cycle_week_index
+    from ..nutrition_plan import prep_cycle_week_index
     return TEMPLATES.TemplateResponse(
         request=request,
         name="recipes-weekday-dinners.html",
-        context={"cycle_week": cycle_week_index(_PLAN_START, today)},
+        context={"cycle_week": prep_cycle_week_index(_PLAN_START, today)},
     )
 
 
@@ -1088,7 +1188,21 @@ async def nutrition_lidl_shopping_list(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="lidl-shopping-list.html", context=ctx)
 
 
-_ARCHITECTURE_HTML = Path(__file__).resolve().parent.parent / "architecture.html"
+def _bundled_html(*names: str) -> Path:
+    """Resolve a root-bundled HTML asset (architecture / position programme).
+
+    Hatch force-include places copies inside the installed package; in a source
+    checkout they live one level above the package (repo root).
+    """
+    pkg = Path(__file__).resolve().parent.parent  # ai_endurance_coach_over50/
+    for name in names:
+        for candidate in (pkg / name, pkg.parent / name):
+            if candidate.is_file():
+                return candidate
+    return pkg / names[0]
+
+
+_ARCHITECTURE_HTML = _bundled_html("architecture.html")
 
 
 @app.get("/architecture", response_class=HTMLResponse)
@@ -1096,6 +1210,19 @@ async def architecture_diagram(_=Depends(_require_auth)):
     if not _ARCHITECTURE_HTML.is_file():
         raise HTTPException(status_code=404, detail="architecture.html not found")
     return HTMLResponse(content=_ARCHITECTURE_HTML.read_text(encoding="utf-8"))
+
+
+@app.get("/position", response_class=HTMLResponse)
+async def position_programme(request: Request, _=Depends(_require_auth)):
+    """Interactive shoulder / trunk / mobility programme with hold timers."""
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="position.html",
+        context={
+            "active_tab": "position",
+            "plan_section": "position",
+        },
+    )
 
 
 @app.get("/help", response_class=HTMLResponse)

@@ -104,17 +104,10 @@
     <div>
       <p class="eyebrow" style="margin-bottom:8px">Today</p>
       <h1 style="font-family:var(--font-d);font-size:clamp(24px,4vw,36px);letter-spacing:0.05em;color:var(--text);line-height:1">{{ date_long }}</h1>
-      {% if nutrition_pill %}
-      <p style="margin-top:8px;font-family:var(--font-m);font-size:11px;color:var(--muted)">
-        {{ "{:,}".format(nutrition_pill.calories) }} kcal logged · <a href="/nutrition" style="color:var(--accent);text-decoration:none">Nutrition →</a>
-        · <a href="/nutrition/sunday" style="color:var(--accent);text-decoration:none">Sunday Prep →</a>
-      </p>
-      {% else %}
       <p style="margin-top:8px;font-family:var(--font-m);font-size:11px;color:var(--muted)">
         <a href="/nutrition" style="color:var(--accent);text-decoration:none">Nutrition →</a>
         · <a href="/nutrition/sunday" style="color:var(--accent);text-decoration:none">Sunday Prep →</a>
       </p>
-      {% endif %}
     </div>
     <div style="text-align:right;padding-top:2px;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -133,6 +126,82 @@
     <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">⚠ {{ alert.message }}</span>
   </div>
   {% endfor %}
+  {% endif %}
+
+  {# ── Today verdict — the one answer after all gates resolve ── #}
+  {% if today_verdict %}
+  {% set tv = today_verdict %}
+  {% set fs = tv.final_session %}
+  {% set _vc = {'green': '#34d399', 'amber': '#fbbf24', 'red': '#f87171'}.get(tv.status, '#71717a') %}
+  {% set type_badge = {
+    'bike': 'border-emerald-700 text-emerald-300', 'tempo': 'border-yellow-700 text-yellow-300',
+    'ftp': 'border-orange-700 text-orange-300', 'long': 'border-amber-700 text-amber-300',
+    'strength': 'border-violet-700 text-violet-300', 'ruck': 'border-pink-800 text-pink-300',
+    'recovery': 'border-sky-800 text-sky-300', 'rest': 'border-zinc-700 text-zinc-400',
+  } %}
+  <div class="card" style="margin-bottom:12px;border-left:3px solid {{ _vc }}">
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span style="width:10px;height:10px;border-radius:50%;background:{{ _vc }};flex-shrink:0"></span>
+      <span style="font-family:var(--font-m);font-size:12px;color:var(--text-dim);line-height:1.5">{{ tv.reason }}</span>
+    </div>
+    <div style="padding:14px 20px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="eyebrow" style="margin:0">Today's Session{% if post_workout %} · <span style="color:#34d399">trained ✓</span>{% endif %}</p>
+        <span class="bdg {{ type_badge.get(fs.type, 'border-zinc-700 text-zinc-400') }}">{{ fs.type | upper }}</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:20px">{{ fs.icon }}</span>
+        <div style="flex:1">
+          <p style="font-size:16px;font-weight:500;color:var(--text);margin:0">
+            {{ fs.label }}
+            {% if fs.changed and fs.from_label %}
+            <span style="font-size:12px;color:var(--muted);text-decoration:line-through;margin-left:8px">{{ fs.from_label }}</span>
+            {% endif %}
+          </p>
+          {% if fs.compound %}
+          <div style="margin-top:6px">
+            {% for sub in fs.compound %}
+            <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">· {{ sub.label }}</p>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% if fs.dur_fmt %}<p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim);margin:0">{{ fs.dur_fmt }}</p>{% endif %}
+      </div>
+      {% if tv.apply and not post_workout %}
+      <div style="margin-top:14px">
+        {{ plan_change_card(tv.apply, accent=_vc) }}
+      </div>
+      {% endif %}
+      {% if tv.hint %}
+      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.07);border-radius:2px">
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin:0">{{ tv.hint }}</p>
+      </div>
+      {% endif %}
+      {% if fs.note %}
+      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.05);border-radius:2px">
+        <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin:0">{{ fs.note }}</p>
+      </div>
+      {% endif %}
+      {% if tv.nutrition %}
+      <p style="margin:14px 0 0;font-family:var(--font-m);font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">
+        🍽 <a href="/nutrition" style="color:var(--text-dim);text-decoration:none">~{{ "{:,}".format(tv.nutrition.kcal) }} kcal
+        · protein {{ tv.nutrition.protein_low }}–{{ tv.nutrition.protein_high }} g{% if tv.nutrition.carbs_g_per_hr %}
+        · ride fuel {{ tv.nutrition.carbs_g_per_hr }} g/h{% endif %}{% if nutrition_pill %}
+        · logged {{ "{:,}".format(nutrition_pill.calories) }}{% endif %}{% if tv.nutrition.maintenance %}
+        · <span style="color:var(--accent)">maintenance to 14 Sep</span>{% endif %}</a>
+      </p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── FTP & calibration — collapsed ── #}
+  {% if ftp_retest or (stale_ftp and stale_ftp.proposed_ftp_w) or (hr_calibration and hr_calibration.issues) %}
+  <details class="card" style="padding:0;margin-bottom:12px">
+    <summary style="cursor:pointer;padding:14px 20px;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#fbbf24">FTP &amp; calibration ·
+      {%- if stale_ftp and stale_ftp.proposed_ftp_w %} estimate pending{% elif ftp_retest %} retest due{% else %} check{% endif %}</summary>
+    <div style="padding:8px 16px 16px">
   {% endif %}
 
   {# FTP retest / power baseline — unified plan change card #}
@@ -166,52 +235,98 @@
   </div>
   {% endif %}
 
-  <!-- Morning Readiness -->
-  <div class="card" style="margin-bottom:12px">
-    <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border)">
-      <p class="eyebrow" style="margin:0;color:var(--accent)">Morning Readiness{% if morning_captured_at %} · captured {{ morning_captured_at.split(' ')[1][:5] if ' ' in morning_captured_at else morning_captured_at }}{% endif %}</p>
-      {% if post_workout %}
-      <p style="font-size:11px;color:var(--muted);margin-top:4px">Frozen gate — the readiness picture before you trained.</p>
-      {% endif %}
+  {# FIT threshold evidence — FTP likely stale #}
+  {% if stale_ftp and stale_ftp.proposed_ftp_w %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #fbbf24" id="stale-ftp-card">
+    <p class="eyebrow" style="margin-bottom:8px;color:#fbbf24">FTP likely stale</p>
+    <p style="font-size:13px;color:var(--text);line-height:1.55;margin:0 0 10px">
+      Current measured FTP <strong>{{ stale_ftp.current_ftp_w }} W</strong> —
+      evidence suggests <strong style="color:#fbbf24">{{ stale_ftp.proposed_ftp_w }} W</strong>.
+      {% if stale_ftp.evidence %}<span style="color:var(--muted)">{{ stale_ftp.evidence }}</span>{% endif %}
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button type="button" id="accept-ftp-btn"
+        data-activity-id="{{ stale_ftp.activity_id or '' }}"
+        data-ftp="{{ stale_ftp.proposed_ftp_w }}"
+        data-date="{{ stale_ftp.activity_date or '' }}"
+        data-lthr="{{ stale_ftp.proposed_lthr or '' }}"
+        style="font-family:var(--font-m);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:8px 14px;border:1px solid #fbbf24;background:rgba(251,191,36,0.12);color:#fbbf24;border-radius:2px;cursor:pointer">
+        Accept estimate {{ stale_ftp.proposed_ftp_w }} W
+      </button>
     </div>
+    <p id="accept-ftp-msg" style="font-size:11px;color:var(--muted);margin-top:4px;display:none"></p>
+  </div>
+  {% if stale_ftp.slot %}
+  {% set _retest_intro = '<p style="margin:0">Or schedule a formal FTP retest on <strong style="color:var(--text)">' ~ stale_ftp.slot.date_str ~ '</strong> (currently ' ~ stale_ftp.slot.current_label ~ ').</p>' %}
+  {{ plan_change_card({
+    'date': stale_ftp.slot.date,
+    'duration_min': 60,
+    'session_type': 'ftp',
+    'label': 'FTP Re-test',
+    'reason': 'Schedule retest after threshold evidence',
+    'from_label': stale_ftp.slot.current_label,
+    'date_display': stale_ftp.slot.date_str,
+  }, intro_html=_retest_intro, accent='#fbbf24') }}
+  {% endif %}
+  <script>
+  (function(){
+    var btn = document.getElementById('accept-ftp-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      fetch('/accept-ftp-estimate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          ftp_w: parseInt(btn.dataset.ftp, 10),
+          date: btn.dataset.date || null,
+          activity_id: btn.dataset.activityId ? parseInt(btn.dataset.activityId, 10) : null,
+          ftp_hr: btn.dataset.lthr ? parseInt(btn.dataset.lthr, 10) : null
+        })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        var msg = document.getElementById('accept-ftp-msg');
+        msg.style.display = 'block';
+        msg.textContent = d.ok
+          ? ('FTP saved at ' + d.ftp_w + ' W. Sync workouts to refresh %FTP targets.')
+          : (d.error || 'Failed');
+        if (d.ok) btn.textContent = 'Accepted';
+      }).catch(function(){ btn.disabled = false; });
+    });
+  })();
+  </script>
+  {% endif %}
 
-    {# HRV / recovery gates #}
-    {% if modulation and modulation.gate and modulation.label is defined and not post_workout %}
-    {% set _gate_intro = '<p style="margin:0"><strong style="color:#fbbf24">' ~ modulation.headline ~ '</strong> — ' ~ modulation.reason ~ '. Suggested: <strong style="color:var(--text)">' ~ modulation.label ~ (' (' ~ modulation.duration_min ~ ' min)' if modulation.duration_min > 1 else '') ~ '</strong> instead of ' ~ modulation.planned_label ~ '.</p>' %}
-    {{ plan_change_card({
-      'date': modulation.date,
-      'duration_min': modulation.duration_min,
-      'session_type': modulation.session_type,
-      'label': modulation.label,
-      'reason': 'Recovery gate: ' ~ modulation.reason,
-      'from_label': modulation.planned_label,
-      'from_duration_min': none,
-    }, intro_html=_gate_intro, accent='#fbbf24') }}
-    {% elif modulation and modulation.gate and modulation.headline is defined %}
-    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
-      <span style="font-family:var(--font-m);font-size:11px;color:#f87171">🛑 {{ modulation.reason }}</span>
+  {# HR calibration #}
+  {% if hr_calibration and hr_calibration.issues %}
+  <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #60a5fa">
+    <p class="eyebrow" style="margin-bottom:8px;color:#60a5fa">HR calibration</p>
+    <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-dim);line-height:1.6">
+      {% for issue in hr_calibration.issues %}
+      <li>{{ issue }}</li>
+      {% endfor %}
+    </ul>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">
+      Current FTP {{ hr_calibration.current_ftp_w or '—' }} W
+      {% if hr_calibration.proposed_ftp_w %}→ evidence {{ hr_calibration.proposed_ftp_w }} W{% endif %}
+      · LTHR {{ hr_calibration.stored_lthr or '—' }}
+      {% if hr_calibration.suggested_lthr %}→ ~{{ hr_calibration.suggested_lthr }}{% endif %}
+      · Max HR device {{ hr_calibration.device_max_hr or '—' }}
+      {% if hr_calibration.evidence_max_hr %}→ evidence ~{{ hr_calibration.evidence_max_hr }}{% endif %}
+      · Update device profile manually; Accept estimate above updates app FTP/LTHR.
+    </p>
+  </div>
+  {% endif %}
+
+  {% if ftp_retest or (stale_ftp and stale_ftp.proposed_ftp_w) or (hr_calibration and hr_calibration.issues) %}
     </div>
-    {% elif traffic_light and traffic_light.status != 'unknown' %}
-    {% set tl = traffic_light %}
-    {% if modulation and modulation.label is defined and not modulation.gate and not post_workout %}
-    {% set _hrv_intro = '<p style="margin:0">' ~ tl.reason ~ '. Suggested: <strong style="color:var(--text)">' ~ modulation.label ~ ' (' ~ modulation.duration_min ~ ' min)</strong> instead of ' ~ modulation.planned_label ~ '.</p>' %}
-    {{ plan_change_card({
-      'date': modulation.date,
-      'duration_min': modulation.duration_min,
-      'session_type': modulation.session_type,
-      'label': modulation.label,
-      'reason': 'HRV traffic light: ' ~ tl.reason,
-      'from_label': modulation.planned_label,
-    }, intro_html=_hrv_intro, accent='#fbbf24' if tl.status == 'amber' else '#f87171') }}
-    {% elif tl.status == 'green' %}
-    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
-      <span style="font-family:var(--font-m);font-size:11px;color:#34d399">🟢 HRV in range — session as planned{% if post_workout %} (trained){% endif %}</span>
-    </div>
-    {% elif modulation %}
-    <div style="padding:8px 20px;border-bottom:1px solid var(--border)">
-      <span style="font-family:var(--font-m);font-size:11px;color:#fbbf24">{{ tl.reason }} — keep today genuinely easy</span>
-    </div>
-    {% endif %}
+  </details>
+  {% endif %}
+
+  <!-- Readiness detail (collapsed — the verdict card above is the answer) -->
+  <details class="card" style="padding:0;margin-bottom:12px">
+    <summary style="cursor:pointer;padding:14px 20px;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Readiness detail{% if comp_z is not none %} · {% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}σ{% endif %}{% if morning_captured_at %} · captured {{ morning_captured_at.split(' ')[1][:5] if ' ' in morning_captured_at else morning_captured_at }}{% endif %}</summary>
+    {% if post_workout %}
+    <p style="font-size:11px;color:var(--muted);padding:0 20px 4px">Frozen gate — the readiness picture before you trained.</p>
     {% endif %}
 
     {# Composite hero #}
@@ -233,53 +348,6 @@
       </div>
     </div>
 
-    {# Today's session #}
-    {% if today_plan %}
-    {% set type_badge = {
-      'bike': 'border-emerald-700 text-emerald-300', 'tempo': 'border-yellow-700 text-yellow-300',
-      'ftp': 'border-orange-700 text-orange-300', 'long': 'border-amber-700 text-amber-300',
-      'strength': 'border-violet-700 text-violet-300', 'ruck': 'border-pink-800 text-pink-300',
-    } %}
-    <div style="padding:8px 20px 16px;border-top:1px solid var(--border)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <p class="eyebrow">Today's Session</p>
-        <span class="bdg {{ type_badge.get(today_plan.type, 'border-zinc-700 text-zinc-400') }}">{{ today_plan.type | upper }}</span>
-      </div>
-      {% if today_plan.compound %}
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <span style="font-size:20px">{{ today_plan.icon }}</span>
-        <div style="flex:1">
-          <p style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">{{ today_plan.label }}</p>
-          {% for sub in today_plan.compound %}
-          <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">· {{ sub.label }}</p>
-          {% endfor %}
-        </div>
-        <p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim)">{{ today_plan.dur_fmt }}</p>
-      </div>
-      {% else %}
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:20px">{{ today_plan.icon }}</span>
-        <p style="font-size:15px;font-weight:500;color:var(--text);flex:1">{{ today_plan.label }}</p>
-        <p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim)">{{ today_plan.dur_fmt }}</p>
-      </div>
-      {% endif %}
-      {% if swap_suggestion %}
-      {% set _sw = swap_suggestion %}
-      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.07);border-radius:2px">
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">
-          {% if _sw.to_date_str %}Consider swapping with <strong>{{ _sw.to_label }}</strong> on {{ _sw.to_date_str }}.
-          {% else %}Consider reducing intensity or cutting this session short.{% endif %}
-        </p>
-      </div>
-      {% endif %}
-      {% if today_plan.note %}
-      <div style="margin-top:12px;padding:10px 14px;border:1px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.05);border-radius:2px">
-        <p style="font-size:12px;color:var(--text-dim);line-height:1.6">{{ today_plan.note }}</p>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-
     {% if advice_pre %}
     <div style="padding:8px 20px 20px;border-top:1px solid var(--border);border-left:3px solid var(--accent)">
       <p class="eyebrow" style="color:var(--accent);margin-bottom:10px">Morning Advice</p>
@@ -292,12 +360,13 @@
       </div>
     </div>
     {% endif %}
-  </div>
+  </details>
 
   {# Post-Session Debrief #}
   {% if post_workout %}
-  <div class="card" style="padding:20px 24px;margin-bottom:12px;border-left:3px solid #34d399">
-    <p class="eyebrow" style="color:#34d399;margin-bottom:14px">Post-Session Debrief</p>
+  <details class="card" open style="padding:0;margin-bottom:12px;border-left:3px solid #34d399">
+    <summary style="cursor:pointer;padding:14px 20px;font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#34d399">Post-Session Debrief</summary>
+    <div style="padding:6px 24px 20px">
     {% if today_activities %}
     <div style="margin-bottom:16px">
       {% for act in today_activities %}
@@ -342,11 +411,8 @@
     </div>
     {% endif %}
     <a href="/analysis" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Full session analysis →</a>
-  </div>
-  {% elif today_plan %}
-  <div class="card" style="padding:14px 20px;margin-bottom:12px">
-    <p style="font-size:12px;color:var(--muted);margin:0">Complete today's session to unlock the post-workout debrief.</p>
-  </div>
+    </div>
+  </details>
   {% endif %}
 
   {# Collapsed metrics for power users #}

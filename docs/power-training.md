@@ -48,7 +48,7 @@ TSB numbers to TrainingPeaks or other tools.
    ```
    Or click **Activate power** on the Performance tab (`GET /activate-power?days=30`;
    accepts 7–90 days). This fetches activities, fills power columns, computes
-   TSS where FTP is known, mines Pw:HR decoupling on rides ≥90 min, and seeds
+   TSS where FTP is known, mines Pw:HR decoupling on rides ≥75 min, and seeds
    FTP from past test sessions if found.
 3. **Check the activation checklist** on the Performance tab — six steps:
    record a power ride → run activation → reach ≥3 power rides in 60d → zones
@@ -88,6 +88,32 @@ Apply it to slot a test into an upcoming plan day.
 running `/sync-workouts` or `endurance-coach --workouts` — this re-uploads
 cycling templates with current %FTP targets.
 
+**App FTP vs Garmin profile FTP.** The app's measured FTP in `ftp_tests` and the
+FTP set on your head unit / Garmin Connect profile are **independent**. Analysis
+uses the app value for %FTP and TSS; Garmin power time-in-zone charts use the
+device profile. Keep them aligned manually. If they diverge by more than ~7%,
+analysis warns that zone percentages are miscalibrated.
+
+**Threshold evidence / Accept estimate.** After FIT ingest of a hard 2×20 or
+sustained ≥19 min effort above 103% of current FTP, Readiness shows an
+**FTP likely stale** card with **Accept estimate** (writes `ftp_tests`, sets the
+stale-workouts flag) or **Schedule retest**. You can also force a value:
+
+```bash
+endurance-coach --set-ftp 214 --date 2026-07-22
+```
+
+**FIT interval analysis.** On `/analysis-refresh`, power rides download the
+original FIT when available; the Analysis tab also has **Upload FIT**. Per-step
+metrics (NP, band compliance, 5-min splits, decoupling) appear on the activity
+card and feed coach chat. After HTML template changes, run
+`pip install --force-reinstall .` so the running server picks them up.
+
+**HR calibration.** When device max HR or stored LTHR disagree with recent
+evidence (12-month peak HR, threshold-effort HR, optional `hr_max_reference` in
+`text_cache` / env), Readiness shows an **HR calibration** card. Update the
+Garmin profile manually; Accept estimate updates app FTP/LTHR only.
+
 ---
 
 ## Performance tab (power surfaces)
@@ -107,7 +133,7 @@ HR-based charts:
   on Performance).
 - **Power zone polarisation** — stacked weekly bars from power zone data (parallel
   to the HR polarisation chart).
-- **Pw:HR decoupling** — scatter/trend for rides ≥90 min: HR drift minus power
+- **Pw:HR decoupling** — scatter/trend for rides ≥75 min: HR drift minus power
   drift (cardiac drift vs true aerobic decoupling).
 - **Dual-channel caveat card** — explains which decisions use HR vs watts.
 - **Last quality session snapshot** — normalised power vs %FTP for a recent

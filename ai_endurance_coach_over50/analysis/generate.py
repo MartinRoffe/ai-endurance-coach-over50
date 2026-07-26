@@ -16,6 +16,7 @@ from .intervals import (
     _CYCLING_TYPES,
     _extract_durability,
     _extract_power_durability,
+    estimate_lthr_from_effort,
 )
 from .power import _mark_workouts_stale, _session_label_for_date, fetch_activity_detail
 from .prompts import (
@@ -90,11 +91,11 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
     for act in activities:
         act_id = act["activity_id"]
         # Durability extraction is independent of the AI analysis — run it for
-        # any long cycling activity not yet measured (≥90 min, lap splits only).
+        # any long cycling activity not yet measured (≥75 min, lap splits only).
         try:
             from ..history import durability_exists, save_durability
             if (act.get("type_key") in _CYCLING_TYPES
-                    and (act.get("duration_seconds") or 0) >= 90 * 60
+                    and (act.get("duration_seconds") or 0) >= 75 * 60
                     and not durability_exists(act_id)):
                 dur_row = _extract_durability(api, act)
                 if dur_row:
@@ -105,7 +106,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
             from ..history import power_durability_exists, save_power_durability
             if (act.get("type_key") in _CYCLING_TYPES
                     and act.get("has_power_meter")
-                    and (act.get("duration_seconds") or 0) >= 90 * 60
+                    and (act.get("duration_seconds") or 0) >= 75 * 60
                     and not power_durability_exists(act_id)):
                 pd_row = _extract_power_durability(api, act)
                 if pd_row:
@@ -115,6 +116,16 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
         # Backfill ftp_tests for already-analysed FTP sessions that pre-date the auto-population logic
         existing = load_analysis(act_id)
         if existing is not None:
+            # Backfill FIT interval analysis for already-analysed power rides
+            try:
+                from ..history import load_interval_analyses
+                from .fit_pipeline import ingest_fit_for_activity
+                if (act.get("type_key") in _CYCLING_TYPES
+                        and act.get("has_power_meter")
+                        and not load_interval_analyses(act_id)):
+                    ingest_fit_for_activity(api, act)
+            except Exception:
+                pass
             try:
                 act_date = act.get("date")
                 if act_date:
@@ -130,7 +141,9 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                                 ftp_w = round(existing["ftp_effort_avg_w"] * 0.95)
                             save_ftp_test(
                                 d_obj.isoformat(), act_id,
-                                int(existing["ftp_effort_avg_hr"]) if existing.get("ftp_effort_avg_hr") else None,
+                                estimate_lthr_from_effort(
+                                    existing.get("ftp_effort_avg_hr"), session_label
+                                ),
                                 int(existing["ftp_effort_max_hr"]) if existing.get("ftp_effort_max_hr") else None,
                                 None,
                                 ftp_w=ftp_w,
@@ -145,6 +158,17 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
             act_date = act.get("date")
             session_label = _session_label_for_date(date.fromisoformat(act_date)) if act_date else None
             detail = fetch_activity_detail(api, act_id, activity=act, session_label=session_label)
+            # FIT interval analysis (soft-fail) — prefer before AI so prompt gets metrics
+            if act.get("type_key") in _CYCLING_TYPES and act.get("has_power_meter"):
+                try:
+                    from .fit_pipeline import ingest_fit_for_activity
+                    fit_result = ingest_fit_for_activity(api, act)
+                    if fit_result:
+                        detail["fit_interval_prompt_lines"] = fit_result.get("prompt_lines") or []
+                        detail["fit_intervals"] = fit_result.get("intervals") or []
+                        detail["fit_meta"] = fit_result.get("meta") or {}
+                except Exception:
+                    pass
             text = generate_analysis(act, detail, companion=companion)
             save_detail(act_id, detail, text)
             # Auto-populate FTP trend table for FTP test sessions
@@ -160,7 +184,9 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                             ftp_w = round(detail["ftp_effort_avg_w"] * 0.95)
                         save_ftp_test(
                             d_obj.isoformat(), act_id,
-                            int(detail["ftp_effort_avg_hr"]) if detail.get("ftp_effort_avg_hr") else None,
+                            estimate_lthr_from_effort(
+                                detail.get("ftp_effort_avg_hr"), session_label
+                            ),
                             int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
                             None,
                             ftp_w=ftp_w,

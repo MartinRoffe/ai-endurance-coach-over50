@@ -257,6 +257,13 @@ def main() -> None:
         help="With --email or --workouts: print what would be done without sending/uploading",
     )
     parser.add_argument(
+        "--set-ftp",
+        type=int,
+        metavar="WATTS",
+        help="Upsert measured FTP watts into ftp_tests (use --date YYYY-MM-DD; "
+             "marks workouts stale so /sync-workouts refreshes %%FTP targets)",
+    )
+    parser.add_argument(
         "--workouts",
         action="store_true",
         help="Upload training plan bike workouts to Garmin Connect and schedule them "
@@ -279,6 +286,24 @@ def main() -> None:
 
     if args.setup_schedule:
         _setup_schedule()
+        return
+
+    if getattr(args, "set_ftp", None) is not None:
+        from datetime import date as _date
+        from .history import upsert_ftp_test
+        from .analysis.power import _mark_workouts_stale
+        ftp_date = args.date or _date.today().isoformat()
+        watts = int(args.set_ftp)
+        if watts <= 0:
+            console.print("[red]--set-ftp requires a positive watt value[/red]")
+            sys.exit(1)
+        upsert_ftp_test(ftp_date, None, None, None, note="CLI --set-ftp", ftp_w=watts)
+        _mark_workouts_stale(watts)
+        console.print(
+            f"[green]FTP set to {watts} W on {ftp_date}.[/green] "
+            "Run [bold]/sync-workouts[/bold] (or [bold]endurance-coach --workouts[/bold]) "
+            "to refresh Garmin %FTP targets."
+        )
         return
 
     if args.serve:

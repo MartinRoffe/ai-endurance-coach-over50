@@ -11,9 +11,10 @@ def test_compliance_weeks_include_all_phases():
     assert phases.count("plan") == 12
     assert phases.count("camp") == 3
     assert phases.count("event_prep") == 3
+    assert phases.count("bridge") == 2
     assert phases[0] == "plan"
     assert "camp" in phases
-    assert phases[-1] == "event_prep"
+    assert phases[-1] == "bridge"
 
 
 def test_camp_ride_days_count_as_sessions():
@@ -51,7 +52,7 @@ def test_event_prep_includes_charity_and_prep_sessions():
 def test_plan_completion_stats_shape():
     stats = _plan_completion_stats()
     assert "completion_weeks" in stats
-    assert len(stats["completion_weeks"]) == 18  # 12 + 3 + 3
+    assert len(stats["completion_weeks"]) == 20  # 12 + 3 + 3 + 2 bridge
     assert stats["total_plan_sessions"] >= 0
     first_camp = next(w for w in stats["completion_weeks"] if w["phase"] == "camp")
     assert first_camp["week_label"]

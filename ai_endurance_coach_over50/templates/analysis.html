@@ -55,13 +55,47 @@
       <p class="eyebrow" style="margin-bottom:8px">Post-Training</p>
       <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Activity Analysis</h1>
     </div>
-    <a href="/analysis-refresh"
-       style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
-       onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
-       onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
-      Fetch &amp; Analyse ↺
-    </a>
+    <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <label style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px;cursor:pointer"
+             onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+             onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+        Upload FIT
+        <input type="file" id="fit-upload" accept=".fit,.FIT,application/octet-stream" style="display:none">
+      </label>
+      <a href="/analysis-refresh"
+         style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);transition:all 0.15s;border-radius:2px"
+         onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+        Fetch &amp; Analyse ↺
+      </a>
+    </div>
   </div>
+  <p id="fit-upload-status" style="font-size:12px;color:var(--muted);margin:-24px 0 24px;display:none"></p>
+  <script>
+  (function(){
+    var input = document.getElementById('fit-upload');
+    var status = document.getElementById('fit-upload-status');
+    if (!input) return;
+    input.addEventListener('change', function(){
+      if (!input.files || !input.files[0]) return;
+      status.style.display = 'block';
+      status.textContent = 'Uploading FIT…';
+      var fd = new FormData();
+      fd.append('file', input.files[0]);
+      fetch('/upload-fit', { method: 'POST', body: fd })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.ok) {
+            status.textContent = 'Matched activity ' + d.activity_id + ' (' + (d.n_intervals||0) + ' intervals). Reloading…';
+            setTimeout(function(){ location.reload(); }, 800);
+          } else {
+            status.textContent = d.error || 'Upload failed';
+          }
+        })
+        .catch(function(e){ status.textContent = 'Upload failed'; });
+    });
+  })();
+  </script>
 
   {% if gut_training %}
   {% set gt = gut_training %}
@@ -227,7 +261,7 @@
           <p style="font-family:var(--font-m);font-size:18px;font-weight:600;color:var(--text)">{{ a.ftp_effort_max_hr | int }} <span style="font-size:11px;color:var(--muted)">bpm</span></p>
         </div>
         {% endif %}
-        <p style="font-size:12px;color:var(--muted);line-height:1.5;padding-bottom:2px">{% if a.ftp_w %}FTP = 95% of 20-min watts · {% endif %}LTHR ≈ effort avg HR</p>
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;padding-bottom:2px">{% if a.ftp_w %}FTP = 95% of 20-min watts · {% endif %}LTHR ≈ 95% of effort avg HR</p>
       </div>
     </div>
     {% endif %}
@@ -257,18 +291,47 @@
           {% endif %}
         </div>
         {% endfor %}
-        {% if a.interval_reps | length >= 2 %}
-        {% set first_hr = a.interval_reps[0].avg_hr or 0 %}
-        {% set last_hr  = a.interval_reps[-1].avg_hr or 0 %}
-        {% set drift = last_hr - first_hr %}
-        <div style="margin-top:4px;padding-top:8px;border-top:1px solid var(--surface2)">
-          <span style="font-family:var(--font-m);font-size:11px;color:var(--muted)">
-            HR drift: <span style="color:{% if drift > 0 %}#fb923c{% else %}#4ade80{% endif %}">{% if drift > 0 %}+{% endif %}{{ drift }} bpm</span>
-            rep 1 → rep {{ a.interval_reps | length }}
-          </span>
-        </div>
-        {% endif %}
       </div>
+    </div>
+    {% endif %}
+
+    <!-- FIT interval execution table -->
+    {% if a.fit_intervals %}
+    <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-left:3px solid #fbbf24;padding:12px 16px;margin-bottom:18px;border-radius:2px;overflow-x:auto">
+      <p class="eyebrow" style="margin-bottom:10px;color:#fbbf24;letter-spacing:0.15em">FIT Interval Execution</p>
+      {% if a.fit_meta and a.fit_meta.stale_ftp %}
+      <p style="font-size:12px;color:#fbbf24;margin-bottom:8px">FTP likely stale — evidence {{ a.fit_meta.stale_ftp.proposed_ftp_w }} W (app {{ a.fit_meta.stale_ftp.current_ftp_w }} W). See readiness card to Accept estimate.</p>
+      {% endif %}
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="color:var(--muted);text-align:left">
+            <th style="padding:4px 8px">#</th>
+            <th style="padding:4px 8px">Dur</th>
+            <th style="padding:4px 8px">Avg W</th>
+            <th style="padding:4px 8px">NP</th>
+            <th style="padding:4px 8px">%FTP</th>
+            <th style="padding:4px 8px">HR</th>
+            <th style="padding:4px 8px">Cad</th>
+            <th style="padding:4px 8px">Decoup</th>
+            <th style="padding:4px 8px">Band in%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in a.fit_intervals %}
+          <tr style="border-top:1px solid var(--border);color:var(--text)">
+            <td style="padding:6px 8px">{{ i.work_num }}</td>
+            <td style="padding:6px 8px">{{ (i.duration_secs or 0) // 60 }}m</td>
+            <td style="padding:6px 8px;color:#fbbf24">{{ i.avg_power_w or '—' }}</td>
+            <td style="padding:6px 8px">{{ i.np_w or '—' }}</td>
+            <td style="padding:6px 8px">{{ i.pct_ftp or '—' }}</td>
+            <td style="padding:6px 8px">{{ i.avg_hr or '—' }}</td>
+            <td style="padding:6px 8px">{{ i.avg_cadence or '—' }}</td>
+            <td style="padding:6px 8px">{% if i.decoupling_pct is not none %}{{ '%+.1f'|format(i.decoupling_pct) }}%{% else %}—{% endif %}</td>
+            <td style="padding:6px 8px">{{ i.band_pct_in if i.band_pct_in is not none else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endif %}
 

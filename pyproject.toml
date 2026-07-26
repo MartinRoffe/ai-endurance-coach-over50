@@ -16,6 +16,8 @@ dependencies = [
     "jinja2>=3.1",
     "anthropic>=0.20",
     "markdown>=3.5",
+    "fitdecode>=0.10",
+    "python-multipart>=0.0.9",  # FastAPI UploadFile for POST /upload-fit
 ]
 
 [project.scripts]

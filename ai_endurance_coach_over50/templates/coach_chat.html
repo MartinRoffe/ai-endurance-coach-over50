@@ -1,11 +1,15 @@
 <!-- ── AI Coach Chat ──────────────────────────────────────────────── -->
 <div class="card coach-chat-card" style="padding:20px 24px;margin-bottom:16px">
-  <div class="coach-chat-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div class="coach-chat-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">
     <div>
       <p class="eyebrow" style="margin-bottom:2px">AI Coach</p>
       <p style="font-family:var(--font-m);font-size:11px;color:var(--muted)">Ask about your training load, sessions, or request plan adjustments</p>
     </div>
-    <button onclick="clearChatHistory()" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;border-radius:2px">CLEAR</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <button type="button" id="tts-mute-btn" title="Turn off coach speech" aria-label="Turn off coach speech" aria-pressed="false"
+        style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:4px 10px;cursor:pointer;border-radius:2px;white-space:nowrap">VOICE ON</button>
+      <button onclick="clearChatHistory()" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;border-radius:2px">CLEAR</button>
+    </div>
   </div>
 
   <div id="chat-messages" style="min-height:100px;max-height:480px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding-right:2px">
@@ -24,8 +28,6 @@
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCoachMessage()}"></textarea>
     <button type="button" id="mic-btn" title="Hold to talk" aria-label="Hold to talk"
       style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap;touch-action:none;-webkit-user-select:none;user-select:none">MIC</button>
-    <button type="button" id="tts-mute-btn" title="Mute coach speech" aria-label="Mute coach speech"
-      style="display:none;font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;background:none;color:var(--muted);border:1px solid var(--border);padding:0 10px;height:40px;cursor:pointer;border-radius:2px;flex-shrink:0;white-space:nowrap">SPEAK</button>
     <select id="tts-voice" title="Coach voice" aria-label="Coach voice"
       style="display:none;max-width:140px;height:40px;background:#111113;border:1px solid var(--border);color:var(--muted);font-family:var(--font-m);font-size:11px;padding:0 6px;border-radius:2px;flex-shrink:0;outline:none"></select>
     <button id="send-btn" onclick="sendCoachMessage()"
@@ -59,11 +61,18 @@
     voiceStatus.style.display = 'block';
   }
 
+  function showMuteControl() {
+    if (!muteBtn) return;
+    muteBtn.style.display = '';
+    syncMuteUI();
+  }
+
   function syncMuteUI() {
     if (!muteBtn || muteBtn.style.display === 'none') return;
-    muteBtn.textContent = _ttsMuted ? 'MUTED' : 'SPEAK';
-    muteBtn.title = _ttsMuted ? 'Unmute coach speech' : 'Mute coach speech';
+    muteBtn.textContent = _ttsMuted ? 'VOICE OFF' : 'VOICE ON';
+    muteBtn.title = _ttsMuted ? 'Turn on coach speech' : 'Turn off coach speech';
     muteBtn.setAttribute('aria-label', muteBtn.title);
+    muteBtn.setAttribute('aria-pressed', _ttsMuted ? 'true' : 'false');
     muteBtn.style.color = _ttsMuted ? 'var(--muted)' : 'var(--text-dim)';
     muteBtn.style.borderColor = _ttsMuted ? 'var(--border)' : 'rgba(99,102,241,0.35)';
   }
@@ -283,8 +292,8 @@
     voiceSelect.addEventListener('change', function() {
       localStorage.setItem('coach_tts_voice', voiceSelect.value);
       _coachVoice = selectedVoice();
-      // Preview so you can hear the pick immediately
       stopTTS();
+      if (_ttsMuted) return;
       const sample = new SpeechSynthesisUtterance('How is your form looking this week?');
       if (_coachVoice) sample.voice = _coachVoice;
       sample.rate = 1;
@@ -297,10 +306,7 @@
     _elEnabled = !!(j && j.enabled);
     if (_elEnabled) {
       if (voiceSelect) voiceSelect.style.display = 'none';
-      if (muteBtn) {
-        muteBtn.style.display = '';
-        syncMuteUI();
-      }
+      showMuteControl();
       setVoiceStatus('Natural voice (ElevenLabs)');
       setTimeout(function() { setVoiceStatus(''); }, 2500);
     }
@@ -456,9 +462,41 @@
       return hour + ' ' + min;
     });
 
+    // Soften markup TTS tends to read aloud
+    s = s.replace(/~/g, 'about ');
+    s = s.replace(/(\d+)\s*[×xX]\s*(?=\w)/g, '$1 times ');
+    // 300+ g / 50+ before turning remaining plus signs into words
+    s = s.replace(/\b(\d+)\+\s*g\b/gi, '$1 plus grams');
+    s = s.replace(/\b(\d+)\+/g, '$1 plus');
+    s = s.replace(/\s\+\s/g, ' plus ');
+    // 3h30 / 3h / 2h15 → "3 hours 30" (before bare "hr" rules)
+    s = s.replace(/\b(\d{1,2})h(\d{2})\b/gi, function(_, h, m) {
+      const mins = parseInt(m, 10);
+      if (mins === 0) return h + (h === '1' ? ' hour' : ' hours');
+      if (mins === 30 && h !== '0') return h + ' and a half hours';
+      return h + (h === '1' ? ' hour ' : ' hours ') + mins;
+    });
+    s = s.replace(/\b(\d{1,2})h\b/gi, function(_, h) {
+      return h === '1' ? '1 hour' : h + ' hours';
+    });
+    // 3.5-hour / 14-day → drop hyphen glue
+    s = s.replace(/\b(\d+(?:\.\d+)?)-(hour|day|week|minute)s?\b/gi, '$1 $2');
+    // week 9/12 → week 9 of 12
+    s = s.replace(/\bweek\s+(\d+)\s*\/\s*(\d+)\b/gi, 'week $1 of $2');
+    // 14d / 7d / 30d averages
+    s = s.replace(/\b(\d+)d\b/gi, '$1 day');
+    // Strip thousands commas so "2,036 kcal" matches unit rules
+    s = s.replace(/\b(\d{1,3}(?:,\d{3})+)(\.\d+)?\b/g, function(_, whole, frac) {
+      return whole.replace(/,/g, '') + (frac || '');
+    });
+
     // Units
     s = s.replace(/\bW\/kg\b/gi, 'watts per kilo');
     s = s.replace(/\bg\/h\b/gi, 'grams per hour');
+    // "90 g carbs/hour" before bare "carbs/hour"
+    s = s.replace(/\b(\d+(?:\.\d+)?)\s*g\s+carbs?\s*\/\s*hour\b/gi, '$1 grams of carbs per hour');
+    s = s.replace(/\bcarbs?\/hour\b/gi, 'carbs per hour');
+    s = s.replace(/\bkcal\/day\b/gi, 'calories per day');
     s = s.replace(/\b%FTP\b/gi, 'percent of threshold');
     s = s.replace(/(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?FTP\b/gi, '$1 percent of threshold');
     s = s.replace(/(\d+(?:\.\d+)?)\s*w\/kg\b/gi, '$1 watts per kilo');
@@ -467,35 +505,54 @@
       return n === '1' ? '1 hour' : n + ' hours';
     });
     s = s.replace(/(\d+)\s*bpm\b/gi, '$1 beats per minute');
-    s = s.replace(/(\d+)\s*kcal\b/gi, '$1 calories');
-    s = s.replace(/(\d+)\s*kJ\b/g, '$1 kilojoules');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*kcal\b/gi, '$1 calories');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*kJ\b/g, '$1 kilojoules');
     s = s.replace(/(\d+)\s*ms\b/gi, '$1 milliseconds');
     s = s.replace(/(\d+)\s*W\b/g, '$1 watts');
-    s = s.replace(/(\d+)\s*kg\b/gi, '$1 kilos');
+    s = s.replace(/(\d+(?:\.\d+)?)\s*kg\b/gi, '$1 kilos');
+    // 40g / 240 g protein (after kg so "64.1 kg" wins)
+    s = s.replace(/(\d+(?:\.\d+)?)\s*g\b/gi, '$1 grams');
 
     s = s.replace(/\bZ([1-5])\b/g, 'zone $1');
+
+    // Slash stacks before single acronyms (CTL/ATL/TSB, FTP/LTHR, …)
+    s = s.replace(/\bCTL\s*\/\s*ATL\s*\/\s*TSB\b/gi, 'fitness, fatigue, and form');
+    s = s.replace(/\bCTL\s*\/\s*ATL\b/gi, 'fitness and fatigue');
+    s = s.replace(/\bFTP\s*\/\s*LTHR\b/gi, 'threshold power and lactate threshold heart rate');
+    s = s.replace(/\bFTP\s*\/\s*W\s*\/\s*kg\b/gi, 'threshold power and watts per kilo');
 
     // Athlete-facing wording (not letter-by-letter spelling)
     const acronyms = [
       [/\bVO2\s*max\b/gi, 'V O 2 max'],
       [/\bVO₂max\b/gi, 'V O 2 max'],
-      [/\bLTHR\b/g, 'lactate threshold heart rate'],
-      [/\bACWR\b/g, 'acute to chronic ratio'],
-      [/\bHRV\b/g, 'heart rate variability'],
-      [/\bRHR\b/g, 'resting heart rate'],
-      [/\bRPE\b/g, 'perceived effort'],
-      [/\bTSS\b/g, 'training stress'],
-      [/\bTSB\b/g, 'form'],
-      [/\bCTL\b/g, 'fitness'],
-      [/\bATL\b/g, 'fatigue'],
-      [/\be?FTP\b/g, 'threshold power'],
-      [/\bPMC\b/g, 'training load chart'],
-      [/\bBTB\b/g, 'back to back'],
-      [/\bNP\b/g, 'normalised power'],
+      [/\bLTHR\b/gi, 'lactate threshold heart rate'],
+      [/\bACWR\b/gi, 'acute to chronic ratio'],
+      [/\bHRV\b/gi, 'heart rate variability'],
+      [/\bRHR\b/gi, 'resting heart rate'],
+      [/\bRPE\b/gi, 'perceived effort'],
+      [/\bTSS\b/gi, 'training stress'],
+      [/\bTSB\b/gi, 'form'],
+      [/\bCTL\b/gi, 'fitness'],
+      [/\bATL\b/gi, 'fatigue'],
+      [/\be?FTP\b/gi, 'threshold power'],
+      [/\bPMC\b/gi, 'training load chart'],
+      [/\bBTB\b/gi, 'back to back'],
+      [/\bNP\b/gi, 'normalised power'],
+      [/\bTDEE\b/gi, 'daily energy burn'],
+      [/\bIF\b/g, 'intensity factor'],
+      [/\bKB\b/g, 'kettlebell'],
+      [/\bHR\b/g, 'heart rate'],
     ];
     acronyms.forEach(function(pair) { s = s.replace(pair[0], pair[1]); });
 
+    // "a ~2,200" → "a about 2200" → "about 2200"
+    s = s.replace(/\b(an?)\s+about\b/gi, 'about');
+    // Inline markdown-ish list dashes: ": - Pre-ride" / ") - Recovery"
+    s = s.replace(/([:)])\s*-\s+/g, '$1 ');
+    s = s.replace(/\s+-\s+(?=[A-Z])/g, '. ');
+
     s = s.replace(/\s*\|\s*/g, ', ');
+    s = s.replace(/\s+\/\s+/g, ', ');
     s = s.replace(/\s{2,}/g, ' ');
     s = s.replace(/\n{2,}/g, '. ');
     s = s.replace(/\n/g, '. ');
@@ -759,10 +816,7 @@
     });
   }
 
-  if (_ttsSupported) {
-    muteBtn.style.display = '';
-    syncMuteUI();
-  }
+  if (_ttsSupported) showMuteControl();
   if (muteBtn) {
     muteBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -770,6 +824,8 @@
       localStorage.setItem('coach_tts_muted', _ttsMuted ? '1' : '0');
       if (_ttsMuted) stopTTS();
       syncMuteUI();
+      setVoiceStatus(_ttsMuted ? 'Coach speech off' : 'Coach speech on');
+      setTimeout(function() { setVoiceStatus(''); }, 1800);
     });
   }
 

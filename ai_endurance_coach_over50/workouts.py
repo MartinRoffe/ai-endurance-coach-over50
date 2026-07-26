@@ -29,7 +29,7 @@ from garminconnect.workout import (
 from .plan import (
     TRAINING_WEEKS, PLAN_START,
     MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
-    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS,
+    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, POSITION_BRIDGE_DAYS, POSITION_BRIDGE_END,
 )
 
 _SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
@@ -214,16 +214,14 @@ def _recovery_spin(dur_min: int) -> CyclingWorkout:
 
 
 def _structured_z2(dur_min: int) -> CyclingWorkout:
-    # 10m warmup + 3×(12m Z2 + 2m easy) + 10m cooldown = 60m
+    # training.html: 10m WU + 2×20m Z2 + 5m easy between + 5m CD = 60m
     ftp_w = _latest_ftp_w()
     return _make(f"Structured Z2 {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
-        _endurance_interval(2, 720, ftp_w),
-        _recovery(3, 120),
-        _endurance_interval(4, 720, ftp_w),
-        _recovery(5, 120),
-        _endurance_interval(6, 720, ftp_w),
-        create_cooldown_step(600.0, step_order=7),
+        _endurance_interval(2, 1200, ftp_w),
+        _recovery(3, 300, _hr_zone_target(), 1, 1),
+        _endurance_interval(4, 1200, ftp_w),
+        create_cooldown_step(300.0, step_order=5),
     ], dur_min)
 
 
@@ -244,16 +242,20 @@ def _z2_hills(dur_min: int) -> CyclingWorkout:
 
 
 def _cadence_drills(dur_min: int) -> CyclingWorkout:
-    # 10m warmup + 5×(3m 90-110rpm + 2m Z2) + 15m Z2 + 10m cooldown = 60m
+    # training.html: 10m WU + 4×5m @ 95–100 rpm + 3m normal between + Z2 fill + 10m CD
     steps: list = [create_warmup_step(600.0, step_order=1)]
     o = 2
-    for _ in range(5):
-        steps.append(_interval(o, 180, _cadence_target(), 90, 110))
+    for i in range(4):
+        steps.append(_interval(o, 300, _cadence_target(), 95, 100))
         o += 1
-        steps.append(_recovery(o, 120, _hr_zone_target(), 2, 2))
+        if i < 3:
+            steps.append(_recovery(o, 180, _hr_zone_target(), 2, 2))
+            o += 1
+    # core = 10 + 20 + 9 + 10 CD = 49; remainder → Z2
+    z2_secs = max(0, (int(dur_min) - 49) * 60)
+    if z2_secs:
+        steps.append(_interval(o, z2_secs, _hr_zone_target(), 2, 2))
         o += 1
-    steps.append(_interval(o, 900, _hr_zone_target(), 2, 2))
-    o += 1
     steps.append(create_cooldown_step(600.0, step_order=o))
     return _make(f"Cadence Drills {dur_min}m", steps, dur_min)
 
@@ -327,17 +329,27 @@ def _ramp_test(dur_min: int) -> CyclingWorkout:
 
 
 def _tempo_intervals(dur_min: int) -> CyclingWorkout:
-    # 15m warmup + 3×(10m Z4 + 5m Z1) + 5m cooldown = 60m
+    # Plan 75m (training was 60m / 2×10 Z3): 15m WU + 3×10m @ 76–88% FTP (Z3)
+    # + 5m Z1 between + Z2 fill + 10m CD.
     ftp_w = _latest_ftp_w()
-    return _make(f"Tempo Intervals {dur_min}m", [
+    steps: list = [
         create_warmup_step(900.0, step_order=1),
-        _quality_interval(2, 600, ftp_w, 0.91, 1.05, 4, 4),
+        _quality_interval(2, 600, ftp_w, 0.76, 0.88, 3, 3),
         _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(4, 600, ftp_w, 0.91, 1.05, 4, 4),
+        _quality_interval(4, 600, ftp_w, 0.76, 0.88, 3, 3),
         _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(6, 600, ftp_w, 0.91, 1.05, 4, 4),
-        create_cooldown_step(300.0, step_order=7),
-    ], dur_min)
+        _quality_interval(6, 600, ftp_w, 0.76, 0.88, 3, 3),
+    ]
+    # core without CD = 55; rem → Z2 + 10m CD
+    rem = max(int(dur_min) - 55, 10)
+    cd = min(10, rem)
+    z2_extra = rem - cd
+    o = 7
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=o))
+    return _make(f"Tempo Intervals {dur_min}m", steps, dur_min)
 
 
 def _long_ride(name: str, dur_min: int) -> CyclingWorkout:
@@ -370,43 +382,59 @@ def _z2_ride(dur_min: int) -> CyclingWorkout:
 
 
 def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
-    # 10m warmup + 5×(6m 60-70rpm Z3 + 3m Z1) + Z2 filler + 10m cooldown.
-    # The Z2 block absorbs the remaining time so total matches dur_min
-    # (25m at the standard 90m).
+    # training.html wk10: 10m WU + 4×8m @ 60–65 rpm (sweetspot watts) + 3m Z1
+    # between + Z2 fill + 10m CD. Core = 10+32+9+10 = 61.
+    ftp_w = _latest_ftp_w()
     steps: list = [create_warmup_step(600.0, step_order=1)]
     o = 2
-    for _ in range(5):
-        steps.append(_interval(o, 360, _cadence_target(), 60, 70))
+    for i in range(4):
+        # Cadence-capped sweetspot: power when FTP known, else HR Z3
+        if ftp_w:
+            steps.append(_interval(
+                o, 480, _power_lap_target(),
+                round(ftp_w * 0.88), round(ftp_w * 0.94),
+                description="60–65 rpm, big gear",
+            ))
+        else:
+            steps.append(_interval(o, 480, _cadence_target(), 60, 65))
         o += 1
-        steps.append(_recovery(o, 180, _hr_zone_target(), 1, 1))
-        o += 1
-    z2_secs = max(0, (dur_min - 65) * 60)
+        if i < 3:
+            steps.append(_recovery(o, 180, _hr_zone_target(), 1, 1))
+            o += 1
+    z2_secs = max(0, (int(dur_min) - 61) * 60)
     if z2_secs:
-        steps.append(_interval(o, z2_secs, _hr_zone_target(), 2, 2))
+        steps.append(_endurance_interval(o, z2_secs, ftp_w))
         o += 1
     steps.append(create_cooldown_step(600.0, step_order=o))
     return _make(f"Low Cadence Ride {dur_min}m", steps, dur_min)
 
 
 def _sweetspot_ride(dur_min: int) -> CyclingWorkout:
-    # 15m warmup + 3×(15m Z3-4 sweetspot + 5m Z1) + 15m cooldown = 90m
+    # training.html wk9: 15m WU + 3×12m @ 88–93% FTP + 5m easy between.
+    # Core = 61; remainder → Z2 float + cool-down (min 10m CD).
     ftp_w = _latest_ftp_w()
-    return _make(f"Sweetspot Ride {dur_min}m", [
+    steps: list = [
         create_warmup_step(900.0, step_order=1),
-        _quality_interval(2, 900, ftp_w, 0.88, 0.94, 3, 4),
-        _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(4, 900, ftp_w, 0.88, 0.94, 3, 4),
-        _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(6, 900, ftp_w, 0.88, 0.94, 3, 4),
-        create_cooldown_step(900.0, step_order=7),
-    ], dur_min)
+        _quality_interval(2, 720, ftp_w, 0.88, 0.93, 3, 4),
+        _recovery(3, 300, _hr_zone_target(), 1, 2),
+        _quality_interval(4, 720, ftp_w, 0.88, 0.93, 3, 4),
+        _recovery(5, 300, _hr_zone_target(), 1, 2),
+        _quality_interval(6, 720, ftp_w, 0.88, 0.93, 3, 4),
+    ]
+    rem = max(int(dur_min) - 61, 10)
+    cd = min(15, rem)
+    z2_extra = rem - cd
+    o = 7
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=o))
+    return _make(f"Sweetspot Ride {dur_min}m", steps, dur_min)
 
 
 def _over_unders(dur_min: int) -> CyclingWorkout:
-    # 15m warmup + 2 sets x [4 x (2m over @105-110% FTP + 2m under @95-100% FTP)],
-    # 5m Z1 between sets + 10m cooldown = 62m. Matches the "surge and settle" rhythm
-    # description in analysis/prefetch.py and the interval-detection window in
-    # analysis/intervals.py (840-1200s = 14-20m per 16m set).
+    # training.html wk9: 15m WU + 2 sets × [4 × (2m @105% / 2m @95% FTP)]
+    # + 5m Z1 between sets. Core = 52; rem → Z2 + CD (plan 75m).
     ftp_w = _latest_ftp_w()
 
     def _ou_set(step_order: int):
@@ -419,27 +447,43 @@ def _over_unders(dur_min: int) -> CyclingWorkout:
             step_order=step_order,
         )
 
-    return _make(f"Over-Unders {dur_min}m", [
+    steps: list = [
         create_warmup_step(900.0, step_order=1),
         _ou_set(2),
         _recovery(3, 300, _hr_zone_target(), 1, 1),
         _ou_set(4),
-        create_cooldown_step(600.0, step_order=5),
-    ], dur_min)
+    ]
+    rem = max(int(dur_min) - 52, 10)
+    cd = min(10, rem)
+    z2_extra = rem - cd
+    o = 5
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=o))
+    return _make(f"Over-Unders {dur_min}m", steps, dur_min)
 
 
 def _threshold_ride(dur_min: int) -> CyclingWorkout:
-    # 15m warmup + 3×(15m Z4 + 5m Z1) + 15m cooldown = 90m
+    # Plan (training.html wk10): 15m WU + 2×20m @ 95–100% FTP + 8m easy between.
+    # Core = 63m; remainder → Z2 float + cool-down (min 10m CD) to hit dur_min.
     ftp_w = _latest_ftp_w()
-    return _make(f"Threshold Ride {dur_min}m", [
+    core = 63
+    rem = max(int(dur_min) - core, 10)
+    cd = min(15, rem)
+    z2_extra = rem - cd
+    steps: list = [
         create_warmup_step(900.0, step_order=1),
-        _quality_interval(2, 900, ftp_w, 0.95, 1.00, 4, 4),
-        _recovery(3, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(4, 900, ftp_w, 0.95, 1.00, 4, 4),
-        _recovery(5, 300, _hr_zone_target(), 1, 1),
-        _quality_interval(6, 900, ftp_w, 0.95, 1.00, 4, 4),
-        create_cooldown_step(900.0, step_order=7),
-    ], dur_min)
+        _quality_interval(2, 1200, ftp_w, 0.95, 1.00, 4, 4),
+        _recovery(3, 480, _hr_zone_target(), 1, 2),
+        _quality_interval(4, 1200, ftp_w, 0.95, 1.00, 4, 4),
+    ]
+    o = 5
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=o))
+    return _make(f"Threshold Ride {dur_min}m", steps, dur_min)
 
 
 def _hill_repeats(dur_min: int) -> CyclingWorkout:
@@ -553,6 +597,7 @@ _BUILDERS: dict[str, Any] = {
     "Zone 2 Steady":    lambda d: _zone2_steady(d),
     "Recovery Spin":    lambda d: _recovery_spin(d),
     "Recovery + Core":  lambda d: _recovery_spin(d),
+    "KB + Trunk":       lambda d: _recovery_spin(d),  # trunk is off-bike; Garmin gets easy spin only
     "Strength + Core":  lambda d: _recovery_spin(d),
     "Structured Z2":    lambda d: _structured_z2(d),
     "Z2 + Hills":       lambda d: _z2_hills(d),
@@ -678,9 +723,10 @@ def _kb_workout_steps(specs: dict | None, dur_min: int) -> list:
         groups.setdefault(ex["id"][0], []).append(ex)
     steps: list = [create_warmup_step(180.0, step_order=1)]
     order = 2
-    for _ in sorted(groups.keys()):
-        # One 4-min open interval per superset group (A, B, C, D)
-        steps.append(_interval(order, 240.0, _open_target()))
+    for key in sorted(groups.keys()):
+        # One 4-min open interval per superset group (A, B, C, D);
+        # a "V" group is a 20-min follow-along video (position programme).
+        steps.append(_interval(order, 1200.0 if key == "V" else 240.0, _open_target()))
         order += 1
     steps.append(create_cooldown_step(120.0, step_order=order))
     return steps
@@ -693,8 +739,13 @@ def _kb_full_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
 
 
 def _kb_light_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
-    """Abbreviated KB circuit for Light KB / post-ruck sessions (from KB_SPECS)."""
-    steps = _kb_workout_steps(KB_SPECS.get(week_num), dur_min)
+    """Abbreviated KB circuit for Light KB / post-ruck sessions (from KB_SPECS).
+
+    Weeks without a KB_SPECS entry (bridge/event-prep, week_num=0) fall back to
+    the position-programme spec so the watch shows real blocks, not a generic timer.
+    """
+    from .plan import POSITION_KB_SPEC_A
+    steps = _kb_workout_steps(KB_SPECS.get(week_num) or POSITION_KB_SPEC_A, dur_min)
     return _make_fe(f"Light KB Wk{week_num} {dur_min}m", steps, dur_min)
 
 
@@ -717,12 +768,9 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> CyclingWorkout:
     sets = spec["sets"]
     work_s = float(spec["work_s"])
     rest_s = float(spec["rest_s"])
-    norwegian = spec.get("norwegian", False)
     easy = spec.get("easy", False)
 
-    if norwegian:
-        work_lo, work_hi = 4, 4
-    elif easy:
+    if easy:
         work_lo, work_hi = 1, 2
     else:
         work_lo, work_hi = 2, 3
@@ -800,7 +848,8 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
     """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
 
     Covers the 12-week plan plus the camp-window spins (`CAMP_GRID_WORKOUTS`,
-    Aug 10–11/29–30) and the event-prep block (`EVENT_PREP_DAYS`, Aug 31 – Sep 11).
+    Aug 10–11/29–30), the event-prep block (`EVENT_PREP_DAYS`), and the
+    post-charity position bridge (`POSITION_BRIDGE_DAYS`, 15 Sep – 4 Oct).
     Tenerife camp days themselves are unstructured rides and are never pushed.
     """
     schedule: dict[tuple[str, int], list[str]] = defaultdict(list)
@@ -812,6 +861,8 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
                 schedule[(resolved[0], resolved[1])].append(d.isoformat())
     for d, w in list(CAMP_GRID_WORKOUTS.items()) + [
         (ep["date"], ep) for ep in EVENT_PREP_DAYS
+    ] + [
+        (bd, bw) for bd, bw in POSITION_BRIDGE_DAYS.items()
     ]:
         resolved = _resolve_bike_session(d, w["type"], w["label"], w["dur_min"])
         if resolved:
@@ -881,6 +932,19 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
                 (s[0], s[1], s[2], s[3]) for s in _specs_for(stype, label, dur, week_num) if s[0] == "sr"
             ):
                 schedule[(sr_label, sr_week, sr_dur)].append(date_str)
+
+    # Event-prep + position-bridge Light KB days (outside the 12-week tuple grid)
+    for d, w in (
+        [(ep["date"], ep) for ep in EVENT_PREP_DAYS if ep["type"] == "strength"]
+        + [(bd, bw) for bd, bw in POSITION_BRIDGE_DAYS.items() if bw["type"] == "strength"]
+    ):
+        date_str = d.isoformat()
+        for kind, sr_label, sr_week, sr_dur in (
+            (s[0], s[1], s[2], s[3])
+            for s in _specs_for(w["type"], w["label"], w["dur_min"], 0)
+            if s[0] == "sr"
+        ):
+            schedule[(sr_label, sr_week, sr_dur)].append(date_str)
 
     return schedule
 
@@ -1089,7 +1153,7 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     # event-prep block, which are synced too; only plan-prefixed titles are touched,
     # so athlete-created workouts in that window survive.
     plan_end = PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1)
-    sync_end = max([plan_end, *CAMP_GRID_WORKOUTS,
+    sync_end = max([plan_end, *CAMP_GRID_WORKOUTS, POSITION_BRIDGE_END,
                     *(ep["date"] for ep in EVENT_PREP_DAYS)])
     unsched = unschedule_plan_workouts_in_range(api, PLAN_START, sync_end, dry_run=dry_run)
     print(f"  {unsched['unscheduled']} existing plan calendar entr(y/ies) cleared "

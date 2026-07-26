@@ -188,16 +188,32 @@ INTAKE_DEFICIT_BY_TIER: dict[str, int] = {
 # Extra intake per hour of long ride beyond a 2 h baseline (kcal/h).
 LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
 
+# Deficits are suspended (maintenance) in these date windows: the final big
+# training weeks into the charity ride carry too much load for a 50+ athlete
+# to absorb in a deficit. Block A cut resumes in the position bridge (15 Sep).
+MAINTENANCE_WINDOWS: list[tuple[date, date]] = [
+    (date(2026, 7, 27), date(2026, 9, 14)),
+]
+
+
+def in_maintenance_window(d: Optional[date]) -> bool:
+    """True when deficits are suspended for this date (eat at maintenance)."""
+    if d is None:
+        return False
+    return any(start <= d <= end for start, end in MAINTENANCE_WINDOWS)
+
 
 def intake_target_kcal(
     tdee: Optional[float],
     tier_key: str,
     *,
     long_ride_extra_min: int = 0,
+    ref_date: Optional[date] = None,
 ) -> Optional[int]:
     """Prescribed intake (kcal) from calibrated TDEE and day type.
 
     Returns None when ``tdee`` is unknown (caller should fall back to static tiers).
+    ``ref_date`` enables the maintenance windows; None keeps the plain deficit.
     """
     if tdee is None:
         return None
@@ -207,7 +223,7 @@ def intake_target_kcal(
         return None
     if burn <= 0:
         return None
-    deficit = INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
+    deficit = 0 if in_maintenance_window(ref_date) else INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
     target = round(burn) - deficit
     if tier_key == "long" and long_ride_extra_min > 0:
         target += round(LONG_RIDE_EXTRA_KCAL_PER_HOUR * (long_ride_extra_min / 60.0))

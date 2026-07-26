@@ -38,13 +38,13 @@ def test_sweetspot_uses_power_lap_when_ftp_known():
     work = _work_steps(_sweetspot_ride(90))[1]
     assert work.targetType["workoutTargetTypeKey"] == "power.lap"
     assert work.targetValueOne == round(250 * 0.88)
-    assert work.targetValueTwo == round(250 * 0.94)
+    assert work.targetValueTwo == round(250 * 0.93)
 
 
 def test_tempo_falls_back_to_hr_without_power():
-    work = _work_steps(_tempo_intervals(60))[1]
+    work = _work_steps(_tempo_intervals(75))[1]
     assert work.targetType["workoutTargetTypeKey"] == "heart.rate.zone"
-    assert work.zoneNumber == 4
+    assert work.zoneNumber == 3
 
 
 def test_over_unders_power_targets():

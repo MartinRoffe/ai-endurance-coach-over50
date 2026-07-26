@@ -78,6 +78,7 @@ CALORIE_TIERS = {
 
 from .energy import (
     MIN_INTAKE_KCAL,
+    in_maintenance_window,
     intake_target_kcal,
     ride_kcal_from_kj,
 )
@@ -125,16 +126,24 @@ def resolve_calorie_target(
             "planned_deficit": round(float(tdee)) - kcal if tdee is not None else None,
             "static_fallback": static,
             "camp": True,
+            "maintenance": False,
         }
 
+    maintenance = in_maintenance_window(ref_date)
     long_extra = 0
     if tier_key == "long" and session_dur_min and session_dur_min > 120:
         long_extra = session_dur_min - 120
     computed = intake_target_kcal(
-        tdee, tier_key, long_ride_extra_min=long_extra
+        tdee, tier_key, long_ride_extra_min=long_extra, ref_date=ref_date
     )
     if computed is None:
-        return {"kcal": static, "from_tdee": False, "static_fallback": static, "camp": False}
+        return {
+            "kcal": static,
+            "from_tdee": False,
+            "static_fallback": static,
+            "camp": False,
+            "maintenance": maintenance,
+        }
     return {
         "kcal": computed,
         "from_tdee": True,
@@ -142,6 +151,7 @@ def resolve_calorie_target(
         "planned_deficit": round(float(tdee)) - computed,
         "static_fallback": static,
         "camp": False,
+        "maintenance": maintenance,
     }
 
 
@@ -858,6 +868,18 @@ def cycle_week_index(plan_start: date, today: date) -> int:
     return max(0, days_since_start // 7) % 4
 
 
+def prep_cycle_week_index(plan_start: date, today: date) -> int:
+    """Cycle week for Sunday cook / ahead shopping (Mon–Thu dinner batches).
+
+    Fri–Sun you shop and batch-cook for the week that starts next Monday, so
+    advance the reference date to that Monday before indexing. Mon–Thu match
+    ``cycle_week_index`` (dinners already belong to the current week).
+    """
+    if today.weekday() >= 4:  # Fri / Sat / Sun
+        today = today + timedelta(days=(7 - today.weekday()))
+    return cycle_week_index(plan_start, today)
+
+
 def today_day_type(cycle_week: int, weekday: int) -> str:
     if cycle_week == 3:
         return _WEEKDAY_TO_TYPE_RECOVERY[weekday]
@@ -1029,6 +1051,100 @@ def fuel_prep_context(plan_start: date, today: date) -> str:
         f"Sunday long ride ~{h} h → make **{prep['rice_cakes']} rice cakes** tonight, "
         f"mix **{bottles}** electrolyte bottles{carb}{flap}."
     )
+
+
+# Session types that count as rides for in-ride fuelling purposes.
+_RIDE_TYPES = {"long", "bike", "tempo", "ftp"}
+
+
+def today_targets(ref_date: date | None = None) -> dict:
+    """Single source of truth for today's nutrition numbers.
+
+    Crowns exactly one of each — every surface (dashboard, /nutrition, coach
+    context, email) should read from here rather than picking its own number:
+      kcal       — resolve_calorie_target (stable TDEE when available, else
+                   static tier; camp and maintenance windows applied)
+      protein    — protein_target_g() floor/ceiling (lean-mass based)
+      carbs g/h  — gut_training_target_g_per_hr() for rides ≥150 min;
+                   55 g/h solids for 75–150 min rides; None otherwise
+    The Garmin calorie goal and cached AI nutrition_targets are deliberately
+    NOT consulted — they are context, not prescriptions.
+    """
+    ref = ref_date or date.today()
+
+    # Planned session, override-aware (charity blocks first, then HR plan).
+    session = None
+    try:
+        from .plan import session_for_date_extended
+        sess = session_for_date_extended(ref)
+        if sess is None:
+            from .hr_plan import hr_session_for_date
+            sess = hr_session_for_date(ref)
+        if sess is not None:
+            stype, label, dur = sess
+            try:
+                from .history import get_plan_override
+                ov = get_plan_override(ref.isoformat())
+                if ov:
+                    stype = ov.get("session_type") or stype
+                    label = ov.get("label") or label
+                    dur = ov.get("duration_min") or dur
+            except Exception:
+                pass
+            session = {"type": stype, "label": label, "dur_min": dur}
+    except Exception:
+        pass
+    stype = session["type"] if session else None
+    dur = session["dur_min"] if session else 0
+
+    # One kcal number.
+    from .plan import PLAN_START
+    cycle_week = cycle_week_index(PLAN_START, ref)
+    tier = DAY_TYPES[today_day_type(cycle_week, ref.weekday())]["calorie_tier"]
+    target = resolve_calorie_target(
+        _stable_tdee(), tier, ref,
+        session_dur_min=dur if stype in ("long", "bike") else None,
+        session_type=stype,
+    )
+
+    pt = protein_target_g()
+
+    # One in-ride carbs number (+ prep detail for long rides).
+    carbs_g_per_hr = None
+    fuel_prep = None
+    is_ride = stype in _RIDE_TYPES and dur >= 75
+    if is_ride:
+        if dur >= 150:
+            carbs_g_per_hr = gut_training_target_g_per_hr(ref)
+            fuel_prep = fuel_prep_for_ride(dur, ref_date=ref)
+        else:
+            carbs_g_per_hr = _ON_BIKE_G_PER_HR
+
+    # Cached AI fuelling plan — expandable detail only, never the headline number.
+    ai_fuel_plan = None
+    if is_ride:
+        try:
+            from .analysis import _load_fuelling_plans, fuelling_session_key
+            ai_fuel_plan = _load_fuelling_plans().get(fuelling_session_key(stype, dur))
+        except Exception:
+            pass
+
+    return {
+        "date": ref.isoformat(),
+        "session": session,
+        "kcal": target["kcal"],
+        "kcal_source": "camp" if target.get("camp") else ("tdee" if target.get("from_tdee") else "tier"),
+        "stable_tdee": target.get("tdee"),
+        "planned_deficit": target.get("planned_deficit"),
+        "maintenance": bool(target.get("maintenance")),
+        "protein_low": pt["low"],
+        "protein_high": pt["high"],
+        "protein_basis": pt["basis"],
+        "carbs_g_per_hr": carbs_g_per_hr,
+        "fuel_prep": fuel_prep,
+        "ai_fuel_plan": ai_fuel_plan,
+        "camp": camp_day_profile(ref),
+    }
 
 
 def today_checklist(plan_start: date, today: date) -> list[str]:
@@ -1371,6 +1487,8 @@ def build_today_food(plan_start: date, today: date) -> dict:
             "kcal_from_tdee": target.get("from_tdee", False),
             "planned_deficit": target.get("planned_deficit"),
             "stable_tdee": target.get("tdee"),
+            "maintenance": False,
+            "carbs_g_per_hr": None,
             "meals": [],
             "meals_kcal_total": None,
             "checklist": camp_checklist(today, target["kcal"]),
@@ -1401,6 +1519,14 @@ def build_today_food(plan_start: date, today: date) -> dict:
         "kcal_from_tdee": target.get("from_tdee", False),
         "planned_deficit": target.get("planned_deficit"),
         "stable_tdee": target.get("tdee"),
+        "maintenance": bool(target.get("maintenance")),
+        "carbs_g_per_hr": (
+            gut_training_target_g_per_hr(today)
+            if session_type in _RIDE_TYPES and (session_dur or 0) >= 150
+            else _ON_BIKE_G_PER_HR
+            if session_type in _RIDE_TYPES and (session_dur or 0) >= 75
+            else None
+        ),
         "meals": [_meal_dict(m) for m in meals],
         "meals_kcal_total": sum(m[3] for m in meals),
         "scale_meta": scale_meta,
@@ -1467,10 +1593,16 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
     pre_din = _pre_dinner_protein(meals)
 
     if target.get("from_tdee"):
-        target_line = (
-            f"Target: {target['kcal']:,} kcal (stable TDEE {target['tdee']:,} − {target['planned_deficit']} kcal "
-            f"{day_data['label'].lower()})"
-        )
+        if target.get("maintenance"):
+            target_line = (
+                f"Target: {target['kcal']:,} kcal (stable TDEE {target['tdee']:,} — "
+                f"MAINTENANCE WINDOW to 14 Sep, deficits suspended)"
+            )
+        else:
+            target_line = (
+                f"Target: {target['kcal']:,} kcal (stable TDEE {target['tdee']:,} − {target['planned_deficit']} kcal "
+                f"{day_data['label'].lower()})"
+            )
         tier_note = tier.get("note")
         if tier_note:
             target_line += f" — {tier_note}"

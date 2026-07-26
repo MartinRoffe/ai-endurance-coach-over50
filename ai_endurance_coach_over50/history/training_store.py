@@ -11,8 +11,10 @@ from .db import (
     _ensure_activities_schema,
     _ensure_btb_schema,
     _ensure_durability_schema,
+    _ensure_fit_meta_schema,
     _ensure_ftp_schema,
     _ensure_fuelling_log_schema,
+    _ensure_interval_analyses_schema,
     _ensure_power_durability_schema,
     _ensure_schema,
 )
@@ -25,6 +27,25 @@ def save_ftp_test(test_date: str, activity_id: Optional[int], ftp_hr: Optional[i
         _ensure_ftp_schema(con)
         con.execute(
             "INSERT OR IGNORE INTO ftp_tests (date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note) VALUES (?,?,?,?,?,?)",
+            (test_date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note),
+        )
+
+
+def upsert_ftp_test(test_date: str, activity_id: Optional[int], ftp_hr: Optional[int],
+                    ftp_hr_max: Optional[int], note: Optional[str] = None,
+                    ftp_w: Optional[int] = None) -> None:
+    """Insert or replace FTP row for a date (Accept-estimate / --set-ftp)."""
+    with _conn() as con:
+        _ensure_ftp_schema(con)
+        con.execute(
+            "INSERT INTO ftp_tests (date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note) "
+            "VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(date) DO UPDATE SET "
+            "activity_id=COALESCE(excluded.activity_id, ftp_tests.activity_id), "
+            "ftp_hr=COALESCE(excluded.ftp_hr, ftp_tests.ftp_hr), "
+            "ftp_hr_max=COALESCE(excluded.ftp_hr_max, ftp_tests.ftp_hr_max), "
+            "ftp_w=COALESCE(excluded.ftp_w, ftp_tests.ftp_w), "
+            "note=COALESCE(excluded.note, ftp_tests.note)",
             (test_date, activity_id, ftp_hr, ftp_hr_max, ftp_w, note),
         )
 
@@ -481,6 +502,16 @@ def durability_exists(activity_id: int) -> bool:
     return row is not None
 
 
+def get_durability(activity_id: int) -> Optional[dict]:
+    """Return the HR-drift durability row for one activity, or None."""
+    with _conn() as con:
+        _ensure_durability_schema(con)
+        row = con.execute(
+            "SELECT * FROM activity_durability WHERE activity_id = ?", (activity_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
 # ── Power durability (Pw:HR decoupling on long rides) ────────────────────────
 
 def save_power_durability(activity_id: int, row: dict) -> None:
@@ -518,6 +549,16 @@ def power_durability_exists(activity_id: int) -> bool:
             "SELECT 1 FROM activity_power_durability WHERE activity_id = ?", (activity_id,)
         ).fetchone()
     return row is not None
+
+
+def get_power_durability(activity_id: int) -> Optional[dict]:
+    """Return the Pw:HR decoupling row for one activity, or None."""
+    with _conn() as con:
+        _ensure_power_durability_schema(con)
+        row = con.execute(
+            "SELECT * FROM activity_power_durability WHERE activity_id = ?", (activity_id,)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 # ── Heat / altitude acclimation ──────────────────────────────────────────────
@@ -639,3 +680,185 @@ def gut_training_summary(target: Optional[date] = None, days: int = 90) -> Optio
         "days_to_charity": days_to_charity,
         "week_num": week_num,
     }
+
+
+# ── FIT interval analyses ────────────────────────────────────────────────────
+
+def save_interval_analyses(activity_id: int, intervals: list[dict]) -> None:
+    import json
+    with _conn() as con:
+        _ensure_interval_analyses_schema(con)
+        con.execute("DELETE FROM interval_analyses WHERE activity_id = ?", (activity_id,))
+        for row in intervals:
+            step = int(row.get("step_index", row.get("work_num", 0)))
+            con.execute(
+                "INSERT OR REPLACE INTO interval_analyses (activity_id, step_index, metrics_json) "
+                "VALUES (?,?,?)",
+                (activity_id, step, json.dumps(row)),
+            )
+
+
+def load_interval_analyses(activity_id: int) -> list[dict]:
+    import json
+    with _conn() as con:
+        _ensure_interval_analyses_schema(con)
+        rows = con.execute(
+            "SELECT step_index, metrics_json FROM interval_analyses "
+            "WHERE activity_id = ? ORDER BY step_index",
+            (activity_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        try:
+            m = json.loads(r["metrics_json"])
+            m["step_index"] = r["step_index"]
+            out.append(m)
+        except (ValueError, TypeError):
+            pass
+    return out
+
+
+def load_recent_interval_summaries(limit: int = 5) -> list[dict]:
+    """Recent activities that have FIT interval rows, newest first."""
+    import json
+    with _conn() as con:
+        _ensure_interval_analyses_schema(con)
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            """
+            SELECT DISTINCT a.activity_id, a.date, a.name, a.type_key
+            FROM interval_analyses i
+            JOIN activities a ON a.activity_id = i.activity_id
+            ORDER BY a.date DESC, a.activity_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    result = []
+    for r in rows:
+        intervals = load_interval_analyses(int(r["activity_id"]))
+        result.append({
+            "activity_id": r["activity_id"],
+            "date": r["date"],
+            "name": r["name"],
+            "type_key": r["type_key"],
+            "intervals": intervals,
+        })
+    return result
+
+
+def save_fit_activity_meta(activity_id: int, meta: dict) -> None:
+    import json
+    with _conn() as con:
+        _ensure_fit_meta_schema(con)
+        con.execute(
+            "INSERT OR REPLACE INTO fit_activity_meta (activity_id, meta_json) VALUES (?,?)",
+            (activity_id, json.dumps(meta)),
+        )
+
+
+def load_fit_activity_meta(activity_id: int) -> Optional[dict]:
+    import json
+    with _conn() as con:
+        _ensure_fit_meta_schema(con)
+        row = con.execute(
+            "SELECT meta_json FROM fit_activity_meta WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["meta_json"])
+    except (ValueError, TypeError):
+        return None
+
+
+def latest_stale_ftp_flag() -> Optional[dict]:
+    """Most recent FIT meta with a stale_ftp proposal (not yet dismissed)."""
+    import json
+    with _conn() as con:
+        _ensure_fit_meta_schema(con)
+        rows = con.execute(
+            "SELECT activity_id, meta_json FROM fit_activity_meta ORDER BY created_at DESC"
+        ).fetchall()
+    for r in rows:
+        try:
+            meta = json.loads(r["meta_json"])
+        except (ValueError, TypeError):
+            continue
+        stale = meta.get("stale_ftp")
+        if stale and not meta.get("stale_ftp_accepted") and not meta.get("stale_ftp_dismissed"):
+            stale = dict(stale)
+            stale["activity_id"] = r["activity_id"]
+            stale["activity_date"] = meta.get("activity_date")
+            return stale
+    return None
+
+
+def mark_stale_ftp_accepted(activity_id: int) -> None:
+    import json
+    meta = load_fit_activity_meta(activity_id) or {}
+    meta["stale_ftp_accepted"] = True
+    save_fit_activity_meta(activity_id, meta)
+
+
+def observed_max_hr_12m(as_of: Optional[date] = None) -> Optional[int]:
+    """Highest activity max_hr in the last 12 months."""
+    end = as_of or date.today()
+    start = (end - timedelta(days=365)).isoformat()
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        row = con.execute(
+            "SELECT MAX(max_hr) AS mx FROM activities WHERE date >= ? AND max_hr IS NOT NULL",
+            (start,),
+        ).fetchone()
+    if row and row["mx"]:
+        return int(row["mx"])
+    return None
+
+
+_HR_MAX_REF_KEY = "hr_max_reference"
+_HR_MAX_REF_DATE_KEY = "hr_max_reference_date"
+
+
+def load_hr_max_reference() -> tuple[Optional[int], Optional[date]]:
+    import os
+    from .text_cache import get_cached_text
+    raw = get_cached_text(_HR_MAX_REF_KEY) or os.getenv("HR_MAX_REFERENCE")
+    raw_d = get_cached_text(_HR_MAX_REF_DATE_KEY) or os.getenv("HR_MAX_REFERENCE_DATE")
+    ref = int(raw) if raw and str(raw).isdigit() else None
+    ref_d = None
+    if raw_d:
+        try:
+            ref_d = date.fromisoformat(str(raw_d)[:10])
+        except ValueError:
+            ref_d = None
+    return ref, ref_d
+
+
+def save_hr_max_reference(hr_max: int, ref_date: str) -> None:
+    from .text_cache import set_cached_text
+    set_cached_text(_HR_MAX_REF_KEY, str(int(hr_max)))
+    set_cached_text(_HR_MAX_REF_DATE_KEY, str(ref_date)[:10])
+
+
+def latest_hr_calibration() -> Optional[dict]:
+    """Most recent FIT meta carrying an hr_calibration block with issues."""
+    import json
+    with _conn() as con:
+        _ensure_fit_meta_schema(con)
+        rows = con.execute(
+            "SELECT activity_id, meta_json FROM fit_activity_meta ORDER BY created_at DESC"
+        ).fetchall()
+    for r in rows:
+        try:
+            meta = json.loads(r["meta_json"])
+        except (ValueError, TypeError):
+            continue
+        cal = meta.get("hr_calibration")
+        if cal and cal.get("issues") and not meta.get("hr_calibration_dismissed"):
+            cal = dict(cal)
+            cal["activity_id"] = r["activity_id"]
+            return cal
+    return None
+

@@ -254,6 +254,28 @@ def _ensure_power_durability_schema(con: sqlite3.Connection) -> None:
     """)
 
 
+def _ensure_interval_analyses_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS interval_analyses (
+            activity_id INTEGER NOT NULL,
+            step_index INTEGER NOT NULL,
+            metrics_json TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (activity_id, step_index)
+        )
+    """)
+
+
+def _ensure_fit_meta_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS fit_activity_meta (
+            activity_id INTEGER PRIMARY KEY,
+            meta_json TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
 def _ensure_commitments_schema(con: sqlite3.Connection) -> None:
     """Durable coach commitments: checkpoints, guardrails and decision rules
     agreed in coach chat. Unlike coach_memory (a lossy summary), these survive

@@ -270,6 +270,7 @@
              data-label="{{ day.label }}"
              data-dur-fmt="{{ day.dur_fmt }}"
              data-power-target="{{ day.power_watts or '' }}"
+             {% if day.kb_spec %}data-kb-spec='{{ day.kb_spec | tojson }}'{% endif %}
              onclick="openHrModal(this)"
            {% endif %}>
         <div class="flex items-start justify-between" style="margin-bottom:2px">
@@ -455,9 +456,9 @@ const SESSION_INFO = {
 
   // ── Recovery ────────────────────────────────────────────────────────────
   "Recovery + Core": { steps: [
-    { name: "Easy Spin", time: "30–40 min", desc: "Z1 only — no HR targets, just movement. Flushes yesterday's fatigue." },
-    { name: "Core Work", time: "15–20 min", desc: "Dead bugs, Copenhagen plank (30s each side), pallof press, bird-dogs. Quality over quantity." },
-  ], note: "The core block protects the lower back on long climbs where position degrades late in a stage. Don't skip it." },
+    { name: "Easy Spin", time: "20–30 min", desc: "Z1 only — soft elbows on the hoods, legs only." },
+    { name: "Trunk block", time: "15 min", desc: "Side plank, bird-dog, wall slides, face pulls — see /position. Form failure ends the set." },
+  ], note: "Used on deload/taper weeks where a full strength day would be too much. Trunk work rides along with this session." },
 
   "Recovery Spin": { steps: [
     { name: "Easy Spin", time: "Full ride", desc: "Z1 only. Spin freely — no targets, no pressure. If legs feel dead, that's fine." },
@@ -615,26 +616,31 @@ const SESSION_INFO = {
     { name: "Cool-down",      time: "15 min", desc: "Easy" },
   ], note: "Use this result to set your race pacing strategy for the Haute Route. Your climbing pace for sustained efforts should be ~70–80% of this." },
 
-  // ── Gym ──────────────────────────────────────────────────────────────────
+  // ── Gym / KB + trunk ───────────────────────────────────────────────────────
+  "KB + Trunk": { steps: [
+    { name: "Lebe Stark 20-min Over-40", time: "Follow-along", desc: "Perfect 20-Minute Workout For Men Over 40 — 2 RIR; halve reps on unfamiliar moves first fortnight. Video linked from /position." },
+    { name: "Suitcase carries", time: "3 × 30 m/side", desc: "Finish Strength 2 days with suitcase (24 kg now; 32 kg from Oct). Extra set on the historically weaker side." },
+    { name: "Mobility top-up",  time: "optional",  desc: "Hip flexor 2×45s + doorway pec 90°/120° if it's a mobility day (3×/week). Trunk block follows the strength work — cues/timers → /position" },
+  ], note: "Type stays recovery so CTL projection is unchanged. Strength never the day before a key ride. Mid-week dose through Base — full programme → /position." },
+
   "Gym — Strength": { steps: [
-    { name: "Activation",        time: "10 min",          desc: "Glute bridges, clamshells, band walks — prime the hips and glutes before loading" },
-    { name: "Max strength",      time: "4–5 × 3–6 reps",  desc: "Heavy, low-rep: Bulgarian split squat, Romanian deadlift, trap-bar/back squat, step-ups. Prioritise single-leg work — it transfers directly to climbing power. Periodise the load: 6–8 reps in early Base (wks 1–4), then 3–5 heavy reps (wks 5–13)." },
-    { name: "Impact / bone loading", time: "5–8 min",     desc: "Cycling is non-weight-bearing, so it does nothing for — and can erode — bone density, a real concern past 50. Add ground-reaction impact the bike can't give: 3×10 low box jumps or pogo hops or skipping, plus heavy loaded carries. Build in gradually if you're new to jumping." },
-    { name: "Core block",        time: "15 min",          desc: "Dead bugs, Copenhagen plank (30s each side), pallof press, bird-dogs" },
-    { name: "Cool-down",         time: "5 min",           desc: "Hip flexor stretch, pigeon pose, calf stretch" },
-  ], note: "Base-phase gym = maximal strength + impact, not hypertrophy pump. For a 50+ cyclist this defends type-II muscle fibres, climbing power and — crucially — bone density, which a pure-cycling block silently erodes. Heavy and low-rep; drops to maintenance in the Peak phase." },
+    { name: "Activation",        time: "8 min",           desc: "Glute bridges, band walks, thoracic opener — prime hips before loading" },
+    { name: "Lebe Stark / heavy KB", time: "20–30 min",    desc: "Follow-along or heavy low-rep KB (goblet squat, RDL, press). Periodise: lighter early Base, then heavier. 2 RIR." },
+    { name: "Single-leg bolt-on", time: "~8 min",         desc: "Split squat 3×8/s, step-down 2×8/s, single-leg glute bridge 2×10/s — after Strength 1." },
+    { name: "Suitcase carries",  time: "3 × 30 m/side",   desc: "Heavy anti-lateral-flexion — road position relevant. Buy 32 kg in Sep for Oct onward." },
+    { name: "Impact / bone",     time: "5 min",           desc: "Cycling is non-weight-bearing. Add 3×10 low box jumps, pogo hops, or skipping if joints tolerate it." },
+  ], note: "Saturday strength day for the 50+ cyclist. Trunk & shoulder block follows the strength work (never the day before a key ride). Full how-to → /position. Drops to maintenance on deload Saturdays." },
 
   "Gym — Maintenance": { steps: [
     { name: "Activation",  time: "5 min",  desc: "Glute bridges, band work" },
     { name: "Main lifts",  time: "2 × each", desc: "Same movements as strength days, lighter weight. Keep movement quality — don't push for fatigue." },
-    { name: "Core",        time: "10 min", desc: "Dead bugs, plank, side plank" },
+    { name: "Trunk note",  time: "after lifts", desc: "Side plank + bird-dog after the main lifts — shorter holds, perfect form. → /position" },
   ], note: "Maintenance — preserve the adaptation without adding fatigue. Two sets, comfortable weight." },
 
   "Strength + Core": { steps: [
-    { name: "Activation",  time: "8 min",          desc: "Glute bridges, clamshells, band walks — prime hips and glutes before loading" },
-    { name: "Main lifts",  time: "3 × 5 reps",     desc: "Heavy but low volume: Bulgarian split squat, Romanian deadlift, step-ups. Heavy load, only 3 sets — strength stimulus without the fatigue cost." },
-    { name: "Core block",  time: "15 min",          desc: "Dead bugs, Copenhagen plank (30s each side), pallof press, bird-dogs. Protects the lower back late in long stages." },
-    { name: "Cool-down",   time: "5 min",           desc: "Hip flexor stretch, pigeon pose, calf stretch" },
+    { name: "Lebe Stark 20-min Over-40", time: "Follow-along", desc: "The one strength session — same programme as the charity block. 2 RIR always; progress load every second week only. Video linked from /position." },
+    { name: "Single-leg bolt-on", time: "~8 min",       desc: "Split squat 3×8/s, step-down 2×8/s, single-leg glute bridge 2×10/s." },
+    { name: "Trunk block",        time: "12 min",        desc: "Side plank, bird-dog, suitcase carry, wall slides — after the strength work, not on ride days. Full cues → /position." },
   ], note: "One weekly maintenance strength dose through Build/Specific/Peak. For a 50+ athlete this offsets sarcopenia and bone-density loss that cycling alone can't — keep it heavy and low-volume so it costs almost nothing in fatigue." },
 
   // ── Back-to-back / Simulation ────────────────────────────────────────────
@@ -767,6 +773,26 @@ function openHrModal(el) {
   document.getElementById('hrModalDur').textContent = durFmt || '';
   const stepsEl = document.getElementById('hrModalSteps');
   const noteEl = document.getElementById('hrModalNote');
+  // Strength days carry the shared position-programme KB spec (one programme
+  // across both plans) — render it instead of the static SESSION_INFO entry.
+  const kbRaw = el.dataset.kbSpec;
+  if (kbRaw) {
+    let spec = null;
+    try { spec = JSON.parse(kbRaw); } catch (e) {}
+    if (spec && spec.exercises) {
+      stepsEl.innerHTML = spec.exercises.map(ex => _buildStep({
+        name: ex.video_url
+          ? `<a href="${ex.video_url}" target="_blank" rel="noopener" style="color:#a3e635;text-decoration:none">${ex.name} ▸</a>`
+          : ex.name,
+        time: ex.sets_reps || '',
+        desc: ex.target || '',
+      })).join('');
+      const note = (spec.note || '') + ' Full programme → /position.';
+      noteEl.innerHTML = `<div style="margin-top:12px;padding:10px 14px;border-left:3px solid #ca8a04;background:rgba(28,22,0,0.5);border-radius:2px;font-size:12px;color:#a1a1aa;line-height:1.5">${note}</div>`;
+      document.getElementById('hrModal').style.display = 'flex';
+      return;
+    }
+  }
   if (info) {
     stepsEl.innerHTML = info.steps.map(_buildStep).join('');
     let note = info.note || '';

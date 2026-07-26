@@ -255,57 +255,46 @@ def _section_weekly_briefing(today: date) -> list[str]:
 
 
 def _section_today_session_prescriptions(today: date) -> list[str]:
-    """Cached nutrition targets + in-ride fuelling for today's planned session."""
-    from .nutrition_plan import camp_nutrition_window
+    """Today's nutrition numbers from the single resolver + cached fuelling detail."""
+    from .nutrition_plan import camp_nutrition_window, today_targets
 
     if camp_nutrition_window(today):
         return []  # camp macros come from nutrition_coach_context camp mode
 
-    sess = session_for_date_extended(today) or hr_session_for_date(today)
-    if sess is None or sess[0] == "rest":
-        return []
-    stype, label, dur = sess
-    ov = get_plan_override(today.isoformat())
-    if ov:
-        stype = ov.get("session_type") or stype
-        label = ov.get("label") or label
-        dur = ov.get("duration_min") or dur
     lines: list[str] = []
     try:
-        from .analysis import _load_fuelling_plans, _load_nutrition_targets, fuelling_session_key
-        goal = "perform" if today >= HR_PLAN_START else "cut"
-        targets = _load_nutrition_targets()
-        key = f"{goal}_v2_{stype}_{dur}"
-        tgt = targets.get(key)
-        if tgt is None:
-            other = "cut" if goal == "perform" else "perform"
-            tgt = targets.get(f"{other}_v2_{stype}_{dur}")
-        if tgt:
-            lines += [
-                "## Today's Nutrition Target (cached)",
-                f"  Session: {label} ({stype}, {dur}min)",
-                f"  {tgt.get('kcal')} kcal  |  P {tgt.get('protein_g')}g  |  "
-                f"C {tgt.get('carbs_g')}g  |  F {tgt.get('fat_g')}g",
-            ]
-            if tgt.get("brief"):
-                lines.append(f"  {tgt['brief']}")
-        if stype in _BIKE_TYPES and dur >= 75:
-            plan = _load_fuelling_plans().get(fuelling_session_key(stype, dur))
-            if plan:
-                if not lines:
-                    lines.append(f"## Today's Fuelling Plan (cached) — {label} ({dur}min)")
-                else:
-                    lines.append("## Today's Fuelling Plan (cached)")
-                lines.append(
-                    f"  {plan.get('carbs_g_per_hr')}g carbs/h  |  "
-                    f"total {plan.get('total_carbs_g')}g  |  "
-                    f"{plan.get('fluid_ml_per_hr')}ml/h  |  "
-                    f"{plan.get('sodium_mg_per_hr')}mg sodium/h"
-                )
-                if plan.get("brief"):
-                    lines.append(f"  {plan['brief']}")
+        tt = today_targets(today)
     except Exception:
         return lines
+    sess = tt.get("session")
+    if sess is None or sess["type"] == "rest":
+        return []
+    lines += [
+        "## Today's Nutrition Target (single source of truth)",
+        f"  Session: {sess['label']} ({sess['type']}, {sess['dur_min']}min)",
+        f"  {tt['kcal']} kcal  |  protein {tt['protein_low']}–{tt['protein_high']}g "
+        f"({tt['protein_basis']})",
+    ]
+    if tt.get("maintenance"):
+        lines.append(
+            "  MAINTENANCE WINDOW (to 14 Sep): deficits suspended through the "
+            "charity ride — do not advise a calorie deficit."
+        )
+    elif tt.get("planned_deficit"):
+        lines.append(f"  Planned deficit: {tt['planned_deficit']} kcal below stable TDEE")
+    if tt.get("carbs_g_per_hr"):
+        lines.append(f"  In-ride fuel: {tt['carbs_g_per_hr']} g carbs/h")
+    plan = tt.get("ai_fuel_plan")
+    if plan:
+        lines.append("## Today's Fuelling Plan (cached detail)")
+        lines.append(
+            f"  {plan.get('carbs_g_per_hr')}g carbs/h  |  "
+            f"total {plan.get('total_carbs_g')}g  |  "
+            f"{plan.get('fluid_ml_per_hr')}ml/h  |  "
+            f"{plan.get('sodium_mg_per_hr')}mg sodium/h"
+        )
+        if plan.get("brief"):
+            lines.append(f"  {plan['brief']}")
     return lines
 
 
@@ -1226,6 +1215,45 @@ def build_coach_context() -> str:
             note_str = f" — {r['note']}" if r.get("note") else ""
             rpe_parts.append(f"  {r['date']}: {rpe_str}{note_str}")
 
+    # FIT interval execution summaries (recent N sessions)
+    fit_parts: list[str] = []
+    try:
+        from .history import load_recent_interval_summaries
+        summaries = load_recent_interval_summaries(5)
+        if summaries:
+            fit_parts = ["## Recent FIT Interval Execution"]
+            fit_parts.append(
+                "Objective vs subjective: supra-threshold power at RPE ≤3/5 can signal stale FTP."
+            )
+            rpe_by_aid = {
+                str(r["activity_id"]): r for r in rpe_rows
+                if r.get("activity_id") is not None
+            }
+            for s in summaries:
+                fit_parts.append(f"  {s['date']} — {s.get('name') or s.get('type_key')}:")
+                for i in (s.get("intervals") or [])[:6]:
+                    bits = [f"step {i.get('work_num')}"]
+                    if i.get("avg_power_w") is not None:
+                        bits.append(f"{i['avg_power_w']} W")
+                    if i.get("pct_ftp") is not None:
+                        bits.append(f"{i['pct_ftp']}% FTP")
+                    if i.get("avg_hr") is not None:
+                        bits.append(f"HR {i['avg_hr']}")
+                    if i.get("front_load_pct") is not None and abs(i["front_load_pct"]) >= 8:
+                        bits.append(f"front-loaded {i['front_load_pct']:+.1f}%")
+                    if i.get("decoupling_pct") is not None:
+                        bits.append(f"decoup {i['decoupling_pct']:+.1f}%")
+                    fit_parts.append("    " + ", ".join(bits))
+                rpe = rpe_by_aid.get(str(s["activity_id"]))
+                if rpe:
+                    supra = any((i.get("pct_ftp") or 0) >= 103 for i in (s.get("intervals") or []))
+                    if supra and rpe.get("rpe") is not None and int(rpe["rpe"]) <= 3:
+                        fit_parts.append(
+                            f"    Note: RPE {rpe['rpe']}/5 with supra-threshold power — possible stale FTP"
+                        )
+    except Exception:
+        pass
+
     # Fuelling compliance logs
     fuel_parts: list[str] = []
     try:
@@ -1594,6 +1622,7 @@ def build_coach_context() -> str:
         *(act_lines or ["  None recorded"]),
         *([" ", *recent_analysis_parts] if recent_analysis_parts else []),
         *([" ", *rpe_parts] if rpe_parts else []),
+        *([" ", *fit_parts] if fit_parts else []),
         *([" ", *fuel_parts] if fuel_parts else []),
         *([" ", *btb_parts] if btb_parts else []),
     ]

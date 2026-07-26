@@ -43,7 +43,7 @@
       <div>
         <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">Interactive plan + completion</p>
         <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:#fafafa;line-height:1">Sessions</h1>
-        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">{{ plan_start.strftime("%-d %b %Y") }} → 20 Sep 2026</p>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">{{ plan_start.strftime("%-d %b %Y") }} → HR Base · Oct 2026</p>
       </div>
       {% if current_streak > 0 %}
       <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;padding:6px 14px;border:1px solid #166534;color:#4ade80;background:#052e16/40;border-radius:2px;white-space:nowrap;align-self:flex-start;margin-top:4px">
@@ -54,6 +54,14 @@
 
     {% include 'partials/week_progress.html' %}
     {% include 'partials/event_tracker.html' %}
+
+    <div style="margin:0 0 20px;padding:12px 16px;border:1px solid rgba(47,122,110,0.45);background:rgba(19,78,74,0.18);border-radius:2px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between">
+      <div>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#5eead4;margin:0 0 4px">Strength rebuild · road position</p>
+        <p style="font-size:13px;color:#d4d4d8;margin:0;max-width:62ch">2× Lebe Stark 20-min + mobility daily; trunk on ride days. Retest pike + plank Fridays. Fit changes one per week in parallel.</p>
+      </div>
+      <a href="/position" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0E1A1D;background:#fbbf24;padding:8px 14px;text-decoration:none;white-space:nowrap">Open programme →</a>
+    </div>
 
     <!-- Legend -->
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center">
@@ -139,9 +147,21 @@
       <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:#38bdf8;white-space:nowrap">🎯 GHENT → AMSTERDAM · 13 SEP · recovery → build → taper → race</span>
       <div style="flex:1;height:1px;background:rgba(56,189,248,0.2)"></div>
     </div>
+    {% elif week.phase_start and week.phase == 'bridge' %}
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0 6px">
+      <div style="flex:1;height:1px;background:rgba(47,122,110,0.35)"></div>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:#5eead4;white-space:nowrap">🛠 POSITION BRIDGE · 15 SEP – 4 OCT · 2× Lebe Stark · trunk on ride days · <a href="/position" style="color:#fbbf24;text-decoration:underline">how-to</a></span>
+      <div style="flex:1;height:1px;background:rgba(47,122,110,0.35)"></div>
+    </div>
+    {% elif week.phase_start and week.phase == 'hr_teaser' %}
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0 6px">
+      <div style="flex:1;height:1px;background:rgba(167,139,250,0.25)"></div>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:#c4b5fd;white-space:nowrap">⛰ HAUTE ROUTE BASE — NEXT · first 4 weeks · <a href="/haute-route" style="color:#a3e635;text-decoration:underline">full 46-week plan</a></span>
+      <div style="flex:1;height:1px;background:rgba(167,139,250,0.25)"></div>
+    </div>
     {% endif %}
 
-    <div class="grid grid-cols-8 gap-1 mb-1" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% endif %}">
+    <div class="grid grid-cols-8 gap-1 mb-1" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% elif week.phase == 'bridge' %}background:rgba(19,78,74,0.18);border-radius:4px;{% elif week.phase == 'hr_teaser' %}background:rgba(76,29,149,0.14);border-radius:4px;{% endif %}">
 
       <!-- Week sidebar -->
       <div class="flex flex-col items-end justify-center pr-2">
@@ -168,6 +188,12 @@
           <span class="text-[12px] font-semibold" style="color:#fbbf24">{{ week.week_label }}</span>
         {% elif week.phase == 'event_prep' %}
           <span class="text-[12px] font-semibold" style="color:#38bdf8">{{ week.week_label }}</span>
+        {% elif week.phase == 'bridge' %}
+          <span class="text-[12px] font-semibold" style="color:#5eead4">{{ week.week_label }}</span>
+        {% elif week.phase == 'hr_teaser' %}
+          <span class="text-[13px] font-bold" style="color:#c4b5fd">HR{{ "%02d"|format(week.week_num) }}</span>
+          <span class="text-[12px] text-slate-400">{{ week.start.strftime("%-d %b") }}</span>
+          <span class="text-[11px] text-slate-400 mt-0.5">{{ week.total_hrs }}h</span>
         {% endif %}
       </div>
 
@@ -354,6 +380,7 @@
                data-label="{{ day.label }}"
                data-dur="{{ day.dur_min }}"
                data-dur-fmt="{{ day.dur_fmt }}"
+               {% if day.kb_spec %}data-kb-spec='{{ day.kb_spec | tojson }}'{% endif %}
                onclick="openModal(this)"
              {% endif %}>
           <div class="flex items-start justify-between mb-0.5">
@@ -368,6 +395,55 @@
           {% endif %}
         </div>
         {% endif %}
+
+      {% elif week.phase == 'bridge' %}
+        {% set is_clickable = day.type in ['bike', 'tempo', 'ftp', 'long', 'strength'] and not day.get('out_of_bridge') %}
+        <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type if day.type else 'rest' }}
+                    {% if day.is_today %}today-ring{% endif %}
+                    {% if day.is_past or day.get('out_of_bridge') %}is-past{% endif %}
+                    {% if is_clickable %}clickable-session{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}"
+             {% if is_clickable %}
+               data-label="{{ day.label }}"
+               data-dur="{{ day.dur_min }}"
+               data-dur-fmt="{{ day.dur_fmt }}"
+               {% if day.kb_spec %}data-kb-spec='{{ day.kb_spec | tojson }}'{% endif %}
+               onclick="openModal(this)"
+             {% endif %}>
+          <div class="flex items-start justify-between mb-0.5">
+            <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
+            {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
+          </div>
+          {% if day.get('out_of_bridge') %}
+            <p class="text-[12px] opacity-40 mt-auto">—</p>
+          {% elif day.type != 'rest' and day.label %}
+            <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+            {% if day.dur_fmt %}<p class="text-[12px] opacity-80 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
+          {% else %}
+            <p class="text-[12px] opacity-65 mt-auto">Rest</p>
+          {% endif %}
+        </div>
+
+      {% elif week.phase == 'hr_teaser' %}
+        {% set hr_cls = 'sess-rest' if day.type == 'rest'
+           else 'sess-ftp' if day.type == 'ftp'
+           else 'sess-tempo' if day.type in ['tempo', 'sweetspot', 'vo2']
+           else 'sess-long' if day.type in ['long', 'back_to_back']
+           else 'sess-strength' if day.type in ['gym', 'recovery']
+           else 'sess-bike' %}
+        <a href="/haute-route" class="rounded border p-1.5 min-h-[64px] flex flex-col {{ hr_cls }} no-underline
+                    {% if day.is_today %}today-ring{% endif %}
+                    {% if day.is_past %}is-past{% endif %}">
+          <div class="flex items-start justify-between mb-0.5">
+            <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
+          </div>
+          {% if day.type != 'rest' %}
+            <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+            {% if day.dur_fmt %}<p class="text-[12px] opacity-80 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
+          {% else %}
+            <p class="text-[12px] opacity-65 mt-auto">Rest</p>
+          {% endif %}
+        </a>
 
       {% endif %}{# end phase dispatch #}
 
@@ -510,7 +586,15 @@
     // ── Workout descriptions from server (Claude-generated, cached) ────────────
     const WORKOUT_DESCS = {{ workout_descs | tojson }};
 
-    // ── Step structures (derived from workouts.py, exact match) ───────────────
+    // ── Step structures (must match workouts.py builders + plan durations) ───
+    function _padZ2Cd(steps, core, dur, cdCap) {
+      const rem = Math.max((dur || core) - core, 10);
+      const cd = Math.min(cdCap, rem);
+      const z2 = rem - cd;
+      if (z2 > 0) steps.push({name:"Z2 easy", mins:z2, zone:"Z2"});
+      steps.push({name:"Cool-down", mins:cd, zone:"Z1"});
+      return steps;
+    }
     const WORKOUT_STEPS = {
       "Easy Spin":        dur => [
         {name:"Warm-up",      mins:10,       zone:"Z1–2"},
@@ -528,123 +612,156 @@
         {name:"Cool-down",    mins:10,       zone:"Z1"},
       ],
       "Structured Z2":    _  => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Z2 block",     mins:12,       zone:"Z2",  repeat:"× 3  (2m Z1 between each)"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",   mins:10, zone:"Z1–2"},
+        {name:"Z2 block 1", mins:20, zone:"Z2 (62–72% FTP)"},
+        {name:"Easy between", mins:5, zone:"Z1"},
+        {name:"Z2 block 2", mins:20, zone:"Z2 (62–72% FTP)"},
+        {name:"Cool-down", mins:5,  zone:"Z1"},
       ],
       "Hill Repeats":      _  => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Hill effort",  mins:3,        zone:"Z4–5", repeat:"× 5  (3m Z1 descent between each)"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",     mins:15, zone:"Z1–2"},
+        {name:"Hill effort 1", mins:3, zone:"Z4–5"},
+        {name:"Easy descend",  mins:3, zone:"Z1"},
+        {name:"Hill effort 2", mins:3, zone:"Z4–5"},
+        {name:"Easy descend",  mins:3, zone:"Z1"},
+        {name:"Hill effort 3", mins:3, zone:"Z4–5"},
+        {name:"Easy descend",  mins:3, zone:"Z1"},
+        {name:"Hill effort 4", mins:3, zone:"Z4–5"},
+        {name:"Easy descend",  mins:3, zone:"Z1"},
+        {name:"Hill effort 5", mins:3, zone:"Z4–5"},
+        {name:"Easy descend",  mins:3, zone:"Z1"},
+        {name:"Cool-down",   mins:15, zone:"Z1"},
       ],
-      "Cadence Drills":   _  => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"High cadence", mins:3,        zone:"90–110 rpm", repeat:"× 5  (2m Z2 between each)"},
-        {name:"Z2 steady",    mins:15,       zone:"Z2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+      "Z2 + Hills":       _  => [
+        {name:"Warm-up",   mins:10, zone:"Z1–2"},
+        {name:"Z2 steady", mins:20, zone:"Z2"},
+        {name:"Hill effort", mins:3, zone:"Z3–4", repeat:"× 4  (3m Z1 between each)"},
+        {name:"Cool-down", mins:6,  zone:"Z1"},
       ],
+      "Hilly Z2":         dur => [
+        {name:"Warm-up",   mins:10,     zone:"Z1–2"},
+        {name:"Hilly Z2",  mins:dur-20, zone:"Z2 (Z3 on climbs)"},
+        {name:"Cool-down", mins:10,     zone:"Z1"},
+      ],
+      "Cadence Drills":   dur => {
+        const z2 = Math.max((dur || 60) - 49, 0);
+        const steps = [{name:"Warm-up", mins:10, zone:"Z1–2"}];
+        for (let i = 1; i <= 4; i++) {
+          steps.push({name:"High cadence " + i, mins:5, zone:"95–100 rpm"});
+          if (i < 4) steps.push({name:"Normal cadence", mins:3, zone:"Z2"});
+        }
+        if (z2 > 0) steps.push({name:"Z2 steady", mins:z2, zone:"Z2"});
+        steps.push({name:"Cool-down", mins:10, zone:"Z1"});
+        return steps;
+      },
       "Z2 Endurance":     dur => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Z2 steady",    mins:dur-20,   zone:"Z2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",   mins:10,     zone:"Z1–2"},
+        {name:"Z2 steady", mins:dur-20, zone:"Z2"},
+        {name:"Cool-down", mins:10,     zone:"Z1"},
       ],
       "Low Cadence":      _  => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Low cadence",  mins:4,        zone:"60–70 rpm", repeat:"× 5  (2m Z1 between each)"},
-        {name:"Z2 steady",    mins:10,       zone:"Z2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",     mins:10, zone:"Z1–2"},
+        {name:"Low cadence", mins:4,  zone:"60–70 rpm", repeat:"× 5  (2m Z1 between each)"},
+        {name:"Z2 steady",   mins:10, zone:"Z2"},
+        {name:"Cool-down",   mins:10, zone:"Z1"},
       ],
-      "Low Cadence Ride": _  => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Low cadence",  mins:4,        zone:"60–70 rpm Z3", repeat:"× 6  (2m Z1 between each)"},
-        {name:"Z2 steady",    mins:20,       zone:"Z2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
-      ],
+      "Low Cadence Ride": dur => {
+        const z2 = Math.max((dur || 75) - 61, 0);
+        const steps = [{name:"Warm-up", mins:10, zone:"Z1–2"}];
+        for (let i = 1; i <= 4; i++) {
+          steps.push({name:"Low cadence " + i, mins:8, zone:"60–65 rpm · 88–94% FTP"});
+          if (i < 4) steps.push({name:"Easy between", mins:3, zone:"Z1"});
+        }
+        if (z2 > 0) steps.push({name:"Z2 easy", mins:z2, zone:"Z2"});
+        steps.push({name:"Cool-down", mins:10, zone:"Z1"});
+        return steps;
+      },
       "Z2 Ride":          dur => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Z2 steady",    mins:dur-20,   zone:"Z2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",   mins:10,     zone:"Z1–2"},
+        {name:"Z2 steady", mins:dur-20, zone:"Z2"},
+        {name:"Cool-down", mins:10,     zone:"Z1"},
       ],
       "Easy Ride":        dur => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Easy riding",  mins:dur-20,   zone:"Z1–2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",     mins:10,     zone:"Z1–2"},
+        {name:"Easy riding", mins:dur-20, zone:"Z1–2"},
+        {name:"Cool-down",   mins:10,     zone:"Z1"},
       ],
       "Easy Prep Ride":   dur => [
-        {name:"Warm-up",      mins:10,       zone:"Z1–2"},
-        {name:"Easy riding",  mins:dur-20,   zone:"Z1–2"},
-        {name:"Cool-down",    mins:10,       zone:"Z1"},
+        {name:"Warm-up",     mins:10,     zone:"Z1–2"},
+        {name:"Easy riding", mins:dur-20, zone:"Z1–2"},
+        {name:"Cool-down",   mins:10,     zone:"Z1"},
       ],
       "FTP Test":         _  => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
-        {name:"Priming effort",mins:3,       zone:"Open"},
-        {name:"Easy",         mins:5,        zone:"Z1"},
-        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
-        {name:"Cool-down",    mins:17,       zone:"Z1"},
+        {name:"Warm-up",       mins:15, zone:"Z1–3"},
+        {name:"Priming effort",mins:3,  zone:"Open"},
+        {name:"Easy",          mins:5,  zone:"Z1"},
+        {name:"20-min test",   mins:20, zone:"Max sustainable"},
+        {name:"Cool-down",     mins:17, zone:"Z1"},
       ],
       "FTP Re-test":      _  => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
-        {name:"Priming effort",mins:3,       zone:"Open"},
-        {name:"Easy",         mins:5,        zone:"Z1"},
-        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
-        {name:"Cool-down",    mins:17,       zone:"Z1"},
+        {name:"Warm-up",       mins:15, zone:"Z1–3"},
+        {name:"Priming effort",mins:3,  zone:"Open"},
+        {name:"Easy",          mins:5,  zone:"Z1"},
+        {name:"20-min test",   mins:20, zone:"Max sustainable"},
+        {name:"Cool-down",     mins:17, zone:"Z1"},
       ],
       "Final FTP Test":   _  => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
-        {name:"Priming effort",mins:3,       zone:"Open"},
-        {name:"Easy",         mins:5,        zone:"Z1"},
-        {name:"20-min test",  mins:20,       zone:"Max sustainable"},
-        {name:"Cool-down",    mins:17,       zone:"Z1"},
+        {name:"Warm-up",       mins:15, zone:"Z1–3"},
+        {name:"Priming effort",mins:3,  zone:"Open"},
+        {name:"Easy",          mins:5,  zone:"Z1"},
+        {name:"20-min test",   mins:20, zone:"Max sustainable"},
+        {name:"Cool-down",     mins:17, zone:"Z1"},
       ],
-      "Threshold / Tempo Ride": dur => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
-        {name:"Threshold block", mins:dur-35, zone:"Z4"},
-        {name:"Cool-down",    mins:20,       zone:"Z1"},
-      ],
-      "Tempo Intervals":  _  => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–3"},
-        {name:"Tempo interval",mins:10,      zone:"Z4",  repeat:"× 3  (5m Z1 between each)"},
-        {name:"Cool-down",    mins:5,        zone:"Z1"},
-      ],
-      "Sweetspot Intervals": _ => [
-        {name:"Warm-up",         mins:15, zone:"Z1–3"},
-        {name:"Sweetspot block", mins:15, zone:"88–93% FTP", repeat:"× 3  (5m Z2 between each)"},
-        {name:"Cool-down",       mins:15, zone:"Z1"},
-      ],
-      "Sweetspot Ride":   _  => [
-        {name:"Warm-up",         mins:15,  zone:"Z1–2"},
-        {name:"Sweetspot block", mins:15,  zone:"88–93% FTP", repeat:"× 3  (5m Z2 between each)"},
-        {name:"Cool-down",       mins:10,  zone:"Z1"},
-      ],
-      "Over-Unders":      _  => [
-        {name:"Warm-up",         mins:15,  zone:"Z1–2"},
-        {name:"Over-Under set",  mins:16,  zone:"2m 105% / 2m 95% FTP × 4", repeat:"× 2 sets  (5m Z1 between sets)"},
-        {name:"Cool-down",       mins:10,  zone:"Z1"},
-      ],
-      "Threshold Ride":   _  => [
-        {name:"Warm-up",         mins:15,  zone:"Z1–2"},
-        {name:"Threshold block", mins:20,  zone:"Z4 (100% FTP)", repeat:"× 2  (5m Z2 between)"},
-        {name:"Cool-down",       mins:10,  zone:"Z1"},
-      ],
-      "Z2 Endurance":     dur => [
-        {name:"Warm-up",   mins:15,      zone:"Z1–2"},
-        {name:"Z2 steady", mins:dur-30,  zone:"Z2"},
-        {name:"Cool-down", mins:15,      zone:"Z1"},
-      ],
+      "Tempo Intervals":  dur => _padZ2Cd([
+        {name:"Warm-up",        mins:15, zone:"Z1–2"},
+        {name:"Tempo interval 1", mins:10, zone:"Z3 (76–88% FTP)"},
+        {name:"Easy between",   mins:5,  zone:"Z1"},
+        {name:"Tempo interval 2", mins:10, zone:"Z3 (76–88% FTP)"},
+        {name:"Easy between",   mins:5,  zone:"Z1"},
+        {name:"Tempo interval 3", mins:10, zone:"Z3 (76–88% FTP)"},
+      ], 55, dur || 75, 10),
+      "Sweetspot Intervals": dur => _padZ2Cd([
+        {name:"Warm-up",           mins:15, zone:"Z1–2"},
+        {name:"Sweetspot block 1", mins:12, zone:"88–93% FTP"},
+        {name:"Easy between",      mins:5,  zone:"Z2"},
+        {name:"Sweetspot block 2", mins:12, zone:"88–93% FTP"},
+        {name:"Easy between",      mins:5,  zone:"Z2"},
+        {name:"Sweetspot block 3", mins:12, zone:"88–93% FTP"},
+      ], 61, dur || 90, 15),
+      "Sweetspot Ride":   dur => _padZ2Cd([
+        {name:"Warm-up",           mins:15, zone:"Z1–2"},
+        {name:"Sweetspot block 1", mins:12, zone:"88–93% FTP"},
+        {name:"Easy between",      mins:5,  zone:"Z2"},
+        {name:"Sweetspot block 2", mins:12, zone:"88–93% FTP"},
+        {name:"Easy between",      mins:5,  zone:"Z2"},
+        {name:"Sweetspot block 3", mins:12, zone:"88–93% FTP"},
+      ], 61, dur || 90, 15),
+      "Over-Unders":      dur => _padZ2Cd([
+        {name:"Warm-up",        mins:15, zone:"Z1–2"},
+        {name:"Over-Under set 1", mins:16, zone:"2m 105% / 2m 95% FTP × 4"},
+        {name:"Easy between",   mins:5,  zone:"Z1"},
+        {name:"Over-Under set 2", mins:16, zone:"2m 105% / 2m 95% FTP × 4"},
+      ], 52, dur || 75, 10),
+      "Threshold Ride":   dur => _padZ2Cd([
+        {name:"Warm-up",           mins:15, zone:"Z1–2"},
+        {name:"Threshold block 1", mins:20, zone:"Z4 (95–100% FTP)"},
+        {name:"Easy between",      mins:8,  zone:"Z2"},
+        {name:"Threshold block 2", mins:20, zone:"Z4 (95–100% FTP)"},
+      ], 63, dur || 90, 15),
       "Pre-Event Long Ride": dur => [
-        {name:"Warm-up",      mins:15,      zone:"Z1–2"},
-        {name:"Z2 endurance", mins:dur-30,  zone:"Z2"},
-        {name:"Cool-down",    mins:15,      zone:"Z1"},
+        {name:"Warm-up",      mins:15,     zone:"Z1–2"},
+        {name:"Z2 endurance", mins:dur-30, zone:"Z2"},
+        {name:"Cool-down",    mins:15,     zone:"Z1"},
       ],
       "Long Ride":        dur => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–2"},
-        {name:"Z2 endurance", mins:dur-30,   zone:"Z2"},
-        {name:"Cool-down",    mins:15,       zone:"Z1"},
+        {name:"Warm-up",      mins:15,     zone:"Z1–2"},
+        {name:"Z2 endurance", mins:dur-30, zone:"Z2"},
+        {name:"Cool-down",    mins:15,     zone:"Z1"},
       ],
       "Long Ride (Easy)": dur => [
-        {name:"Warm-up",      mins:15,       zone:"Z1–2"},
-        {name:"Easy Z2",      mins:dur-30,   zone:"Z1–2"},
-        {name:"Cool-down",    mins:15,       zone:"Z1"},
+        {name:"Warm-up",   mins:15,     zone:"Z1–2"},
+        {name:"Easy Z2",   mins:dur-30, zone:"Z1–2"},
+        {name:"Cool-down", mins:15,     zone:"Z1"},
       ],
     };
 
@@ -684,15 +801,11 @@
       const easy    = !!intervals.easy;
       const workFmt = fmtSecs(intervals.work_s);
       const restFmt = intervals.rest_s >= 60 ? fmtSecs(intervals.rest_s) : intervals.rest_s + 's';
-      // NOTE: this norwegian/easy/standard → zone mapping is duplicated in
+      // NOTE: this easy/standard → zone mapping is duplicated in
       // Python as plan.maxi_target_zone() (used by the post-workout analysis
       // prompt). Keep the two in sync — if you change a zone here, change it there.
-      const zone    = intervals.norwegian ? 'Z4–5 · 85–95% max HR'
-                    : easy               ? 'Z1–2'
-                    :                      'Z2–3 · 60–80% max HR';
-      const intName = intervals.norwegian ? 'Norwegian 4×4 interval'
-                    : easy               ? 'Easy interval'
-                    :                      'Interval';
+      const zone    = easy ? 'Z1–2' : 'Z2–3 · 60–80% max HR';
+      const intName = easy ? 'Easy interval' : 'Interval';
       const repeat  = `× ${intervals.sets}  (${restFmt} rest between each)`;
       const intStep = {name: intName, mins: intervals.work_s / 60, fmt: workFmt, zone: zone, repeat: repeat};
 

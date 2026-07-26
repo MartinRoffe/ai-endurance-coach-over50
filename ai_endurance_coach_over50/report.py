@@ -311,6 +311,51 @@ def _rule_based_advice(
     return f"Recommendation: {rec}\n\n{detail}"
 
 
+# ── Email design tokens — vintage stage-race roadbook ────────────────────────
+# Cream paper, ink black, race red. Condensed display type falls back gracefully
+# on non-Apple clients; all layout is tables + inline styles (email-safe, no JS,
+# no web fonts). Keep every section on these tokens so the sheet reads as one
+# printed document.
+_INK = "#211d16"          # near-black ink
+_PAPER = "#f5efe2"        # cream card
+_PAPER_DEEP = "#ece2cd"   # tinted panel on the card
+_DESK = "#cfc5ad"         # outer background (the desk the sheet lies on)
+_RED = "#b5321c"          # race red accent
+_MUTED = "#877a61"        # faded ink
+_GREEN = "#4a6741"        # good / on-plan
+_AMBER = "#a06d13"        # caution
+_RULE = "#c9bda2"         # hairline rules
+_DISPLAY = "'Avenir Next Condensed','AvenirNextCondensed-Bold','Arial Narrow','Helvetica Neue',Arial,sans-serif"
+_SERIF = "'Iowan Old Style','Palatino','Palatino Linotype',Georgia,serif"
+_MONO = "'Menlo','Courier New',Courier,monospace"
+
+
+def _z_ink(z: Optional[float]) -> str:
+    """Palette-consistent colour for a z-score / readiness value."""
+    if z is None:
+        return _MUTED
+    if z >= 0.5:
+        return _GREEN
+    if z <= -0.5:
+        return _RED
+    return _AMBER
+
+
+def _sec_head(title: str, note: str = "") -> str:
+    """Roadbook section heading: red square, condensed caps, hairline rule."""
+    note_html = (
+        f'<span style="font-family:{_MONO};font-size:10px;color:{_MUTED};'
+        f'letter-spacing:0.06em;text-transform:none;float:right;padding-top:3px;">{note}</span>'
+        if note else ""
+    )
+    return (
+        f'<p style="margin:0 0 10px;font-family:{_DISPLAY};font-size:14px;font-weight:700;'
+        f'letter-spacing:0.22em;text-transform:uppercase;color:{_INK};'
+        f'border-bottom:1px solid {_RULE};padding-bottom:7px;">'
+        f'<span style="color:{_RED};">&#9632;</span>&nbsp;&nbsp;{title}{note_html}</p>'
+    )
+
+
 def _workouts_html(activities: list[dict]) -> str:
     if not activities:
         return ""
@@ -333,23 +378,24 @@ def _workouts_html(activities: list[dict]) -> str:
         date_display = date_str[5:].replace("-", " ") if date_str else ""
 
         rows += f"""
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:10px 12px;font-size:20px;width:32px;">{a['icon']}</td>
-          <td style="padding:10px 12px;">
-            <p style="margin:0;font-size:13px;font-weight:600;color:#111827;">{a.get('name') or a['type_label']}</p>
-            <p style="margin:2px 0 0;font-size:11px;color:#9ca3af;">{a['type_label']} · {date_display}</p>
+        <tr>
+          <td style="padding:9px 0;border-bottom:1px dotted {_RULE};vertical-align:top;width:52px;">
+            <span style="font-family:{_MONO};font-size:10px;color:{_RED};">{date_display}</span>
           </td>
-          <td style="padding:10px 12px;text-align:right;font-size:12px;color:#6b7280;white-space:nowrap;">
-            {'  ·  '.join(stats_parts)}
+          <td style="padding:9px 0 9px 10px;border-bottom:1px dotted {_RULE};vertical-align:top;">
+            <p style="margin:0;font-family:{_DISPLAY};font-size:14px;font-weight:600;letter-spacing:0.03em;color:{_INK};">{a.get('name') or a['type_label']}</p>
+          </td>
+          <td style="padding:9px 0 9px 10px;border-bottom:1px dotted {_RULE};text-align:right;vertical-align:top;white-space:nowrap;">
+            <span style="font-family:{_MONO};font-size:10px;color:{_MUTED};">{' · '.join(stats_parts)}</span>
           </td>
         </tr>"""
 
     return f"""
         <!-- Workouts -->
         <tr>
-          <td style="padding:0 32px 8px;">
-            <p style="margin:0 0 12px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;border-top:1px solid #e5e7eb;padding-top:24px;">Last 7 Days · Workouts</p>
-            <table width="100%" cellpadding="0" cellspacing="0">
+          <td style="padding:26px 28px 8px;">
+            {_sec_head("Race log", "last 7 days")}
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
               {rows}
             </table>
           </td>
@@ -365,26 +411,128 @@ def _planned_session_html(d: date) -> str:
     if dur:
         dur_str = f"{dur}m" if dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur % 60 else f"{dur // 60}h")
 
-    type_colours = {
-        "rest":     ("#f3f4f6", "#374151"),
-        "strength": ("#f5f3ff", "#6d28d9"),
-        "bike":     ("#ecfdf5", "#059669"),
-        "tempo":    ("#fffbeb", "#d97706"),
-        "ftp":      ("#fff7ed", "#ea580c"),
-        "ruck":     ("#fdf2f8", "#be185d"),
-        "long":     ("#fefce8", "#b45309"),
+    # Session-type accent on the placard's left edge.
+    type_accent = {
+        "rest": _MUTED, "strength": "#6b4f8a", "bike": _GREEN, "tempo": _AMBER,
+        "ftp": _RED, "ruck": "#8a4f62", "long": "#8a6413",
     }
-    bg, fg = type_colours.get(stype, ("#f3f4f6", "#374151"))
+    accent = type_accent.get(stype, _MUTED)
+    type_word = {"rest": "Rest day", "strength": "Strength", "bike": "Ride", "tempo": "Ride · quality",
+                 "ftp": "Test", "ruck": "Ruck", "long": "Long ride"}.get(stype, "Session")
+    dur_cell = (
+        f'<td style="text-align:right;vertical-align:middle;white-space:nowrap;padding:16px 18px 16px 14px;">'
+        f'<span style="font-family:{_MONO};font-size:22px;color:{_PAPER};">{dur_str}</span></td>'
+        if dur_str else ""
+    )
 
-    dur_part = f'<span style="font-size:12px;color:#6b7280;margin-left:8px;">{dur_str}</span>' if dur_str else ""
     return f"""
         <!-- Today's Workout -->
         <tr>
-          <td style="padding:0 32px 24px;">
-            <p style="margin:0 0 10px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;border-top:1px solid #e5e7eb;padding-top:24px;">Today's Planned Workout</p>
-            <div style="background:{bg};border-radius:8px;padding:12px 16px;display:inline-block;">
-              <span style="font-size:14px;font-weight:700;color:{fg};">{label}</span>{dur_part}
-            </div>
+          <td style="padding:26px 28px 0;">
+            {_sec_head("Today's stage")}
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:{_INK};border-left:5px solid {accent};">
+              <tr>
+                <td style="padding:16px 18px;">
+                  <p style="margin:0 0 3px;font-family:{_MONO};font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:{accent if accent != _MUTED else _RULE};">{type_word}</p>
+                  <p style="margin:0;font-family:{_DISPLAY};font-size:26px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;line-height:1.05;color:{_PAPER};">{label}</p>
+                </td>
+                {dur_cell}
+              </tr>
+            </table>
+          </td>
+        </tr>"""
+
+
+def _daily_food_html(d: date) -> str:
+    """'What to eat today' — the day's prescribed meals, readable away from the laptop.
+
+    Numbers come from the single resolver (today_targets) so the email always
+    matches the dashboard and /nutrition; meal rows come from build_today_food.
+    """
+    try:
+        from .nutrition_plan import build_today_food, today_targets
+        from .plan import PLAN_START
+        food = build_today_food(PLAN_START, d)
+        tt = today_targets(d)
+    except Exception:
+        return ""
+    if not food:
+        return ""
+
+    # Headline numbers — one kcal, one protein range, one carbs g/h.
+    bits = [f"~{tt['kcal']:,} kcal", f"protein {tt['protein_low']}&ndash;{tt['protein_high']} g"]
+    if tt.get("carbs_g_per_hr"):
+        bits.append(f"ride fuel {tt['carbs_g_per_hr']} g/h")
+    if tt.get("maintenance"):
+        bits.append(f'<span style="color:{_GREEN};font-weight:700;">maintenance &mdash; no deficit</span>')
+    summary = (
+        f'<p style="margin:0 0 14px;font-family:{_MONO};font-size:11px;letter-spacing:0.04em;'
+        f'color:{_INK};">{" &nbsp;&middot;&nbsp; ".join(bits)}</p>'
+    )
+
+    if food.get("camp_mode"):
+        items = "".join(
+            f'<tr><td style="padding:6px 0;border-bottom:1px dotted {_RULE};'
+            f'font-family:{_SERIF};font-size:13px;color:{_INK};line-height:1.55;">{item}</td></tr>'
+            for item in (food.get("checklist") or [])
+        )
+        body = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">{items}</table>'
+            if items else ""
+        )
+    else:
+        rows = []
+        for meal in food.get("meals") or []:
+            mac = meal.get("macros") or {}
+            mac_str = f"{mac.get('kcal', '')} kcal &middot; P {mac.get('p', '')} &middot; C {mac.get('c', '')}"
+            detail = meal.get("detail") or ""
+            rows.append(f"""
+              <tr>
+                <td style="padding:10px 0 2px;" colspan="2">
+                  <span style="font-family:{_MONO};font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:{_RED};">{meal.get('type', '')}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 2px;vertical-align:baseline;">
+                  <span style="font-family:{_DISPLAY};font-size:16px;font-weight:600;letter-spacing:0.02em;color:{_INK};">{meal.get('name', '')}</span>
+                </td>
+                <td style="padding:0 0 2px 12px;vertical-align:baseline;text-align:right;white-space:nowrap;">
+                  <span style="font-family:{_MONO};font-size:10px;color:{_MUTED};">{mac_str}</span>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:0 0 10px;border-bottom:1px dotted {_RULE};">
+                  <span style="font-family:{_SERIF};font-size:12px;font-style:italic;color:{_MUTED};line-height:1.5;">{detail}</span>
+                </td>
+              </tr>""")
+        if not rows:
+            return ""
+        body = (
+            '<table width="100%" cellpadding="0" cellspacing="0" '
+            'style="border-collapse:collapse;">' + "".join(rows) + "</table>"
+        )
+
+    # Sunday-batch fuel prep reminder for tomorrow's/today's long ride.
+    prep_line = ""
+    fp = tt.get("fuel_prep")
+    if fp and fp.get("prep_note"):
+        prep_line = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">'
+            f'<tr><td style="background:{_PAPER_DEEP};border-left:4px solid {_AMBER};padding:9px 12px;">'
+            f'<span style="font-family:{_SERIF};font-size:12px;color:{_INK};line-height:1.55;">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;'
+            f'text-transform:uppercase;color:{_AMBER};">Fuel prep&nbsp;&nbsp;</strong>'
+            f'{fp["prep_note"]}</span></td></tr></table>'
+        )
+
+    return f"""
+        <!-- What to eat today -->
+        <tr>
+          <td style="padding:26px 28px 4px;">
+            {_sec_head("Musette", "what to eat today")}
+            {summary}
+            {body}
+            {prep_line}
           </td>
         </tr>"""
 
@@ -420,7 +568,7 @@ def _week_completion_html(today: date) -> str:
         h, r = divmod(m, 60)
         return f"{h}h{r:02d}m" if r else f"{h}h"
 
-    pct_colour = "#34d399" if pct >= 90 else "#facc15" if pct >= 60 else "#f87171"
+    pct_colour = _GREEN if pct >= 90 else _AMBER if pct >= 60 else _RED
     bar_filled = min(pct, 100)
     bar_empty = 100 - bar_filled
 
@@ -430,30 +578,21 @@ def _week_completion_html(today: date) -> str:
     return f"""
         <!-- Week completion -->
         <tr>
-          <td style="padding:0 32px 24px;">
-            <p style="margin:0 0 10px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;border-top:1px solid #e5e7eb;padding-top:24px;">This Week · Training Progress</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:14px 16px;">
+          <td style="padding:26px 28px 4px;">
+            {_sec_head("This week", f"day {days_elapsed + 1}/7 &middot; wk {week_num}")}
+            <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="padding:0;">
-                  <table width="100%" cellpadding="0" cellspacing="0">
+                <td style="width:86px;vertical-align:top;">
+                  <span style="font-family:{_DISPLAY};font-size:38px;font-weight:700;color:{pct_colour};line-height:1;">{pct}<span style="font-size:20px;">%</span></span>
+                </td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <p style="margin:0 0 7px;font-family:{_MONO};font-size:11px;color:{_INK};">
+                    {fmt(done_min)} <span style="color:{_MUTED};">of {fmt(plan_min)} planned</span>
+                  </p>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="height:7px;border:1px solid {_INK};">
                     <tr>
-                      <td style="font-size:28px;font-weight:700;color:{pct_colour};width:64px;">{pct}%</td>
-                      <td style="padding-left:12px;">
-                        <p style="margin:0;font-size:12px;color:#374151;">
-                          <strong>{fmt(done_min)}</strong>
-                          <span style="color:#9ca3af;"> of {fmt(plan_min)} planned</span>
-                        </p>
-                        <p style="margin:4px 0 8px;font-size:11px;color:#9ca3af;">
-                          Day {days_elapsed + 1} of 7 · week {week_num}
-                        </p>
-                        <!-- progress bar -->
-                        <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:4px;overflow:hidden;height:6px;">
-                          <tr>
-                            <td width="{bar_filled}%" style="background:{pct_colour};height:6px;"></td>
-                            <td width="{bar_empty}%" style="background:#e5e7eb;height:6px;"></td>
-                          </tr>
-                        </table>
-                      </td>
+                      <td width="{bar_filled}%" style="background:{pct_colour};height:7px;font-size:0;line-height:0;">&nbsp;</td>
+                      <td width="{bar_empty}%" style="background:{_PAPER};height:7px;font-size:0;line-height:0;">&nbsp;</td>
                     </tr>
                   </table>
                 </td>
@@ -464,15 +603,19 @@ def _week_completion_html(today: date) -> str:
 
 
 def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: str, activities: list[dict] | None = None) -> str:
+    import re as _re
+
     label, _ = readiness_label(comp_z)
+    if comp_z is None:
+        score_colour = _MUTED
+    elif comp_z >= 0.25:
+        score_colour = _GREEN
+    elif comp_z <= -0.25:
+        score_colour = _RED
+    else:
+        score_colour = _AMBER
 
-    score_colour = (
-        "#34d399" if comp_z is not None and comp_z >= 0.25
-        else "#f87171" if comp_z is not None and comp_z <= -0.25
-        else "#facc15"
-    )
-
-    # Metric rows
+    # Metric rows — timing-sheet style
     rows_html = ""
     for field, (label_str, unit) in FIELD_LABELS.items():
         value = getattr(m, field)
@@ -483,27 +626,22 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
             mean, std = stats[field]
             z = z_score(value, mean, std, field)
             avg_str = fmt_value(field, mean) + unit
-            z_str = f"{z:+.2f}σ"
-            if z >= 0.5:
-                z_col = "#16a34a"
-            elif z <= -0.5:
-                z_col = "#dc2626"
-            else:
-                z_col = "#ca8a04"
+            z_str = f"{z:+.2f}&sigma;"
+            z_col = _z_ink(z)
         else:
-            avg_str = "—"
-            z_str = "context" if context_only else "—"
-            z_col = "#9ca3af"
+            avg_str = "&mdash;"
+            z_str = "context" if context_only else "&mdash;"
+            z_col = _MUTED
 
         rows_html += f"""
-        <tr style="border-bottom:1px solid #e5e7eb;">
-          <td style="padding:8px 12px;color:#374151;font-size:13px;">{label_str}</td>
-          <td style="padding:8px 12px;text-align:right;font-weight:600;font-size:13px;">{val_str}</td>
-          <td style="padding:8px 12px;text-align:right;color:#6b7280;font-size:13px;">{avg_str}</td>
-          <td style="padding:8px 12px;text-align:right;color:{z_col};font-size:13px;font-weight:600;">{z_str}</td>
+        <tr>
+          <td style="padding:7px 0;border-bottom:1px dotted {_RULE};font-family:{_SERIF};font-size:13px;color:{_INK};">{label_str}</td>
+          <td style="padding:7px 0 7px 8px;border-bottom:1px dotted {_RULE};text-align:right;font-family:{_MONO};font-size:12px;font-weight:700;color:{_INK};white-space:nowrap;">{val_str}</td>
+          <td style="padding:7px 0 7px 8px;border-bottom:1px dotted {_RULE};text-align:right;font-family:{_MONO};font-size:11px;color:{_MUTED};white-space:nowrap;">{avg_str}</td>
+          <td style="padding:7px 0 7px 8px;border-bottom:1px dotted {_RULE};text-align:right;font-family:{_MONO};font-size:11px;font-weight:700;color:{z_col};white-space:nowrap;">{z_str}</td>
         </tr>"""
 
-    # Status badges
+    # Status badges — bordered ink stamps
     badges_html = ""
     badge_items = []
     if m.hrv_status:
@@ -511,86 +649,129 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
     if m.training_status_label:
         badge_items.append(f"Training {m.training_status_label}")
     if m.acwr is not None and m.acwr_status:
-        badge_items.append(f"ACWR {m.acwr:.2f} · {m.acwr_status.replace('_', ' ').title()}")
+        badge_items.append(f"ACWR {m.acwr:.2f} {m.acwr_status.replace('_', ' ').title()}")
     for badge in badge_items:
         badges_html += (
-            f'<span style="display:inline-block;margin:3px 4px 3px 0;padding:3px 10px;'
-            f'background:#f3f4f6;border-radius:20px;font-size:12px;color:#374151;">'
+            f'<span style="display:inline-block;margin:0 6px 6px 0;padding:3px 9px;'
+            f'border:1px solid {_INK};font-family:{_MONO};font-size:9px;'
+            f'letter-spacing:0.12em;text-transform:uppercase;color:{_INK};">'
             f'{badge}</span>'
         )
 
-    # Advice paragraphs
-    advice_html = "".join(
-        f'<p style="margin:0 0 10px;line-height:1.6;color:#1f2937;">{p.strip()}</p>'
-        for p in advice.strip().split("\n\n") if p.strip()
-    )
+    # Advice paragraphs — serif coach's note, **bold** markdown honoured
+    advice_html = ""
+    for i, p in enumerate(q.strip() for q in advice.strip().split("\n\n") if q.strip()):
+        p = _re.sub(r"\*\*(.+?)\*\*", rf'<strong style="color:{_INK};">\1</strong>', p)
+        size = "15px" if i == 0 else "13.5px"
+        advice_html += (
+            f'<p style="margin:0 0 12px;font-family:{_SERIF};font-size:{size};'
+            f'line-height:1.65;color:#3d372c;">{p}</p>'
+        )
 
-    score_display = f"{comp_z:+.2f}σ" if comp_z is not None else "—"
+    score_display = f"{comp_z:+.2f}<span style=\"font-size:22px;\">&sigma;</span>" if comp_z is not None else "&mdash;"
 
-    power_header = ""
+    power_line = ""
     try:
         from .power_profile import build_power_profile
         pp = build_power_profile()
         if pp:
-            wkg_bit = f" · {pp['wkg']:.2f} W/kg" if pp.get("wkg") else ""
-            power_header = (
-                f'<p style="margin:10px 0 0;font-size:13px;color:#93c5fd;">'
-                f'FTP {pp["ftp_w"]}W{wkg_bit} (tested {pp["test_date"]})</p>'
+            wkg_bit = f" &middot; {pp['wkg']:.2f} W/kg" if pp.get("wkg") else ""
+            power_line = (
+                f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:10px;color:{_MUTED};">'
+                f'FTP {pp["ftp_w"]} W{wkg_bit} &middot; tested {pp["test_date"]}</p>'
             )
     except Exception:
         pass
 
+    # Route line: days to the A event
+    route_line = ""
+    try:
+        from .plan import CHARITY_DAYS
+        event_day = CHARITY_DAYS[0]["date"]
+        if isinstance(event_day, str):
+            event_day = date.fromisoformat(event_day)
+        days_out = (event_day - m.date).days
+        if 0 < days_out <= 120:
+            route_line = (
+                f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:10px;'
+                f'letter-spacing:0.14em;text-transform:uppercase;color:{_RED};">'
+                f'Ghent &rarr; Amsterdam &middot; J&ndash;{days_out}</p>'
+            )
+    except Exception:
+        pass
+
+    briefing_no = m.date.timetuple().tm_yday
+
     return f"""<!doctype html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;">
-    <tr><td align="center" style="padding:32px 16px;">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+<body style="margin:0;padding:0;background:{_DESK};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:{_DESK};">
+    <tr><td align="center" style="padding:26px 12px;">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:{_PAPER};border:1px solid {_INK};">
 
-        <!-- Header -->
+        <!-- Masthead: double rule + condensed date -->
+        <tr><td style="height:6px;background:{_INK};font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="height:3px;background:{_PAPER};font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="height:2px;background:{_INK};font-size:0;line-height:0;">&nbsp;</td></tr>
         <tr>
-          <td style="background:#111827;padding:28px 32px;">
-            <p style="margin:0 0 4px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;">Daily Readiness</p>
-            <p style="margin:0;font-size:22px;font-weight:700;color:#f9fafb;">{m.date.strftime('%A, %-d %B %Y')}</p>
-            <p style="margin:8px 0 0;font-size:36px;font-weight:800;color:{score_colour};">{score_display}
-              <span style="font-size:16px;color:#9ca3af;font-weight:400;margin-left:8px;">{label}</span>
-            </p>
-            {power_header}
-            <div style="margin-top:12px;">{badges_html}</div>
+          <td style="padding:22px 28px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-family:{_MONO};font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:{_MUTED};">The&nbsp;Daily&nbsp;Briefing</td>
+                <td style="text-align:right;font-family:{_MONO};font-size:10px;letter-spacing:0.14em;color:{_MUTED};">N&ordm;&nbsp;{briefing_no}</td>
+              </tr>
+            </table>
+            <p style="margin:10px 0 0;font-family:{_DISPLAY};font-size:40px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;line-height:0.95;color:{_INK};">{m.date.strftime('%A')}</p>
+            <p style="margin:2px 0 0;font-family:{_DISPLAY};font-size:19px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:{_MUTED};">{m.date.strftime('%-d %B %Y')}</p>
+            {route_line}
+          </td>
+        </tr>
+
+        <!-- Verdict panel -->
+        <tr>
+          <td style="padding:18px 28px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:{_PAPER_DEEP};border-top:2px solid {_INK};border-bottom:2px solid {_INK};">
+              <tr>
+                <td style="padding:14px 16px;vertical-align:middle;width:200px;">
+                  <p style="margin:0 0 2px;font-family:{_MONO};font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:{_MUTED};">Readiness</p>
+                  <p style="margin:0;font-family:{_MONO};font-size:38px;font-weight:700;color:{score_colour};line-height:1;">{score_display}</p>
+                  <p style="margin:3px 0 0;font-family:{_DISPLAY};font-size:14px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:{score_colour};">{label}</p>
+                  {power_line}
+                </td>
+                <td style="padding:14px 16px 8px 8px;vertical-align:middle;text-align:right;">
+                  {badges_html}
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
 
         <!-- Advice -->
         <tr>
-          <td style="padding:24px 32px 16px;">
-            <p style="margin:0 0 12px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;">Today's Advice</p>
+          <td style="padding:24px 28px 4px;">
+            {_sec_head("Directeur sportif", "this morning's read")}
             {advice_html}
-          </td>
-        </tr>
-
-        <!-- Post-debrief pointer -->
-        <tr>
-          <td style="padding:0 32px 20px;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">
-              After you train and sync your watch, the post-workout debrief is on the <strong>Today</strong> tab in the dashboard.
+            <p style="margin:0;font-family:{_MONO};font-size:10px;color:{_MUTED};line-height:1.6;">
+              After you train and sync the watch, the post-ride debrief is on the <strong>Today</strong> tab.
             </p>
           </td>
         </tr>
 
         {_planned_session_html(m.date)}
+        {_daily_food_html(m.date)}
         {_week_completion_html(m.date)}
 
         <!-- Metrics table -->
         <tr>
-          <td style="padding:24px 32px 8px;">
-            <p style="margin:0 0 12px;font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;">Metrics</p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr style="border-bottom:2px solid #e5e7eb;">
-                <th style="padding:6px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;">Metric</th>
-                <th style="padding:6px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;">Today</th>
-                <th style="padding:6px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;">30d Avg</th>
-                <th style="padding:6px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;">vs Baseline</th>
+          <td style="padding:26px 28px 8px;">
+            {_sec_head("Timing sheet", "vs 30-day baseline")}
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+              <tr>
+                <th style="padding:0 0 6px;text-align:left;font-family:{_MONO};font-size:9px;letter-spacing:0.16em;color:{_MUTED};font-weight:400;text-transform:uppercase;">Metric</th>
+                <th style="padding:0 0 6px 8px;text-align:right;font-family:{_MONO};font-size:9px;letter-spacing:0.16em;color:{_MUTED};font-weight:400;text-transform:uppercase;">Today</th>
+                <th style="padding:0 0 6px 8px;text-align:right;font-family:{_MONO};font-size:9px;letter-spacing:0.16em;color:{_MUTED};font-weight:400;text-transform:uppercase;">30d</th>
+                <th style="padding:0 0 6px 8px;text-align:right;font-family:{_MONO};font-size:9px;letter-spacing:0.16em;color:{_MUTED};font-weight:400;text-transform:uppercase;">&Delta;</th>
               </tr>
               {rows_html}
             </table>
@@ -601,9 +782,11 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
 
         <!-- Footer -->
         <tr>
-          <td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">
-              Generated from your Garmin data · 30-day rolling baseline · {len(stats)} metrics tracked
+          <td style="padding:24px 28px 20px;">
+            <p style="margin:0 0 10px;border-top:2px solid {_INK};font-size:0;line-height:0;">&nbsp;</p>
+            <p style="margin:0;font-family:{_MONO};font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:{_MUTED};text-align:center;">
+              &mdash;&nbsp;Fin d'&eacute;tape&nbsp;&mdash;<br>
+              <span style="letter-spacing:0.08em;text-transform:none;">Generated from your Garmin data &middot; 30-day rolling baseline &middot; {len(stats)} metrics tracked</span>
             </p>
           </td>
         </tr>
@@ -651,16 +834,17 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
     fatigue_alerts = [a for a in check_fatigue_alerts(m.date) if a["severity"] == "HIGH"]
     if fatigue_alerts:
         alert_rows = "".join(
-            f'<tr><td style="padding:10px 16px;font-size:13px;color:#7f1d1d;">'
-            f'<strong>⚠ {a["type"].replace("_", " ")}</strong>: {a["message"]}</td></tr>'
+            f'<tr><td style="padding:10px 14px;font-family:{_SERIF};font-size:13px;line-height:1.55;color:#6b2113;">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;text-transform:uppercase;">'
+            f'&#9888; {a["type"].replace("_", " ")}</strong> &nbsp;{a["message"]}</td></tr>'
             for a in fatigue_alerts
         )
         alert_block = (
-            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;'
-            'border-left:4px solid #ef4444;margin-bottom:16px;border-radius:0 4px 4px 0;">'
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ddd2;'
+            f'border-left:5px solid {_RED};">'
             f'{alert_rows}</table>'
         )
-        html = html.replace("<!-- Advice -->", f"<!-- Alerts -->\n        <tr><td style='padding:16px 32px 0;'>{alert_block}</td></tr>\n\n        <!-- Advice -->")
+        html = html.replace("<!-- Advice -->", f"<!-- Alerts -->\n        <tr><td style='padding:18px 28px 0;'>{alert_block}</td></tr>\n\n        <!-- Advice -->")
 
     # HRV traffic-light / recovery-gate callout (amber/red/illness days)
     modulation = None
@@ -683,13 +867,14 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
         else:
             gate_text = modulation.get("reason", "Illness signals detected — stay off the bike today.")
         gate_block = (
-            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;'
-            'border-left:4px solid #ef4444;margin-bottom:16px;border-radius:0 4px 4px 0;">'
-            '<tr><td style="padding:10px 16px;font-size:13px;color:#7f1d1d;">'
-            f'<strong>🛑 ILLNESS SIGNALS</strong>: {gate_text}'
-            '</td></tr></table>'
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ddd2;'
+            f'border-left:5px solid {_RED};">'
+            f'<tr><td style="padding:10px 14px;font-family:{_SERIF};font-size:13px;line-height:1.55;color:#6b2113;">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;text-transform:uppercase;">'
+            f'&#9632; Illness signals</strong> &nbsp;{gate_text}'
+            f'</td></tr></table>'
         )
-        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:16px 32px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
+        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:18px 28px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
     elif modulation and modulation.get("gate") and modulation.get("label"):
         light = modulation.get("light", {})
         gate_text = (
@@ -699,18 +884,19 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
             "Open the dashboard to apply."
         )
         gate_block = (
-            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;'
-            'border-left:4px solid #f59e0b;margin-bottom:16px;border-radius:0 4px 4px 0;">'
-            '<tr><td style="padding:10px 16px;font-size:13px;color:#78350f;">'
-            f'<strong>🟠 RECOVERY GATE</strong>: {gate_text}'
-            '</td></tr></table>'
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0e6c9;'
+            f'border-left:5px solid {_AMBER};">'
+            f'<tr><td style="padding:10px 14px;font-family:{_SERIF};font-size:13px;line-height:1.55;color:#6b4a0d;">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;text-transform:uppercase;">'
+            f'&#9632; Recovery gate</strong> &nbsp;{gate_text}'
+            f'</td></tr></table>'
         )
-        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:16px 32px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
+        html = html.replace("<!-- Advice -->", f"<!-- Recovery gate -->\n        <tr><td style='padding:18px 28px 0;'>{gate_block}</td></tr>\n\n        <!-- Advice -->")
     elif modulation and modulation.get("light", {}).get("status") in ("amber", "red"):
         light = modulation["light"]
         is_red = light["status"] == "red"
-        bg, border, fg = (("#fef2f2", "#ef4444", "#7f1d1d") if is_red
-                          else ("#fffbeb", "#f59e0b", "#78350f"))
+        bg, border, fg = (("#f0ddd2", _RED, "#6b2113") if is_red
+                          else ("#f0e6c9", _AMBER, "#6b4a0d"))
         if modulation.get("label"):
             mod_text = (
                 f"{modulation.get('headline', 'Adjust today')}: {light['reason']}. "
@@ -722,12 +908,13 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
             mod_text = f"{light['reason']}. Keep today genuinely easy."
         mod_block = (
             f'<table width="100%" cellpadding="0" cellspacing="0" style="background:{bg};'
-            f'border-left:4px solid {border};margin-bottom:16px;border-radius:0 4px 4px 0;">'
-            f'<tr><td style="padding:10px 16px;font-size:13px;color:{fg};">'
-            f'<strong>{"🔴" if is_red else "🟠"} HRV {light["status"].upper()} DAY</strong>: {mod_text}'
+            f'border-left:5px solid {border};">'
+            f'<tr><td style="padding:10px 14px;font-family:{_SERIF};font-size:13px;line-height:1.55;color:{fg};">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;text-transform:uppercase;">'
+            f'&#9632; HRV {light["status"]} day</strong> &nbsp;{mod_text}'
             f'</td></tr></table>'
         )
-        html = html.replace("<!-- Advice -->", f"<!-- Modulation -->\n        <tr><td style='padding:16px 32px 0;'>{mod_block}</td></tr>\n\n        <!-- Advice -->")
+        html = html.replace("<!-- Advice -->", f"<!-- Modulation -->\n        <tr><td style='padding:18px 28px 0;'>{mod_block}</td></tr>\n\n        <!-- Advice -->")
 
     if dry_run:
         print(f"Subject: {subject}\n")

@@ -9,6 +9,7 @@ from .db import load_analysis, patch_analysis_power
 from .intervals import (
     _ALL_FTP_LABELS,
     _CYCLING_TYPES,
+    _FTP_FALLBACK_LABELS,
     _FTP_SESSION_LABELS,
     _INTERVAL_CONFIG,
     _RAMP_SESSION_LABELS,
@@ -16,6 +17,7 @@ from .intervals import (
     _extract_interval_data,
     _extract_power_durability,
     _extract_ramp_ftp,
+    estimate_lthr_from_effort,
 )
 
 
@@ -227,6 +229,8 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
         elif session_label in _INTERVAL_CONFIG:
             result.update(_extract_interval_data(api, activity_id, session_label,
                                                  activity.get("type_key") if activity else None))
+            if session_label in _FTP_FALLBACK_LABELS:
+                result.update(_extract_ftp_effort(api, activity_id))
         return result
 
     summary_raw = api.get_activity(activity_id)
@@ -263,6 +267,8 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
     elif session_label in _INTERVAL_CONFIG:
         result.update(_extract_interval_data(api, activity_id, session_label,
                                                  activity.get("type_key") if activity else None))
+        if session_label in _FTP_FALLBACK_LABELS:
+            result.update(_extract_ftp_effort(api, activity_id))
     return result
 
 
@@ -310,10 +316,10 @@ def _try_save_ftp_from_detail(act: dict, detail: dict, session_label: Optional[s
         ftp_w = detail.get("ftp_w")
         if not ftp_w and detail.get("ftp_effort_avg_w"):
             ftp_w = round(detail["ftp_effort_avg_w"] * 0.95)
-        ftp_hr = detail.get("ftp_effort_avg_hr")
+        ftp_hr = estimate_lthr_from_effort(detail.get("ftp_effort_avg_hr"), session_label)
         save_ftp_test(
             d_obj.isoformat(), act["activity_id"],
-            int(ftp_hr) if ftp_hr else None,
+            ftp_hr,
             int(detail["ftp_effort_max_hr"]) if detail.get("ftp_effort_max_hr") else None,
             None,
             ftp_w=ftp_w,
@@ -360,7 +366,7 @@ def refresh_power_backfill(api: Any, days: int = 30) -> dict:
 
     for act in power_acts:
         act_id = act["activity_id"]
-        if ((act.get("duration_seconds") or 0) >= 90 * 60
+        if ((act.get("duration_seconds") or 0) >= 75 * 60
                 and not power_durability_exists(act_id)):
             try:
                 pd_row = _extract_power_durability(api, act)

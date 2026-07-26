@@ -4,6 +4,7 @@ from datetime import date
 
 from ai_endurance_coach_over50.energy import (
     MIN_INTAKE_KCAL,
+    in_maintenance_window,
     intake_target_kcal,
 )
 from ai_endurance_coach_over50 import nutrition_plan as np_mod
@@ -47,6 +48,70 @@ def test_intake_target_respects_floor():
 
 def test_intake_target_none_without_tdee():
     assert intake_target_kcal(None, "training") is None
+
+
+# ── maintenance window (27 Jul – 14 Sep 2026: deficits suspended) ─────────────
+
+def test_maintenance_window_edges():
+    assert not in_maintenance_window(date(2026, 7, 26))
+    assert in_maintenance_window(date(2026, 7, 27))
+    assert in_maintenance_window(date(2026, 9, 14))
+    assert not in_maintenance_window(date(2026, 9, 15))
+    assert not in_maintenance_window(None)
+
+
+def test_intake_target_zero_deficit_in_maintenance_window():
+    assert intake_target_kcal(2000, "training", ref_date=date(2026, 8, 5)) == 2000
+    assert intake_target_kcal(2000, "rest", ref_date=date(2026, 8, 5)) == 2000
+    # No ref_date → old behaviour (deficit applies).
+    assert intake_target_kcal(2000, "training") == 1750
+
+
+def test_resolve_calorie_target_maintenance_flag():
+    # 4 Sep 2026 is in the maintenance window but outside every camp window.
+    out = resolve_calorie_target(2000, "training", date(2026, 9, 4))
+    assert out["maintenance"] is True
+    assert out["planned_deficit"] == 0
+    assert out["kcal"] == 2000
+    out2 = resolve_calorie_target(2000, "training", _NON_CAMP)
+    assert out2["maintenance"] is False
+
+
+def test_camp_window_wins_over_maintenance():
+    # 15 Aug is inside both the camp and maintenance windows — camp branch wins.
+    out = resolve_calorie_target(2800, "training", date(2026, 8, 15))
+    assert out["camp"] is True
+    assert out["maintenance"] is False
+
+
+# ── today_targets (single-number resolver) ────────────────────────────────────
+
+def test_today_targets_long_ride_crowns_gut_training_carbs(monkeypatch):
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
+    # Wk 10 Sunday: Long Ride 255 min, charity wk 9+ → 90 g/h.
+    out = np_mod.today_targets(date(2026, 7, 26))
+    assert out["session"]["type"] == "long"
+    assert out["carbs_g_per_hr"] == 90
+    assert out["fuel_prep"] is not None
+    assert out["kcal_source"] == "tdee"
+    assert out["maintenance"] is False
+    assert out["protein_low"] > 0
+
+
+def test_today_targets_maintenance_and_rest(monkeypatch):
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
+    # Wk 11 Saturday (1 Aug 2026) is a rest day inside the maintenance window.
+    out = np_mod.today_targets(date(2026, 8, 1))
+    assert out["maintenance"] is True
+    assert out["planned_deficit"] == 0
+    assert out["carbs_g_per_hr"] is None
+
+
+def test_today_targets_tier_fallback_without_tdee(monkeypatch):
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: None)
+    out = np_mod.today_targets(date(2026, 7, 20))
+    assert out["kcal_source"] == "tier"
+    assert out["kcal"] > 0
 
 
 # ── resolve_calorie_target ────────────────────────────────────────────────────

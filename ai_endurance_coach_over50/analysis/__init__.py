@@ -15,9 +15,12 @@ from .intervals import (  # noqa: F401
     _CLIMBING_INTERVAL_LABELS,
     _CLIMBING_TYPES,
     _CYCLING_TYPES,
+    _FTP_FALLBACK_LABELS,
     _FTP_SESSION_LABELS,
     _INTERVAL_CONFIG,
+    _INTERVAL_PRESCRIBED,
     _NONWORK_INTENSITIES,
+    _RAMP_SESSION_LABELS,
     _WORK_INTENSITIES,
     _drop_stubs,
     _extract_durability,
@@ -29,6 +32,7 @@ from .intervals import (  # noqa: F401
     _lap_power,
     _merge_same_step_laps,
     _work_laps_from_steps,
+    estimate_lthr_from_effort,
 )
 from .power import (  # noqa: F401
     _fetch_power_summary_from_api,

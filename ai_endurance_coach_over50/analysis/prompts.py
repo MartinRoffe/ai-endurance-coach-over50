@@ -30,7 +30,9 @@ _DUAL_CHANNEL_SYSTEM = (
     "power for instant objective intensity, pacing ceilings on climbs (cap, not target), and "
     "interval execution; HR + readiness for fatigue, heat, altitude, and cardiac drift. "
     "Pw:HR decoupling matters — HR rising while power is flat or falling is an early fade warning. "
-    "When HR and power disagree, say which channel you trust and why. "
+    "When HR and power disagree, say which channel you trust and why: with measured FTP on record, "
+    "prefer absolute watts / NP / %FTP for intensity and HR/drift for fatigue, heat, and durability — "
+    "do not default to 'power zones are wrong'. "
     "If HR data looks corrupt (flat avg=max, or 0% in all HR zones) but power zones are present, "
     "base intensity assessment on power and flag the HR sensor issue."
 )
@@ -140,12 +142,36 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         power_zone_lines.append(f"  Z{z['zone']} ({w_str}): {bar} {z['pct']}%  {_fmt_secs(z['secs'])}")
 
     ftp_w = None
+    ftp_date = None
     ftp_stale = False
+    ftp_hr_lthr = None
     if has_power:
         try:
             from ..history import load_ftp_tests, ftp_retest_due
             from ..plan import PLAN_START
-            ftp_w = next((t["ftp_w"] for t in reversed(load_ftp_tests()) if t.get("ftp_w")), None)
+            from .power import ftp_w_on_date
+            if d_obj:
+                ftp_w = ftp_w_on_date(d_obj)
+                for t in reversed(load_ftp_tests()):
+                    td = date.fromisoformat(t["date"]) if t.get("date") else None
+                    if td and td <= d_obj and t.get("ftp_w") and int(t["ftp_w"]) == int(ftp_w or 0):
+                        ftp_date = t.get("date")
+                        ftp_hr_lthr = t.get("ftp_hr")
+                        break
+                if ftp_w and not ftp_date:
+                    for t in reversed(load_ftp_tests()):
+                        td = date.fromisoformat(t["date"]) if t.get("date") else None
+                        if td and td <= d_obj and t.get("ftp_w"):
+                            ftp_date = t.get("date")
+                            ftp_hr_lthr = t.get("ftp_hr")
+                            break
+            else:
+                for t in reversed(load_ftp_tests()):
+                    if t.get("ftp_w"):
+                        ftp_w = t["ftp_w"]
+                        ftp_date = t.get("date")
+                        ftp_hr_lthr = t.get("ftp_hr")
+                        break
             ftp_stale = ftp_retest_due(d_obj or date.today(), plan_start=PLAN_START) is not None
         except Exception:
             pass
@@ -154,11 +180,14 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
     # athlete's Garmin *profile*, which this app never sets, reads, or reconciles
     # with the measured FTP in ftp_tests. Two failure modes make those zone
     # percentages untrustworthy and must override the coach's reading of them:
-    #   (1) uncalibrated — no measured FTP on record (or it's stale), so the
-    #       buckets run against an unverified/default profile FTP;
-    #   (2) mismatch — the FTP implied by the zone boundaries diverges sharply
-    #       from the measured FTP (Coggan Z4/threshold low boundary ≈ 91% FTP).
-    power_uncalibrated = bool(power_zone_lines) and (ftp_w is None or ftp_stale)
+    #   (1) uncalibrated — no measured FTP on record, so the buckets run against
+    #       an unverified/default profile FTP;
+    #   (2) mismatch — the FTP implied by the zone boundaries diverges from the
+    #       measured FTP (Coggan Z4/threshold low boundary ≈ 91% FTP). Threshold
+    #       is ~7% so a 202 vs 214 W split is flagged.
+    # A stale-but-present measured FTP is still the intensity anchor; it only
+    # triggers a soft retest note, not the UNCALIBRATED narrative.
+    power_uncalibrated = bool(power_zone_lines) and ftp_w is None
     power_zone_mismatch = False
     implied_ftp = None
     z4_low_w = None
@@ -167,7 +196,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         if z4 and z4.get("low_w"):
             z4_low_w = z4["low_w"]
             implied_ftp = z4_low_w / 0.91
-            if abs(implied_ftp - ftp_w) / ftp_w > 0.15:
+            if abs(implied_ftp - ftp_w) / ftp_w > 0.07:
                 power_zone_mismatch = True
 
     hr_zone_secs = sum(z.get("secs") or 0 for z in hr_zones)
@@ -184,7 +213,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         )
     elif has_power and power_uncalibrated:
         data_quality_lines.append(
-            "Data quality: power zones are UNCALIBRATED — no recent measured FTP is on "
+            "Data quality: power zones are UNCALIBRATED — no measured FTP is on "
             "record, so Garmin built the power time-in-zone buckets against an unverified "
             "profile FTP (often a stale/high default). Do NOT narrate the power-zone "
             "percentages as the effort distribution, and do NOT conclude the ride was "
@@ -197,19 +226,34 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         data_quality_lines.append(
             f"Data quality: the Garmin power zones imply an FTP of ~{int(implied_ftp)} W "
             f"(threshold/Z4 boundary {int(z4_low_w)} W ≈ 91% FTP), but the measured FTP on "
-            f"record is {int(ftp_w)} W — a >15% divergence. The power-zone percentages are "
+            f"record is {int(ftp_w)} W — a >7% divergence. The power-zone percentages are "
             "likely miscalibrated; prioritise HR/RPE and absolute watts over power-zone "
-            "shares, and do not read the zone distribution as the true effort distribution."
+            "shares, and do not read the zone distribution as the true effort distribution. "
+            "Use the measured FTP above for all %FTP / IF claims."
         )
     elif has_power and hr_zone_secs > 0 and power_zone_lines:
+        ftp_anchor = f"{int(ftp_w)} W"
+        if ftp_date:
+            ftp_anchor += f" (tested {ftp_date})"
         data_quality_lines.append(
-            "Dual-channel read: cross-check HR zones against power zones. If they diverge, "
-            "weigh BOTH candidate explanations before concluding: (a) physiology/pacing — "
-            "cardiac drift, heat, fatigue, or surges; and (b) data — miscalibrated power "
-            "zones from an uncalibrated profile FTP. Do not default to the physiology "
-            "story. A whole-ride HR-runs-hot-vs-power skew usually means the power zones "
-            "are off; a divergence isolated to late reps points to genuine leg/metabolic "
-            "fatigue."
+            f"Dual-channel read: measured FTP {ftp_anchor} is on record and Garmin "
+            "power-zone boundaries align with it. Treat absolute watts, NP, and %FTP/IF "
+            "as the primary intensity read. If HR and power diverge, prefer physiology/"
+            "pacing — cardiac drift, heat, duration, surges, or early cardiac efficiency — "
+            "not an uncalibrated profile FTP story (that is already ruled out when zones "
+            "align). Power-hard / HR-easy on long rides often means drift/heat; divergence "
+            "isolated to late reps points to genuine leg/metabolic fatigue."
+        )
+    if has_power and ftp_w is not None and ftp_stale and not power_uncalibrated:
+        data_quality_lines.append(
+            f"FTP note: measured FTP {int(ftp_w)} W is more than 42 days old — recommend "
+            "a retest soon. Still use NP / %FTP against this measured FTP as the intensity "
+            "anchor; do not treat power zones as unverified solely because the test is aged."
+        )
+    if ftp_hr_lthr and avg_hr is not None:
+        data_quality_lines.append(
+            f"LTHR on record: {int(ftp_hr_lthr)} bpm. Do not claim the ride was "
+            "'entirely Z1–Z2' without checking average/peak HR against this LTHR."
         )
 
     power_summary_lines: list[str] = []
@@ -221,9 +265,57 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             pwr_parts.append(f"NP {int(np_pwr)} W")
         if max_pwr:
             pwr_parts.append(f"max {int(max_pwr)} W")
+        if ftp_w:
+            ftp_label = f"Measured FTP: {int(ftp_w)} W"
+            if ftp_date:
+                ftp_label += f" (as of {ftp_date})"
+            power_summary_lines.append(ftp_label)
         if ftp_w and np_pwr:
             pwr_parts.append(f"{round(np_pwr / ftp_w * 100)}% FTP")
+        if_val = activity.get("intensity_factor")
+        tss_val = activity.get("tss")
+        if if_val is not None:
+            pwr_parts.append(f"IF {float(if_val):.3f}")
+        if tss_val is not None:
+            pwr_parts.append(f"TSS {float(tss_val):.1f}")
         power_summary_lines.append("Power: " + ", ".join(pwr_parts))
+
+    min_temp = activity.get("min_temperature")
+    max_temp = activity.get("max_temperature")
+    temp_line = ""
+    if min_temp is not None or max_temp is not None:
+        lo = f"{float(min_temp):.0f}" if min_temp is not None else "?"
+        hi = f"{float(max_temp):.0f}" if max_temp is not None else "?"
+        temp_line = (
+            f"Ambient temperature: {lo}–{hi} °C. "
+            "Holding flat HR at steady power in heat is a positive durability/heat-exposure sign; "
+            "supra-threshold Pw:HR decoupling >5% above 25 °C is expected heat physiology, "
+            "not an aerobic deficiency."
+        )
+
+    durability_lines: list[str] = []
+    act_id = activity.get("activity_id")
+    if act_id is not None:
+        try:
+            from ..history import get_durability, get_power_durability
+            pd_row = get_power_durability(int(act_id))
+            if pd_row and pd_row.get("decoupling_pct") is not None:
+                sign = lambda v: f"{v:+.1f}"
+                durability_lines.append(
+                    f"Pw:HR decoupling: {sign(pd_row['decoupling_pct'])}% "
+                    f"(HR drift {sign(pd_row.get('hr_drift_pct') or 0)}%, "
+                    f"power drift {sign(pd_row.get('power_drift_pct') or 0)}%)"
+                )
+            else:
+                dur_row = get_durability(int(act_id))
+                if dur_row and dur_row.get("drift_pct") is not None:
+                    durability_lines.append(
+                        f"Late-ride HR drift: {dur_row['drift_pct']:+.1f}% "
+                        f"(first-third {dur_row.get('first_third_hr') or 0:.0f} bpm → "
+                        f"final-third {dur_row.get('final_third_hr') or 0:.0f} bpm)"
+                    )
+        except Exception:
+            pass
 
     te = detail.get("training_effect")
     te_label = _te_label(detail.get("training_effect_label"))
@@ -309,7 +401,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         ftp_effort_line = (
             f"20-minute test effort (extracted from lap data): "
             f"avg HR {int(ftp_effort_avg_hr)} bpm{max_str}. "
-            "This avg HR is the athlete's estimated lactate threshold HR. "
+            "LTHR is estimated as ~95% of this all-out 20-min avg HR "
+            "(same discount as FTP watts), not the raw average. "
             "Reference it when assessing whether the effort was maximal."
         )
     ftp_note = (
@@ -323,9 +416,22 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
     )
 
     # Interval rep summary for structured sessions
+    from .intervals import _INTERVAL_PRESCRIBED
     interval_reps = detail.get("interval_reps") or []
     interval_lines: list[str] = []
+    session_label_for_prescribed = None
+    if d_obj:
+        sess = session_for_date_extended(d_obj)
+        if sess:
+            session_label_for_prescribed = sess[1]
     if interval_reps:
+        prescribed = _INTERVAL_PRESCRIBED.get(session_label_for_prescribed or "")
+        if prescribed:
+            interval_lines.append(f"Prescribed interval target: {prescribed}")
+            interval_lines.append(
+                "Grade each block against that single target (cadence + power). "
+                "Uneven power across blocks with flat/falling HR is pacing/terrain, not fatigue."
+            )
         interval_lines.append("Interval rep data (from lap splits):")
         for rep in interval_reps:
             dur_s = rep.get("duration_secs") or 0
@@ -343,6 +449,11 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                 f"HR drift across reps: {sign}{drift} bpm (rep 1 → rep {len(interval_reps)}) — "
                 + ("expected accumulation" if drift > 0 else "HR stayed flat or dropped")
             )
+
+    # FIT-derived interval execution (when available)
+    fit_interval_lines = detail.get("fit_interval_prompt_lines") or []
+    if fit_interval_lines:
+        interval_lines.extend(fit_interval_lines)
 
     if has_power and power_zone_lines:
         ask_lines = [
@@ -370,6 +481,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         f"Duration: {dur_fmt}  Distance: {dist_km} km" + (f"  Avg speed: {avg_speed_kmh} km/h" if avg_speed_kmh else ""),
         f"Avg HR: {avg_hr} bpm  Max HR: {max_hr} bpm",
         *power_summary_lines,
+        *durability_lines,
+        temp_line,
         f"Calories: {calories}  Elevation gain: {elev} m",
         f"Aerobic training effect: {te} ({te_label}) — {aerobic_msg}",
         f"Training load: {tl}",

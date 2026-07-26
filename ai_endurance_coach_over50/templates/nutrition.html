@@ -125,8 +125,13 @@
     <div class="hero-meta">
       <span class="badge {{ today_food.badge }}">{{ today_food.session }}</span>
       <span class="hero-kcal">~{{ "{:,}".format(today_food.kcal_target) }} kcal target</span>
-      {% if today_food.kcal_from_tdee and today_food.stable_tdee and today_food.planned_deficit is not none %}
+      {% if today_food.maintenance %}
+      <span class="hero-kcal" style="color:var(--accent)">maintenance to 14 Sep — no deficit</span>
+      {% elif today_food.kcal_from_tdee and today_food.stable_tdee and today_food.planned_deficit is not none %}
       <span class="hero-kcal" style="color:var(--muted)">stable TDEE {{ "{:,}".format(today_food.stable_tdee) }} {% if today_food.planned_deficit >= 0 %}− {{ today_food.planned_deficit }}{% else %}+ {{ -today_food.planned_deficit }}{% endif %} kcal</span>
+      {% endif %}
+      {% if today_food.carbs_g_per_hr %}
+      <span class="hero-kcal" style="color:var(--accent3, #35c8f1)">ride fuel {{ today_food.carbs_g_per_hr }} g/h</span>
       {% endif %}
     </div>
     {% else %}

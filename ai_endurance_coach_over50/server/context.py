@@ -49,15 +49,14 @@ from ..history import (
 )
 from ..metrics import DailyMetrics, fetch_activities, fetch_metrics, local_today, morning_metrics_ready, needs_metrics_refetch
 from ..nutrition_plan import (
-    DAY_TYPES,
     cycle_week_index,
     protein_target_g,
-    resolve_calorie_target,
-    today_day_type,
+    today_targets as nutrition_today_targets,
 )
 from ..plan import (
     COMPOUND_SESSIONS,
     PLAN_START as _PLAN_START,
+    build_bridge_weeks,
     build_calendar_weeks,
     build_camp_weeks,
     build_combined_event_weeks,
@@ -153,12 +152,17 @@ def _calendar_weeks() -> list[dict]:
 
 
 def _build_calendar_ctx() -> dict[str, Any]:
+    from ..hr_plan import build_hr_calendar_weeks
+    hr_weeks = build_hr_calendar_weeks()
     return {
         "weeks": _calendar_weeks(),
         "today": date.today(),
         "plan_start": _PLAN_START,
         "camp_weeks": build_camp_weeks(),
         "combined_event_weeks": build_combined_event_weeks(),
+        "bridge_weeks": build_bridge_weeks(),
+        # Continuity teaser — first 4 Haute Route Base weeks (full hub stays at /haute-route)
+        "hr_teaser_weeks": hr_weeks[:4],
     }
 
 
@@ -173,6 +177,116 @@ def _activity_context_blurb(activities: list[dict]) -> str:
     if n == 1:
         return f"1 workout in last 7 days · latest: {title}{tail}"
     return f"{n} workouts in last 7 days · latest: {title}{tail}"
+
+
+_VERDICT_ICONS = {
+    "bike": "🚴", "tempo": "🚴", "ftp": "🚴", "long": "🚴",
+    "strength": "🏋️", "ruck": "🎒", "recovery": "🧘", "rest": "😴",
+}
+
+
+def _build_today_verdict(
+    target: date,
+    today_plan: Optional[dict],
+    traffic_light: Optional[dict],
+    modulation: Optional[dict],
+    post_workout: bool,
+    swap_suggestion: Optional[dict] = None,
+) -> dict:
+    """Collapse gates + modulation + plan into one athlete-facing answer.
+
+    Presentation only — the gate hierarchy is already resolved by
+    ``modulation.resolve_modulation``; this just decides what single card the
+    dashboard shows and wires the Apply proposal for the existing
+    ``/apply-plan-change`` flow.
+    """
+    status = (traffic_light or {}).get("status") or "unknown"
+    if modulation and modulation.get("gate_type") == "illness":
+        status = "red"
+    elif modulation and modulation.get("gate"):
+        status = "amber" if status in ("green", "unknown") else status
+
+    has_swap = bool(modulation and modulation.get("label"))
+    changed = has_swap and not post_workout
+
+    if changed:
+        final_session = {
+            "type": modulation["session_type"],
+            "label": modulation["label"],
+            "dur_fmt": _fmt_min(modulation.get("duration_min") or 0),
+            "icon": _VERDICT_ICONS.get(modulation["session_type"], "📋"),
+            "compound": None,
+            "note": (today_plan or {}).get("note"),
+            "changed": True,
+            "from_label": modulation.get("planned_label") or (today_plan or {}).get("label"),
+        }
+    elif today_plan:
+        final_session = {**today_plan, "changed": False, "from_label": None}
+    else:
+        final_session = {
+            "type": "rest", "label": "Rest day", "dur_fmt": "",
+            "icon": _VERDICT_ICONS["rest"], "compound": None, "note": None,
+            "changed": False, "from_label": None,
+        }
+
+    # One-line reason for the status strip.
+    if modulation and modulation.get("headline"):
+        reason = modulation["headline"]
+        if modulation.get("reason"):
+            reason += " — " + modulation["reason"]
+    elif traffic_light and traffic_light.get("reason") and status != "green":
+        reason = traffic_light["reason"]
+    elif status == "green":
+        reason = "HRV and readiness in normal range — session as planned"
+    else:
+        reason = "No morning readiness signal yet"
+
+    # Apply proposal (existing plan_change_card / /apply-plan-change flow).
+    apply = None
+    if changed:
+        apply = {
+            "date": modulation.get("date") or target.isoformat(),
+            "duration_min": modulation.get("duration_min") or 0,
+            "session_type": modulation["session_type"],
+            "label": modulation["label"],
+            "reason": ("Recovery gate: " if modulation.get("gate") else "HRV traffic light: ")
+                      + (modulation.get("reason") or reason),
+            "from_label": modulation.get("planned_label") or "",
+        }
+
+    # Tertiary hint only when no modulation fired (old swap_suggestion card).
+    hint = None
+    if not has_swap and swap_suggestion:
+        if swap_suggestion.get("to_date_str"):
+            hint = (
+                f"Readiness is low — consider swapping with "
+                f"{swap_suggestion['to_label']} on {swap_suggestion['to_date_str']}."
+            )
+        else:
+            hint = "Readiness is low — consider reducing intensity or cutting this session short."
+
+    # One-line nutrition prescription from the single resolver.
+    nutrition = None
+    try:
+        tt = nutrition_today_targets(target)
+        nutrition = {
+            "kcal": tt["kcal"],
+            "protein_low": tt["protein_low"],
+            "protein_high": tt["protein_high"],
+            "carbs_g_per_hr": tt["carbs_g_per_hr"],
+            "maintenance": tt["maintenance"],
+        }
+    except Exception:
+        pass
+
+    return {
+        "status": status,
+        "final_session": final_session,
+        "reason": reason,
+        "apply": apply,
+        "hint": hint,
+        "nutrition": nutrition,
+    }
 
 
 def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
@@ -393,6 +507,11 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
 
     # Event tracker, weekly briefing, power profile, gut training — other tabs
 
+    # One-verdict summary: the final answer after all gates resolve.
+    today_verdict = _build_today_verdict(
+        target, today_plan, traffic_light, modulation, post_workout, swap_suggestion
+    )
+
     # Fatigue alerts
     fatigue_alerts = check_fatigue_alerts(target)
 
@@ -424,6 +543,41 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
             }
         elif due:
             ftp_retest = {**due, "reason": "stale", "slot": _scan_ftp_slot(target)}
+    except Exception:
+        pass
+
+    # FIT threshold-evidence: stale FTP proposal from recent interval analysis
+    stale_ftp = None
+    try:
+        from ..history import latest_stale_ftp_flag
+        flag = latest_stale_ftp_flag()
+        if flag and flag.get("proposed_ftp_w"):
+            stale_ftp = {
+                **flag,
+                "slot": None,
+            }
+            # Offer schedule-retest slot like ftp_retest
+            def _scan_ftp_slot2(start: date, days: int = 10) -> Optional[dict]:
+                for offset in range(1, days + 1):
+                    cand = start + timedelta(days=offset)
+                    for resolver in (session_for_date, hr_session_for_date):
+                        csess = resolver(cand)
+                        if csess and csess[0] in ("tempo", "ftp", "bike", "sweetspot"):
+                            return {
+                                "date": cand.isoformat(),
+                                "date_str": cand.strftime("%a %-d %b"),
+                                "current_label": csess[1],
+                            }
+                return None
+            stale_ftp["slot"] = _scan_ftp_slot2(target)
+    except Exception:
+        pass
+
+    # HR calibration discrepancies from recent FIT meta
+    hr_calibration = None
+    try:
+        from ..history import latest_hr_calibration
+        hr_calibration = latest_hr_calibration()
     except Exception:
         pass
 
@@ -464,10 +618,13 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "nutrition_pill": nutrition_pill,
         "today_plan": today_plan,
         "swap_suggestion": swap_suggestion,
+        "today_verdict": today_verdict,
         "fatigue_alerts": fatigue_alerts,
         "traffic_light": traffic_light,
         "modulation": modulation,
         "ftp_retest": ftp_retest,
+        "stale_ftp": stale_ftp,
+        "hr_calibration": hr_calibration,
     }
 
 
@@ -672,6 +829,31 @@ def _compliance_weeks_unified() -> list[dict]:
             "days": days,
             "phase_start": i == 0,
         })
+    for i, w in enumerate(build_bridge_weeks()):
+        days = []
+        for day in w["days"]:
+            if day.get("out_of_bridge") or day.get("type") in (None, "rest") or not day.get("label"):
+                days.append({
+                    "date": day["date"],
+                    "type": "rest",
+                    "dur_min": 0,
+                    "sub_sessions": None,
+                })
+            else:
+                days.append({
+                    "date": day["date"],
+                    "type": day["type"],
+                    "dur_min": day.get("dur_min", 0),
+                    "sub_sessions": None,
+                })
+        unified.append({
+            "phase": "bridge",
+            "week_num": None,
+            "week_label": w["week_label"],
+            "start": days[0]["date"],
+            "days": days,
+            "phase_start": i == 0,
+        })
     return unified
 
 
@@ -808,10 +990,10 @@ def _travel_checklist_context() -> dict:
 
 
 def _shopping_list_context() -> dict:
-    """Cycle week for nutrition shopping lists."""
+    """Cycle week for nutrition shopping lists (Fri–Sun → next Monday's week)."""
     today = _today()
-    from ..nutrition_plan import cycle_week_index
-    cycle_week = cycle_week_index(_PLAN_START, today)
+    from ..nutrition_plan import prep_cycle_week_index
+    cycle_week = prep_cycle_week_index(_PLAN_START, today)
     labels = [
         "Week 1 — build",
         "Week 2 — build",
@@ -1271,28 +1453,17 @@ def _body_context() -> dict[str, Any]:
                 cal_ctx["today_activities"] = _contrib
         except Exception:
             pass
-    # Intake target from stable TDEE — independent of today's partial burn.
+    # Intake target from the single resolver (stable TDEE, maintenance/camp aware).
     try:
-        _stable = stable_tdee_kcal(7)
-        if _stable is not None:
-            _cycle_week = cycle_week_index(_PLAN_START, _today)
-            _dtype = today_day_type(_cycle_week, _today.weekday())
-            _tier_key = DAY_TYPES[_dtype]["calorie_tier"]
-            _session = session_for_date_extended(_today)
-            _stype = _session[0] if _session else None
-            _sdur = _session[2] if _session else None
-            _target = resolve_calorie_target(
-                _stable,
-                _tier_key,
-                _today,
-                session_dur_min=_sdur if _stype in ("long", "bike") else None,
-                session_type=_stype,
-            )
-            cal_ctx["today_intake_target"] = _target["kcal"]
-            cal_ctx["intake_from_tdee"] = _target.get("from_tdee", False)
-            cal_ctx["stable_tdee"] = round(_stable)
-            if _target.get("planned_deficit") is not None:
-                cal_ctx["today_plan_deficit"] = _target["planned_deficit"]
+        _tt = nutrition_today_targets(_today)
+        if _tt.get("kcal_source") != "tier" or _tt.get("stable_tdee"):
+            cal_ctx["today_intake_target"] = _tt["kcal"]
+            cal_ctx["intake_from_tdee"] = _tt["kcal_source"] in ("tdee", "camp")
+            if _tt.get("stable_tdee"):
+                cal_ctx["stable_tdee"] = _tt["stable_tdee"]
+            if _tt.get("planned_deficit") is not None:
+                cal_ctx["today_plan_deficit"] = _tt["planned_deficit"]
+            cal_ctx["maintenance"] = _tt["maintenance"]
     except Exception:
         pass
     # Protein floor (lean-mass based) for the Protein Today tile.
