@@ -1308,6 +1308,189 @@ def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict
     }
 
 
+# ---------------------------------------------------------------------------
+# /position — strength programme page
+#
+# The page used to hardcode a Mon/Thu week. Every block schedules strength
+# differently (charity Tue+Thu, event prep 1×, bridge Tue+Thu, HR Base Thu+Sat,
+# HR Build Wed-only), so the schedule is derived from the same resolvers the
+# calendars use. Nothing here adds plan data — it only reads it.
+# ---------------------------------------------------------------------------
+
+# Days that are too valuable to bolt mobility onto: the strength days themselves
+# carry the trunk block, and key rides want the legs left alone.
+_POSITION_KEY_TYPES = {"long", "tempo", "ftp", "sweetspot", "vo2", "back_to_back"}
+
+
+def _session_contains(spec: Optional[dict]) -> str:
+    """Human summary of a KB spec, derived from the exercise id groups.
+
+    Avoids inventing "Strength 1 / 2" names: those only exist in the bridge and
+    the HR plan, while charity weeks 9–12 give both days the same week-keyed spec.
+    """
+    if not spec:
+        return ""
+    ids = "".join(ex.get("id", "") for ex in spec.get("exercises", []))
+    extras = []
+    if "L" in ids:
+        extras.append("single-leg block")
+    if "C" in ids:
+        extras.append("carries")
+    base = "20-min video" if "V" in ids else "KB circuit"
+    return f"{base} + {' + '.join(extras)}" if extras else base
+
+
+def _strength_on(d: date) -> Optional[dict]:
+    """Return {label, dur_min, spec, contains} if `d` carries strength, else None.
+
+    A non-None KB spec *is* the definition of a strength day — there is no
+    second list of labels to drift out of step with the calendars.
+    """
+    from ..plan import kb_spec_for_date
+    from ..hr_plan import _hr_strength_spec
+
+    sess = session_for_date_extended(d)
+    if sess:
+        spec = kb_spec_for_date(d)
+        if spec:
+            return {"label": sess[1], "dur_min": sess[2], "spec": spec,
+                    "contains": _session_contains(spec)}
+        return None
+
+    sess = hr_session_for_date(d)
+    if sess:
+        spec = _hr_strength_spec(sess[1])
+        if spec:
+            return {"label": sess[1], "dur_min": sess[2], "spec": spec,
+                    "contains": _session_contains(spec)}
+    return None
+
+
+def _position_day(d: date, today: date) -> dict[str, Any]:
+    """One row of the derived week table."""
+    sess = session_for_date_extended(d) or hr_session_for_date(d)
+    strength = _strength_on(d)
+    stype = sess[0] if sess else "rest"
+    return {
+        "date": d,
+        "iso": d.isoformat(),
+        "weekday": d.strftime("%a"),
+        "day_str": d.strftime("%-d %b"),
+        "type": stype,
+        "label": (sess[1] if sess else None),
+        "dur_min": (sess[2] if sess else 0),
+        "dur_fmt": _fmt_min(sess[2]) if sess and sess[2] else None,
+        "is_strength": strength is not None,
+        "contains": strength["contains"] if strength else None,
+        "is_today": d == today,
+        "is_past": d < today,
+        "mobility": False,  # filled in by _mark_mobility once the week is known
+    }
+
+
+# Mobility is 3×/week and lives on no plan — it is placed, not scheduled.
+_POSITION_MOBILITY_TARGET = 3
+
+
+def _mobility_rank(day: dict) -> tuple[int, int]:
+    """Lower ranks make better mobility slots: rest first, then easy days."""
+    stype, dur = day["type"], day["dur_min"]
+    if stype == "rest":
+        return (0, 0)
+    # Camp and charity-ride days carry no duration because they are all-day
+    # efforts — they are the worst place to add anything, not the best.
+    if stype == "bike" and dur == 0:
+        return (3, 0)
+    return (2, dur)
+
+
+def _mark_mobility(week: list[dict]) -> None:
+    """Mark up to three mobility days in place.
+
+    Strength days already carry the trunk block and key rides want the legs
+    left alone, so mobility goes wherever it competes with nothing.
+    """
+    candidates = [
+        d for d in week
+        if not d["is_strength"] and d["type"] not in _POSITION_KEY_TYPES
+    ]
+    for day in sorted(candidates, key=_mobility_rank)[:_POSITION_MOBILITY_TARGET]:
+        day["mobility"] = True
+
+
+def _next_strength(after: date, limit: int = 5, horizon: int = 400) -> list[dict]:
+    """The next `limit` strength dates from `after` inclusive."""
+    out: list[dict] = []
+    for offset in range(horizon):
+        d = after + timedelta(days=offset)
+        s = _strength_on(d)
+        if s:
+            out.append({
+                **s,
+                "date": d,
+                "iso": d.isoformat(),
+                "date_str": d.strftime("%a %-d %b"),
+                "dur_fmt": _fmt_min(s["dur_min"]) if s["dur_min"] else None,
+                "days_away": (d - after).days,
+            })
+            if len(out) >= limit:
+                break
+    return out
+
+
+def _position_gap_reason(start: date, end: date) -> str:
+    """Why there is no strength between two dates, in the plan's own words."""
+    from ..plan import CAMP_START, CAMP_END, CHARITY_DAYS
+
+    labels: list[str] = []
+    if start <= CAMP_END and end >= CAMP_START:
+        labels.append("Tenerife camp")
+    if any(start <= c["date"] <= end for c in CHARITY_DAYS):
+        labels.append("charity ride")
+    return " and ".join(labels) if labels else "no strength scheduled"
+
+
+def _position_cadence(week: list[dict]) -> str:
+    """One-liner describing this week's strength dose."""
+    days = [d["weekday"] for d in week if d["is_strength"]]
+    if not days:
+        return "No strength this week"
+    if len(days) == 1:
+        return f"1 session this week — {days[0]}"
+    return f"{len(days)} sessions this week — {' and '.join([', '.join(days[:-1]), days[-1]])}"
+
+
+def _position_context() -> dict[str, Any]:
+    """Context for /position: today's answer plus a week derived from the plan."""
+    today = _today()
+    monday = today - timedelta(days=today.weekday())
+    week = [_position_day(monday + timedelta(days=i), today) for i in range(7)]
+    _mark_mobility(week)
+
+    today_row = week[today.weekday()]
+    upcoming = _next_strength(today)
+
+    # Only call it a gap when the wait is long enough to be worth explaining.
+    gap = None
+    if upcoming and upcoming[0]["days_away"] > 10:
+        nxt = upcoming[0]["date"]
+        gap = {
+            "days": upcoming[0]["days_away"],
+            "until_str": nxt.strftime("%a %-d %b"),
+            "reason": _position_gap_reason(today, nxt - timedelta(days=1)),
+        }
+
+    return {
+        "pos_today": today_row,
+        "pos_next": upcoming[0] if upcoming else None,
+        "pos_week": week,
+        "pos_upcoming": upcoming,
+        "pos_gap": gap,
+        "pos_cadence": _position_cadence(week),
+        "pos_mobility_days": [d["weekday"] for d in week if d["mobility"]],
+    }
+
+
 def _body_context() -> dict[str, Any]:
     body_rows = load_body_metrics(days=180)
     bp_rows = load_blood_pressure(days=90)

@@ -45,20 +45,46 @@
       .pos-shell { grid-template-columns: 168px 1fr; gap: 40px; }
       .pos-rail { position: sticky; top: calc(var(--gr-nav-height, 44px) + 52px); align-self: start; }
     }
-    .pos-rail { display: none; }
-    @media (min-width: 960px) { .pos-rail { display: block; } }
+    /* Below 960px the rail becomes a scrolling chip bar rather than vanishing —
+       otherwise the page is one long scroll with no way to navigate it. */
+    .pos-rail {
+      display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; padding-bottom: 4px;
+      /* clears the global nav + the plan subnav, both of which are sticky */
+      position: sticky; top: calc(var(--gr-nav-height, 44px) + 52px); z-index: 20;
+      background: var(--bg); margin: 0 -24px; padding-left: 24px; padding-right: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pos-rail::-webkit-scrollbar { display: none; }
+    .pos-rail .dose { display: none; }
     .pos-rail a {
-      display: block; text-decoration: none; color: var(--muted);
-      padding: 10px 0; border-top: 1px solid var(--border);
+      flex: 0 0 auto; white-space: nowrap; border: 1px solid var(--border);
+      border-radius: 2px; padding: 8px 12px; margin: 8px 0;
+      background: var(--surface); text-decoration: none; color: var(--muted);
       font-family: var(--font-m); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    @media (min-width: 960px) {
+      .pos-rail {
+        display: block; overflow: visible; background: none; border-bottom: none;
+        margin: 0; padding: 0;
+      }
+      .pos-rail .dose { display: block; }
+      .pos-rail a {
+        display: block; border: none; border-top: 1px solid var(--border);
+        border-radius: 0; background: none; padding: 10px 0; margin: 0; white-space: normal;
+      }
     }
     .pos-rail a:hover { color: var(--text); }
     .pos-rail .dose {
-      display: block; font-family: var(--font-b); text-transform: none; letter-spacing: 0;
+      font-family: var(--font-b); text-transform: none; letter-spacing: 0;
       font-size: 12px; color: var(--accent); margin-top: 3px; font-weight: 300;
     }
 
-    .pos-shell section { padding-top: 8px; scroll-margin-top: 120px; }
+    /* below 960px the chip rail is sticky too, so anchors need to clear it as
+       well as the global nav and the plan subnav */
+    .pos-shell section, .band, .ref { scroll-margin-top: 172px; }
+    @media (min-width: 960px) { .pos-shell section, .band, .ref { scroll-margin-top: 120px; } }
+    .pos-shell section { padding-top: 8px; }
     .sec-head {
       border-top: 1px solid var(--border2); padding-top: 14px; margin-bottom: 16px;
       display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline;
@@ -262,6 +288,99 @@
       max-width: 66ch; color: var(--muted); font-size: 14px;
     }
 
+    /* --- today / next-up card --- */
+    .now-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
+      border-left: 3px solid var(--border2); padding: 18px 20px 20px;
+    }
+    .now-card.is-on { border-left-color: var(--accent); background: var(--accent-dim); }
+    .now-k {
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .now-h {
+      font-family: var(--font-d); font-size: clamp(24px, 4vw, 34px); line-height: 1.05;
+      letter-spacing: 0.04em; text-transform: uppercase; color: var(--text);
+    }
+    .now-card.is-on .now-h { color: var(--accent); }
+    .now-dur {
+      font-family: var(--font-m); font-size: 14px; letter-spacing: 0.08em; color: var(--muted);
+    }
+    .now-p { margin: 10px 0 0; max-width: 60ch; font-size: 14.5px; color: var(--text-dim); }
+    .now-p strong { color: var(--text); font-weight: 500; }
+    .now-next {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .now-next .u {
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 4px;
+    }
+    .now-next b { font-weight: 500; font-size: 15px; color: var(--text); display: block; }
+    .now-sub { font-size: 13px; color: var(--muted); }
+    .now-go { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .btn-go {
+      font-family: var(--font-m); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      text-decoration: none; padding: 9px 14px; border-radius: 2px;
+      background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
+    }
+    .btn-go.alt { background: transparent; color: var(--text-dim); border-color: var(--border2); }
+    .btn-go.alt:hover { border-color: var(--accent); color: var(--accent); }
+
+    .gapbox {
+      margin-top: 14px; padding: 14px 16px; background: var(--surface);
+      border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 2px;
+    }
+    .gapbox .u {
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--orange); display: block; margin-bottom: 5px;
+    }
+    .gapbox p { margin: 0; font-size: 13.5px; color: var(--text-dim); max-width: 62ch; }
+
+    .grid-wrap tr.is-str th[scope="row"] { box-shadow: inset 3px 0 0 var(--accent); }
+    .grid-wrap tr.is-str td:nth-child(3) { color: var(--text); }
+    .grid-wrap tr.is-today { background: var(--accent-dim); }
+    .grid-wrap tr.is-today th[scope="row"] { color: var(--accent); }
+    .grid-wrap tr.is-past { opacity: 0.55; }
+
+    /* --- section bands + collapsed reference --- */
+    .band {
+      border-top: 1px solid var(--border2); margin-top: 38px; padding-top: 14px;
+    }
+    .band .u {
+      font-family: var(--font-d); font-size: clamp(22px, 3vw, 30px); letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--text); display: block;
+    }
+    .band p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+    .ref {
+      border: 1px solid var(--border); border-radius: 2px; background: var(--surface);
+      margin-bottom: 10px;
+    }
+    .ref > summary {
+      cursor: pointer; list-style: none; padding: 14px 18px;
+      display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+    }
+    .ref > summary::-webkit-details-marker { display: none; }
+    .ref > summary::after {
+      content: '+'; margin-left: auto; font-family: var(--font-m); color: var(--muted); font-size: 16px;
+    }
+    .ref[open] > summary::after { content: '−'; }
+    .ref > summary:hover .rt { color: var(--accent); }
+    .ref .rt {
+      font-family: var(--font-m); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+      font-weight: 500; color: var(--text);
+    }
+    .ref .rd {
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--orange);
+    }
+    .ref > *:not(summary) { padding-left: 18px; padding-right: 18px; }
+    .ref > .pos-card, .ref > .grid-wrap, .ref > .status, .ref > .phases, .ref > .flags {
+      margin-left: 18px; margin-right: 18px; padding-left: 0; padding-right: 0; width: auto;
+    }
+    .ref > *:last-child { margin-bottom: 18px; }
+    .ref .flags { border-left-width: 3px; }
+
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; }
@@ -277,65 +396,78 @@
 
 <div class="pos-wrap">
   <a class="pos-back" href="/calendar">← Back to Sessions</a>
-  <p class="pos-kicker">Strength rebuild + road position · from 26 July 2026</p>
-  <h1>Two sessions.<br>Three moving parts.<br><em>One new bell.</em></h1>
-  <p class="pos-thesis">You passed the wall test and failed the other two. That&rsquo;s a specific, useful result: your shoulders have the range they need, so the pain is a <strong>load and endurance problem</strong>, not a structural one. The hinge and the trunk are what&rsquo;s missing — and both are trained by the kettlebell work you already want to do. The job now is to keep the plan small enough that you&rsquo;re still doing it in March.</p>
-
-  <div class="pos-rules">
-    <div class="rule"><span class="u">Rule one</span><p>Every session ends feeling like you could have done more. Two or three reps in reserve, always.</p></div>
-    <div class="rule"><span class="u">Rule two</span><p>Add load or reps every <em>second</em> week, never every week. Tendon adapts in months, muscle in weeks.</p></div>
-    <div class="rule"><span class="u">Rule three</span><p>Three moving parts only. Adding a fourth is how this gets abandoned.</p></div>
-  </div>
+  <p class="pos-kicker">Strength rebuild + road position</p>
+  <h1>Strength<br><em>programme</em></h1>
+  <p class="pos-thesis">One video on the plan&rsquo;s strength days, a trunk block after it, mobility 3&times; a week. The schedule is read from your training plan, so it moves when the plan moves.</p>
 
   <div class="pos-shell">
     <nav class="pos-rail" aria-label="Sections">
-      <a href="#status">Where you are<span class="dose">Test results</span></a>
-      <a href="#week">The week<span class="dose">What to do when</span></a>
-      <a href="#videos">The videos<span class="dose">Five verdicts</span></a>
-      <a href="#phases">Progression<span class="dose">Aug → Dec</span></a>
-      <a href="#bells">Kettlebells<span class="dose">Buy one thing</span></a>
-      <a href="#mobility">Mobility<span class="dose">3×/week · 8–10 min</span></a>
-      <a href="#trunk">Trunk &amp; shoulder<span class="dose">After strength</span></a>
+      <a href="#now">{% if pos_today.is_strength %}Today{% else %}Next up{% endif %}<span class="dose">{{ pos_cadence }}</span></a>
+      <a href="#week">This week<span class="dose">From your plan</span></a>
+      <a href="#next">Coming up<span class="dose">Next {{ pos_upcoming|length }}</span></a>
+      <a href="#session">The session<span class="dose">20-min video</span></a>
+      <a href="#trunk">Trunk &amp; shoulder<span class="dose">After strength · 12 min</span></a>
       <a href="#legs">Single-leg block<span class="dose">Bolt-on · 8 min</span></a>
-      <a href="#retest">Retesting<span class="dose">Weekly &amp; monthly</span></a>
+      <a href="#mobility">Mobility<span class="dose">3×/week · 8–10 min</span></a>
+      <a href="#reference">Reference<span class="dose">Tests, videos, bells</span></a>
     </nav>
     <main>
 
-<!-- ===== STATUS ===== -->
-    <section id="status">
-      <div class="sec-head"><h2>Where you are</h2><span class="dose">Tested 26 July 2026</span></div>
-      <div class="status">
-        <div class="st pass">
-          <div class="res">Pass</div><h3>Wall test</h3>
-          <p>Thoracic spine and shoulder range are adequate. This is why the shoulder pain is a weight-distribution problem rather than a structural one — and why the fit changes have been working.</p>
-        </div>
-        <div class="st fail">
-          <div class="res">Fail</div><h3>Seated pike</h3>
-          <p>The hip hinge is your bottleneck, and it's also your read on whether the Reacto is currently too long for you. Six-month project, not six-week. Retest monthly, not weekly.</p>
-        </div>
-        <div class="st fail">
-          <div class="res">Fail</div><h3>Front plank</h3>
-          <p>Trunk endurance, not strength. Start with shorter holds and more sets rather than grinding out a sagging 90 seconds — a bad hold trains the exact fault you're removing.</p>
-        </div>
+<!-- ===== NOW ===== -->
+    <section id="now">
+      <div class="sec-head"><h2>{% if pos_today.is_strength %}Today{% else %}Next up{% endif %}</h2><span class="dose">{{ pos_cadence }}</span></div>
+
+      <div class="now-card{% if pos_today.is_strength %} is-on{% endif %}">
+        <div class="now-k">{{ pos_today.weekday }} {{ pos_today.day_str }}</div>
+        {% if pos_today.is_strength %}
+          <div class="now-h">{{ pos_today.label }}{% if pos_today.dur_fmt %} <span class="now-dur">{{ pos_today.dur_fmt }}</span>{% endif %}</div>
+          <p class="now-p"><strong>{{ pos_today.contains }}</strong>, then the trunk &amp; shoulder block. Two or three reps in reserve on everything.</p>
+          <div class="now-go">
+            <a class="btn-go" href="#session">The session →</a>
+            <a class="btn-go alt" href="#trunk">Trunk block →</a>
+            {% if '+ single-leg' in (pos_today.contains or '') %}<a class="btn-go alt" href="#legs">Single-leg →</a>{% endif %}
+          </div>
+        {% else %}
+          <div class="now-h">{{ pos_today.label or 'Rest' }}{% if pos_today.dur_fmt %} <span class="now-dur">{{ pos_today.dur_fmt }}</span>{% endif %}</div>
+          <p class="now-p">No strength today.{% if pos_today.mobility %} Good day for the mobility set — 8–10 min, evening or after the ride while the tissue is warm.{% endif %}</p>
+          {% if pos_next %}
+            <div class="now-next">
+              <span class="u">Next strength</span>
+              <b>{{ pos_next.date_str }} · {{ pos_next.label }}{% if pos_next.dur_fmt %} · {{ pos_next.dur_fmt }}{% endif %}</b>
+              <span class="now-sub">{{ pos_next.contains }}</span>
+            </div>
+          {% endif %}
+          <div class="now-go">
+            {% if pos_today.mobility %}<a class="btn-go" href="#mobility">Mobility set →</a>{% endif %}
+            <a class="btn-go alt" href="#session">The session →</a>
+          </div>
+        {% endif %}
       </div>
-      <p class="closing" style="margin-top:22px;border-top:none;padding-top:0">The convenient part: the hip hinge is the foundational pattern of nearly every kettlebell movement — swings, deadlifts, cleans, RDLs are all the same thing. Your pike fix and your strength programme are the same work. You don't need a separate mobility project competing for time.</p>
+
+      {% if pos_gap %}
+      <div class="gapbox">
+        <span class="u">Gap ahead</span>
+        <p>No strength for {{ pos_gap.days }} days — {{ pos_gap.reason }}. Next session is {{ pos_gap.until_str }}. Keep the mobility set running through it; that's what stops the restart hurting.</p>
+      </div>
+      {% endif %}
     </section>
 
     <!-- ===== WEEK ===== -->
     <section id="week">
-      <div class="sec-head"><h2>The week</h2><span class="dose">Template — shuffle around your riding</span></div>
-      <p class="sec-note">Two kettlebell sessions, mobility three times a week, and the trunk block folded onto the strength days — ride days stay just rides. The only hard rule about placement: a strength session never goes the day <em>before</em> a key ride.</p>
+      <div class="sec-head"><h2>This week</h2><span class="dose">From your plan</span></div>
+      <p class="sec-note">Read straight from the training plan, so it always matches the calendar — the strength days move between blocks and this moves with them. Strength days carry the trunk block; mobility goes where it competes with nothing.</p>
       <div class="grid-wrap">
         <table>
-          <thead><tr><th scope="col">Day</th><th scope="col">Main</th><th scope="col">Bolt-on</th><th scope="col">Mobility</th></tr></thead>
+          <thead><tr><th scope="col">Day</th><th scope="col">Plan session</th><th scope="col">Strength work</th><th scope="col">Mobility</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Mon</th><td><span class="pill">Strength 1</span>Lebe Stark 20-min over-40</td><td>Single-leg block · 8 min + trunk block</td><td>Full set</td></tr>
-            <tr><th scope="row">Tue</th><td class="off">Ride</td><td class="off">—</td><td class="off">—</td></tr>
-            <tr><th scope="row">Wed</th><td class="off">Rest or easy ride</td><td class="off">—</td><td>Full set</td></tr>
-            <tr><th scope="row">Thu</th><td><span class="pill">Strength 2</span>Lebe Stark 20-min over-40</td><td>Trunk &amp; shoulder block</td><td>Full set</td></tr>
-            <tr><th scope="row">Fri</th><td class="off">Ride</td><td><span class="pill b">Retest</span>Bar hover — first Friday of the month</td><td class="off">—</td></tr>
-            <tr><th scope="row">Sat</th><td class="off">Long ride</td><td class="off">—</td><td>Hip flexors + pecs, after</td></tr>
-            <tr><th scope="row">Sun</th><td class="off">Rest</td><td><span class="pill g">Optional</span>Hinge drilling — see video 2</td><td class="off">—</td></tr>
+          {% for d in pos_week %}
+            <tr class="{% if d.is_today %}is-today{% elif d.is_past %}is-past{% endif %}{% if d.is_strength %} is-str{% endif %}">
+              <th scope="row">{{ d.weekday }} {{ d.day_str }}</th>
+              <td class="{% if not d.label %}off{% endif %}">{{ d.label or 'Rest' }}{% if d.dur_fmt %} · {{ d.dur_fmt }}{% endif %}</td>
+              <td class="{% if not d.is_strength %}off{% endif %}">{% if d.is_strength %}{{ d.contains }} + trunk block{% else %}—{% endif %}</td>
+              <td class="{% if not d.mobility %}off{% endif %}">{% if d.mobility %}Full set · 8–10 min{% else %}—{% endif %}</td>
+            </tr>
+          {% endfor %}
           </tbody>
         </table>
       </div>
@@ -354,10 +486,38 @@
       </article>
     </section>
 
-    <!-- ===== VIDEOS ===== -->
-    <section id="videos">
-      <div class="sec-head"><h2>The videos</h2><span class="dose">Five in the playlist · four in the plan</span></div>
-      <p class="sec-note">Follow-alongs solve consistency and tempo, which is exactly what you need after a work day. Their one flaw is that the person on screen sets the pace for an imaginary average viewer, and you will unconsciously chase them. Use the pause button. Halve the reps on anything new for the first fortnight. Skip a movement rather than doing a degraded version of it — a bad rep isn't a lesser rep, it's a different exercise loading a joint you didn't intend.</p>
+    <!-- ===== NEXT ===== -->
+    <section id="next">
+      <div class="sec-head"><h2>Coming up</h2><span class="dose">Next {{ pos_upcoming|length }} sessions</span></div>
+      {% if pos_upcoming %}
+      <div class="grid-wrap">
+        <table>
+          <thead><tr><th scope="col">When</th><th scope="col">Session</th><th scope="col">What you do</th></tr></thead>
+          <tbody>
+          {% for s in pos_upcoming %}
+            <tr><th scope="row">{{ s.date_str }}</th><td>{{ s.label }}{% if s.dur_fmt %} · {{ s.dur_fmt }}{% endif %}</td><td class="off">{{ s.contains }} + trunk block</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="sec-note">No strength scheduled ahead — check the plan.</p>
+      {% endif %}
+    </section>
+
+    <!-- ===== HOW TO DO IT ===== -->
+    <div class="band" id="do"><span class="u">How to do it</span><p>The session, then the blocks that bolt onto it. Timers where a hold has a number.</p></div>
+
+    <section id="session">
+      <div class="sec-head"><h2>The session</h2><span class="dose">Same video every time</span></div>
+      <p class="sec-note">Follow-alongs solve consistency and tempo, which is what you need after a work day. The one flaw is that the person on screen sets the pace for an imaginary average viewer, and you will unconsciously chase them. Use the pause button. Skip a movement rather than doing a degraded version of it.</p>
+
+      <div class="pos-rules">
+        <div class="rule"><span class="u">Rule one</span><p>Every session ends feeling like you could have done more. Two or three reps in reserve, always.</p></div>
+        <div class="rule"><span class="u">Rule two</span><p>Add load or reps every <em>second</em> week, never every week. Tendon adapts in months, muscle in weeks.</p></div>
+        <div class="rule"><span class="u">Rule three</span><p>Three moving parts only. Adding a fourth is how this gets abandoned.</p></div>
+      </div>
+
 
       <article class="pos-card hero-card">
         <div class="card-top"><h3><a href="https://www.youtube.com/watch?v=3i5ml0UOEa0">The Perfect 20-Minute Workout For Men Over 40</a></h3><span class="v v-keep">Keep · 2× weekly</span></div>
@@ -371,6 +531,342 @@
           </div>
         </div>
       </article>
+    </section>
+
+<!-- ===== TRUNK ===== -->
+    <section id="trunk">
+      <div class="sec-head"><h2>Trunk &amp; shoulder block</h2><span class="dose">After every strength session · 12 min</span></div>
+      <p class="sec-note">This follows the video on strength days — ride days stay just rides. Every hold ends at <em>form</em> failure, not at discomfort; a sagging plank trains the exact fault you're removing. Given the failed plank test, start at the bottom of each range.</p>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Side plank</h3><span class="src">Highest value on this page</span></div>
+        <p class="why">Trains the lateral trunk to stop your ribcage collapsing toward the bars and your pelvis dropping to one side. Directly aimed at the left-side pattern you started with.</p>
+        <div class="spec"><span class="tag key">3 × 30–45 s each side</span><span class="tag">Build to 60 s</span><span class="tag">Elbow, not hand</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>On your side, elbow directly under the shoulder, forearm forward, feet stacked or staggered.</li>
+            <li>Lift the hips until shoulder, hip and ankle make one line. Push the floor away so you don't sag into the bottom shoulder.</li>
+            <li>Squeeze the top glute and brace the abdominal wall. Head in line with the spine.</li>
+            <li>Hold to the first sign of the hips dropping. Rest 30 s between sets.</li>
+          </ol>
+          <div class="holds"><span class="u">Hold</span>
+            <button class="hold" data-sec="30" data-name="Side plank · left">30 s L</button>
+            <button class="hold" data-sec="30" data-name="Side plank · right">30 s R</button>
+            <button class="hold" data-sec="45" data-name="Side plank · 45 s">45 s</button>
+            <button class="hold" data-sec="60" data-name="Side plank · 60 s">60 s</button>
+            <button class="mark">Mark done</button>
+          </div>
+          <div class="split">
+              <div class="box"><span class="u">Progression</span><ul><li>Too hard: knees down, or top foot forward on the floor.</li><li>Too easy: top arm overhead, or lift the top leg.</li><li>Add load before adding time past 60 s.</li></ul></div>
+              <div class="box warn"><span class="u">Common mistakes</span><ul><li>Rolling forward or back off the true side position.</li><li>Sinking into the supporting shoulder.</li><li>Holding your breath.</li></ul></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Bird-dog</h3><span class="src">Anti-extension</span></div>
+        <p class="why">Teaches the trunk to stay quiet while the limbs move — which is what pedalling is, and the reason a stable trunk stops your shoulders taking the surplus.</p>
+        <div class="spec"><span class="tag key">3 × 8 each side</span><span class="tag">3 s hold per rep</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Four-point kneeling, hands under shoulders, knees under hips. Flatten the lower back and brace.</li>
+            <li>Extend the opposite arm and leg to horizontal — no higher. Hips stay level; imagine balancing a glass of water on your lower back.</li>
+            <li>Hold three seconds, reaching long through fingertips and heel.</li>
+            <li>Return slowly, tapping hand and knee down before the next rep. Alternate.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Reach long, don't lift high.</li><li>Push the floor away with the supporting hand.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Hip hiking or rotating — the fault this exists to remove.</li><li>Arching as the leg rises.</li><li>Rushing. Speed hides instability.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Suitcase carry</h3><span class="src">Kettlebell days</span></div>
+        <p class="why">Anti-lateral-flexion, loaded and upright — the closest thing off the bike to resisting a torso lean. You're already at your load ceiling here with the 24, which is the strongest single reason to buy the 32.</p>
+        <div class="spec"><span class="tag key">3 × 30 m each side</span><span class="tag">24 kg now, 32 kg from October</span><span class="tag">Extra set on the right</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>One bell in one hand, arm hanging. Stand tall, shoulders level, ribs stacked over pelvis.</li>
+            <li>Set the shoulder before moving: pull it slightly back and down so the weight can't drag it forward.</li>
+            <li>Walk 30 m with deliberate, normal-length steps. Do not lean away from the bell.</li>
+            <li>Set down, swap hands, repeat. If your torso tips, it's too heavy for the purpose.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Walk as if carrying nothing.</li><li>Brace the side opposite the bell.</li><li>Extra set on the right, given the left-side history.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Side-bending toward or away from the load.</li><li>Shrugging the loaded shoulder.</li><li>Shortening the stride to cope.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Wall slides with lift-off</h3><span class="src">Serratus</span></div>
+        <p class="why">Trains the serratus anterior to hold the shoulder blade flat against the ribcage. When it doesn't, the front of the shoulder takes the load — your symptom.</p>
+        <div class="spec"><span class="tag key">2 × 12</span><span class="tag">Slow, no momentum</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Face a wall, forearms on it, elbows about shoulder width and roughly chest height.</li>
+            <li>Brace the abdomen and tuck the ribs down so you can't arch to gain range.</li>
+            <li>Slide the forearms up, actively reaching long — push the wall away and let the shoulder blades travel up and around the ribcage.</li>
+            <li>At the top of your comfortable range, lift the forearms a centimetre off the wall for one second, then replace and slide down slowly.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Reach, don't shrug.</li><li>Ribs stay down the whole set.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the lower back to get higher.</li><li>Elbows flaring wide.</li><li>Going above the point where the shoulder pinches — stop below it.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Band face pulls, or prone Y / T raises</h3><span class="src">Posterior shoulder</span></div>
+        <p class="why">The counterweight to hours in a closed, forward position, and the balancing entry to all the pressing and carrying elsewhere in the plan.</p>
+        <div class="spec"><span class="tag key">2 × 15</span><span class="tag">Light band</span><span class="tag">2 s hold</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li><strong>Face pulls:</strong> band anchored at head height, one end in each hand, thumbs pointing back.</li>
+            <li>Pull toward your forehead, leading with the elbows, finishing wide with hands either side of your head.</li>
+            <li>Squeeze two seconds — shoulder blades together and slightly down, ribs down — then return slowly.</li>
+            <li><strong>No band?</strong> Face down on the floor: arms in a Y (2 × 12), then a T (2 × 12), thumbs up, two seconds at the top.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Elbows lead, hands follow.</li><li>Chin tucked; neck stays out of it.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Band too heavy, so traps and lower back take over.</li><li>Head poking forward.</li><li>Ripping through reps.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+    </section>
+
+<!-- ===== SINGLE LEG ===== -->
+    <section id="legs">
+      <div class="sec-head"><h2>Single-leg block</h2><span class="dose">Part of the session · 8 min</span></div>
+      <p class="sec-note">Bodyweight only. This is the gap kettlebell circuits leave: cycling is bilateral, fixed-plane and seated, so unilateral loading is both underdeveloped and directly transferable. Add load only once all three are clean at bodyweight.</p>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Split squat</h3><span class="src">Bodyweight → 16 kg</span></div>
+        <p class="why">The single-leg squat pattern, without the balance demand of a lunge. Exposes side-to-side differences that a two-legged squat hides completely.</p>
+        <div class="spec"><span class="tag key">3 × 8 each leg</span><span class="tag">Slow down, controlled up</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Split stance, feet about a stride apart, torso upright. Back heel lifted.</li>
+            <li>Drop straight down — back knee toward the floor, not forward — until the back knee is just above the ground.</li>
+            <li>Front shin stays close to vertical and the front knee tracks over the middle of the foot.</li>
+            <li>Drive up through the front foot. Reset your stance each rep rather than drifting.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Down, not forward.</li><li>Fingertips on a wall for balance is fine.</li><li>Note which side is harder — that's your weaker leg, and it's information worth having.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Stance too short, which turns it into a knee-dominant grind.</li><li>Torso pitching forward.</li><li>Adding weight before both sides are equal.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Step-down</h3><span class="src">Eccentric control</span></div>
+        <p class="why">Trains the slow lowering that cycling never asks for. Good for knee resilience and directly relevant to controlling a single-leg position under fatigue.</p>
+        <div class="spec"><span class="tag key">2 × 8 each leg</span><span class="tag">3 s lowering</span><span class="tag">20–30 cm step</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Stand on a step on one leg, other leg hanging free just off the edge.</li>
+            <li>Lower yourself over three seconds by bending the standing knee, tapping the free heel lightly on the floor.</li>
+            <li>Keep the hips level throughout — no dropping toward the free side.</li>
+            <li>Push back up through the standing leg. If the hip drops, use a lower step.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Tap, don't land.</li><li>Standing knee tracks over the foot.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Dropping fast and bouncing out of the bottom.</li><li>Pelvis tilting — the fault to watch for given your history.</li><li>Step too high, too soon.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Single-leg glute bridge</h3><span class="src">Posterior chain</span></div>
+        <p class="why">Glute work in hip extension without loading the spine. Cyclists are chronically quad-dominant, and a glute that fires properly takes work off the lower back and stabilises the pelvis on the saddle.</p>
+        <div class="spec"><span class="tag key">2 × 10 each side</span><span class="tag">2 s squeeze at the top</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>On your back, one foot flat and close to your backside, the other knee pulled toward your chest.</li>
+            <li>Tuck the pelvis slightly, then drive through the planted heel to lift the hips.</li>
+            <li>Stop where your hips are level and your lower back is <em>not</em> arching — that's the top, wherever it happens to be.</li>
+            <li>Squeeze the glute for two seconds, lower slowly. Both hips stay square to the ceiling.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Push the floor away with the heel.</li><li>If you feel it in the hamstring, move the foot closer in.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the back to gain height.</li><li>One hip dropping or rotating.</li><li>Feeling it entirely in the lower back — that means the glute isn't doing it.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+    </section>
+
+<!-- ===== MOBILITY ===== -->
+    <section id="mobility">
+      <div class="sec-head"><h2>Mobility</h2><span class="dose">3×/week · 8–10 min</span></div>
+      <p class="sec-note">Ten minutes three times a week, done every week, beats an hour once. Do it after a ride or in the evening when tissue is warm — not as a cold pre-ride ritual. The hinge work here is doing double duty as your pike fix.</p>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Single-leg RDL, light kettlebell</h3><span class="src">Hinge · hamstring</span></div>
+        <p class="why">A loaded hamstring lengthener, and the drill most directly aimed at your failed pike. Transfers better than passive stretching because you're teaching the hip to hinge under load — which is what reaching the hoods actually is.</p>
+        <div class="spec"><span class="tag key">3 × 8 each leg</span><span class="tag">16 kg</span><span class="tag">3 s down, 1 s up</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Bell in one hand, stand on the opposite leg with a soft knee.</li>
+            <li>Hinge from the hip, letting the free leg travel back as a counterweight. Chest and hips stay square to the floor.</li>
+            <li>Lower slowly over three seconds until you feel a firm stretch high in the standing hamstring. Back stays long.</li>
+            <li>Drive the standing hip forward to stand up. Pause a beat at the top.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Reach the heel backward, don't just tip forward.</li><li>Chase the stretch, not the depth.</li><li>Free hand on a wall is fine — this isn't a balance test.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Hips opening to the side — kills the stretch.</li><li>Going heavy. It's a mobility drill in a strength costume.</li><li>Rounding the lower back at the bottom.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Half-kneeling hip flexor stretch</h3><span class="src">Pelvis</span></div>
+        <p class="why">Twenty desk years plus a lot of pedalling shorten the hip flexors, which drag the pelvis into a tilt you then fight all ride. The posterior tilt <em>is</em> the exercise — without it you're just stretching your knee.</p>
+        <div class="spec"><span class="tag key">2 × 45 s each side</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Half-kneeling: back knee on something soft, front foot flat, both hips facing forward.</li>
+            <li><em>Before moving anywhere</em>, tuck your tailbone under and flatten your lower back. You should already feel the front of the back hip.</li>
+            <li>Holding that tuck, squeeze the kneeling-side glute and drift your hips forward two or three centimetres. That's the whole range.</li>
+            <li>Breathe out slowly, hold 45 s, swap. Add a same-side overhead reach to catch the upper attachment.</li>
+          </ol>
+          <div class="holds"><span class="u">Hold</span>
+            <button class="hold" data-sec="45" data-name="Hip flexor · left">45 s left</button>
+            <button class="hold" data-sec="45" data-name="Hip flexor · right">45 s right</button>
+            <button class="mark">Mark done</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Foam roller thoracic extensions</h3><span class="src">Mid-back</span></div>
+        <p class="why">You passed the wall test, so this is maintenance rather than repair — but it's what keeps that pass, and extension gained in the mid-back is extension your neck and arms don't have to manufacture.</p>
+        <div class="spec"><span class="tag key">10 slow reps</span><span class="tag">3 roller positions</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Roller across your mid-back, perpendicular to the spine. Hands lightly behind the head, elbows narrow.</li>
+            <li>Brace the abdomen so the movement can't leak into your lower back — this is the difference between the drill working and doing nothing.</li>
+            <li>Exhale and drape your upper back backward over the roller. Small range. Pause two seconds at the end.</li>
+            <li>Curl up, shift the roller two or three centimetres, repeat. Three positions between the bottom of the shoulder blades and the base of the neck.</li>
+          </ol>
+          <div class="split">
+            <div class="box"><span class="u">Cues</span><ul><li>Exhale into it; ribs stay down.</li><li>Segment by segment, not one big flop.</li></ul></div>
+            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the lumbar spine — the usual way this becomes useless.</li><li>Pulling on the head.</li><li>Rolling on the lower back.</li></ul></div>
+          </div>
+        </div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Doorway pec stretch — two heights</h3><span class="src">Anterior shoulder</span></div>
+        <p class="why">Short pecs, and pec minor especially, tip the shoulder blade forward and down — precisely where your pain has been. Two arm heights because the fibres run in different directions.</p>
+        <div class="spec"><span class="tag key">2 × 30 s at 90°</span><span class="tag key">2 × 30 s at 120°</span><span class="tag">Each side</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Forearm flat on a door frame, elbow at shoulder height (90°).</li>
+            <li>Step the same-side foot through and rotate your chest away until you feel a broad stretch across the front of the shoulder.</li>
+            <li>Keep the shoulder blade gently back and down — if the shoulder rolls forward you're stretching the joint capsule, not the muscle.</li>
+            <li>Hold 30 s. Then raise the elbow to roughly 120°, above shoulder height, and repeat.</li>
+          </ol>
+          <div class="holds"><span class="u">Hold</span>
+            <button class="hold" data-sec="30" data-name="Pec 90°">30 s · 90°</button>
+            <button class="hold" data-sec="30" data-name="Pec 120°">30 s · 120°</button>
+            <button class="mark">Mark done</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===== REFERENCE ===== -->
+    <div class="band" id="reference"><span class="u">Reference</span><p>Why the programme looks like this. Nothing here is a thing to do today — open it when you want the reasoning.</p></div>
+
+<!-- ===== STATUS ===== -->
+    <details class="ref" id="status">
+      <summary><span class="rt">Where you are</span><span class="rd">Tested 26 July 2026</span></summary>
+      <div class="status">
+        <div class="st pass">
+          <div class="res">Pass</div><h3>Wall test</h3>
+          <p>Thoracic spine and shoulder range are adequate. This is why the shoulder pain is a weight-distribution problem rather than a structural one — and why the fit changes have been working.</p>
+        </div>
+        <div class="st fail">
+          <div class="res">Fail</div><h3>Seated pike</h3>
+          <p>The hip hinge is your bottleneck, and it's also your read on whether the Reacto is currently too long for you. Six-month project, not six-week. Retest monthly, not weekly.</p>
+        </div>
+        <div class="st fail">
+          <div class="res">Fail</div><h3>Front plank</h3>
+          <p>Trunk endurance, not strength. Start with shorter holds and more sets rather than grinding out a sagging 90 seconds — a bad hold trains the exact fault you're removing.</p>
+        </div>
+      </div>
+      <p class="closing" style="margin-top:22px;border-top:none;padding-top:0">The convenient part: the hip hinge is the foundational pattern of nearly every kettlebell movement — swings, deadlifts, cleans, RDLs are all the same thing. Your pike fix and your strength programme are the same work. You don't need a separate mobility project competing for time.</p>
+    </details>
+
+<!-- ===== RETEST ===== -->
+    <details class="ref" id="retest">
+      <summary><span class="rt">Retesting</span><span class="rd">Three numbers, monthly</span></summary>
+      <p class="sec-note">Write them down. Memory flatters progress, and after any fit change you need an honest before-and-after.</p>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Bar hover</h3><span class="v v-next">Monthly · first Friday</span></div>
+        <p class="why">Your primary progress marker. The on-bike version of everything on this page.</p>
+        <div class="spec"><span class="tag key">Target: 3 s, no lurch</span><span class="tag">Turbo, endurance power</span></div>
+        <div class="body">
+          <ol class="steps">
+            <li>Steady endurance power on the turbo, hands on the hoods, cadence settled.</li>
+            <li>Without changing your torso angle, lift both hands a centimetre clear of the bars.</li>
+            <li>Hold three seconds. Replace gently.</li>
+            <li>Record whether you lurched backward, sat up, or held the angle. Same conditions every week.</li>
+          </ol>
+          <div class="holds"><span class="u">Hold</span><button class="hold" data-sec="3" data-name="Bar hover">3 s</button><button class="mark">Mark done</button></div>
+        </div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Front plank</h3><span class="v v-next">Monthly · first Friday</span></div>
+        <p class="why">Your trunk endurance number. Stop the clock at form failure — hips dropping or back arching — not at discomfort. Expect 20–30 s of improvement by October.</p>
+        <div class="spec"><span class="tag key">Target: 90 s neutral</span></div>
+        <div class="body">
+          <div class="holds" style="padding-left:0"><span class="u">Hold</span><button class="hold" data-sec="60" data-name="Front plank test · 60 s">60 s</button><button class="hold" data-sec="90" data-name="Front plank test · 90 s">90 s</button><button class="mark">Mark done</button></div>
+        </div>
+      </article>
+
+      <article class="pos-card">
+        <div class="card-top"><h3>Seated pike</h3><span class="v">Monthly only</span></div>
+        <p class="why">Hip range at 50 after two decades of sitting is a six-month project. Test it weekly and you'll conclude nothing's happening. First honest retest: late September. Same conditions — cold, no warm-up, not straight off the bike when everything is warm and flattering.</p>
+        <div class="spec"><span class="tag key">Pass: hands past ankles, flat back</span><span class="tag">Cold</span></div>
+        <div class="holds"><button class="mark">Mark done</button></div>
+      </article>
+
+      <p class="closing">At 50 the recovery side stops being optional garnish — sleep and adequate protein will shape the next six months more than exercise selection will. And keep changing one thing at a time: if you alter the saddle, the stem and the programme in the same week, you'll learn nothing about any of them. Two numbers once a month will tell you whether the position or the body is still the limiter.</p>
+    </details>
+
+    <!-- ===== RED FLAGS ===== -->
+    <details class="ref" id="flags">
+      <summary><span class="rt">When to stop and get seen</span><span class="rd">Red flags</span></summary>
+      <div class="flags">
+        <div class="kicker">Stop adjusting, get seen</div>
+        <h2>When this stops being a fit problem</h2>
+        <ul>
+          <li>Numbness that persists for hours after you get off the bike.</li>
+          <li>Any loss of grip strength or clumsiness in the hand.</li>
+          <li>Symptoms that wake you at night.</li>
+          <li>Shoulder pain appearing off the bike, or a painful arc lifting your arm to the side.</li>
+        </ul>
+        <p style="margin-top:14px">Those point to nerve entrapment or a shoulder structure rather than weight distribution, and no amount of stem swapping or planking will touch them. Physio assessment first, then come back to the plan.</p>
+      </div>
+    </details>
+
+<!-- ===== VIDEOS ===== -->
+    <details class="ref" id="videos">
+      <summary><span class="rt">The videos</span><span class="rd">Five in the playlist · four in the plan</span></summary>
+      <p class="sec-note">Follow-alongs solve consistency and tempo, which is exactly what you need after a work day. Their one flaw is that the person on screen sets the pace for an imaginary average viewer, and you will unconsciously chase them. Use the pause button. Halve the reps on anything new for the first fortnight. Skip a movement rather than doing a degraded version of it — a bad rep isn't a lesser rep, it's a different exercise loading a joint you didn't intend.</p>
 
       <article class="pos-card">
         <div class="card-top"><h3><a href="https://www.youtube.com/watch?v=jwzSVivi-bc">The Most Complete Kettlebell Workout From Beginner To Advanced</a></h3><span class="v">Reference, not a session</span></div>
@@ -413,11 +909,11 @@
           <p style="margin:16px 0 0"><strong>The right thing to build toward is heavier bells, fewer reps and longer rests — not more breathless.</strong> That's a different direction, and it's the one that fixes your test results.</p>
         </div>
       </article>
-    </section>
+    </details>
 
-    <!-- ===== PHASES ===== -->
-    <section id="phases">
-      <div class="sec-head"><h2>Progression</h2><span class="dose">One variable at a time</span></div>
+<!-- ===== PHASES ===== -->
+    <details class="ref" id="phases">
+      <summary><span class="rt">Progression</span><span class="rd">One variable at a time</span></summary>
       <div class="phases">
         <div class="ph">
           <div class="when">Late July → late Sept</div><div class="n">1</div>
@@ -452,11 +948,11 @@
           </ul>
         </div>
       </div>
-    </section>
+    </details>
 
-    <!-- ===== BELLS ===== -->
-    <section id="bells">
-      <div class="sec-head"><h2>Kettlebells</h2><span class="dose">You have 16 / 20 / 24 — one each</span></div>
+<!-- ===== BELLS ===== -->
+    <details class="ref" id="bells">
+      <summary><span class="rt">Kettlebells</span><span class="rd">You have 16 / 20 / 24 — one each</span></summary>
       <p class="sec-note">A better starting set than most people have, and enough for the next two to three months. Different patterns have wildly different lifespans on it.</p>
       <div class="grid-wrap">
         <table>
@@ -481,302 +977,7 @@
           <p style="margin:16px 0 0"><strong>Buy secondhand if you're patient.</strong> Cast iron doesn't wear out — a scuffed 32 performs identically to a new one. Heavy bells turn up constantly on Marketplace and eBay because people buy them optimistically and then don't. Collection only; postage on 32 kg is punishing. One more thing to expect: cast iron bells get physically bigger as they get heavier, so the 32's handle is noticeably thicker than your 24's. Your grip will fail before your hips do on carries and long swing sets. That's normal, and it catches up.</p>
         </div>
       </article>
-    </section>
-
-    <!-- ===== MOBILITY ===== -->
-    <section id="mobility">
-      <div class="sec-head"><h2>Mobility</h2><span class="dose">3×/week · 8–10 min</span></div>
-      <p class="sec-note">Ten minutes three times a week, done every week, beats an hour once. Do it after a ride or in the evening when tissue is warm — not as a cold pre-ride ritual. The hinge work here is doing double duty as your pike fix.</p>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Single-leg RDL, light kettlebell</h3><span class="src">Hinge · hamstring</span></div>
-        <p class="why">A loaded hamstring lengthener, and the drill most directly aimed at your failed pike. Transfers better than passive stretching because you're teaching the hip to hinge under load — which is what reaching the hoods actually is.</p>
-        <div class="spec"><span class="tag key">3 × 8 each leg</span><span class="tag">16 kg</span><span class="tag">3 s down, 1 s up</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Bell in one hand, stand on the opposite leg with a soft knee.</li>
-            <li>Hinge from the hip, letting the free leg travel back as a counterweight. Chest and hips stay square to the floor.</li>
-            <li>Lower slowly over three seconds until you feel a firm stretch high in the standing hamstring. Back stays long.</li>
-            <li>Drive the standing hip forward to stand up. Pause a beat at the top.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Reach the heel backward, don't just tip forward.</li><li>Chase the stretch, not the depth.</li><li>Free hand on a wall is fine — this isn't a balance test.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Hips opening to the side — kills the stretch.</li><li>Going heavy. It's a mobility drill in a strength costume.</li><li>Rounding the lower back at the bottom.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Half-kneeling hip flexor stretch</h3><span class="src">Pelvis</span></div>
-        <p class="why">Twenty desk years plus a lot of pedalling shorten the hip flexors, which drag the pelvis into a tilt you then fight all ride. The posterior tilt <em>is</em> the exercise — without it you're just stretching your knee.</p>
-        <div class="spec"><span class="tag key">2 × 45 s each side</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Half-kneeling: back knee on something soft, front foot flat, both hips facing forward.</li>
-            <li><em>Before moving anywhere</em>, tuck your tailbone under and flatten your lower back. You should already feel the front of the back hip.</li>
-            <li>Holding that tuck, squeeze the kneeling-side glute and drift your hips forward two or three centimetres. That's the whole range.</li>
-            <li>Breathe out slowly, hold 45 s, swap. Add a same-side overhead reach to catch the upper attachment.</li>
-          </ol>
-          <div class="holds"><span class="u">Hold</span>
-            <button class="hold" data-sec="45" data-name="Hip flexor · left">45 s left</button>
-            <button class="hold" data-sec="45" data-name="Hip flexor · right">45 s right</button>
-            <button class="mark">Mark done</button>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Foam roller thoracic extensions</h3><span class="src">Mid-back</span></div>
-        <p class="why">You passed the wall test, so this is maintenance rather than repair — but it's what keeps that pass, and extension gained in the mid-back is extension your neck and arms don't have to manufacture.</p>
-        <div class="spec"><span class="tag key">10 slow reps</span><span class="tag">3 roller positions</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Roller across your mid-back, perpendicular to the spine. Hands lightly behind the head, elbows narrow.</li>
-            <li>Brace the abdomen so the movement can't leak into your lower back — this is the difference between the drill working and doing nothing.</li>
-            <li>Exhale and drape your upper back backward over the roller. Small range. Pause two seconds at the end.</li>
-            <li>Curl up, shift the roller two or three centimetres, repeat. Three positions between the bottom of the shoulder blades and the base of the neck.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Exhale into it; ribs stay down.</li><li>Segment by segment, not one big flop.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the lumbar spine — the usual way this becomes useless.</li><li>Pulling on the head.</li><li>Rolling on the lower back.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Doorway pec stretch — two heights</h3><span class="src">Anterior shoulder</span></div>
-        <p class="why">Short pecs, and pec minor especially, tip the shoulder blade forward and down — precisely where your pain has been. Two arm heights because the fibres run in different directions.</p>
-        <div class="spec"><span class="tag key">2 × 30 s at 90°</span><span class="tag key">2 × 30 s at 120°</span><span class="tag">Each side</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Forearm flat on a door frame, elbow at shoulder height (90°).</li>
-            <li>Step the same-side foot through and rotate your chest away until you feel a broad stretch across the front of the shoulder.</li>
-            <li>Keep the shoulder blade gently back and down — if the shoulder rolls forward you're stretching the joint capsule, not the muscle.</li>
-            <li>Hold 30 s. Then raise the elbow to roughly 120°, above shoulder height, and repeat.</li>
-          </ol>
-          <div class="holds"><span class="u">Hold</span>
-            <button class="hold" data-sec="30" data-name="Pec 90°">30 s · 90°</button>
-            <button class="hold" data-sec="30" data-name="Pec 120°">30 s · 120°</button>
-            <button class="mark">Mark done</button>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== TRUNK ===== -->
-    <section id="trunk">
-      <div class="sec-head"><h2>Trunk &amp; shoulder block</h2><span class="dose">After Strength 1 &amp; 2 · 12 min</span></div>
-      <p class="sec-note">Low intensity, so it goes on riding days where it competes with nothing. Every hold ends at <em>form</em> failure, not at discomfort — a sagging plank trains the exact fault you're removing. Given the failed plank test, start at the bottom of each range.</p>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Side plank</h3><span class="src">Highest value on this page</span></div>
-        <p class="why">Trains the lateral trunk to stop your ribcage collapsing toward the bars and your pelvis dropping to one side. Directly aimed at the left-side pattern you started with.</p>
-        <div class="spec"><span class="tag key">3 × 30–45 s each side</span><span class="tag">Build to 60 s</span><span class="tag">Elbow, not hand</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>On your side, elbow directly under the shoulder, forearm forward, feet stacked or staggered.</li>
-            <li>Lift the hips until shoulder, hip and ankle make one line. Push the floor away so you don't sag into the bottom shoulder.</li>
-            <li>Squeeze the top glute and brace the abdominal wall. Head in line with the spine.</li>
-            <li>Hold to the first sign of the hips dropping. Rest 30 s between sets.</li>
-          </ol>
-          <div class="holds"><span class="u">Hold</span>
-            <button class="hold" data-sec="30" data-name="Side plank · left">30 s L</button>
-            <button class="hold" data-sec="30" data-name="Side plank · right">30 s R</button>
-            <button class="hold" data-sec="45" data-name="Side plank · 45 s">45 s</button>
-            <button class="hold" data-sec="60" data-name="Side plank · 60 s">60 s</button>
-            <button class="mark">Mark done</button>
-          </div>
-          <div class="body" style="padding-top:0">
-            <div class="split">
-              <div class="box"><span class="u">Progression</span><ul><li>Too hard: knees down, or top foot forward on the floor.</li><li>Too easy: top arm overhead, or lift the top leg.</li><li>Add load before adding time past 60 s.</li></ul></div>
-              <div class="box warn"><span class="u">Common mistakes</span><ul><li>Rolling forward or back off the true side position.</li><li>Sinking into the supporting shoulder.</li><li>Holding your breath.</li></ul></div>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Bird-dog</h3><span class="src">Anti-extension</span></div>
-        <p class="why">Teaches the trunk to stay quiet while the limbs move — which is what pedalling is, and the reason a stable trunk stops your shoulders taking the surplus.</p>
-        <div class="spec"><span class="tag key">3 × 8 each side</span><span class="tag">3 s hold per rep</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Four-point kneeling, hands under shoulders, knees under hips. Flatten the lower back and brace.</li>
-            <li>Extend the opposite arm and leg to horizontal — no higher. Hips stay level; imagine balancing a glass of water on your lower back.</li>
-            <li>Hold three seconds, reaching long through fingertips and heel.</li>
-            <li>Return slowly, tapping hand and knee down before the next rep. Alternate.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Reach long, don't lift high.</li><li>Push the floor away with the supporting hand.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Hip hiking or rotating — the fault this exists to remove.</li><li>Arching as the leg rises.</li><li>Rushing. Speed hides instability.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Suitcase carry</h3><span class="src">Kettlebell days</span></div>
-        <p class="why">Anti-lateral-flexion, loaded and upright — the closest thing off the bike to resisting a torso lean. You're already at your load ceiling here with the 24, which is the strongest single reason to buy the 32.</p>
-        <div class="spec"><span class="tag key">3 × 30 m each side</span><span class="tag">24 kg now, 32 kg from October</span><span class="tag">Extra set on the right</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>One bell in one hand, arm hanging. Stand tall, shoulders level, ribs stacked over pelvis.</li>
-            <li>Set the shoulder before moving: pull it slightly back and down so the weight can't drag it forward.</li>
-            <li>Walk 30 m with deliberate, normal-length steps. Do not lean away from the bell.</li>
-            <li>Set down, swap hands, repeat. If your torso tips, it's too heavy for the purpose.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Walk as if carrying nothing.</li><li>Brace the side opposite the bell.</li><li>Extra set on the right, given the left-side history.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Side-bending toward or away from the load.</li><li>Shrugging the loaded shoulder.</li><li>Shortening the stride to cope.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Wall slides with lift-off</h3><span class="src">Serratus</span></div>
-        <p class="why">Trains the serratus anterior to hold the shoulder blade flat against the ribcage. When it doesn't, the front of the shoulder takes the load — your symptom.</p>
-        <div class="spec"><span class="tag key">2 × 12</span><span class="tag">Slow, no momentum</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Face a wall, forearms on it, elbows about shoulder width and roughly chest height.</li>
-            <li>Brace the abdomen and tuck the ribs down so you can't arch to gain range.</li>
-            <li>Slide the forearms up, actively reaching long — push the wall away and let the shoulder blades travel up and around the ribcage.</li>
-            <li>At the top of your comfortable range, lift the forearms a centimetre off the wall for one second, then replace and slide down slowly.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Reach, don't shrug.</li><li>Ribs stay down the whole set.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the lower back to get higher.</li><li>Elbows flaring wide.</li><li>Going above the point where the shoulder pinches — stop below it.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Band face pulls, or prone Y / T raises</h3><span class="src">Posterior shoulder</span></div>
-        <p class="why">The counterweight to hours in a closed, forward position, and the balancing entry to all the pressing and carrying elsewhere in the plan.</p>
-        <div class="spec"><span class="tag key">2 × 15</span><span class="tag">Light band</span><span class="tag">2 s hold</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li><strong>Face pulls:</strong> band anchored at head height, one end in each hand, thumbs pointing back.</li>
-            <li>Pull toward your forehead, leading with the elbows, finishing wide with hands either side of your head.</li>
-            <li>Squeeze two seconds — shoulder blades together and slightly down, ribs down — then return slowly.</li>
-            <li><strong>No band?</strong> Face down on the floor: arms in a Y (2 × 12), then a T (2 × 12), thumbs up, two seconds at the top.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Elbows lead, hands follow.</li><li>Chin tucked; neck stays out of it.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Band too heavy, so traps and lower back take over.</li><li>Head poking forward.</li><li>Ripping through reps.</li></ul></div>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== SINGLE LEG ===== -->
-    <section id="legs">
-      <div class="sec-head"><h2>Single-leg block</h2><span class="dose">Bolted onto Monday · 8 min</span></div>
-      <p class="sec-note">Bodyweight only. This is the gap kettlebell circuits leave: cycling is bilateral, fixed-plane and seated, so unilateral loading is both underdeveloped and directly transferable. Add load only once all three are clean at bodyweight.</p>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Split squat</h3><span class="src">Bodyweight → 16 kg</span></div>
-        <p class="why">The single-leg squat pattern, without the balance demand of a lunge. Exposes side-to-side differences that a two-legged squat hides completely.</p>
-        <div class="spec"><span class="tag key">3 × 8 each leg</span><span class="tag">Slow down, controlled up</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Split stance, feet about a stride apart, torso upright. Back heel lifted.</li>
-            <li>Drop straight down — back knee toward the floor, not forward — until the back knee is just above the ground.</li>
-            <li>Front shin stays close to vertical and the front knee tracks over the middle of the foot.</li>
-            <li>Drive up through the front foot. Reset your stance each rep rather than drifting.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Down, not forward.</li><li>Fingertips on a wall for balance is fine.</li><li>Note which side is harder — that's your weaker leg, and it's information worth having.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Stance too short, which turns it into a knee-dominant grind.</li><li>Torso pitching forward.</li><li>Adding weight before both sides are equal.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Step-down</h3><span class="src">Eccentric control</span></div>
-        <p class="why">Trains the slow lowering that cycling never asks for. Good for knee resilience and directly relevant to controlling a single-leg position under fatigue.</p>
-        <div class="spec"><span class="tag key">2 × 8 each leg</span><span class="tag">3 s lowering</span><span class="tag">20–30 cm step</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Stand on a step on one leg, other leg hanging free just off the edge.</li>
-            <li>Lower yourself over three seconds by bending the standing knee, tapping the free heel lightly on the floor.</li>
-            <li>Keep the hips level throughout — no dropping toward the free side.</li>
-            <li>Push back up through the standing leg. If the hip drops, use a lower step.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Tap, don't land.</li><li>Standing knee tracks over the foot.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Dropping fast and bouncing out of the bottom.</li><li>Pelvis tilting — the fault to watch for given your history.</li><li>Step too high, too soon.</li></ul></div>
-          </div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Single-leg glute bridge</h3><span class="src">Posterior chain</span></div>
-        <p class="why">Glute work in hip extension without loading the spine. Cyclists are chronically quad-dominant, and a glute that fires properly takes work off the lower back and stabilises the pelvis on the saddle.</p>
-        <div class="spec"><span class="tag key">2 × 10 each side</span><span class="tag">2 s squeeze at the top</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>On your back, one foot flat and close to your backside, the other knee pulled toward your chest.</li>
-            <li>Tuck the pelvis slightly, then drive through the planted heel to lift the hips.</li>
-            <li>Stop where your hips are level and your lower back is <em>not</em> arching — that's the top, wherever it happens to be.</li>
-            <li>Squeeze the glute for two seconds, lower slowly. Both hips stay square to the ceiling.</li>
-          </ol>
-          <div class="split">
-            <div class="box"><span class="u">Cues</span><ul><li>Push the floor away with the heel.</li><li>If you feel it in the hamstring, move the foot closer in.</li></ul></div>
-            <div class="box warn"><span class="u">Common mistakes</span><ul><li>Arching the back to gain height.</li><li>One hip dropping or rotating.</li><li>Feeling it entirely in the lower back — that means the glute isn't doing it.</li></ul></div>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- ===== RETEST ===== -->
-    <section id="retest">
-      <div class="sec-head"><h2>Retesting</h2><span class="dose">Two numbers, once a month</span></div>
-      <p class="sec-note">Write them down. Memory flatters progress, and after any fit change you need an honest before-and-after.</p>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Bar hover</h3><span class="v v-next">Monthly · first Friday</span></div>
-        <p class="why">Your primary progress marker. The on-bike version of everything on this page.</p>
-        <div class="spec"><span class="tag key">Target: 3 s, no lurch</span><span class="tag">Turbo, endurance power</span></div>
-        <div class="body">
-          <ol class="steps">
-            <li>Steady endurance power on the turbo, hands on the hoods, cadence settled.</li>
-            <li>Without changing your torso angle, lift both hands a centimetre clear of the bars.</li>
-            <li>Hold three seconds. Replace gently.</li>
-            <li>Record whether you lurched backward, sat up, or held the angle. Same conditions every week.</li>
-          </ol>
-          <div class="holds"><span class="u">Hold</span><button class="hold" data-sec="3" data-name="Bar hover">3 s</button><button class="mark">Mark done</button></div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Front plank</h3><span class="v v-next">Monthly · first Friday</span></div>
-        <p class="why">Your trunk endurance number. Stop the clock at form failure — hips dropping or back arching — not at discomfort. Expect 20–30 s of improvement by October.</p>
-        <div class="spec"><span class="tag key">Target: 90 s neutral</span></div>
-        <div class="body">
-          <div class="holds" style="padding-left:0"><span class="u">Hold</span><button class="hold" data-sec="60" data-name="Front plank test · 60 s">60 s</button><button class="hold" data-sec="90" data-name="Front plank test · 90 s">90 s</button><button class="mark">Mark done</button></div>
-        </div>
-      </article>
-
-      <article class="pos-card">
-        <div class="card-top"><h3>Seated pike</h3><span class="v">Monthly only</span></div>
-        <p class="why">Hip range at 50 after two decades of sitting is a six-month project. Test it weekly and you'll conclude nothing's happening. First honest retest: late September. Same conditions — cold, no warm-up, not straight off the bike when everything is warm and flattering.</p>
-        <div class="spec"><span class="tag key">Pass: hands past ankles, flat back</span><span class="tag">Cold</span></div>
-      </article>
-
-      <div class="flags">
-        <div class="kicker">Stop adjusting, get seen</div>
-        <h2>When this stops being a fit problem</h2>
-        <ul>
-          <li>Numbness that persists for hours after you get off the bike.</li>
-          <li>Any loss of grip strength or clumsiness in the hand.</li>
-          <li>Symptoms that wake you at night.</li>
-          <li>Shoulder pain appearing off the bike, or a painful arc lifting your arm to the side.</li>
-        </ul>
-        <p style="margin-top:14px">Those point to nerve entrapment or a shoulder structure rather than weight distribution, and no amount of stem swapping or planking will touch them. Physio assessment first, then come back to the plan.</p>
-      </div>
-
-      <p class="closing">At 50 the recovery side stops being optional garnish — sleep and adequate protein will shape the next six months more than exercise selection will. And keep changing one thing at a time: if you alter the saddle, the stem and the programme in the same week, you'll learn nothing about any of them. Two numbers once a month will tell you whether the position or the body is still the limiter.</p>
-    </section>
+    </details>
 
     </main>
   </div>

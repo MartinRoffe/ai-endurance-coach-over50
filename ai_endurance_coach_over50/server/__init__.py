@@ -152,6 +152,7 @@ from .context import (  # noqa: F401
     _calendar_weeks,
     _merge_compound_activities,
     _plan_completion_stats,
+    _position_context,
     _shopping_list_context,
     _travel_checklist_context,
     _week_completion,
@@ -1221,6 +1222,7 @@ async def position_programme(request: Request, _=Depends(_require_auth)):
         context={
             "active_tab": "position",
             "plan_section": "position",
+            **_position_context(),
         },
     )
 
