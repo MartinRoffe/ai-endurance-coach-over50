@@ -10,7 +10,7 @@ from ..coach_voice import COACH_VOICE
 from ..history import _conn, get_cached_text, set_cached_text
 from ..llm import MODEL_FAST, MODEL_SMART
 from ..plan import COMPOUND_SESSIONS, session_for_date_extended
-from .db import _ensure_analysis_schema, load_analysis, save_detail
+from .db import _ensure_analysis_schema, load_analysis, save_detail, update_analysis_text
 from .intervals import (
     _ALL_FTP_LABELS,
     _CYCLING_TYPES,
@@ -53,6 +53,90 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
         return msg.content[0].text
     except Exception:
         return _rule_based_analysis(activity, detail)
+
+
+def _load_activity_row(activity_id: int) -> Optional[dict]:
+    from ..history.db import _ensure_activities_schema
+    with _conn() as con:
+        _ensure_activities_schema(con)
+        row = con.execute(
+            "SELECT * FROM activities WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def _detail_from_stored_analysis(stored: dict) -> dict:
+    """Rebuild a generate_analysis detail dict from a cached activity_analyses row."""
+    return {
+        "hr_zones": stored.get("hr_zones") or [],
+        "power_zones": stored.get("power_zones") or [],
+        "interval_reps": stored.get("interval_reps") or [],
+        "training_effect": stored.get("training_effect"),
+        "training_effect_label": stored.get("training_effect_label"),
+        "aerobic_te_message": stored.get("aerobic_te_message"),
+        "anaerobic_te": stored.get("anaerobic_te"),
+        "training_load": stored.get("training_load"),
+        "avg_respiration": stored.get("avg_respiration"),
+        "ftp_effort_avg_hr": stored.get("ftp_effort_avg_hr"),
+        "ftp_effort_max_hr": stored.get("ftp_effort_max_hr"),
+        "ftp_effort_avg_w": stored.get("ftp_effort_avg_w"),
+        "has_power_meter": bool(stored.get("power_zones")),
+    }
+
+
+def regenerate_analysis_for_activity(activity_id: int) -> Optional[str]:
+    """Re-run coach commentary for one activity using stored detail + current fuelling logs.
+
+    Used after `/log-fuelling` so the write-up incorporates actual carbs/h without a
+    full Garmin re-fetch. Returns the new analysis text, or None if nothing to do.
+    """
+    activity = _load_activity_row(int(activity_id))
+    if not activity:
+        return None
+    stored = load_analysis(int(activity_id))
+    if not stored:
+        return None
+
+    detail = _detail_from_stored_analysis(stored)
+    if activity.get("has_power_meter") or activity.get("avg_power_w"):
+        detail["has_power_meter"] = True
+        detail["avg_power_w"] = activity.get("avg_power_w")
+        detail["norm_power_w"] = activity.get("norm_power_w")
+        detail["max_power_w"] = activity.get("max_power_w")
+
+    # Restore FIT interval prompt lines when previously mined.
+    try:
+        from ..history import load_fit_activity_meta, load_interval_analyses
+        from .fit_intervals import fit_prompt_lines
+        intervals = load_interval_analyses(int(activity_id))
+        meta = load_fit_activity_meta(int(activity_id)) or {}
+        if intervals:
+            detail["fit_interval_prompt_lines"] = fit_prompt_lines(intervals, meta)
+            detail["fit_intervals"] = intervals
+            detail["fit_meta"] = meta
+        # Prefer FIT ambient temps when the activities row is missing them.
+        if activity.get("max_temperature") is None and meta.get("temp_max") is not None:
+            activity = dict(activity)
+            activity["max_temperature"] = meta.get("temp_max")
+            activity["min_temperature"] = meta.get("temp_min")
+    except Exception:
+        pass
+
+    companion = None
+    act_date = activity.get("date")
+    if act_date:
+        try:
+            from ..history import load_activities_by_date
+            d_obj = date.fromisoformat(act_date)
+            day_acts = load_activities_by_date(d_obj, d_obj).get(act_date, [])
+            companion = _find_compound_companion(activity, day_acts)
+        except Exception:
+            companion = None
+
+    text = generate_analysis(activity, detail, companion=companion)
+    update_analysis_text(int(activity_id), text)
+    return text
 
 
 def _find_compound_companion(activity: dict, day_acts: list[dict]) -> Optional[dict]:

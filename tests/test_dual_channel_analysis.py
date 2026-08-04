@@ -52,6 +52,8 @@ def test_coach_system_prompt_dual_channel_per_activity():
     assert "Dual-channel coaching" in sys
     assert "2012 Haute Route" in sys
     assert "do not default to 'power zones are wrong'" in sys
+    assert "fuel/glycogen fade" in sys
+    assert "heat cardiac drift" in sys
 
 
 def test_rule_based_dual_channel_when_hr_missing():
@@ -218,11 +220,19 @@ def test_injects_power_decoupling_when_present(monkeypatch):
             "decoupling_pct": 11.0,
             "hr_drift_pct": 12.9,
             "power_drift_pct": 1.9,
+            "first_third_power": 165.0,
+            "final_third_power": 168.0,
+            "first_third_hr": 124.0,
+            "final_third_hr": 140.0,
         },
     )
     monkeypatch.setattr(
         "ai_endurance_coach_over50.history.get_durability",
         lambda aid: None,
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_fuelling_logs",
+        lambda days=90: [],
     )
     detail = {
         "hr_zones": _valid_hr_zones(),
@@ -236,3 +246,115 @@ def test_injects_power_decoupling_when_present(monkeypatch):
     assert "Pw:HR decoupling: +11.0%" in prompt
     assert "HR drift +12.9%" in prompt
     assert "power drift +1.9%" in prompt
+    assert "Thirds: first 165 W → final 168 W" in prompt
+    assert "heat drift vs fuel fade" in prompt
+
+
+def test_fuel_fade_pattern_overrides_heat_excuse(monkeypatch):
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_ftp_tests",
+        lambda: [{"date": "2026-07-02", "ftp_w": 214}],
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.ftp_retest_due",
+        lambda *a, **k: None,
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.get_power_durability",
+        lambda aid: {
+            "activity_id": aid,
+            "decoupling_pct": 23.6,
+            "hr_drift_pct": 9.3,
+            "power_drift_pct": -17.9,
+            "first_third_power": 134.0,
+            "final_third_power": 110.0,
+            "first_third_hr": 129.0,
+            "final_third_hr": 141.0,
+        },
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.get_durability",
+        lambda aid: None,
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_fuelling_logs",
+        lambda days=90: [{
+            "date": "2026-08-02",
+            "activity_id": 4242,
+            "planned_carbs_g_per_hr": 90.0,
+            "actual_carbs_g_per_hr": 29.0,
+            "fluid_ok": 1,
+            "note": "4 rice cakes + 1 gel + Lucozade",
+        }],
+    )
+    activity = _base_activity(
+        date="2026-08-02",
+        duration_seconds=20488,
+        max_temperature=34,
+        min_temperature=21,
+    )
+    detail = {
+        "hr_zones": _valid_hr_zones(),
+        "power_zones": _aligned_power_zones(214),
+        "has_power_meter": True,
+        "training_effect": 5.0,
+        "training_effect_label": "highly_improving",
+        "training_load": 314,
+    }
+    prompt = _build_analysis_prompt(activity, detail)
+    assert "Fade pattern: FUEL/GLYCOGEN" in prompt
+    assert "do NOT dismiss as heat alone" in prompt.lower() or "Do NOT dismiss as heat alone" in prompt
+    assert "In-ride fuelling logged: ~29 g carbs/h" in prompt
+    assert "well below target" in prompt
+    assert "Power collapse in the final third" in prompt
+
+
+def test_heat_drift_pattern_when_power_held(monkeypatch):
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_ftp_tests",
+        lambda: [{"date": "2026-07-02", "ftp_w": 202}],
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.ftp_retest_due",
+        lambda *a, **k: None,
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.get_power_durability",
+        lambda aid: {
+            "activity_id": aid,
+            "decoupling_pct": 10.0,
+            "hr_drift_pct": 11.0,
+            "power_drift_pct": 1.0,
+            "first_third_power": 150.0,
+            "final_third_power": 151.5,
+            "first_third_hr": 130.0,
+            "final_third_hr": 144.0,
+        },
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.get_durability",
+        lambda aid: None,
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_fuelling_logs",
+        lambda days=90: [],
+    )
+    activity = _base_activity(max_temperature=30, min_temperature=24)
+    detail = {
+        "hr_zones": _valid_hr_zones(),
+        "power_zones": _aligned_power_zones(202),
+        "has_power_meter": True,
+        "training_effect": 4.0,
+        "training_effect_label": "improving",
+        "training_load": 200,
+    }
+    prompt = _build_analysis_prompt(activity, detail)
+    assert "Fade pattern: HEAT CARDIAC DRIFT" in prompt
+    assert "FUEL/GLYCOGEN" not in prompt
+
+
+def test_classify_late_ride_fade():
+    from ai_endurance_coach_over50.analysis import classify_late_ride_fade
+    assert classify_late_ride_fade(-18.0, 9.0, 34.0) == "fuel_fade"
+    assert classify_late_ride_fade(1.0, 11.0, 30.0) == "heat_drift"
+    assert classify_late_ride_fade(-3.0, 4.0, 30.0) is None

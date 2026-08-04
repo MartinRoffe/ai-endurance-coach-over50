@@ -276,6 +276,53 @@ def _ensure_fit_meta_schema(con: sqlite3.Connection) -> None:
     """)
 
 
+def _ensure_climb_analyses_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS climb_analyses (
+            activity_id INTEGER NOT NULL,
+            climb_index INTEGER NOT NULL,
+            metrics_json TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (activity_id, climb_index)
+        )
+    """)
+
+
+def _ensure_named_climbs_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS named_climbs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            notes TEXT,
+            ref_start_lat REAL,
+            ref_start_lon REAL,
+            ref_end_lat REAL,
+            ref_end_lon REAL,
+            ref_length_m REAL,
+            ref_gain_m REAL,
+            ref_avg_grade REAL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS climb_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            named_climb_id INTEGER NOT NULL,
+            activity_id INTEGER NOT NULL,
+            climb_index INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            metrics_json TEXT NOT NULL,
+            is_pb_vam INTEGER NOT NULL DEFAULT 0,
+            is_pb_time INTEGER NOT NULL DEFAULT 0,
+            is_pb_wkg INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE (named_climb_id, activity_id, climb_index),
+            FOREIGN KEY (named_climb_id) REFERENCES named_climbs(id)
+        )
+    """)
+
+
 def _ensure_commitments_schema(con: sqlite3.Connection) -> None:
     """Durable coach commitments: checkpoints, guardrails and decision rules
     agreed in coach chat. Unlike coach_memory (a lossy summary), these survive

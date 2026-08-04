@@ -131,8 +131,8 @@
   <div class="container">
     <div class="eyebrow">Endurance Fuel · One Sunday · ~2½ hours</div>
     <h1>SUNDAY<br><span>PREP</span></h1>
-    <p>Cook list, timed schedule, and Mon–Thu dinner methods for the week you’re cooking for. Tick items as you go — ticks stay in this browser.</p>
-    <div class="cycle-chip">Cycle week {{ cycle_week + 1 }} of 4 · Mon–Thu dinners{% if cycle_week == 3 %} · Recovery{% endif %}</div>
+    <p>Component prep, timed schedule, and Mon–Sun evening plate methods for the week you’re cooking for. Tick items as you go — ticks stay in this browser.</p>
+    <div class="cycle-chip">Cycle week {{ cycle_week + 1 }} of 4 · evening plates{% if cycle_week == 3 %} · Recovery{% endif %}</div>
   </div>
 </div>
 
@@ -140,8 +140,7 @@
   <div class="sun-mininav-inner">
     <a href="#cook-list">Cook list</a>
     <a href="#schedule">Schedule</a>
-    <a href="#dinner-a">Dinner A</a>
-    <a href="#dinner-b">Dinner B</a>
+    <a href="#dinners">Dinners</a>
     <a href="#components">Components</a>
     <a href="/nutrition/lidl-shopping-list" style="border-left:1px solid var(--border);padding-left:14px;">🛒 Shop — Lidl</a>
     <a href="/nutrition/shopping-list">🛒 Shop — Asda</a>
@@ -165,11 +164,10 @@
   </section>
 
   <section id="dinners">
-    <div class="sec-label">Mon–Thu · this cycle week</div>
-    <h2>DINNER METHODS</h2>
-    <p class="lead">Batch A fridge Mon/Tue · Batch B freeze Sunday, fridge Tue eve for Wed/Thu. Cook the full batch; <b>plate the smaller carb side</b> listed on each card so macros match Today (620 kcal build / 560 recovery, protein dessert included).</p>
+    <div class="sec-label">Mon–Sun · this cycle week</div>
+    <h2>EVENING PLATES</h2>
+    <p class="lead">Unique plate each night. Sunday = component prep for 1; weeknights = ≤20 min air-fryer/oven finish. <b>Plate the carb side</b> on each card (620 kcal build / 560 recovery, protein dessert included). No cheese, no spice, crisp sides.</p>
     <div id="dinner-a"></div>
-    <div id="dinner-b"></div>
     {% include 'partials/weekday_dinner_cards.html' %}
   </section>
 
@@ -231,11 +229,13 @@
 <script>
 const AUTO_COOK_WEEK = {{ cycle_week | default(0) }};
 const DINNER_WEEKS = {{ dinner_weeks | tojson }};
+const DAY_KEYS = ['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DINNER_IDS = {
-  0: ['w1a', 'w1b'],
-  1: ['w2a', 'w2b'],
-  2: ['w3a', 'w3b'],
-  3: ['w4a', 'w4b'],
+  0: DAY_KEYS.map(d => 'w1-' + d),
+  1: DAY_KEYS.map(d => 'w2-' + d),
+  2: DAY_KEYS.map(d => 'w3-' + d),
+  3: DAY_KEYS.map(d => 'w4-' + d),
 };
 
 function checkItemsForWeek(week) {
@@ -243,12 +243,14 @@ function checkItemsForWeek(week) {
   const breakfast = week === 3
     ? 'Overnight oats · egg muffins · yogurt pots'
     : 'Overnight oats · scotch eggs · yogurt pots';
+  const mon = (d[0] || d['0'] || {}).name || 'Mon plate';
+  const fri = (d[4] || d['4'] || {}).name || 'Fri plate';
   return [
     {id:'lunch', label:'Lunch', text:'Herb thighs + Chinese Wed + basmati'},
     {id:'breakfast', label:'Breakfast', text: breakfast},
-    {id:'dinnerA', label:'Dinner A', text: d.A.name + ' (fridge Mon/Tue)'},
-    {id:'dinnerB', label:'Dinner B', text: d.B.name + ' (freeze → Wed/Thu)'},
-    {id:'portion', label:'Portion', text:'Fridge Batch A ×4 · freeze Batch B ×4' + (week === 0 ? ' · Sat/Sun chicken' : '')},
+    {id:'proteins', label:'Proteins', text: 'Marinate/portion Mon–Fri (e.g. ' + mon.split(' + ')[0] + ' …)'},
+    {id:'carbs', label:'Carbs/veg', text: 'Potatoes/rice/slaw prepped · dessert yogurt pots'},
+    {id:'weekend', label:'Weekend', text: 'Fri–Sun plates ready to finish (e.g. ' + fri.split(' + ')[0] + ')'},
   ];
 }
 
@@ -289,19 +291,8 @@ function renderChecklist(week) {
 function showDinnerCards(week) {
   const show = DINNER_IDS[week] || DINNER_IDS[0];
   document.querySelectorAll('.recipe[id^="w"]').forEach(el => {
-    const on = show.includes(el.id);
-    el.classList.toggle('hidden-week', !on);
-    if (el.id === show[0]) el.id = show[0]; // keep anchors
+    el.classList.toggle('hidden-week', !show.includes(el.id));
   });
-  // Re-stamp dinner-a / dinner-b scroll targets via empty anchors already above
-  const a = document.getElementById(show[0]);
-  const b = document.getElementById(show[1]);
-  const anchorA = document.getElementById('dinner-a');
-  const anchorB = document.getElementById('dinner-b');
-  if (a && anchorA) anchorA.style.scrollMarginTop = '120px';
-  if (b && anchorB) {
-    // move visual order: dinners already in DOM order; anchors sit above cards
-  }
 }
 
 function showCookWeek(i, btn) {
@@ -316,29 +307,7 @@ function showCookWeek(i, btn) {
   }
   renderChecklist(i);
   showDinnerCards(i);
-  // Sync dinner-a / dinner-b: scroll targets point at visible cards
-  const ids = DINNER_IDS[i];
-  const aCard = document.getElementById(ids[0]);
-  const bCard = document.getElementById(ids[1]);
-  const da = document.getElementById('dinner-a');
-  const db = document.getElementById('dinner-b');
-  if (aCard && da) {
-    da.removeAttribute('id');
-    // keep stable ids on mininav: put id on first visible card's previous sibling placeholders
-  }
 }
-
-// Stable mininav: dinner-a/b are empty placeholders; click scrolls to first/second visible recipe
-document.querySelector('.sun-mininav a[href="#dinner-a"]').addEventListener('click', (e) => {
-  e.preventDefault();
-  const week = parseInt(document.querySelector('#schedule .wtab.active')?.dataset.week || AUTO_COOK_WEEK, 10);
-  document.getElementById(DINNER_IDS[week][0])?.scrollIntoView({behavior:'smooth', block:'start'});
-});
-document.querySelector('.sun-mininav a[href="#dinner-b"]').addEventListener('click', (e) => {
-  e.preventDefault();
-  const week = parseInt(document.querySelector('#schedule .wtab.active')?.dataset.week || AUTO_COOK_WEEK, 10);
-  document.getElementById(DINNER_IDS[week][1])?.scrollIntoView({behavior:'smooth', block:'start'});
-});
 
 showCookWeek(AUTO_COOK_WEEK, null);
 </script>

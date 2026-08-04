@@ -344,14 +344,10 @@ _RECIPE_ANCHORS: list[tuple[str, str, str, str]] = [
 ]
 
 _WEEKDAY_DINNER_ANCHORS = {
-    (0, "A"): "w1a",
-    (0, "B"): "w1b",
-    (1, "A"): "w2a",
-    (1, "B"): "w2b",
-    (2, "A"): "w3a",
-    (2, "B"): "w3b",
-    (3, "A"): "w4a",
-    (3, "B"): "w4b",
+    # (cycle_week, weekday) -> HTML id
+    **{(cw, wd): f"w{cw + 1}-{day}"
+       for cw in range(4)
+       for wd, day in enumerate(("mon", "tue", "wed", "thu", "fri", "sat", "sun"))}
 }
 
 
@@ -361,8 +357,8 @@ def _nutrition() -> list[SearchHit]:
         CALORIE_TIERS,
         CAMP_NUTRITION_WINDOWS,
         DAY_TYPES,
+        EVENING_DINNERS,
         SUPPLEMENTS,
-        WEEKDAY_DINNERS,
     )
 
     out: list[SearchHit] = []
@@ -420,15 +416,16 @@ def _nutrition() -> list[SearchHit]:
             )
         )
 
-    for cw, batches in WEEKDAY_DINNERS.items():
-        for ab, (name, detail, *_rest) in batches.items():
-            anchor = _WEEKDAY_DINNER_ANCHORS[(cw, ab)]
+    _day_labels = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    for cw, nights in EVENING_DINNERS.items():
+        for wd, (name, detail, *_rest) in nights.items():
+            anchor = _WEEKDAY_DINNER_ANCHORS[(cw, wd)]
             out.append(
                 _entry(
                     id=f"dinner-{anchor}",
                     type="nutrition",
                     title=name,
-                    subtitle=f"Weekday dinner · Week {cw + 1} Batch {ab}",
+                    subtitle=f"Evening plate · Week {cw + 1} {_day_labels[wd]}",
                     url=f"/nutrition/recipes/weekday-dinners#{anchor}",
                     extra=detail,
                 )
@@ -438,7 +435,7 @@ def _nutrition() -> list[SearchHit]:
                     id=f"sunday-{anchor}",
                     type="nutrition",
                     title=f"{name} (Sunday Prep)",
-                    subtitle=f"Sunday cook · Week {cw + 1} Batch {ab}",
+                    subtitle=f"Sunday prep · Week {cw + 1} {_day_labels[wd]}",
                     url=f"/nutrition/sunday#{anchor}",
                     extra=detail,
                 )
@@ -449,7 +446,7 @@ def _nutrition() -> list[SearchHit]:
             id="nutrition-protein-dessert",
             type="nutrition",
             title="Protein dessert (skyr / 0% Greek yogurt)",
-            subtitle="Weekday dinner closer",
+            subtitle="Evening plate closer",
             url="/nutrition/recipes/weekday-dinners#boosters",
             extra="150 g skyr protein dessert boosters",
         )

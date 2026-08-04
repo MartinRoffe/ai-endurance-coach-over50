@@ -14,6 +14,19 @@ log = logging.getLogger(__name__)
 _FIT_EPOCH = datetime(1989, 12, 31, tzinfo=timezone.utc)
 
 
+# FIT semicircle → degrees: 180 / 2^31
+_SEMICIRCLE_TO_DEG = 180.0 / (2**31)
+
+
+def _semicircle_to_deg(val: Any) -> Optional[float]:
+    if val is None:
+        return None
+    try:
+        return float(val) * _SEMICIRCLE_TO_DEG
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass
 class FitRecord:
     timestamp: datetime
@@ -21,6 +34,11 @@ class FitRecord:
     hr: Optional[float] = None
     cadence: Optional[float] = None
     temperature: Optional[float] = None
+    altitude: Optional[float] = None
+    distance: Optional[float] = None
+    speed: Optional[float] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
 
 
 @dataclass
@@ -125,12 +143,24 @@ def parse_fit(source: Union[str, bytes, io.BufferedIOBase]) -> FitSession:
                 ts = _as_dt(_field(frame, "timestamp"))
                 if ts is None:
                     continue
+                alt = _field(frame, "enhanced_altitude")
+                if alt is None:
+                    alt = _field(frame, "altitude")
+                spd = _field(frame, "enhanced_speed")
+                if spd is None:
+                    spd = _field(frame, "speed")
+                dist = _field(frame, "distance")
                 session.records.append(FitRecord(
                     timestamp=ts,
                     power=_field(frame, "power"),
                     hr=_field(frame, "heart_rate"),
                     cadence=_field(frame, "cadence"),
                     temperature=_field(frame, "temperature"),
+                    altitude=float(alt) if alt is not None else None,
+                    distance=float(dist) if dist is not None else None,
+                    speed=float(spd) if spd is not None else None,
+                    lat=_semicircle_to_deg(_field(frame, "position_lat")),
+                    lon=_semicircle_to_deg(_field(frame, "position_long")),
                 ))
                 # Spot-check L/R from records if present
                 bal = _field(frame, "left_right_balance")
@@ -207,6 +237,38 @@ def fetch_fit_for_activity(api: Any, activity_id: int) -> Optional[bytes]:
         return None
 
 
+def _local_tz():
+    """System local timezone (Garmin startTimeLocal is wall-clock local)."""
+    try:
+        return datetime.now().astimezone().tzinfo or timezone.utc
+    except Exception:
+        return timezone.utc
+
+
+def _parse_activity_start(st: Any) -> Optional[datetime]:
+    """Parse activity start_time to UTC-aware datetime.
+
+    Garmin ``startTimeLocal`` is stored naive (local wall clock). FIT record
+    timestamps are UTC. Treating naive as UTC causes a ~1 h miss under BST.
+    """
+    if st is None:
+        return None
+    try:
+        if isinstance(st, datetime):
+            cand = st
+        else:
+            s = str(st).replace("Z", "+00:00")
+            # Garmin often uses "YYYY-MM-DD HH:MM:SS" (space, no T)
+            if " " in s and "T" not in s[:19]:
+                s = s.replace(" ", "T", 1)
+            cand = datetime.fromisoformat(s)
+        if cand.tzinfo is None:
+            cand = cand.replace(tzinfo=_local_tz())
+        return cand.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
 def match_activity_by_start(
     start: datetime,
     activities: list[dict],
@@ -214,30 +276,39 @@ def match_activity_by_start(
 ) -> Optional[dict]:
     """Match FIT session start to an activity whose start is within ±window_sec.
 
-    Activity dicts may carry ``start_time`` (ISO) or we approximate from ``date``
-    at midnight local (weak) — prefer explicit start_time when present.
+    Activity ``start_time`` values from Garmin are local wall-clock (often naive).
+    FIT starts are UTC. Naive activity times are interpreted in the system local
+    timezone before comparison.
     """
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
     best = None
     best_delta = None
     for act in activities:
-        cand = None
         st = act.get("start_time") or act.get("startTimeLocal") or act.get("start_time_local")
-        if st:
-            try:
-                if isinstance(st, datetime):
-                    cand = st if st.tzinfo else st.replace(tzinfo=timezone.utc)
-                else:
-                    s = str(st).replace("Z", "+00:00")
-                    cand = datetime.fromisoformat(s)
-                    if cand.tzinfo is None:
-                        cand = cand.replace(tzinfo=timezone.utc)
-            except Exception:
-                cand = None
+        cand = _parse_activity_start(st)
         if cand is None:
             continue
         delta = abs((cand - start).total_seconds())
         if delta <= window_sec and (best_delta is None or delta < best_delta):
             best, best_delta = act, delta
     return best
+
+
+def activity_id_from_filename(name: Optional[str]) -> Optional[int]:
+    """Extract Garmin activity id from names like ``23823077329_ACTIVITY.fit``."""
+    if not name:
+        return None
+    import re
+    base = str(name).replace("\\", "/").rsplit("/", 1)[-1]
+    m = re.match(r"^(\d{6,})_ACTIVITY\.(?:fit|FIT)$", base)
+    if not m:
+        m = re.match(r"^(\d{6,})\.(?:fit|FIT)$", base)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None

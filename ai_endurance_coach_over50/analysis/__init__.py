@@ -7,9 +7,11 @@ Tests that monkeypatch analysis functions must target the defining sub-module
 """
 from .db import (  # noqa: F401
     _ensure_analysis_schema,
+    delete_analysis,
     load_analysis,
     patch_analysis_power,
     save_detail,
+    update_analysis_text,
 )
 from .intervals import (  # noqa: F401
     _CLIMBING_INTERVAL_LABELS,
@@ -59,6 +61,7 @@ from .prompts import (  # noqa: F401
     _rule_based_analysis,
     _rule_based_recovery,
     _te_label,
+    classify_late_ride_fade,
 )
 from .generate import (  # noqa: F401
     _find_compound_companion,
@@ -66,6 +69,7 @@ from .generate import (  # noqa: F401
     generate_recovery_suggestion,
     load_analyses_for_activities,
     refresh_analyses,
+    regenerate_analysis_for_activity,
     retrieve_relevant_analyses,
 )
 from .prefetch import (  # noqa: F401
@@ -91,4 +95,16 @@ from .stage_plans import (  # noqa: F401
     generate_charity_day_plans,
     generate_hr_stage_plans,
     peak_sim_decoupling_flags,
+)
+from .fit_climbs import (  # noqa: F401
+    compute_climb_analysis,
+    detect_climbs,
+    est_wkg_from_vam,
+    match_named_climb,
+    vam_m_h,
+)
+from .climb_essays import (  # noqa: F401
+    build_climb_essay_prompt,
+    clear_climb_essay,
+    generate_climb_essay,
 )

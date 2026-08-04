@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
-  <title>Post-Training Analysis</title>
+  <title>{% if is_archive %}Analysis History{% else %}Post-Training Analysis{% endif %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #09090b; }
@@ -50,12 +50,18 @@
 <div class="page">
 
   <!-- ── Header ────────────────────────────────────────────────────── -->
-  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:12px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <div>
       <p class="eyebrow" style="margin-bottom:8px">Post-Training</p>
-      <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Activity Analysis</h1>
+      <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">
+        {% if is_archive %}Analysis History{% else %}Activity Analysis{% endif %}
+      </h1>
+      <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:0.06em">
+        {% if is_archive %}Last 3 months · stored analyses{% else %}Last 14 days{% endif %}
+      </p>
     </div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      {% if not is_archive %}
       <label style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px;cursor:pointer"
              onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
              onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
@@ -68,9 +74,27 @@
          onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
         Fetch &amp; Analyse ↺
       </a>
+      {% endif %}
     </div>
   </div>
-  <p id="fit-upload-status" style="font-size:12px;color:var(--muted);margin:-24px 0 24px;display:none"></p>
+
+  <div style="display:flex;gap:0;margin-bottom:28px;border-bottom:1px solid var(--border)">
+    <a href="/analysis"
+       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:10px 16px;border-bottom:2px solid {% if not is_archive %}var(--accent){% else %}transparent{% endif %};color:{% if not is_archive %}var(--text){% else %}var(--muted){% endif %};margin-bottom:-1px">
+      Recent · 14d
+    </a>
+    <a href="/analysis/history"
+       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:10px 16px;border-bottom:2px solid {% if is_archive %}var(--accent){% else %}transparent{% endif %};color:{% if is_archive %}var(--text){% else %}var(--muted){% endif %};margin-bottom:-1px">
+      History · 3 mo
+    </a>
+    <a href="/climbs"
+       style="font-family:var(--font-m);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;padding:10px 16px;border-bottom:2px solid transparent;color:var(--muted);margin-bottom:-1px">
+      Climbs
+    </a>
+  </div>
+
+  {% if not is_archive %}
+  <p id="fit-upload-status" style="font-size:12px;color:var(--muted);margin:-16px 0 24px;display:none"></p>
   <script>
   (function(){
     var input = document.getElementById('fit-upload');
@@ -96,6 +120,7 @@
     });
   })();
   </script>
+  {% endif %}
 
   {% if gut_training %}
   {% set gt = gut_training %}
@@ -137,10 +162,22 @@
 
   {% if not activities %}
     <div class="card" style="padding:48px;text-align:center">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">No activities in the last 14 days.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+        {% if is_archive %}
+          No activities in the last 3 months.
+        {% else %}
+          No activities in the last 14 days.
+        {% endif %}
+      </p>
+      {% if is_archive %}
+      <a href="/analysis" style="font-family:var(--font-m);font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:0.08em">
+        Back to recent →
+      </a>
+      {% else %}
       <a href="/analysis-refresh" style="font-family:var(--font-m);font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:0.08em">
         Fetch from Garmin Connect ↺
       </a>
+      {% endif %}
     </div>
   {% else %}
 
@@ -296,6 +333,14 @@
     {% endif %}
 
     <!-- FIT interval execution table -->
+    {% if a.fit_climbs %}
+    <p style="margin:0 0 12px">
+      <a href="/climbs#activity-{{ a.activity_id }}"
+         style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">
+        Climbs → {{ a.n_climbs }} detected
+      </a>
+    </p>
+    {% endif %}
     {% if a.fit_intervals %}
     <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-left:3px solid #fbbf24;padding:12px 16px;margin-bottom:18px;border-radius:2px;overflow-x:auto">
       <p class="eyebrow" style="margin-bottom:10px;color:#fbbf24;letter-spacing:0.15em">FIT Interval Execution</p>
@@ -407,20 +452,25 @@
 
     <!-- Coach analysis -->
     {% if a.analysis_text %}
-    <div style="border-top:1px solid var(--surface2);padding-top:16px;border-left:3px solid var(--accent);padding-left:16px;margin-left:-3px">
+    <div data-analysis-block="{{ a.activity_id }}" style="border-top:1px solid var(--surface2);padding-top:16px;border-left:3px solid var(--accent);padding-left:16px;margin-left:-3px">
       <p class="eyebrow" style="margin-bottom:10px;color:var(--accent)">Coach's Analysis</p>
+      <div data-analysis-body="{{ a.activity_id }}">
       {% for para in a.analysis_text.strip().split('\n\n') %}
         {% if para.strip() %}
           <p class="analysis-para" style="font-size:13px;color:var(--text-dim);line-height:1.75{% if not loop.last %};margin-bottom:8px{% endif %}">{{ para.strip() }}</p>
         {% endif %}
       {% endfor %}
+      </div>
     </div>
     {% else %}
-    <div style="border-top:1px solid var(--surface2);padding-top:14px">
+    <div data-analysis-block="{{ a.activity_id }}" style="border-top:1px solid var(--surface2);padding-top:14px">
+      <p class="eyebrow" style="margin-bottom:10px;color:var(--accent);display:none">Coach's Analysis</p>
+      <div data-analysis-body="{{ a.activity_id }}">
       <p style="font-family:var(--font-m);font-size:12px;color:var(--muted)">
         No analysis yet —
         <a href="/analysis-refresh" style="color:var(--accent);text-decoration:none">fetch &amp; analyse ↺</a>
       </p>
+      </div>
     </div>
     {% endif %}
 
@@ -448,7 +498,7 @@
     <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px"
          data-fuel-container="{{ a.activity_id }}"
          {% if flog %}data-logged="1"{% endif %}>
-      <p class="eyebrow" style="margin-bottom:8px">Fuelling <button type="button" class="gr-tip-trigger" data-tip="Closing the loop on in-ride fuelling: the plan said one thing — what did you actually take? Under-fuelling long rides is the most common self-sabotage in endurance training, and it shows up as late-ride HR drift and poor next-day readiness." aria-label="More info" aria-expanded="false">?</button></p>
+      <p class="eyebrow" style="margin-bottom:8px">Fuelling <button type="button" class="gr-tip-trigger" data-tip="Closing the loop on in-ride fuelling: the plan said one thing — what did you actually take? Saving here re-runs the coach analysis with your carbs/h so late-ride fade is judged against fuel, not just heat or pacing." aria-label="More info" aria-expanded="false">?</button></p>
       <p style="font-family:var(--font-m);font-size:12px;color:var(--text-dim);margin-bottom:8px">
         Planned: <strong style="color:var(--text)">{{ a.planned_fuel.carbs_g_per_hr }} g/h carbs</strong>
         {% if a.planned_fuel.fluid_ml_per_hr %} · {{ a.planned_fuel.fluid_ml_per_hr }} ml/h fluid{% endif %}
@@ -517,12 +567,38 @@
     });
   }
 
+  function renderAnalysisText(activityId, text) {
+    const body = document.querySelector('[data-analysis-body="' + activityId + '"]');
+    const block = document.querySelector('[data-analysis-block="' + activityId + '"]');
+    if (!body || !text) return;
+    const paras = text.trim().split(/\n\n+/).filter(p => p.trim());
+    body.innerHTML = paras.map((p, i) => {
+      const mb = i < paras.length - 1 ? ';margin-bottom:8px' : '';
+      const safe = p.trim()
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
+      return '<p class="analysis-para" style="font-size:13px;color:var(--text-dim);line-height:1.75' + mb + '">' + safe + '</p>';
+    }).join('');
+    if (block) {
+      block.style.borderLeft = '3px solid var(--accent)';
+      block.style.paddingLeft = '16px';
+      block.style.marginLeft = '-3px';
+      block.style.paddingTop = '16px';
+      const eyebrow = block.querySelector('.eyebrow');
+      if (eyebrow) eyebrow.style.display = '';
+    }
+  }
+
   function logFuelling(activityId, actDate, plannedCarbs) {
     const container = document.querySelector('[data-fuel-container="' + activityId + '"]');
     if (!container) return;
     const actual = container.querySelector('[data-fuel-input="' + activityId + '"]').value;
     const fluidOk = container.querySelector('[data-fuel-fluid="' + activityId + '"]').checked;
     const note = container.querySelector('[data-fuel-note="' + activityId + '"]').value;
+    const saved = container.querySelector('.fuel-saved-note');
+    const btn = container.querySelector('button');
+    if (saved) { saved.textContent = 'saving…'; saved.style.color = 'var(--muted)'; }
+    if (btn) btn.disabled = true;
     fetch('/log-fuelling', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -534,9 +610,22 @@
         fluid_ok: fluidOk,
         note: note || null,
       })
-    }).then(r => r.json()).then(() => {
-      const saved = container.querySelector('.fuel-saved-note');
-      if (saved) { saved.textContent = 'logged ✓'; saved.style.color = '#a3e635'; }
+    }).then(r => r.json()).then(data => {
+      if (btn) btn.disabled = false;
+      if (!saved) return;
+      if (data.regenerated && data.analysis_text) {
+        renderAnalysisText(activityId, data.analysis_text);
+        saved.textContent = 'logged · coach re-analysed ✓';
+        saved.style.color = '#a3e635';
+        const block = document.querySelector('[data-analysis-block="' + activityId + '"]');
+        if (block) block.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      } else {
+        saved.textContent = 'logged ✓';
+        saved.style.color = '#a3e635';
+      }
+    }).catch(() => {
+      if (btn) btn.disabled = false;
+      if (saved) { saved.textContent = 'save failed'; saved.style.color = '#f87171'; }
     });
   }
 </script>

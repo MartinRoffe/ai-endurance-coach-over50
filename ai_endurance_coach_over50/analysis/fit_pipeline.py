@@ -1,10 +1,11 @@
-"""Orchestrate FIT download/parse → interval metrics → SQLite persistence."""
+"""Orchestrate FIT download/parse → interval + climb metrics → SQLite persistence."""
 from __future__ import annotations
 
 import logging
 from datetime import date
 from typing import Any, Optional
 
+from .fit_climbs import compute_climb_analysis
 from .fit_ingest import FitSession, fetch_fit_for_activity, parse_fit
 from .fit_intervals import (
     compute_interval_metrics,
@@ -23,12 +24,15 @@ def process_fit_session(
     *,
     weight_kg: Optional[float] = None,
 ) -> dict[str, Any]:
-    """Compute intervals + flags for a parsed FIT and persist against activity."""
+    """Compute intervals + climbs + flags for a parsed FIT and persist."""
     from ..history import (
         latest_weight_kg,
+        load_fit_activity_meta,
         load_ftp_tests,
         load_hr_max_reference,
+        match_and_record_climb_attempts,
         observed_max_hr_12m,
+        save_climb_analyses,
         save_fit_activity_meta,
         save_interval_analyses,
     )
@@ -88,8 +92,15 @@ def process_fit_session(
             + ") — true bilateral power may differ a few % with L/R imbalance."
         )
 
+    climb_result = compute_climb_analysis(fit, ftp_w=ftp_w, weight_kg=weight)
+    climbs = climb_result.get("climbs") or []
+    grade_bins = climb_result.get("grade_bins") or []
+
     temps = [r.temperature for r in fit.records if r.temperature is not None]
+    # Preserve existing meta keys when re-processing
+    prev = load_fit_activity_meta(act_id) or {}
     meta = {
+        **prev,
         "activity_date": act_date,
         "device_ftp": fit.device_ftp,
         "device_lthr": fit.device_lthr,
@@ -101,12 +112,39 @@ def process_fit_session(
         "hr_calibration": hr_cal,
         "single_sided_note": single_sided,
         "n_intervals": len(intervals),
+        "n_climbs": len(climbs),
+        "grade_bins": grade_bins,
     }
     save_interval_analyses(act_id, intervals)
+    save_climb_analyses(act_id, climbs)
     save_fit_activity_meta(act_id, meta)
+
+    matched = []
+    if climbs and act_date:
+        try:
+            matched = match_and_record_climb_attempts(act_id, act_date, climbs)
+            # Persist names stamped onto climb rows for Recent UI
+            if matched:
+                save_climb_analyses(act_id, climbs)
+                meta["matched_climbs"] = matched
+                save_fit_activity_meta(act_id, meta)
+            # Phase 2b: essays for named matches (best-effort)
+            try:
+                from .climb_essays import maybe_generate_named_climb_essays
+                essays = maybe_generate_named_climb_essays(activity, climbs, matched)
+                if essays:
+                    meta["climb_essays"] = {**(meta.get("climb_essays") or {}), **essays}
+                    save_fit_activity_meta(act_id, meta)
+            except Exception as exc:
+                log.debug("Climb essays failed for %s: %s", act_id, exc)
+        except Exception as exc:
+            log.debug("Named climb match failed for %s: %s", act_id, exc)
 
     return {
         "intervals": intervals,
+        "climbs": climbs,
+        "grade_bins": grade_bins,
+        "matched_climbs": matched,
         "meta": meta,
         "prompt_lines": fit_prompt_lines(intervals, meta),
     }

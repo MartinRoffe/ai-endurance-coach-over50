@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <title>Climb Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #09090b; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { animation: fadeUp 0.3s ease both; }
+    table.climb-tbl th, table.climb-tbl td { padding: 6px 8px; text-align: left; white-space: nowrap; }
+    table.climb-tbl th { color: var(--muted); font-weight: 500; }
+    table.climb-tbl tr { border-top: 1px solid var(--border); color: var(--text); }
+  </style>
+</head>
+<body>
+
+{% set active_tab = 'climbs' %}
+{% include 'nav.html' %}
+{% set climbs_section = 'recent' %}
+{% include 'climbs_subnav.html' %}
+
+<div class="page">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px">
+    <div>
+      <p class="eyebrow" style="margin-bottom:8px">Train · Climbs</p>
+      <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Climb Analysis</h1>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <label style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px;cursor:pointer"
+             onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'"
+             onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+        Upload FIT
+        <input type="file" id="fit-upload" accept=".fit,.FIT,application/octet-stream" style="display:none">
+      </label>
+      <a href="/analysis" style="font-family:var(--font-m);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;padding:9px 16px;border:1px solid var(--border2);color:var(--muted);background:var(--surface);border-radius:2px">Ride analysis →</a>
+    </div>
+  </div>
+  <p id="fit-upload-status" style="font-size:12px;color:var(--muted);margin:-16px 0 20px;display:none"></p>
+
+  <div class="card" style="padding:14px 20px;margin-bottom:20px;border-left:3px solid var(--accent)">
+    <p class="eyebrow" style="margin-bottom:8px;color:var(--accent)">Masters climbing (50+)</p>
+    <p style="font-size:13px;color:var(--text-dim);line-height:1.55;margin:0">
+      Climbing improves mainly via sustainable <strong style="color:var(--text)">W/kg</strong> (FTP + race weight),
+      even or slight negative-split pacing, gearing that holds ~70+ rpm, and
+      <a href="/position" style="color:var(--accent)">strength / position work</a>.
+      VAM is most trustworthy on grades ≥5%. Time under 60 rpm is a red flag — diagnose here; use plan Low Cadence sessions for training, not endless grinding.
+    </p>
+  </div>
+
+  {% if not rides %}
+  <div class="card" style="padding:28px 24px;text-align:center">
+    <p style="color:var(--muted);font-size:14px;margin:0 0 8px">No climb analyses yet.</p>
+    <p style="color:var(--muted);font-size:13px;margin:0">Upload a outdoor FIT with altitude, or run Analysis → Fetch so power rides download FIT automatically.</p>
+  </div>
+  {% endif %}
+
+  {% for a in rides %}
+  <div class="card" style="padding:22px 24px;margin-bottom:16px" id="activity-{{ a.activity_id }}">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div>
+        <p class="eyebrow" style="margin-bottom:4px">{{ a.date }}</p>
+        <h2 style="font-family:var(--font-d);font-size:20px;color:var(--text);margin:0;letter-spacing:0.04em">{{ a.name or 'Ride' }}</h2>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0">
+        {{ a.climbs|length }} climb{% if a.climbs|length != 1 %}s{% endif %}
+        {% if a.distance_m %} · {{ '%.1f'|format(a.distance_m / 1000) }} km{% endif %}
+      </p>
+    </div>
+
+    {% if a.climbs %}
+    <div style="overflow-x:auto;margin-bottom:16px">
+      <table class="climb-tbl" style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>@km</th><th>Len</th><th>Gain</th><th>Avg%</th><th>Max%</th>
+            <th>Min</th><th>VAM</th><th>W</th><th>W/kg</th><th>Cad</th><th>Fade</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in a.climbs %}
+          <tr>
+            <td>{{ c.climb_index }}</td>
+            <td style="color:{% if c.named_climb_name %}var(--accent){% else %}var(--muted){% endif %};white-space:nowrap">
+              {{ c.named_climb_name or '—' }}
+            </td>
+            <td>{{ c.start_km }}</td>
+            <td>{{ '%.2f'|format((c.length_m or 0) / 1000) }} km</td>
+            <td>+{{ c.gain_m|int }} m</td>
+            <td>{{ c.avg_grade }}%</td>
+            <td>{{ c.max_grade }}%</td>
+            <td>{{ '%.1f'|format(c.duration_min or 0) }}</td>
+            <td style="color:{% if c.vam_confidence == 'high' %}#a3e635{% else %}var(--muted){% endif %}">
+              {% if c.vam_m_h %}{{ c.vam_m_h|int }}{% else %}—{% endif %}
+              {% if c.vam_confidence == 'low' %}<span title="Shallow grade — VAM less reliable" style="font-size:10px">†</span>{% endif %}
+            </td>
+            <td style="color:#fbbf24">{{ c.avg_power or '—' }}</td>
+            <td>{% if c.wkg %}{{ '%.2f'|format(c.wkg) }}{% else %}—{% endif %}</td>
+            <td>{{ c.avg_cadence or '—' }}{% if c.pct_below_60 and c.pct_below_60 > 20 %}<span style="color:#f87171;font-size:10px" title="% time under 60 rpm"> · {{ c.pct_below_60|int }}%&lt;60</span>{% endif %}</td>
+            <td>{% if c.fade_pct is not none %}{{ '%+.0f'|format(c.fade_pct) }}%{% else %}—{% endif %}</td>
+            <td>
+              {% if c.named_climb_name %}
+              <span style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent)" title="Auto-matched to test climb">Tracked</span>
+              {% else %}
+              <button type="button"
+                      style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;border-radius:2px"
+                      data-pin-aid="{{ a.activity_id }}"
+                      data-pin-idx="{{ c.climb_index }}"
+                      data-pin-climb='{{ c|tojson }}'
+                      onclick="pinClimbBtn(this)">
+                Track
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% if a.fit_meta and a.fit_meta.climb_essays and a.fit_meta.climb_essays[c.climb_index|string] %}
+          <tr>
+            <td colspan="14" style="padding:10px 8px 14px;white-space:normal;color:var(--text-dim);font-size:13px;line-height:1.55;border-top:none">
+              {{ a.fit_meta.climb_essays[c.climb_index|string] }}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0">† VAM confidence low when avg grade &lt;5%. Est. W/kg from VAM uses Ferrari formula.</p>
+    </div>
+    {% else %}
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">No climbs detected (need altitude + distance; min ~20 m gain / 200 m length at ≥2%).</p>
+    {% endif %}
+
+    {% if a.grade_bins %}
+    <p class="eyebrow" style="margin-bottom:10px">Cadence vs power by gradient</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      <div style="overflow-x:auto">
+        <table class="climb-tbl" style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr><th>Grade</th><th>n</th><th>Avg W</th><th>Cad</th><th>W/rpm</th><th>HR</th></tr></thead>
+          <tbody>
+            {% for b in a.grade_bins %}
+            <tr>
+              <td>{{ b.label }}</td>
+              <td>{{ b.n }}</td>
+              <td style="color:#fbbf24">{{ b.avg_power }}</td>
+              <td>{{ b.avg_cadence }}</td>
+              <td>{{ b.w_per_rpm or '—' }}</td>
+              <td>{{ b.avg_hr or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div style="height:180px"><canvas id="bins-{{ a.activity_id }}"></canvas></div>
+    </div>
+    <script>
+    (function(){
+      var bins = {{ a.grade_bins|tojson }};
+      var ctx = document.getElementById('bins-{{ a.activity_id }}');
+      if (!ctx || !bins.length) return;
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: bins.map(function(b){ return b.label; }),
+          datasets: [
+            { label: 'Power (W)', data: bins.map(function(b){ return b.avg_power; }), backgroundColor: 'rgba(251,191,36,0.55)', yAxisID: 'y' },
+            { label: 'Cadence (rpm)', data: bins.map(function(b){ return b.avg_cadence; }), backgroundColor: 'rgba(163,230,53,0.45)', yAxisID: 'y1' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#a1a1aa', boxWidth: 10, font: { size: 10 } } } },
+          scales: {
+            x: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { position: 'left', ticks: { color: '#fbbf24', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'W', color: '#71717a', font: { size: 10 } } },
+            y1: { position: 'right', ticks: { color: '#a3e635', font: { size: 10 } }, grid: { drawOnChartArea: false }, title: { display: true, text: 'rpm', color: '#71717a', font: { size: 10 } } }
+          }
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+</div>
+
+<script>
+(function(){
+  var input = document.getElementById('fit-upload');
+  var status = document.getElementById('fit-upload-status');
+  if (!input) return;
+  input.addEventListener('change', function(){
+    if (!input.files || !input.files[0]) return;
+    status.style.display = 'block';
+    status.textContent = 'Uploading FIT…';
+    var fd = new FormData();
+    fd.append('file', input.files[0]);
+    fetch('/upload-fit', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok) {
+          var msg = 'Matched activity ' + d.activity_id + ' (' + (d.n_climbs||0) + ' climbs';
+          if (d.n_matched) {
+            var names = (d.matched_climbs || []).map(function(m){ return m.name; }).filter(Boolean);
+            msg += ', auto-named: ' + (names.length ? names.join(', ') : d.n_matched);
+          }
+          msg += '). Reloading…';
+          status.textContent = msg;
+          setTimeout(function(){ location.href = '/climbs#activity-' + d.activity_id; location.reload(); }, 800);
+        } else {
+          status.textContent = d.error || 'Upload failed';
+        }
+      })
+      .catch(function(){ status.textContent = 'Upload failed'; });
+  });
+})();
+
+function pinClimbBtn(btn) {
+  var activityId = parseInt(btn.getAttribute('data-pin-aid'), 10);
+  var climbIndex = parseInt(btn.getAttribute('data-pin-idx'), 10);
+  var climb;
+  try { climb = JSON.parse(btn.getAttribute('data-pin-climb')); }
+  catch (e) { alert('Could not read climb data'); return; }
+  var name = prompt('Name this test climb (e.g. local hill, camp col):');
+  if (!name || !name.trim()) return;
+  fetch('/climbs/pin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: name.trim(),
+      activity_id: activityId,
+      climb_index: climbIndex,
+      climb: climb
+    })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) {
+        var msg = d.reused
+          ? 'Added attempt to existing test climb "' + name.trim() + '".'
+          : 'Tracking "' + name.trim() + '". See Test climbs / PBs.';
+        alert(msg);
+        location.href = '/climbs/pbs';
+      } else {
+        alert(d.error || 'Could not pin climb');
+      }
+    }).catch(function(){ alert('Could not pin climb'); });
+}
+</script>
+</body>
+</html>

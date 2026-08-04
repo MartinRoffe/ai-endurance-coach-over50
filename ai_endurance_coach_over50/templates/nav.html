@@ -330,7 +330,7 @@ body {
 
 <nav class="gr-nav">
   <div class="gr-nav-inner">
-    {% set train_active  = active_tab in ['performance', 'analysis'] %}
+    {% set train_active  = active_tab in ['performance', 'analysis', 'climbs'] %}
     {% set plan_active   = active_tab in ['calendar', 'training', 'compliance', 'position'] %}
     {% set nutrition_active = active_tab in ['nutrition', 'meals', 'fuelling', 'recipes', 'shopping', 'lidl_shopping'] %}
     {% set recovery_active = active_tab in ['sleep', 'body'] %}
@@ -345,6 +345,7 @@ body {
       <div class="gr-nav-dropdown">
         <a href="/performance" class="{% if active_tab == 'performance' %}active{% endif %}">Performance</a>
         <a href="/analysis"    class="{% if active_tab == 'analysis'    %}active{% endif %}">Analysis</a>
+        <a href="/climbs"      class="{% if active_tab == 'climbs'      %}active{% endif %}">Climbs</a>
       </div>
     </div>
 

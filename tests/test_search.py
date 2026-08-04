@@ -35,8 +35,8 @@ def test_overnight_oats_recipe():
     assert any("overnight-oats" in u or "recipes" in u for u in urls)
 
 
-def test_weekday_dinner_ragu():
-    hits = search("ragu", limit=10)
+def test_weekday_dinner_bbq_chicken():
+    hits = search("BBQ rub chicken", limit=10)
     assert hits
     assert any("weekday-dinners" in h["url"] or "sunday" in h["url"] for h in hits)
 

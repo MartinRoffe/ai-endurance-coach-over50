@@ -83,6 +83,30 @@ def load_analysis(activity_id: int) -> Optional[dict]:
     return d
 
 
+def update_analysis_text(activity_id: int, analysis_text: str) -> bool:
+    """Replace coach commentary only — keeps zones / TE / interval columns intact."""
+    with _conn() as con:
+        _ensure_analysis_schema(con)
+        cur = con.execute(
+            """UPDATE activity_analyses
+               SET analysis_text = ?, analysed_at = datetime('now')
+               WHERE activity_id = ?""",
+            (analysis_text, activity_id),
+        )
+        return cur.rowcount > 0
+
+
+def delete_analysis(activity_id: int) -> bool:
+    """Remove a cached analysis row so refresh will regenerate from scratch."""
+    with _conn() as con:
+        _ensure_analysis_schema(con)
+        cur = con.execute(
+            "DELETE FROM activity_analyses WHERE activity_id = ?",
+            (activity_id,),
+        )
+        return cur.rowcount > 0
+
+
 def patch_analysis_power(activity_id: int, detail: dict) -> bool:
     """Update power-related columns on an existing analysis row. Returns True if patched."""
     zones_json = json.dumps(detail["power_zones"]) if detail.get("power_zones") else None

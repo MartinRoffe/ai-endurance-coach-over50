@@ -1254,6 +1254,27 @@ def build_coach_context() -> str:
     except Exception:
         pass
 
+    # Named test-climb PBs (season tracker)
+    climb_pb_parts: list[str] = []
+    try:
+        from .history import list_named_climbs, named_climb_summary
+        for nc in list_named_climbs(active_only=True)[:8]:
+            s = named_climb_summary(int(nc["id"]))
+            if not s or not s.get("n_attempts"):
+                continue
+            if not climb_pb_parts:
+                climb_pb_parts = ["## Named Test Climbs / PBs"]
+            bits = [f"{s['name']}: {s.get('n_attempts', 0)} attempts"]
+            if s.get("pb_vam") is not None:
+                bits.append(f"PB VAM {s['pb_vam']:.0f} m/h")
+            if s.get("pb_wkg") is not None:
+                bits.append(f"PB {s['pb_wkg']:.2f} W/kg")
+            if s.get("delta_vs_first_pct") is not None:
+                bits.append(f"vs first {s['delta_vs_first_pct']:+.1f}%")
+            climb_pb_parts.append("  " + " · ".join(bits))
+    except Exception:
+        pass
+
     # Fuelling compliance logs
     fuel_parts: list[str] = []
     try:
@@ -1623,6 +1644,7 @@ def build_coach_context() -> str:
         *([" ", *recent_analysis_parts] if recent_analysis_parts else []),
         *([" ", *rpe_parts] if rpe_parts else []),
         *([" ", *fit_parts] if fit_parts else []),
+        *([" ", *climb_pb_parts] if climb_pb_parts else []),
         *([" ", *fuel_parts] if fuel_parts else []),
         *([" ", *btb_parts] if btb_parts else []),
     ]

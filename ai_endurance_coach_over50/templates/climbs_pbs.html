@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <title>Test Climbs · PBs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #09090b; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+    table.pb-tbl th, table.pb-tbl td { padding: 6px 8px; text-align: left; font-size: 12px; }
+    table.pb-tbl th { color: var(--muted); }
+    table.pb-tbl tr { border-top: 1px solid var(--border); color: var(--text); }
+  </style>
+</head>
+<body>
+
+{% set active_tab = 'climbs' %}
+{% include 'nav.html' %}
+{% set climbs_section = 'pbs' %}
+{% include 'climbs_subnav.html' %}
+
+<div class="page">
+  <div style="margin-bottom:28px">
+    <p class="eyebrow" style="margin-bottom:8px">Train · Climbs</p>
+    <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Test climbs / PBs</h1>
+    <p style="font-size:13px;color:var(--muted);margin:12px 0 0;max-width:54ch">
+      Pin climbs from Recent to track season PBs. Primary metric is VAM when avg grade ≥5%; otherwise best time.
+    </p>
+  </div>
+
+  {% if not summaries %}
+  <div class="card" style="padding:28px 24px;text-align:center">
+    <p style="color:var(--muted);font-size:14px;margin:0">No named test climbs yet. Open Recent, then Track on a climb row.</p>
+  </div>
+  {% endif %}
+
+  {% for s in summaries %}
+  <div class="card" style="padding:22px 24px;margin-bottom:16px" id="named-{{ s.id }}">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <h2 style="font-family:var(--font-d);font-size:20px;color:var(--text);margin:0 0 6px;letter-spacing:0.04em">{{ s.name }}</h2>
+        <p style="font-size:12px;color:var(--muted);margin:0">
+          Ref {{ '%.0f'|format(s.ref_length_m or 0) }} m · +{{ '%.0f'|format(s.ref_gain_m or 0) }} m · {{ '%.1f'|format(s.ref_avg_grade or 0) }}%
+          · {{ s.n_attempts or 0 }} attempt{% if (s.n_attempts or 0) != 1 %}s{% endif %}
+        </p>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div>
+          <p class="eyebrow" style="margin-bottom:2px">PB VAM</p>
+          <p style="font-family:var(--font-d);font-size:22px;color:#a3e635;margin:0">{% if s.pb_vam %}{{ s.pb_vam|int }}{% else %}—{% endif %}</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:2px">PB time</p>
+          <p style="font-family:var(--font-d);font-size:22px;color:var(--text);margin:0">{% if s.pb_time_s %}{{ (s.pb_time_s / 60)|round(1) }}m{% else %}—{% endif %}</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:2px">PB W/kg</p>
+          <p style="font-family:var(--font-d);font-size:22px;color:#fbbf24;margin:0">{% if s.pb_wkg %}{{ '%.2f'|format(s.pb_wkg) }}{% else %}—{% endif %}</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:2px">vs first</p>
+          <p style="font-family:var(--font-d);font-size:22px;margin:0;color:{% if s.delta_vs_first_pct and s.delta_vs_first_pct > 0 %}#a3e635{% elif s.delta_vs_first_pct and s.delta_vs_first_pct < 0 %}#f87171{% else %}var(--muted){% endif %}">
+            {% if s.delta_vs_first_pct is not none %}{{ '%+.1f'|format(s.delta_vs_first_pct) }}%{% else %}—{% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap">
+      <button type="button" data-id="{{ s.id }}" data-name="{{ s.name|e }}"
+              onclick="renameClimb(this.dataset.id, this.dataset.name)"
+              style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer">Rename</button>
+      <button type="button" onclick="archiveClimb({{ s.id }})"
+              style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer">Archive</button>
+      {% for p in s.merge_partners or [] %}
+      <button type="button"
+              data-keep="{{ s.id }}" data-drop="{{ p.id }}" data-drop-name="{{ p.name|e }}"
+              onclick="mergeClimb(+this.dataset.keep, +this.dataset.drop, this.dataset.dropName)"
+              style="font-family:var(--font-m);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:5px 10px;border:1px solid rgba(200,241,53,0.35);background:transparent;color:var(--accent);cursor:pointer">
+        Merge into #{{ p.id }} {{ p.name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    {% if s.attempts and s.attempts|length > 1 %}
+    <div style="height:140px;margin-bottom:12px"><canvas id="spark-{{ s.id }}"></canvas></div>
+    <script>
+    (function(){
+      var attempts = {{ s.attempts|tojson }};
+      var primary = {{ s.primary_metric|tojson }};
+      var ctx = document.getElementById('spark-{{ s.id }}');
+      if (!ctx) return;
+      var labels = attempts.map(function(a){ return a.date; });
+      var data = attempts.map(function(a){
+        var m = a.metrics || {};
+        return primary === 'time' ? (m.duration_s || null) : (m.vam_m_h || null);
+      });
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: primary === 'time' ? 'Duration (s)' : 'VAM (m/h)',
+            data: data,
+            borderColor: primary === 'time' ? '#a1a1aa' : '#a3e635',
+            backgroundColor: 'transparent',
+            tension: 0.25,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#71717a', font: { size: 10 }, maxRotation: 0 }, grid: { display: false } },
+            y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+          }
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+
+    {% if s.attempts %}
+    <details>
+      <summary style="cursor:pointer;font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Attempt history</summary>
+      <div style="overflow-x:auto;margin-top:10px">
+        <table class="pb-tbl" style="width:100%;border-collapse:collapse">
+          <thead><tr><th>Date</th><th>VAM</th><th>Time</th><th>W</th><th>W/kg</th><th>Cad</th><th>Fade</th><th>Flags</th></tr></thead>
+          <tbody>
+            {% for a in s.attempts|reverse %}
+            {% set m = a.metrics %}
+            <tr>
+              <td>{{ a.date }}</td>
+              <td>{{ m.vam_m_h|int if m.vam_m_h else '—' }}</td>
+              <td>{% if m.duration_s %}{{ (m.duration_s / 60)|round(1) }}m{% else %}—{% endif %}</td>
+              <td>{{ m.avg_power or '—' }}</td>
+              <td>{% if m.wkg %}{{ '%.2f'|format(m.wkg) }}{% else %}—{% endif %}</td>
+              <td>{{ m.avg_cadence or '—' }}</td>
+              <td>{% if m.fade_pct is not none %}{{ '%+.0f'|format(m.fade_pct) }}%{% else %}—{% endif %}</td>
+              <td style="color:var(--accent)">
+                {% if a.is_pb_vam %}VAM{% endif %}
+                {% if a.is_pb_time %}{% if a.is_pb_vam %} · {% endif %}time{% endif %}
+                {% if a.is_pb_wkg %}{% if a.is_pb_vam or a.is_pb_time %} · {% endif %}W/kg{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function renameClimb(id, current) {
+  var name = prompt('Rename test climb:', current || '');
+  if (!name || !name.trim()) return;
+  fetch('/climbs/named/' + id, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim() })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){ if (d.ok) location.reload(); else alert(d.error || 'Failed'); });
+}
+function archiveClimb(id) {
+  if (!confirm('Archive this test climb? Attempts are kept.')) return;
+  fetch('/climbs/named/' + id, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: false })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){ if (d.ok) location.reload(); else alert(d.error || 'Failed'); });
+}
+function mergeClimb(keepId, dropId, dropName) {
+  if (!confirm('Merge "' + (dropName || ('#' + dropId)) + '" into this climb? Attempts move here; the other card is archived.')) return;
+  fetch('/climbs/merge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keep_id: keepId, drop_id: dropId })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) location.reload();
+      else alert(d.error || 'Merge failed');
+    }).catch(function(){ alert('Merge failed'); });
+}
+</script>
+</body>
+</html>

@@ -51,11 +51,15 @@ def best_contiguous_avg_power(powers: list[float], window_secs: int = 1200) -> O
 
 
 def half_decoupling(
-    powers: list[float], hrs: list[float]
+    powers: list[float], hrs: list[float], *, min_samples: int = 300
 ) -> Optional[float]:
-    """First-half vs second-half Pw:HR decoupling % = HR_drift − power_drift."""
+    """First-half vs second-half Pw:HR decoupling % = HR_drift − power_drift.
+
+    Requires ~5 min of paired samples and a meaningful first-half power so
+    coast/stop fragments do not produce absurd percentages (e.g. −300%).
+    """
     n = min(len(powers), len(hrs))
-    if n < 20:
+    if n < min_samples:
         return None
     mid = n // 2
     p1, p2 = powers[:mid], powers[mid:]
@@ -64,7 +68,8 @@ def half_decoupling(
         return None
     avg_p1, avg_p2 = sum(p1) / len(p1), sum(p2) / len(p2)
     avg_h1, avg_h2 = sum(h1) / len(h1), sum(h2) / len(h2)
-    if avg_p1 <= 0 or avg_h1 <= 0:
+    # Both halves need real pedaling — coast/stop fragments blow up the %.
+    if avg_p1 < 30 or avg_p2 < 30 or avg_h1 <= 0:
         return None
     power_drift = (avg_p2 - avg_p1) / avg_p1 * 100
     hr_drift = (avg_h2 - avg_h1) / avg_h1 * 100
@@ -126,13 +131,19 @@ def _step_for_index(steps: list[FitWorkoutStep], idx: Optional[int]) -> Optional
 
 
 def _is_work_intensity(intens: Optional[str], step: Optional[FitWorkoutStep]) -> bool:
+    """True only with positive ACTIVE/INTERVAL evidence from lap or workout step.
+
+    Untagged auto-laps (no intensity, no wkt_step) after a structured workout
+    must not become fake work intervals — they previously collided on
+    step_index and overwrote the real ACTIVE block in SQLite.
+    """
     candidates = []
     if intens:
         candidates.append(intens.upper())
     if step and step.intensity:
         candidates.append(step.intensity.upper())
     if not candidates:
-        return True  # treat unknown as work when grouped by step
+        return False
     return any(
         c in _WORK_INTENSITIES or c.endswith("ACTIVE") or "INTERVAL" in c
         for c in candidates
@@ -434,7 +445,8 @@ def fit_prompt_lines(intervals: list[dict[str, Any]], meta: dict[str, Any]) -> l
     lines.append("FIT interval execution (workout steps):")
     lines.append(
         "Call out front-loading when the first 5-min split is >8% above interval average; "
-        "praise negative splits; supra-threshold decoupling in >25 °C heat is not an aerobic deficiency."
+        "praise negative splits; heat cardiac drift (power held, HR up) in >25 °C is not an "
+        "aerobic deficiency — but a late power collapse with HR still high is fuel fade, not heat alone."
     )
     for i in intervals:
         bits = [f"  Step {i.get('work_num')} ({i.get('duration_secs', 0) // 60}m)"]

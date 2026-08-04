@@ -10,11 +10,13 @@ from .db import (
     _conn,
     _ensure_activities_schema,
     _ensure_btb_schema,
+    _ensure_climb_analyses_schema,
     _ensure_durability_schema,
     _ensure_fit_meta_schema,
     _ensure_ftp_schema,
     _ensure_fuelling_log_schema,
     _ensure_interval_analyses_schema,
+    _ensure_named_climbs_schema,
     _ensure_power_durability_schema,
     _ensure_schema,
 )
@@ -690,11 +692,13 @@ def save_interval_analyses(activity_id: int, intervals: list[dict]) -> None:
         _ensure_interval_analyses_schema(con)
         con.execute("DELETE FROM interval_analyses WHERE activity_id = ?", (activity_id,))
         for row in intervals:
-            step = int(row.get("step_index", row.get("work_num", 0)))
+            # Persist under work_num so multiple groups that share a FIT
+            # wkt_step_index (or fallback indices) never clobber each other.
+            key = int(row.get("work_num", row.get("step_index", 0)))
             con.execute(
                 "INSERT OR REPLACE INTO interval_analyses (activity_id, step_index, metrics_json) "
                 "VALUES (?,?,?)",
-                (activity_id, step, json.dumps(row)),
+                (activity_id, key, json.dumps(row)),
             )
 
 
@@ -711,7 +715,9 @@ def load_interval_analyses(activity_id: int) -> list[dict]:
     for r in rows:
         try:
             m = json.loads(r["metrics_json"])
-            m["step_index"] = r["step_index"]
+            # Column is the persistence key (work_num); keep FIT step_index from JSON.
+            if "work_num" not in m:
+                m["work_num"] = r["step_index"]
             out.append(m)
         except (ValueError, TypeError):
             pass
@@ -861,4 +867,446 @@ def latest_hr_calibration() -> Optional[dict]:
             cal["activity_id"] = r["activity_id"]
             return cal
     return None
+
+
+# ── Climb analyses + named test climbs ───────────────────────────────────────
+
+def save_climb_analyses(activity_id: int, climbs: list[dict]) -> None:
+    import json
+    with _conn() as con:
+        _ensure_climb_analyses_schema(con)
+        con.execute("DELETE FROM climb_analyses WHERE activity_id = ?", (activity_id,))
+        for row in climbs:
+            idx = int(row.get("climb_index", 0))
+            con.execute(
+                "INSERT OR REPLACE INTO climb_analyses "
+                "(activity_id, climb_index, metrics_json) VALUES (?,?,?)",
+                (activity_id, idx, json.dumps(row)),
+            )
+
+
+def load_climb_analyses(activity_id: int) -> list[dict]:
+    import json
+    with _conn() as con:
+        _ensure_climb_analyses_schema(con)
+        rows = con.execute(
+            "SELECT climb_index, metrics_json FROM climb_analyses "
+            "WHERE activity_id = ? ORDER BY climb_index",
+            (activity_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        try:
+            m = json.loads(r["metrics_json"])
+            if "climb_index" not in m:
+                m["climb_index"] = r["climb_index"]
+            out.append(m)
+        except (ValueError, TypeError):
+            pass
+    return out
+
+
+def load_recent_climb_activities(days: int = 30, limit: int = 40) -> list[dict]:
+    """Activities that have climb_analyses rows, newest first."""
+    with _conn() as con:
+        _ensure_climb_analyses_schema(con)
+        _ensure_activities_schema(con)
+        rows = con.execute(
+            """
+            SELECT DISTINCT a.activity_id, a.date, a.name, a.type_key,
+                   a.duration_seconds, a.distance_meters
+            FROM climb_analyses c
+            JOIN activities a ON a.activity_id = c.activity_id
+            WHERE a.date >= date('now', ?)
+            ORDER BY a.date DESC, a.activity_id DESC
+            LIMIT ?
+            """,
+            (f"-{int(days)} days", limit),
+        ).fetchall()
+    result = []
+    for r in rows:
+        aid = int(r["activity_id"])
+        meta = load_fit_activity_meta(aid) or {}
+        result.append({
+            "activity_id": aid,
+            "date": r["date"],
+            "name": r["name"],
+            "type_key": r["type_key"],
+            "duration_seconds": r["duration_seconds"],
+            "distance_m": r["distance_meters"],
+            "climbs": enrich_climbs_with_names(aid, load_climb_analyses(aid)),
+            "grade_bins": meta.get("grade_bins") or [],
+            "fit_meta": meta,
+        })
+    return result
+
+
+def create_named_climb(
+    name: str,
+    *,
+    notes: Optional[str] = None,
+    ref_start_lat: Optional[float] = None,
+    ref_start_lon: Optional[float] = None,
+    ref_end_lat: Optional[float] = None,
+    ref_end_lon: Optional[float] = None,
+    ref_length_m: Optional[float] = None,
+    ref_gain_m: Optional[float] = None,
+    ref_avg_grade: Optional[float] = None,
+) -> int:
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        cur = con.execute(
+            """
+            INSERT INTO named_climbs
+            (name, notes, ref_start_lat, ref_start_lon, ref_end_lat, ref_end_lon,
+             ref_length_m, ref_gain_m, ref_avg_grade, active)
+            VALUES (?,?,?,?,?,?,?,?,?,1)
+            """,
+            (
+                name, notes, ref_start_lat, ref_start_lon, ref_end_lat, ref_end_lon,
+                ref_length_m, ref_gain_m, ref_avg_grade,
+            ),
+        )
+        return int(cur.lastrowid)
+
+
+def update_named_climb(
+    named_id: int,
+    *,
+    name: Optional[str] = None,
+    notes: Optional[str] = None,
+    active: Optional[bool] = None,
+) -> None:
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        row = con.execute(
+            "SELECT * FROM named_climbs WHERE id = ?", (named_id,)
+        ).fetchone()
+        if not row:
+            return
+        new_name = name if name is not None else row["name"]
+        new_notes = notes if notes is not None else row["notes"]
+        new_active = (1 if active else 0) if active is not None else row["active"]
+        con.execute(
+            "UPDATE named_climbs SET name=?, notes=?, active=? WHERE id=?",
+            (new_name, new_notes, new_active, named_id),
+        )
+
+
+def list_named_climbs(*, active_only: bool = True) -> list[dict]:
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        if active_only:
+            rows = con.execute(
+                "SELECT * FROM named_climbs WHERE active = 1 ORDER BY name"
+            ).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT * FROM named_climbs ORDER BY active DESC, name"
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_named_climb(named_id: int) -> Optional[dict]:
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        row = con.execute(
+            "SELECT * FROM named_climbs WHERE id = ?", (named_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def find_matching_named_climb(climb: dict) -> Optional[dict]:
+    """Return the closest active named climb matching this segment, or None."""
+    from ..analysis.fit_climbs import match_named_climb
+
+    best = None
+    best_dist = None
+    for nc in list_named_climbs(active_only=True):
+        d = match_named_climb(climb, nc)
+        if d is None:
+            continue
+        if best_dist is None or d < best_dist:
+            best, best_dist = nc, d
+    return best
+
+
+def merge_named_climbs(keep_id: int, drop_id: int) -> dict:
+    """Move attempts from drop → keep, recompute PBs, archive drop.
+
+    Returns summary ``{keep_id, drop_id, moved, archived}``.
+    """
+    if keep_id == drop_id:
+        return {"keep_id": keep_id, "drop_id": drop_id, "moved": 0, "archived": False}
+    keep = get_named_climb(keep_id)
+    drop = get_named_climb(drop_id)
+    if not keep or not drop:
+        raise ValueError("named climb not found")
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        # Re-point attempts; UNIQUE(named_climb_id, activity_id, climb_index)
+        # may collide if both already have the same attempt — prefer keep's row.
+        drop_rows = con.execute(
+            "SELECT id, activity_id, climb_index FROM climb_attempts WHERE named_climb_id=?",
+            (drop_id,),
+        ).fetchall()
+        moved = 0
+        for r in drop_rows:
+            exists = con.execute(
+                "SELECT id FROM climb_attempts WHERE named_climb_id=? AND activity_id=? AND climb_index=?",
+                (keep_id, r["activity_id"], r["climb_index"]),
+            ).fetchone()
+            if exists:
+                con.execute("DELETE FROM climb_attempts WHERE id=?", (r["id"],))
+            else:
+                con.execute(
+                    "UPDATE climb_attempts SET named_climb_id=? WHERE id=?",
+                    (keep_id, r["id"]),
+                )
+                moved += 1
+        _recompute_pbs(con, keep_id)
+        con.execute("UPDATE named_climbs SET active=0 WHERE id=?", (drop_id,))
+    return {"keep_id": keep_id, "drop_id": drop_id, "moved": moved, "archived": True}
+
+
+def _recompute_pbs(con, named_climb_id: int) -> None:
+    """Set is_pb_* flags from stored attempts. Prefer high-confidence VAM."""
+    import json
+    rows = con.execute(
+        "SELECT id, metrics_json FROM climb_attempts WHERE named_climb_id = ?",
+        (named_climb_id,),
+    ).fetchall()
+    if not rows:
+        return
+    parsed: list[tuple[int, dict]] = []
+    for r in rows:
+        try:
+            parsed.append((int(r["id"]), json.loads(r["metrics_json"])))
+        except (ValueError, TypeError):
+            continue
+    con.execute(
+        "UPDATE climb_attempts SET is_pb_vam=0, is_pb_time=0, is_pb_wkg=0 "
+        "WHERE named_climb_id = ?",
+        (named_climb_id,),
+    )
+    if not parsed:
+        return
+
+    high = [(i, m) for i, m in parsed if m.get("vam_confidence") == "high" and m.get("vam_m_h")]
+    vam_pool = high if high else [(i, m) for i, m in parsed if m.get("vam_m_h")]
+    if vam_pool:
+        best_id = max(vam_pool, key=lambda t: float(t[1]["vam_m_h"]))[0]
+        con.execute("UPDATE climb_attempts SET is_pb_vam=1 WHERE id=?", (best_id,))
+
+    time_pool = [(i, m) for i, m in parsed if m.get("duration_s")]
+    if time_pool:
+        best_id = min(time_pool, key=lambda t: float(t[1]["duration_s"]))[0]
+        con.execute("UPDATE climb_attempts SET is_pb_time=1 WHERE id=?", (best_id,))
+
+    wkg_pool = [(i, m) for i, m in parsed if m.get("wkg")]
+    if wkg_pool:
+        best_id = max(wkg_pool, key=lambda t: float(t[1]["wkg"]))[0]
+        con.execute("UPDATE climb_attempts SET is_pb_wkg=1 WHERE id=?", (best_id,))
+
+
+def save_climb_attempt(
+    named_climb_id: int,
+    activity_id: int,
+    climb_index: int,
+    date_str: str,
+    metrics: dict,
+) -> int:
+    import json
+    if float(metrics.get("duration_s") or 0) < 90:
+        return 0
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        con.execute(
+            """
+            INSERT INTO climb_attempts
+            (named_climb_id, activity_id, climb_index, date, metrics_json)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(named_climb_id, activity_id, climb_index) DO UPDATE SET
+                date=excluded.date,
+                metrics_json=excluded.metrics_json
+            """,
+            (named_climb_id, activity_id, climb_index, date_str, json.dumps(metrics)),
+        )
+        row = con.execute(
+            "SELECT id FROM climb_attempts WHERE named_climb_id=? AND activity_id=? AND climb_index=?",
+            (named_climb_id, activity_id, climb_index),
+        ).fetchone()
+        _recompute_pbs(con, named_climb_id)
+        return int(row["id"]) if row else 0
+
+
+def load_climb_attempts(named_climb_id: int) -> list[dict]:
+    import json
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        rows = con.execute(
+            """
+            SELECT * FROM climb_attempts
+            WHERE named_climb_id = ?
+            ORDER BY date ASC, id ASC
+            """,
+            (named_climb_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["metrics"] = json.loads(r["metrics_json"])
+        except (ValueError, TypeError):
+            d["metrics"] = {}
+        out.append(d)
+    return out
+
+
+def named_climb_summary(named_climb_id: int) -> Optional[dict]:
+    """Named climb + attempts + current PBs + season deltas."""
+    named = get_named_climb(named_climb_id)
+    if not named:
+        return None
+    attempts = load_climb_attempts(named_climb_id)
+    if not attempts:
+        return {
+            **named,
+            "attempts": [],
+            "pb_vam": None,
+            "pb_time_s": None,
+            "pb_wkg": None,
+            "primary_metric": "time" if (named.get("ref_avg_grade") or 0) < 5 else "vam",
+            "delta_vs_first_pct": None,
+            "last_attempt": None,
+            "n_attempts": 0,
+        }
+    primary = "time" if float(named.get("ref_avg_grade") or 0) < 5 else "vam"
+    pb_vam = next((a for a in attempts if a.get("is_pb_vam")), None)
+    pb_time = next((a for a in attempts if a.get("is_pb_time")), None)
+    pb_wkg = next((a for a in attempts if a.get("is_pb_wkg")), None)
+    first = attempts[0]
+    last = attempts[-1]
+    delta = None
+    if primary == "vam":
+        f_v = (first.get("metrics") or {}).get("vam_m_h")
+        l_v = (last.get("metrics") or {}).get("vam_m_h")
+        if f_v and l_v and float(f_v) > 0:
+            delta = round((float(l_v) - float(f_v)) / float(f_v) * 100, 1)
+    else:
+        f_t = (first.get("metrics") or {}).get("duration_s")
+        l_t = (last.get("metrics") or {}).get("duration_s")
+        if f_t and l_t and float(f_t) > 0:
+            delta = round((float(f_t) - float(l_t)) / float(f_t) * 100, 1)
+    return {
+        **named,
+        "attempts": attempts,
+        "pb_vam": (pb_vam or {}).get("metrics", {}).get("vam_m_h") if pb_vam else None,
+        "pb_time_s": (pb_time or {}).get("metrics", {}).get("duration_s") if pb_time else None,
+        "pb_wkg": (pb_wkg or {}).get("metrics", {}).get("wkg") if pb_wkg else None,
+        "primary_metric": primary,
+        "delta_vs_first_pct": delta,
+        "last_attempt": last,
+        "n_attempts": len(attempts),
+    }
+
+
+def match_and_record_climb_attempts(
+    activity_id: int,
+    date_str: str,
+    climbs: list[dict],
+    *,
+    require_power: bool = False,
+) -> list[dict]:
+    """Auto-match detected climbs to named registry; persist attempts.
+
+    Mutates ``climbs`` in place: sets ``named_climb_id`` / ``named_climb_name``
+    on matches (and clears those keys when unmatched).
+    """
+    from ..analysis.fit_climbs import match_named_climb
+
+    named = list_named_climbs(active_only=True)
+    matched: list[dict] = []
+    if not climbs:
+        return matched
+    for climb in climbs:
+        climb.pop("named_climb_id", None)
+        climb.pop("named_climb_name", None)
+        if not named:
+            continue
+        if require_power and not climb.get("avg_power"):
+            continue
+        best_id = None
+        best_dist = None
+        best_name = None
+        for nc in named:
+            d = match_named_climb(climb, nc)
+            if d is None:
+                continue
+            if best_dist is None or d < best_dist:
+                best_dist = d
+                best_id = int(nc["id"])
+                best_name = nc["name"]
+        if best_id is None:
+            continue
+        aid = save_climb_attempt(
+            best_id, activity_id, int(climb["climb_index"]), date_str, climb,
+        )
+        if aid:
+            climb["named_climb_id"] = best_id
+            climb["named_climb_name"] = best_name
+            matched.append({
+                "climb_index": climb["climb_index"],
+                "named_climb_id": best_id,
+                "name": best_name,
+                "attempt_id": aid,
+            })
+    return matched
+
+
+def enrich_climbs_with_names(activity_id: int, climbs: list[dict]) -> list[dict]:
+    """Attach named_climb_id/name from attempts table or live geo match."""
+    if not climbs:
+        return climbs
+    # Prefer persisted attempts for this activity
+    by_idx: dict[int, tuple[int, str]] = {}
+    with _conn() as con:
+        _ensure_named_climbs_schema(con)
+        rows = con.execute(
+            """
+            SELECT ca.climb_index, ca.named_climb_id, nc.name
+            FROM climb_attempts ca
+            JOIN named_climbs nc ON nc.id = ca.named_climb_id
+            WHERE ca.activity_id = ? AND nc.active = 1
+            """,
+            (activity_id,),
+        ).fetchall()
+    for r in rows:
+        by_idx[int(r["climb_index"])] = (int(r["named_climb_id"]), r["name"])
+
+    dirty = False
+    for climb in climbs:
+        idx = int(climb.get("climb_index") or 0)
+        if idx in by_idx:
+            nid, name = by_idx[idx]
+            if climb.get("named_climb_id") != nid or climb.get("named_climb_name") != name:
+                dirty = True
+            climb["named_climb_id"] = nid
+            climb["named_climb_name"] = name
+            continue
+        # Live match for climbs not yet linked (e.g. named after the ride was analysed)
+        hit = find_matching_named_climb(climb)
+        if hit:
+            climb["named_climb_id"] = int(hit["id"])
+            climb["named_climb_name"] = hit["name"]
+            dirty = True
+        else:
+            climb.pop("named_climb_id", None)
+            climb.pop("named_climb_name", None)
+    if dirty:
+        try:
+            save_climb_analyses(activity_id, climbs)
+        except Exception:
+            pass
+    return climbs
 

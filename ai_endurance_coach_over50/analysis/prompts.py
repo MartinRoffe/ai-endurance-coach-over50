@@ -30,12 +30,164 @@ _DUAL_CHANNEL_SYSTEM = (
     "power for instant objective intensity, pacing ceilings on climbs (cap, not target), and "
     "interval execution; HR + readiness for fatigue, heat, altitude, and cardiac drift. "
     "Pw:HR decoupling matters — HR rising while power is flat or falling is an early fade warning. "
+    "Distinguish late-ride patterns carefully: (1) heat cardiac drift = power held roughly steady "
+    "while HR rises in >25 °C — expected physiology, not an aerobic deficiency; "
+    "(2) fuel/glycogen fade = final-third power down materially (≥~8–10%) while HR stays high "
+    "or rises — treat as under-fuelling / empty legs, not 'just heat', and do not call the ride "
+    "a clean successful Zone 2 long if the last third collapsed. "
     "When HR and power disagree, say which channel you trust and why: with measured FTP on record, "
-    "prefer absolute watts / NP / %FTP for intensity and HR/drift for fatigue, heat, and durability — "
-    "do not default to 'power zones are wrong'. "
+    "prefer absolute watts / NP / %FTP for intensity and HR/drift for fatigue, heat, durability, "
+    "and fuelling — do not default to 'power zones are wrong'. "
     "If HR data looks corrupt (flat avg=max, or 0% in all HR zones) but power zones are present, "
     "base intensity assessment on power and flag the HR sensor issue."
 )
+
+# Final-third power drop that usually means empty legs, not mild heat drift.
+_FUEL_FADE_POWER_DROP_PCT = -8.0
+_HEAT_TEMP_C = 25.0
+
+
+def classify_late_ride_fade(
+    power_drift_pct: float | None,
+    hr_drift_pct: float | None,
+    max_temp_c: float | None = None,
+) -> str | None:
+    """Classify late-ride Pw:HR pattern for analysis prompts.
+
+    Returns ``\"fuel_fade\"``, ``\"heat_drift\"``, or None when the signal is weak/ambiguous.
+    """
+    if power_drift_pct is None or hr_drift_pct is None:
+        return None
+    # Power collapsing while HR holds or rises → glycogen / under-fuelling pattern.
+    if power_drift_pct <= _FUEL_FADE_POWER_DROP_PCT and hr_drift_pct >= -2.0:
+        return "fuel_fade"
+    # Power roughly held, HR up, hot day → expected cardiac drift.
+    hot = max_temp_c is not None and max_temp_c >= _HEAT_TEMP_C
+    if hot and abs(power_drift_pct) < 5.0 and hr_drift_pct > 5.0:
+        return "heat_drift"
+    return None
+
+
+def _max_temp_c(activity: dict) -> float | None:
+    raw = activity.get("max_temperature")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _durability_coaching_lines(pd_row: dict, max_temp_c: float | None) -> list[str]:
+    """Expand power-durability row into prompt lines with fade interpretation."""
+    sign = lambda v: f"{float(v):+.1f}"
+    lines = [
+        f"Pw:HR decoupling: {sign(pd_row['decoupling_pct'])}% "
+        f"(HR drift {sign(pd_row.get('hr_drift_pct') or 0)}%, "
+        f"power drift {sign(pd_row.get('power_drift_pct') or 0)}%)"
+    ]
+    first_p = pd_row.get("first_third_power")
+    final_p = pd_row.get("final_third_power")
+    first_hr = pd_row.get("first_third_hr")
+    final_hr = pd_row.get("final_third_hr")
+    if first_p is not None and final_p is not None:
+        hr_bit = ""
+        if first_hr is not None and final_hr is not None:
+            hr_bit = f", HR {float(first_hr):.0f}→{float(final_hr):.0f} bpm"
+        lines.append(
+            f"Thirds: first {float(first_p):.0f} W → final {float(final_p):.0f} W{hr_bit}"
+        )
+    kind = classify_late_ride_fade(
+        pd_row.get("power_drift_pct"),
+        pd_row.get("hr_drift_pct"),
+        max_temp_c,
+    )
+    if kind == "fuel_fade":
+        lines.append(
+            "Fade pattern: FUEL/GLYCOGEN — final-third power fell hard while HR stayed elevated. "
+            "Do NOT dismiss as heat alone. Call out under-fuelling / empty legs as the primary "
+            "late-ride failure mode; heat may have contributed but did not cause the power collapse."
+        )
+    elif kind == "heat_drift":
+        lines.append(
+            "Fade pattern: HEAT CARDIAC DRIFT — power was held while HR rose in the heat. "
+            "Treat as expected heat physiology, not an aerobic fitness deficiency."
+        )
+    return lines
+
+
+def _fuelling_context_lines(
+    activity: dict,
+    *,
+    fuel_fade: bool = False,
+) -> list[str]:
+    """Inject planned/actual in-ride carbs when available; warn when long + fade + unknown."""
+    act_id = activity.get("activity_id")
+    act_date = activity.get("date") or ""
+    dur_secs = int(activity.get("duration_seconds") or 0)
+    dur_min = dur_secs // 60
+    if dur_min < 75:
+        return []
+
+    planned = None
+    actual = None
+    fluid_ok = None
+    note = None
+    try:
+        from ..history import load_fuelling_logs
+        logs = load_fuelling_logs(120)
+        match = None
+        if act_id is not None:
+            match = next(
+                (r for r in logs if r.get("activity_id") is not None
+                 and int(r["activity_id"]) == int(act_id)),
+                None,
+            )
+        if match is None and act_date:
+            match = next((r for r in logs if r.get("date") == act_date), None)
+        if match:
+            planned = match.get("planned_carbs_g_per_hr")
+            actual = match.get("actual_carbs_g_per_hr")
+            fluid_ok = bool(match.get("fluid_ok"))
+            note = match.get("note")
+    except Exception:
+        pass
+
+    if planned is None and act_date:
+        try:
+            from ..nutrition_plan import gut_training_target_g_per_hr
+            d_obj = date.fromisoformat(act_date)
+            planned = gut_training_target_g_per_hr(d_obj) if dur_min >= 150 else 55
+        except Exception:
+            planned = 90 if dur_min >= 150 else 55
+
+    lines: list[str] = []
+    if actual is not None:
+        plan_bit = f" (plan target ~{float(planned):.0f} g/h)" if planned is not None else ""
+        fluid_bit = ""
+        if fluid_ok is not None:
+            fluid_bit = "; fluids OK" if fluid_ok else "; fluids short"
+        note_bit = f"; note: {note}" if note else ""
+        lines.append(
+            f"In-ride fuelling logged: ~{float(actual):.0f} g carbs/h{plan_bit}{fluid_bit}{note_bit}."
+        )
+        if planned and actual < 0.6 * float(planned):
+            lines.append(
+                "Fuelling adherence is well below target. If late-ride power collapsed, "
+                "treat under-fuelling as the primary cause — not pacing polish or heat alone."
+            )
+    else:
+        plan_bit = f"~{float(planned):.0f} g/h" if planned is not None else "60–90 g/h"
+        lines.append(
+            f"In-ride fuelling: not logged. Plan target for a ride this long is {plan_bit}."
+        )
+        if fuel_fade or dur_min >= 150:
+            lines.append(
+                "Without a carb log, do not assume fuelling was adequate. "
+                "If final-third power fell hard with HR still high, prefer under-fuelling "
+                "over a clean 'successful aerobic long' narrative."
+            )
+    return lines
 
 
 def _activity_has_power_data(activity: dict, detail: dict) -> bool:
@@ -282,29 +434,34 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
 
     min_temp = activity.get("min_temperature")
     max_temp = activity.get("max_temperature")
+    max_temp_c = _max_temp_c(activity)
     temp_line = ""
     if min_temp is not None or max_temp is not None:
         lo = f"{float(min_temp):.0f}" if min_temp is not None else "?"
         hi = f"{float(max_temp):.0f}" if max_temp is not None else "?"
         temp_line = (
             f"Ambient temperature: {lo}–{hi} °C. "
-            "Holding flat HR at steady power in heat is a positive durability/heat-exposure sign; "
-            "supra-threshold Pw:HR decoupling >5% above 25 °C is expected heat physiology, "
-            "not an aerobic deficiency."
+            "Heat cardiac drift (power held, HR up) above ~25 °C is expected physiology. "
+            "Power collapse in the final third with HR still high is fuel fade — do not "
+            "blame heat alone."
         )
 
     durability_lines: list[str] = []
+    fuel_fade = False
     act_id = activity.get("activity_id")
     if act_id is not None:
         try:
             from ..history import get_durability, get_power_durability
             pd_row = get_power_durability(int(act_id))
             if pd_row and pd_row.get("decoupling_pct") is not None:
-                sign = lambda v: f"{v:+.1f}"
-                durability_lines.append(
-                    f"Pw:HR decoupling: {sign(pd_row['decoupling_pct'])}% "
-                    f"(HR drift {sign(pd_row.get('hr_drift_pct') or 0)}%, "
-                    f"power drift {sign(pd_row.get('power_drift_pct') or 0)}%)"
+                durability_lines.extend(_durability_coaching_lines(pd_row, max_temp_c))
+                fuel_fade = (
+                    classify_late_ride_fade(
+                        pd_row.get("power_drift_pct"),
+                        pd_row.get("hr_drift_pct"),
+                        max_temp_c,
+                    )
+                    == "fuel_fade"
                 )
             else:
                 dur_row = get_durability(int(act_id))
@@ -316,6 +473,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                     )
         except Exception:
             pass
+
+    fuelling_lines = _fuelling_context_lines(activity, fuel_fade=fuel_fade)
 
     te = detail.get("training_effect")
     te_label = _te_label(detail.get("training_effect_label"))
@@ -460,7 +619,8 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             "Please provide:",
             "1. A one-sentence headline: how well was this session executed?",
             "2. Two or three sentences cross-reading HR and power — zone distributions, "
-            "any HR↔power divergence, and whether intensity matched the planned session.",
+            "any HR↔power divergence, late-ride fade (heat drift vs fuel fade), "
+            "fuelling when relevant, and whether intensity matched the planned session.",
             "3. One sentence on the training effect and what it means for fitness adaptation.",
             "4. One sentence on recovery — how demanding was this relatively?",
             "Keep it under 180 words. Plain paragraphs, no headers or bullets.",
@@ -482,6 +642,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         f"Avg HR: {avg_hr} bpm  Max HR: {max_hr} bpm",
         *power_summary_lines,
         *durability_lines,
+        *fuelling_lines,
         temp_line,
         f"Calories: {calories}  Elevation gain: {elev} m",
         f"Aerobic training effect: {te} ({te_label}) — {aerobic_msg}",

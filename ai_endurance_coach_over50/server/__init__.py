@@ -25,6 +25,7 @@ from ..analysis import (
     prefetch_workout_descriptions,
     refresh_analyses,
     refresh_power_backfill,
+    regenerate_analysis_for_activity,
     sync_power_data,
 )
 from ..body import fetch_blood_pressure, fetch_body_composition
@@ -56,7 +57,16 @@ from ..history import (
     load_ftp_tests,
     load_fuelling_logs,
     load_interval_analyses,
+    load_climb_analyses,
     load_fit_activity_meta,
+    load_recent_climb_activities,
+    list_named_climbs,
+    create_named_climb,
+    update_named_climb,
+    find_matching_named_climb,
+    merge_named_climbs,
+    named_climb_summary,
+    save_climb_attempt,
     load_power_durability,
     load_recent_activities,
     load_session_rpe,
@@ -279,28 +289,13 @@ async def sync_workouts_now():
         return RedirectResponse(url="/?msg=sync_error", status_code=303)
 
 
-@app.get("/analysis", response_class=HTMLResponse)
-def analysis_view(request: Request):
-    email_addr = os.getenv("GARMIN_EMAIL", "")
-    password = os.getenv("GARMIN_PASSWORD", "")
-    if email_addr and password:
-        try:
-            api = get_api(email_addr, password)
-            sync_power_data(api, days=14)
-        except Exception:
-            pass
-    activities_raw = load_recent_activities(days=14)
+def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 90) -> list[dict]:
+    """Attach analyses, compound merges, fuelling, FTP cards, and FIT extras."""
     activities = load_analyses_for_activities(
-        [enrich_activity(a) for a in activities_raw]
+        [enrich_activity(a) for a in activities]
     )
     activities = _merge_compound_activities(activities)
-    rpe_rows = load_session_rpe(30)
-    rpe_by_activity = {str(r["activity_id"]): r for r in rpe_rows if r.get("activity_id") is not None}
 
-    # Fuelling compliance: attach in-ride plan target + any logged actuals to
-    # qualifying endurance rides (bike types, ≥75 min). Uses cached AI plans
-    # when available; otherwise a duration-based default so the log widget
-    # always appears (prefetch was never wired up before).
     try:
         from ..analysis import fuelling_session_key
         from ..plan import session_for_date_extended
@@ -319,7 +314,7 @@ def analysis_view(request: Request):
             if sess and sess[0] != "rest" and sess[2] >= 75:
                 prefetch_sessions.add((sess[0], sess[2]))
         fuel_plans = prefetch_fuelling_plans(list(prefetch_sessions)) if prefetch_sessions else {}
-        fuel_logs = {str(r["activity_id"]): r for r in load_fuelling_logs(90)
+        fuel_logs = {str(r["activity_id"]): r for r in load_fuelling_logs(fuel_log_days)
                      if r.get("activity_id") is not None}
         for a in activities:
             if a.get("type_key") not in _BIKE_TYPES:
@@ -343,7 +338,6 @@ def analysis_view(request: Request):
     except Exception:
         pass
 
-    # FTP watts + W/kg for FTP test cards
     try:
         from ..history import _weight_kg_on_date, load_body_metrics
         weight_rows = [(r["date"], r["weight_kg"]) for r in load_body_metrics(365) if r.get("weight_kg")]
@@ -359,7 +353,6 @@ def analysis_view(request: Request):
     except Exception:
         pass
 
-    # Attach FIT interval analyses when present
     for a in activities:
         try:
             aid = a.get("activity_id")
@@ -371,16 +364,38 @@ def analysis_view(request: Request):
             meta = load_fit_activity_meta(int(aid))
             if meta:
                 a["fit_meta"] = meta
+            climbs = load_climb_analyses(int(aid))
+            if climbs:
+                a["fit_climbs"] = climbs
+                a["n_climbs"] = len(climbs)
         except Exception:
             pass
 
+    return activities
+
+
+@app.get("/analysis", response_class=HTMLResponse)
+def analysis_view(request: Request):
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        try:
+            api = get_api(email_addr, password)
+            sync_power_data(api, days=14)
+        except Exception:
+            pass
+    activities = _enrich_analysis_activities(load_recent_activities(days=14))
+    rpe_by_activity = {
+        str(r["activity_id"]): r
+        for r in load_session_rpe(30)
+        if r.get("activity_id") is not None
+    }
     gut_training = None
     try:
         from ..history import gut_training_summary
         gut_training = gut_training_summary(date.today())
     except Exception:
         pass
-
     return TEMPLATES.TemplateResponse(
         request=request,
         name="analysis.html",
@@ -389,8 +404,223 @@ def analysis_view(request: Request):
             "zone_dist": zone_distribution(days=7),
             "rpe_by_activity": rpe_by_activity,
             "gut_training": gut_training,
+            "window_days": 14,
+            "is_archive": False,
         },
     )
+
+
+@app.get("/analysis/history", response_class=HTMLResponse)
+def analysis_history_view(request: Request):
+    """Last ~3 months of stored activity analyses (read-only archive; no Garmin sync)."""
+    activities = _enrich_analysis_activities(
+        load_recent_activities(days=90),
+        fuel_log_days=90,
+    )
+    rpe_by_activity = {
+        str(r["activity_id"]): r
+        for r in load_session_rpe(90)
+        if r.get("activity_id") is not None
+    }
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="analysis.html",
+        context={
+            "activities": activities,
+            "zone_dist": zone_distribution(days=90),
+            "rpe_by_activity": rpe_by_activity,
+            "gut_training": None,
+            "window_days": 90,
+            "is_archive": True,
+        },
+    )
+
+
+@app.get("/analysis/archive", response_class=RedirectResponse)
+def analysis_archive_redirect():
+    return RedirectResponse(url="/analysis/history", status_code=303)
+
+
+@app.get("/climbs", response_class=HTMLResponse)
+def climbs_view(request: Request, _=Depends(_require_auth)):
+    rides = load_recent_climb_activities(days=45, limit=40)
+    # Also show recent bikes without climbs so upload context is clear? Plan says
+    # cards for activities with climb data — empty state if none.
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="climbs.html",
+        context={"rides": rides},
+    )
+
+
+@app.get("/climbs/pbs", response_class=HTMLResponse)
+def climbs_pbs_view(request: Request, _=Depends(_require_auth)):
+    from ..analysis.fit_climbs import match_named_climb
+
+    named = list_named_climbs(active_only=True)
+    summaries = []
+    for nc in named:
+        s = named_climb_summary(int(nc["id"]))
+        if not s:
+            continue
+        # Suggest merge partners: other active climbs whose ref matches this one
+        climb_fp = {
+            "start_lat": s.get("ref_start_lat"),
+            "start_lon": s.get("ref_start_lon"),
+            "length_m": s.get("ref_length_m"),
+            "gain_m": s.get("ref_gain_m"),
+            "avg_grade": s.get("ref_avg_grade"),
+        }
+        partners = []
+        for other in named:
+            if int(other["id"]) == int(s["id"]):
+                continue
+            if match_named_climb(climb_fp, other) is not None:
+                partners.append({"id": int(other["id"]), "name": other["name"]})
+        s["merge_partners"] = partners
+        summaries.append(s)
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="climbs_pbs.html",
+        context={"summaries": summaries},
+    )
+
+
+class _PinClimbRequest(BaseModel):
+    name: str
+    activity_id: int
+    climb_index: int
+    climb: dict
+    notes: Optional[str] = None
+
+
+@app.post("/climbs/pin")
+async def climbs_pin(body: _PinClimbRequest, _=Depends(_require_auth)):
+    climb = body.climb or {}
+    if not body.name.strip():
+        return JSONResponse({"ok": False, "error": "name required"}, status_code=422)
+    # Reuse an existing geo-matched test climb instead of creating a duplicate
+    existing = find_matching_named_climb(climb)
+    reused = False
+    if existing:
+        named_id = int(existing["id"])
+        reused = True
+        # Keep the user's name if they typed a new one for the same segment
+        if body.name.strip() and body.name.strip() != existing.get("name"):
+            update_named_climb(named_id, name=body.name.strip())
+    else:
+        named_id = create_named_climb(
+            body.name.strip(),
+            notes=body.notes,
+            ref_start_lat=climb.get("start_lat"),
+            ref_start_lon=climb.get("start_lon"),
+            ref_end_lat=climb.get("end_lat"),
+            ref_end_lon=climb.get("end_lon"),
+            ref_length_m=climb.get("length_m"),
+            ref_gain_m=climb.get("gain_m"),
+            ref_avg_grade=climb.get("avg_grade"),
+        )
+    # Find activity date for attempt row
+    acts = load_recent_activities(days=90)
+    act = next((a for a in acts if int(a.get("activity_id") or 0) == body.activity_id), None)
+    date_str = (act or {}).get("date") or date.today().isoformat()
+    attempt_id = save_climb_attempt(
+        named_id, body.activity_id, body.climb_index, date_str, climb,
+    )
+    # Best-effort essay
+    try:
+        from ..analysis.climb_essays import generate_climb_essay
+        from ..history import load_fit_activity_meta, save_fit_activity_meta
+        text = generate_climb_essay(
+            climb,
+            activity_id=body.activity_id,
+            named_climb_id=named_id,
+            activity_name=(act or {}).get("name"),
+            activity_date=date_str,
+            force=True,
+        )
+        if text:
+            meta = load_fit_activity_meta(body.activity_id) or {}
+            essays = dict(meta.get("climb_essays") or {})
+            essays[str(body.climb_index)] = text
+            meta["climb_essays"] = essays
+            save_fit_activity_meta(body.activity_id, meta)
+    except Exception:
+        pass
+    return JSONResponse({
+        "ok": True,
+        "named_climb_id": named_id,
+        "attempt_id": attempt_id,
+        "reused": reused,
+    })
+
+
+class _MergeClimbsRequest(BaseModel):
+    keep_id: int
+    drop_id: int
+
+
+@app.post("/climbs/merge")
+async def climbs_merge(body: _MergeClimbsRequest, _=Depends(_require_auth)):
+    try:
+        result = merge_named_climbs(body.keep_id, body.drop_id)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+    return JSONResponse({"ok": True, **result})
+
+
+class _NamedClimbUpdate(BaseModel):
+    name: Optional[str] = None
+    notes: Optional[str] = None
+    active: Optional[bool] = None
+
+
+@app.post("/climbs/named/{named_id}")
+async def climbs_named_update(named_id: int, body: _NamedClimbUpdate, _=Depends(_require_auth)):
+    update_named_climb(
+        named_id,
+        name=body.name.strip() if body.name else None,
+        notes=body.notes,
+        active=body.active,
+    )
+    return JSONResponse({"ok": True})
+
+
+class _ClimbEssayRegen(BaseModel):
+    activity_id: int
+    climb_index: int
+    named_climb_id: Optional[int] = None
+
+
+@app.post("/climbs/essay")
+async def climbs_essay_regen(body: _ClimbEssayRegen, _=Depends(_require_auth)):
+    from ..analysis.climb_essays import clear_climb_essay, generate_climb_essay
+    from ..history import load_fit_activity_meta, save_fit_activity_meta
+    climbs = load_climb_analyses(body.activity_id)
+    climb = next((c for c in climbs if int(c.get("climb_index") or 0) == body.climb_index), None)
+    if not climb:
+        return JSONResponse({"ok": False, "error": "climb not found"}, status_code=404)
+    clear_climb_essay(
+        named_climb_id=body.named_climb_id,
+        activity_id=body.activity_id,
+        climb_index=body.climb_index,
+    )
+    acts = load_recent_activities(days=90)
+    act = next((a for a in acts if int(a.get("activity_id") or 0) == body.activity_id), None)
+    text = generate_climb_essay(
+        climb,
+        activity_id=body.activity_id,
+        named_climb_id=body.named_climb_id,
+        activity_name=(act or {}).get("name"),
+        activity_date=(act or {}).get("date"),
+        force=True,
+    )
+    meta = load_fit_activity_meta(body.activity_id) or {}
+    essays = dict(meta.get("climb_essays") or {})
+    essays[str(body.climb_index)] = text
+    meta["climb_essays"] = essays
+    save_fit_activity_meta(body.activity_id, meta)
+    return JSONResponse({"ok": True, "essay": text})
 
 
 @app.post("/log-rpe")
@@ -423,7 +653,22 @@ async def log_fuelling_endpoint(body: _FuellingLogRequest, _=Depends(_require_au
         body.fluid_ok,
         body.note,
     )
-    return JSONResponse({"ok": True})
+    analysis_text = None
+    regenerated = False
+    if body.activity_id is not None:
+        try:
+            analysis_text = regenerate_analysis_for_activity(int(body.activity_id))
+            regenerated = analysis_text is not None
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "fuelling re-analysis failed for %s: %s", body.activity_id, exc
+            )
+    return JSONResponse({
+        "ok": True,
+        "regenerated": regenerated,
+        "analysis_text": analysis_text,
+    })
 
 
 class _WkgGoalRequest(BaseModel):
@@ -491,34 +736,59 @@ async def upload_fit(request: Request, _=Depends(_require_auth)):
     if not raw:
         return JSONResponse({"ok": False, "error": "empty file"}, status_code=422)
     try:
-        from ..analysis.fit_ingest import match_activity_by_start, parse_fit
+        from ..analysis.fit_ingest import (
+            activity_id_from_filename,
+            match_activity_by_start,
+            parse_fit,
+        )
         from ..analysis.fit_pipeline import process_fit_session
         fit = parse_fit(raw)
         acts = load_recent_activities(days=60)
         matched = match_activity_by_start(fit.start_time, acts) if fit.start_time else None
         if matched is None:
-            # Fall back: optional activity_id form field
+            # Fall back: form activity_id, then Garmin-style filename
             aid = form.get("activity_id")
+            if not aid:
+                fname = getattr(upload, "filename", None) or ""
+                extracted = activity_id_from_filename(fname)
+                if extracted is not None:
+                    aid = extracted
             if aid:
                 matched = next(
                     (a for a in acts if str(a.get("activity_id")) == str(aid)),
                     None,
                 )
+                # Filename/id may point at an older activity outside the 60d window
+                if matched is None:
+                    try:
+                        from ..history import load_recent_activities as _lra
+                        wider = _lra(days=180)
+                        matched = next(
+                            (a for a in wider if str(a.get("activity_id")) == str(aid)),
+                            None,
+                        )
+                    except Exception:
+                        pass
         if matched is None:
             return JSONResponse({
                 "ok": False,
-                "error": "no matching activity within ±2 min of FIT start",
+                "error": "no matching activity within ±2 min of FIT start (local time) or filename id",
                 "fit_start": fit.start_time.isoformat() if fit.start_time else None,
             }, status_code=404)
         result = process_fit_session(fit, matched)
+        matched_climbs = result.get("matched_climbs") or []
         return JSONResponse({
             "ok": True,
             "activity_id": matched["activity_id"],
             "date": matched.get("date"),
             "n_intervals": len(result.get("intervals") or []),
+            "n_climbs": len(result.get("climbs") or []),
+            "n_matched": len(matched_climbs),
+            "matched_climbs": matched_climbs,
             "stale_ftp": (result.get("meta") or {}).get("stale_ftp"),
             "hr_calibration": (result.get("meta") or {}).get("hr_calibration"),
             "intervals": result.get("intervals") or [],
+            "climbs": result.get("climbs") or [],
         })
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
@@ -1107,16 +1377,21 @@ async def nutrition_fuelling(request: Request):
 async def nutrition_sunday(request: Request):
     today = _today()
     from ..nutrition_plan import (
-        WEEKDAY_DINNERS, prep_cycle_week_index,
+        EVENING_DINNERS, prep_cycle_week_index,
         fuel_prep_for_ride, _sunday_planned_ride_min,
     )
-    # Fri–Sun: cook for next week's Mon–Thu (not the week ending today).
+    # Fri–Sun: cook for next week's Mon–Sun (not the week ending today).
     cycle_week = prep_cycle_week_index(_PLAN_START, today)
     dinner_weeks = {}
-    for wi, batches in WEEKDAY_DINNERS.items():
+    for wi, nights in EVENING_DINNERS.items():
         dinner_weeks[wi] = {
-            "A": {"name": batches["A"][0], "kcal": batches["A"][2], "p": batches["A"][3], "c": batches["A"][4]},
-            "B": {"name": batches["B"][0], "kcal": batches["B"][2], "p": batches["B"][3], "c": batches["B"][4]},
+            str(wd): {
+                "name": nights[wd][0],
+                "kcal": nights[wd][2],
+                "p": nights[wd][3],
+                "c": nights[wd][4],
+            }
+            for wd in range(7)
         }
     dinners = dinner_weeks[cycle_week]
     sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)

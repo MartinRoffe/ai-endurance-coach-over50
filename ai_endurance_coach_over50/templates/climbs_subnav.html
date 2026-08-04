@@ -1,0 +1,47 @@
+{# climbs_section: recent | pbs #}
+<style>
+  .cl-subnav {
+    background: rgba(17, 17, 20, 0.92);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: var(--gr-nav-height, 44px);
+    z-index: 99;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .cl-subnav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .cl-subnav-inner::-webkit-scrollbar { display: none; }
+  .cl-subnav a {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-family: var(--font-m);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .cl-subnav a:hover { color: var(--text); }
+  .cl-subnav a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+</style>
+<nav class="cl-subnav" aria-label="Climbs sections">
+  <div class="cl-subnav-inner">
+    <a href="/climbs" class="{% if climbs_section == 'recent' %}active{% endif %}">Recent</a>
+    <a href="/climbs/pbs" class="{% if climbs_section == 'pbs' %}active{% endif %}">Test climbs / PBs</a>
+  </div>
+</nav>

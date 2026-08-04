@@ -48,7 +48,11 @@
   .meal-table td { padding:12px 18px; font-size:13px; vertical-align:top; }
   .meal-type-cell { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; width:80px; padding-top:14px; white-space:nowrap; }
   .meal-name { font-weight:500; color:var(--text); margin-bottom:2px; font-size:14px; }
+  .meal-link { color:var(--accent); text-decoration:none; }
+  .meal-link:hover { text-decoration:underline; }
   .meal-detail { color:var(--muted); font-size:12px; line-height:1.55; }
+  .meal-detail a { color:var(--accent); text-decoration:none; }
+  .meal-detail a:hover { text-decoration:underline; }
   .meal-macros { display:flex; gap:8px; margin-top:5px; flex-wrap:wrap; }
   .macro { font-family:'DM Mono',monospace; font-size:10px; padding:2px 6px; border-radius:2px; letter-spacing:0.05em; }
   .m-kcal { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
@@ -178,8 +182,9 @@
         <tr>
           <td class="meal-type-cell">{{ m.type }}</td>
           <td>
-            <div class="meal-name">{{ m.name }}</div>
-            {% if m.detail %}<div class="meal-detail">{{ m.detail }}</div>{% endif %}
+            <div class="meal-name">{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
+            {% if m.detail_html %}<div class="meal-detail">{{ m.detail_html | safe }}</div>
+            {% elif m.detail %}<div class="meal-detail">{{ m.detail }}</div>{% endif %}
             <div class="meal-macros">
               <span class="macro m-kcal">{{ m.macros.kcal }} kcal</span>
               <span class="macro m-p">P: {{ m.macros.p }}g</span>
@@ -300,11 +305,11 @@
   <section>
     <div class="section-label">Keep it simple</div>
     <p class="rules-line">
-      Protein floor {{ protein_target.low }}–{{ protein_target.high }} g · Mon–Thu dinners from
-      <a href="/nutrition/sunday">Sunday Prep</a> (smaller carb sides on the plate) ·
+      Protein floor {{ protein_target.low }}–{{ protein_target.high }} g · Mon–Sun evening plates from
+      <a href="/nutrition/sunday">Sunday Prep</a> (component prep + air-fryer finish) ·
       overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu
       {% if cycle_week == 3 %}(egg muffins this recovery week){% endif %} ·
-      Fri–Sun griddle · shop from the <a href="/nutrition/lidl-shopping-list">Lidl</a> or <a href="/nutrition/shopping-list">Asda</a> list.
+      shop from the <a href="/nutrition/lidl-shopping-list">Lidl</a> or <a href="/nutrition/shopping-list">Asda</a> list.
     </p>
     <p class="rules-line" style="margin-top:10px;font-size:12px;color:var(--muted)">
       Intake targets use stable TDEE minus a session deficit (rest −350, training −250, ruck −150, long −50+).
