@@ -1165,6 +1165,276 @@ def build_nutrition_today(m: DailyMetrics, target: date) -> Optional[dict]:
     return nutrition_today
 
 
+def cut_status_line(ref: date | None = None) -> Optional[dict]:
+    """One-line cut status for Nutrition Today (links to /nutrition/cut)."""
+    ctx = _cut_context(ref or date.today())
+    if not ctx.get("show"):
+        return None
+    return {
+        "text": ctx["status_line"],
+        "logging_warn": ctx.get("logging_warn", False),
+        "phase_label": ctx.get("phase_label"),
+    }
+
+
+def _cut_context(ref: date | None = None) -> dict[str, Any]:
+    """Context for the Base Cut page (/nutrition/cut)."""
+    from ..energy import (
+        CUT_DEFICIT_BY_PHASE,
+        CUT_PHASES,
+        CUT_TARGET_DEADLINE,
+        CUT_TARGET_KG,
+        INTAKE_DEFICIT_BY_TIER,
+        KCAL_PER_KG,
+        MAINTENANCE_WINDOWS,
+        active_cut_phase,
+        in_maintenance_window,
+        weight_trend_kg_per_day,
+    )
+    from ..nutrition_plan import camp_nutrition_window
+
+    today = ref or date.today()
+    maint_end = MAINTENANCE_WINDOWS[0][1] if MAINTENANCE_WINDOWS else date(2026, 9, 14)
+    hard_start, hard_end, _ = CUT_PHASES[0]
+    ease_start, ease_end, _ = CUT_PHASES[1]
+    camp = camp_nutrition_window(today)
+    phase = active_cut_phase(today)
+    maintenance = in_maintenance_window(today)
+
+    # Show page from maintenance window through end of Christmas camp, then a
+    # short tail so progress remains visible after the deadline.
+    window_start = maint_end - timedelta(days=7)  # teaser in final charity week
+    window_end = date(2027, 1, 15)
+    show = window_start <= today <= window_end
+
+    if maintenance:
+        phase_key, phase_label = "maintenance", "Maintenance (to charity)"
+    elif camp:
+        phase_key, phase_label = "camp", "Camp (no deficit)"
+    elif phase == "hard":
+        phase_key, phase_label = "hard", "Hard cut"
+    elif phase == "ease":
+        phase_key, phase_label = "ease", "Ease into camp"
+    elif today > CUT_TARGET_DEADLINE:
+        phase_key, phase_label = "after", "Post-cut hold"
+    else:
+        phase_key, phase_label = "idle", "Between blocks"
+
+    weight = None
+    try:
+        from ..history import latest_weight_kg
+        weight = latest_weight_kg()
+    except Exception:
+        pass
+
+    remaining = round(weight - CUT_TARGET_KG, 2) if weight is not None else None
+    days_left = (CUT_TARGET_DEADLINE - today).days
+    required_kg_per_week = None
+    if remaining is not None and days_left > 0:
+        required_kg_per_week = round(remaining / (days_left / 7.0), 2)
+
+    slope_per_day = None
+    actual_kg_per_week = None
+    try:
+        readings = [
+            (r["date"], float(r["weight_kg"]))
+            for r in load_body_metrics(28)
+            if r.get("weight_kg") is not None
+        ]
+        # load_body_metrics dates may already be strings
+        norm = []
+        for d, w in readings:
+            di = d.isoformat() if hasattr(d, "isoformat") else str(d)
+            norm.append((di, w))
+        slope_per_day = weight_trend_kg_per_day(norm)
+        if slope_per_day is not None:
+            actual_kg_per_week = round(slope_per_day * 7.0, 2)
+    except Exception:
+        pass
+
+    pace = None
+    if required_kg_per_week is not None and actual_kg_per_week is not None and remaining is not None:
+        # Negative slope = losing weight. Compare magnitude when still above target.
+        if remaining <= 0:
+            pace = "ahead"
+        elif actual_kg_per_week <= -required_kg_per_week + 0.05:
+            pace = "ahead"
+        elif actual_kg_per_week >= -0.05:
+            pace = "behind"
+        elif abs(actual_kg_per_week) + 0.1 < required_kg_per_week:
+            pace = "behind"
+        else:
+            pace = "on_track"
+
+    kg_behind = None
+    if (
+        remaining is not None
+        and required_kg_per_week is not None
+        and actual_kg_per_week is not None
+        and days_left > 0
+        and remaining > 0
+    ):
+        # Expected remaining if on required pace for the last 14 days vs actual.
+        expected_drop_14 = required_kg_per_week * (14 / 7.0)
+        actual_drop_14 = -actual_kg_per_week * (14 / 7.0) if actual_kg_per_week else 0
+        kg_behind = round(expected_drop_14 - actual_drop_14, 1)
+
+    tt = nutrition_today_targets(today)
+    cal = None
+    try:
+        cal = tdee_calibration()
+    except Exception:
+        pass
+    conf = (cal or {}).get("confidence") or {}
+    coverage = conf.get("intake_coverage_pct")
+    conf_level = conf.get("level") or "inactive"
+    logging_warn = conf_level != "high" or (coverage is not None and coverage < 70)
+
+    stable = None
+    try:
+        stable = stable_tdee_kcal(7)
+    except Exception:
+        pass
+
+    status_bits = [phase_label]
+    if weight is not None:
+        status_bits.append(f"{weight:.1f} → {CUT_TARGET_KG:g}")
+    if pace == "behind" and kg_behind is not None and kg_behind > 0:
+        status_bits.append(f"{kg_behind:.1f} kg behind pace")
+    elif pace == "ahead":
+        status_bits.append("ahead of pace")
+    elif pace == "on_track":
+        status_bits.append("on pace")
+    status_line = " · ".join(status_bits)
+
+    timeline = [
+        {
+            "key": "maintenance",
+            "label": "Maintenance",
+            "dates": f"to {maint_end.strftime('%-d %b')}",
+            "active": phase_key == "maintenance",
+        },
+        {
+            "key": "hard",
+            "label": "Hard cut",
+            "dates": f"{hard_start.strftime('%-d %b')} – {hard_end.strftime('%-d %b')}",
+            "active": phase_key == "hard",
+        },
+        {
+            "key": "ease",
+            "label": "Ease",
+            "dates": f"{ease_start.strftime('%-d %b')} – {ease_end.strftime('%-d %b')}",
+            "active": phase_key == "ease",
+        },
+        {
+            "key": "camp",
+            "label": "Christmas camp",
+            "dates": "21 Dec – 2 Jan",
+            "active": phase_key == "camp",
+        },
+    ]
+
+    deficit_rows = []
+    for tier in ("rest", "training", "ruck", "long", "recovery"):
+        deficit_rows.append({
+            "tier": tier,
+            "hard": CUT_DEFICIT_BY_PHASE["hard"].get(tier),
+            "ease": CUT_DEFICIT_BY_PHASE["ease"].get(tier, INTAKE_DEFICIT_BY_TIER.get(tier)),
+        })
+
+    # Today's Garmin food log (same daily_metrics row as Nutrition Today).
+    logged_kcal = None
+    logged_protein = None
+    logged_carbs = None
+    logged_fat = None
+    logged_fat_estimated = False
+    vs_target = None
+    vs_tdee = None
+    protein_vs_floor = None
+    macro_kcal = None
+    try:
+        m = load(today)
+        if m is not None and m.calories_consumed is not None:
+            logged_kcal = int(m.calories_consumed)
+            if m.protein_consumed is not None:
+                logged_protein = round(m.protein_consumed)
+            if m.carbs_consumed is not None:
+                logged_carbs = round(m.carbs_consumed)
+            if m.fat_consumed is not None:
+                logged_fat = round(m.fat_consumed)
+            elif logged_protein is not None and logged_carbs is not None:
+                # Fat not in log (or older rows): remainder of energy after P+C at 4 kcal/g.
+                rem = logged_kcal - 4 * logged_protein - 4 * logged_carbs
+                if rem > 0:
+                    logged_fat = round(rem / 9.0)
+                    logged_fat_estimated = True
+            target_kcal = tt.get("kcal")
+            if target_kcal is not None:
+                vs_target = int(target_kcal) - logged_kcal  # + = under target / room left
+            if stable is not None:
+                vs_tdee = round(stable) - logged_kcal
+            floor = tt.get("protein_low")
+            if logged_protein is not None and floor is not None:
+                protein_vs_floor = logged_protein - int(floor)  # + = at/above floor
+            if logged_kcal and logged_kcal > 0:
+                p_k = (logged_protein or 0) * 4
+                c_k = (logged_carbs or 0) * 4
+                f_k = (logged_fat or 0) * 9 if logged_fat is not None else max(0, logged_kcal - p_k - c_k)
+                macro_kcal = {
+                    "protein": p_k,
+                    "carbs": c_k,
+                    "fat": f_k,
+                    "protein_pct": round(100 * p_k / logged_kcal),
+                    "carbs_pct": round(100 * c_k / logged_kcal),
+                    "fat_pct": round(100 * f_k / logged_kcal),
+                }
+    except Exception:
+        pass
+
+    return {
+        "show": show,
+        "today": today.isoformat(),
+        "phase_key": phase_key,
+        "phase_label": phase_label,
+        "cut_target_kg": CUT_TARGET_KG,
+        "cut_band": "80–81",
+        "deadline": CUT_TARGET_DEADLINE.isoformat(),
+        "deadline_label": CUT_TARGET_DEADLINE.strftime("%-d %b %Y"),
+        "days_left": days_left,
+        "weight_kg": round(weight, 2) if weight is not None else None,
+        "remaining_kg": remaining,
+        "required_kg_per_week": required_kg_per_week,
+        "actual_kg_per_week": actual_kg_per_week,
+        "pace": pace,
+        "kg_behind": kg_behind,
+        "status_line": status_line,
+        "timeline": timeline,
+        "targets": tt,
+        "stable_tdee": round(stable) if stable else None,
+        "logged_kcal": logged_kcal,
+        "logged_protein": logged_protein,
+        "logged_carbs": logged_carbs,
+        "logged_fat": logged_fat,
+        "logged_fat_estimated": logged_fat_estimated,
+        "vs_target": vs_target,
+        "vs_tdee": vs_tdee,
+        "protein_vs_floor": protein_vs_floor,
+        "macro_kcal": macro_kcal,
+        "calibration": {
+            "level": conf_level,
+            "coverage_pct": coverage,
+            "reasons": conf.get("reasons") or [],
+            "raw_correction": cal.get("correction") if cal else None,
+            "applied": conf_level == "high",
+            "empirical_tdee": cal.get("empirical_tdee") if cal else None,
+            "model_avg": cal.get("model_avg") if cal else None,
+        },
+        "logging_warn": logging_warn and (phase_key in ("hard", "ease", "maintenance") or show),
+        "deficit_rows": deficit_rows,
+        "kcal_per_kg": int(KCAL_PER_KG),
+    }
+
+
 def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict[str, Any]:
     """Charts, trends, and depth content for Performance tab."""
     if m is None:

@@ -529,16 +529,35 @@ def tdee_calibration_backtest(
     }
 
 
+def _applied_tdee_correction(cal: Optional[dict]) -> Optional[int]:
+    """Calibration offset for prescriptions — only when confidence is high.
+
+    Sparse food logging biases empirical TDEE low and over-corrects burn
+    downward, which then hits MIN_INTAKE and nullifies planned deficits. When
+    confidence is limited/inactive (or missing), prescriptions use model TDEE.
+    """
+    if not cal:
+        return None
+    conf = cal.get("confidence") or {}
+    if conf.get("level") != "high":
+        return None
+    corr = cal.get("correction")
+    if corr is None:
+        return None
+    return int(corr)
+
+
 def tdee_history(days: int = 14) -> list[dict]:
     """Per-day TDEE for the last `days` days (oldest first).
 
     TDEE = Katch-McArdle BMR (weight + fat% carried forward from the most
     recent body-comp reading on or before each day) + that day's measured
-    Garmin active calories, plus an optional weight-trend calibration offset.
-    Days without enough data carry ``tdee = None``.
+    Garmin active calories, plus an optional weight-trend calibration offset
+    when calibration confidence is ``high``. Days without enough data carry
+    ``tdee = None``.
     """
     cal = tdee_calibration(_CALIBRATION_WINDOW_DAYS)
-    correction = cal["correction"] if cal else None
+    correction = _applied_tdee_correction(cal)
     comps, activity_cal_by_date = _load_tdee_inputs(days)
 
     result = []

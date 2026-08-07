@@ -40,33 +40,6 @@ _PROTEIN_G_PER_KG_LEAN_LOW = 2.2
 _PROTEIN_G_PER_KG_LEAN_HIGH = 2.6
 
 
-def protein_target_g() -> dict:
-    """Daily protein floor/ceiling in grams, on a fat-free-mass basis.
-
-    Returns {"low", "high", "basis", "lean_kg"}; `basis` documents how it was
-    derived so the coach text can be honest about the input.
-    """
-    try:
-        from .history import latest_lean_mass_kg
-        lean = latest_lean_mass_kg()
-    except Exception:
-        lean = None
-    if lean:
-        return {
-            "low": round(lean * _PROTEIN_G_PER_KG_LEAN_LOW),
-            "high": round(lean * _PROTEIN_G_PER_KG_LEAN_HIGH),
-            "basis": f"{_PROTEIN_G_PER_KG_LEAN_LOW:g}–{_PROTEIN_G_PER_KG_LEAN_HIGH:g} g/kg of fat-free mass, ~{lean:.0f} kg",
-            "lean_kg": round(lean, 1),
-        }
-    # No body-fat reading — fall back to total-weight estimate.
-    w = current_weight_kg()
-    return {
-        "low": round(w * 1.8),
-        "high": round(w * 2.0),
-        "basis": f"1.8–2.0 g/kg of bodyweight, ~{w:.0f} kg — no body-fat reading to derive lean mass",
-        "lean_kg": None,
-    }
-
 # ── Calorie tiers ─────────────────────────────────────────────────────────────
 CALORIE_TIERS = {
     "rest":     {"label": "Rest / Monday",            "kcal": 2050},
@@ -78,11 +51,82 @@ CALORIE_TIERS = {
 }
 
 from .energy import (
+    CUT_TARGET_KG,
     MIN_INTAKE_KCAL,
+    active_cut_phase,
     in_maintenance_window,
     intake_target_kcal,
     ride_kcal_from_kj,
 )
+
+# Snapshot of fat-free mass at Base Cut start — protein stays locked to this
+# floor so g/kg targets do not ratchet down as lean mass inches lower.
+_CUT_LEAN_CACHE_KEY = "cut_lean_kg_v1"
+
+
+def _ensure_cut_lean_snapshot(lean: float | None) -> float | None:
+    """Persist lean mass once when a cut phase is first active; return locked value."""
+    if lean is None or lean <= 0:
+        return None
+    try:
+        from .history import get_cached_text, set_cached_text
+
+        cached = get_cached_text(_CUT_LEAN_CACHE_KEY)
+        if cached is not None:
+            try:
+                return float(cached)
+            except (TypeError, ValueError):
+                pass
+        set_cached_text(_CUT_LEAN_CACHE_KEY, f"{lean:.2f}")
+        return round(lean, 2)
+    except Exception:
+        return lean
+
+
+def protein_target_g(ref_date: date | None = None) -> dict:
+    """Daily protein floor/ceiling in grams, on a fat-free-mass basis.
+
+    Returns {"low", "high", "basis", "lean_kg"}; `basis` documents how it was
+    derived so the coach text can be honest about the input. During an active
+    cut phase, lean mass is ``max(current, lean_at_cut_start)``.
+    """
+    try:
+        from .history import latest_lean_mass_kg
+        lean = latest_lean_mass_kg()
+    except Exception:
+        lean = None
+    locked = False
+    ref = ref_date or date.today()
+    if lean and active_cut_phase(ref):
+        snap = _ensure_cut_lean_snapshot(lean)
+        if snap is not None:
+            if snap > lean:
+                locked = True
+            lean = max(lean, snap)
+            locked = locked or abs(snap - lean) < 0.05
+    if lean:
+        basis = (
+            f"{_PROTEIN_G_PER_KG_LEAN_LOW:g}–{_PROTEIN_G_PER_KG_LEAN_HIGH:g} g/kg of fat-free mass, "
+            f"~{lean:.0f} kg"
+        )
+        if locked:
+            basis += " (locked at cut start)"
+        return {
+            "low": round(lean * _PROTEIN_G_PER_KG_LEAN_LOW),
+            "high": round(lean * _PROTEIN_G_PER_KG_LEAN_HIGH),
+            "basis": basis,
+            "lean_kg": round(lean, 1),
+            "lean_locked": locked,
+        }
+    # No body-fat reading — fall back to total-weight estimate.
+    w = current_weight_kg()
+    return {
+        "low": round(w * 1.8),
+        "high": round(w * 2.0),
+        "basis": f"1.8–2.0 g/kg of bodyweight, ~{w:.0f} kg — no body-fat reading to derive lean mass",
+        "lean_kg": None,
+        "lean_locked": False,
+    }
 
 
 def _stable_tdee(days: int = 7) -> float | None:
@@ -111,6 +155,7 @@ def resolve_calorie_target(
     ``CALORIE_TIERS``.
     """
     static = CALORIE_TIERS[tier_key]["kcal"]
+    cut_phase = active_cut_phase(ref_date)
     camp = camp_nutrition_window(ref_date)
     if camp:
         hard = is_camp_hard_day(ref_date)
@@ -128,6 +173,8 @@ def resolve_calorie_target(
             "static_fallback": static,
             "camp": True,
             "maintenance": False,
+            "cut_phase": None,
+            "cut_target_kg": CUT_TARGET_KG,
         }
 
     maintenance = in_maintenance_window(ref_date)
@@ -144,6 +191,8 @@ def resolve_calorie_target(
             "static_fallback": static,
             "camp": False,
             "maintenance": maintenance,
+            "cut_phase": None if maintenance else cut_phase,
+            "cut_target_kg": CUT_TARGET_KG,
         }
     return {
         "kcal": computed,
@@ -153,6 +202,8 @@ def resolve_calorie_target(
         "static_fallback": static,
         "camp": False,
         "maintenance": maintenance,
+        "cut_phase": None if maintenance else cut_phase,
+        "cut_target_kg": CUT_TARGET_KG,
     }
 
 
@@ -199,9 +250,12 @@ SIMPLE_RULES = [
 PRINCIPLES = [
     "Cost strategy (bulk-staple rebuild): batch-roasted chicken, scotch eggs, a 1 kg Greek yogurt "
     "tub, a 1 kg whey tub, bulk oats and basmati. Target ≈£28–32/week.",
-    "Energy strategy (Block A — weight-loss reset): moderate lean-mass-sparing deficit on rest days; "
-    "long-ride day stays close to energy balance — never under-fuel the key endurance session.",
-    "Protein target: lean-mass based (≈2.2 g/kg fat-free mass). Greek yogurt at lunch Mon–Thu; "
+    "Energy strategy (Block A — weight-loss reset through charity, then Base Cut): "
+    "moderate lean-mass-sparing deficit on rest days; long-ride day stays close to energy "
+    "balance — never under-fuel the key endurance session. From 15 Sep–20 Dec 2026 the Base Cut "
+    "targets 80–81 kg (hard deficits 15 Sep–22 Nov; ease 23 Nov–20 Dec into Christmas camp).",
+    "Protein target: lean-mass based (≈2.2 g/kg fat-free mass), locked at cut-start lean mass "
+    "during the Base Cut so the floor does not ratchet down. Greek yogurt at lunch Mon–Thu; "
     "whey shake Wed/Thu/Fri/Sat/Sun as prescribed.",
     "Carbs around training: batch rice + chicken lunches Mon/Tue/Thu; Wednesday Chinese chicken "
     "+ egg fried rice from day-old batch rice; banana 45 min pre-session on weekdays. "
@@ -1168,7 +1222,32 @@ def fuel_prep_context(plan_start: date, today: date) -> str:
 
 
 # Session types that count as rides for in-ride fuelling purposes.
-_RIDE_TYPES = {"long", "bike", "tempo", "ftp"}
+_RIDE_TYPES = {"long", "bike", "tempo", "ftp", "vo2", "sweetspot", "endurance", "back_to_back"}
+
+# Plan / HR session type → calorie deficit tier (meals stay on weekday DAY_TYPES).
+_SESSION_CALORIE_TIER: dict[str, str] = {
+    "long": "long",
+    "back_to_back": "long",
+    "rest": "rest",
+    "recovery": "recovery",
+    "gym": "recovery",
+    "strength": "recovery",
+    "ruck": "ruck",
+}
+
+
+def calorie_tier_for_session(stype: str | None, weekday_tier: str) -> str:
+    """Map a planned session type to an intake deficit tier.
+
+    Falls back to the Mon–Sun food-cycle tier when there is no session.
+    Quality / endurance bike sessions use the training deficit.
+    """
+    if not stype:
+        return weekday_tier
+    if stype in _SESSION_CALORIE_TIER:
+        return _SESSION_CALORIE_TIER[stype]
+    # bike, tempo, vo2, sweetspot, ftp, endurance, …
+    return "training"
 
 
 def today_targets(ref_date: date | None = None) -> dict:
@@ -1177,7 +1256,7 @@ def today_targets(ref_date: date | None = None) -> dict:
     Crowns exactly one of each — every surface (dashboard, /nutrition, coach
     context, email) should read from here rather than picking its own number:
       kcal       — resolve_calorie_target (stable TDEE when available, else
-                   static tier; camp and maintenance windows applied)
+                   static tier; camp, maintenance, and cut phases applied)
       protein    — protein_target_g() floor/ceiling (lean-mass based)
       carbs g/h  — gut_training_target_g_per_hr() for rides ≥150 min;
                    55 g/h solids for 75–150 min rides; None otherwise
@@ -1211,17 +1290,20 @@ def today_targets(ref_date: date | None = None) -> dict:
     stype = session["type"] if session else None
     dur = session["dur_min"] if session else 0
 
-    # One kcal number.
+    # One kcal number — session type drives the deficit tier; meals stay on
+    # the weekday food cycle.
     from .plan import PLAN_START
     cycle_week = cycle_week_index(PLAN_START, ref)
-    tier = DAY_TYPES[today_day_type(cycle_week, ref.weekday())]["calorie_tier"]
+    weekday_tier = DAY_TYPES[today_day_type(cycle_week, ref.weekday())]["calorie_tier"]
+    tier = calorie_tier_for_session(stype, weekday_tier)
+    long_dur = dur if tier == "long" or stype in ("long", "back_to_back") else None
     target = resolve_calorie_target(
         _stable_tdee(), tier, ref,
-        session_dur_min=dur if stype in ("long", "bike") else None,
+        session_dur_min=long_dur,
         session_type=stype,
     )
 
-    pt = protein_target_g()
+    pt = protein_target_g(ref)
 
     # One in-ride carbs number (+ prep detail for long rides).
     carbs_g_per_hr = None
@@ -1248,12 +1330,16 @@ def today_targets(ref_date: date | None = None) -> dict:
         "session": session,
         "kcal": target["kcal"],
         "kcal_source": "camp" if target.get("camp") else ("tdee" if target.get("from_tdee") else "tier"),
+        "calorie_tier": tier,
         "stable_tdee": target.get("tdee"),
         "planned_deficit": target.get("planned_deficit"),
         "maintenance": bool(target.get("maintenance")),
+        "cut_phase": target.get("cut_phase"),
+        "cut_target_kg": target.get("cut_target_kg", CUT_TARGET_KG),
         "protein_low": pt["low"],
         "protein_high": pt["high"],
         "protein_basis": pt["basis"],
+        "protein_lean_locked": bool(pt.get("lean_locked")),
         "carbs_g_per_hr": carbs_g_per_hr,
         "fuel_prep": fuel_prep,
         "ai_fuel_plan": ai_fuel_plan,

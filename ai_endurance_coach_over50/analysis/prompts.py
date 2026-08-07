@@ -275,6 +275,22 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
     elev = activity.get("elevation_gain")
     name = activity.get("name") or activity.get("type_key", "ride")
 
+    _ftp_labels = {"FTP Test", "FTP Re-test", "Final FTP Test"}
+    _is_ftp = False
+    if d_obj:
+        try:
+            sess_early = session_for_date_extended(d_obj)
+            _is_ftp = bool(sess_early and sess_early[1] in _ftp_labels)
+        except Exception:
+            pass
+    this_test_effort_w = detail.get("ftp_effort_avg_w")
+    this_test_ftp = detail.get("ftp_w")
+    if this_test_ftp is None and this_test_effort_w:
+        try:
+            this_test_ftp = round(float(this_test_effort_w) * 0.95)
+        except (TypeError, ValueError):
+            this_test_ftp = None
+
     hr_zones = detail.get("hr_zones", [])
     zone_lines = []
     for z in hr_zones:
@@ -418,7 +434,17 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
         if max_pwr:
             pwr_parts.append(f"max {int(max_pwr)} W")
         if ftp_w:
-            ftp_label = f"Measured FTP: {int(ftp_w)} W"
+            # On an FTP-test day the record in ftp_tests may still be the *prior*
+            # value when this prompt runs (save happens after analysis). Label it
+            # so the model does not conflate it with THIS TEST RESULT.
+            if (
+                _is_ftp
+                and this_test_ftp
+                and int(ftp_w) != int(this_test_ftp)
+            ):
+                ftp_label = f"Prior FTP on record (pre-test, zone context only): {int(ftp_w)} W"
+            else:
+                ftp_label = f"Measured FTP: {int(ftp_w)} W"
             if ftp_date:
                 ftp_label += f" (as of {ftp_date})"
             power_summary_lines.append(ftp_label)
@@ -551,26 +577,35 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             )
 
     _ftp_labels = {"FTP Test", "FTP Re-test", "Final FTP Test"}
-    _is_ftp = bool(d_obj and session_for_date_extended(d_obj) and session_for_date_extended(d_obj)[1] in _ftp_labels)
+    # _is_ftp / this_test_ftp computed earlier (before power summary) so Measured FTP
+    # can be labelled prior-vs-this-test correctly.
     ftp_effort_avg_hr = detail.get("ftp_effort_avg_hr")
     ftp_effort_max_hr = detail.get("ftp_effort_max_hr")
     ftp_effort_line = ""
-    if _is_ftp and ftp_effort_avg_hr:
-        max_str = f", max HR {int(ftp_effort_max_hr)} bpm" if ftp_effort_max_hr else ""
-        ftp_effort_line = (
-            f"20-minute test effort (extracted from lap data): "
-            f"avg HR {int(ftp_effort_avg_hr)} bpm{max_str}. "
-            "LTHR is estimated as ~95% of this all-out 20-min avg HR "
-            "(same discount as FTP watts), not the raw average. "
-            "Reference it when assessing whether the effort was maximal."
-        )
+    if _is_ftp and (ftp_effort_avg_hr or this_test_ftp):
+        bits: list[str] = []
+        if this_test_effort_w and this_test_ftp:
+            bits.append(
+                f"THIS TEST RESULT: 20-min avg power {int(this_test_effort_w)} W → "
+                f"FTP {int(this_test_ftp)} W (95% of 20-min watts). "
+                "Cite THIS figure as today's FTP — never quote a prior ftp_tests record "
+                "(e.g. an older Measured FTP line) as the outcome of this ride."
+            )
+        if ftp_effort_avg_hr:
+            max_str = f", max HR {int(ftp_effort_max_hr)} bpm" if ftp_effort_max_hr else ""
+            bits.append(
+                f"20-minute test effort HR: avg {int(ftp_effort_avg_hr)} bpm{max_str}. "
+                "LTHR ≈ 95% of that all-out 20-min avg HR (same discount as FTP watts)."
+            )
+        ftp_effort_line = " ".join(bits)
     ftp_note = (
         "Session structure note: this is an FTP test. The standard structure is "
         "~15m warm-up (Z1–Z2), 3m priming effort, 5m Z1 recovery, then a 20-minute all-out effort (target Z4–Z5), "
         "followed by ~17m cool-down (Z1–Z2). The HR zone distribution across the full activity will therefore "
         "show significant Z1–Z2 time from the warm-up and cool-down — this is expected and correct. "
         "Focus your analysis on whether the 20-minute test effort was well-executed: "
-        "was max HR high, did the athlete sustain effort into Z4–Z5, and how does the training load reflect the test demand?"
+        "was max HR high, did the athlete sustain effort into Z4–Z5, and how does the training load reflect the test demand? "
+        "The headline FTP number must match THIS TEST RESULT above when watts are present."
         if _is_ftp else ""
     )
 

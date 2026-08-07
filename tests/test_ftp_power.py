@@ -90,15 +90,59 @@ def test_estimate_lthr_from_effort_discounts_20min():
 def test_ramp_builder_shape():
     w = _ramp_test(45)
     steps = w.workoutSegments[0].workoutSteps
-    work_steps = [s for s in steps if s.targetType.get("workoutTargetTypeKey") == "power.lap"]
+    work_steps = [s for s in steps if s.targetType.get("workoutTargetTypeKey") == "power.zone"]
     assert len(work_steps) >= 10
     assert work_steps[0].targetValueOne == 100
     assert work_steps[1].targetValueOne == 120
 
 
-def test_try_save_ftp_ramp_sets_stale_flag():
-    detail = {"ftp_w": 225, "ftp_effort_avg_w": 300}
-    act = {"date": "2026-07-02", "activity_id": 9999}
-    assert _try_save_ftp_from_detail(act, detail, "Ramp Test")
-    assert get_cached_text("workouts_stale_ftp") == "225"
-    _mark_workouts_stale(225)  # idempotent
+def test_ftp_analysis_prompt_cites_this_test_not_prior(monkeypatch):
+    """FTP test prompts must lead with THIS TEST RESULT (not prior ftp_tests)."""
+    from ai_endurance_coach_over50.analysis import prompts as prompts_mod
+
+    monkeypatch.setattr(
+        prompts_mod,
+        "session_for_date_extended",
+        lambda d: ("ftp", "Final FTP Test", 60),
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.analysis.power.ftp_w_on_date",
+        lambda d: 214,  # prior record still visible during first generate
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.load_ftp_tests",
+        lambda: [{"date": "2026-07-22", "ftp_w": 214, "ftp_hr": None}],
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.history.ftp_retest_due",
+        lambda *a, **k: None,
+    )
+
+    activity = {
+        "date": "2026-08-07",
+        "name": "Final FTP Test",
+        "type_key": "indoor_cycling",
+        "duration_seconds": 3600,
+        "distance_meters": 20000,
+        "avg_hr": 152,
+        "max_hr": 186,
+        "avg_power_w": 159,
+        "norm_power_w": 197,
+        "has_power_meter": True,
+    }
+    detail = {
+        "hr_zones": [],
+        "power_zones": [],
+        "ftp_effort_avg_hr": 176,
+        "ftp_effort_max_hr": 186,
+        "ftp_effort_avg_w": 232,
+        "ftp_w": 220,
+        "avg_power_w": 159,
+        "norm_power_w": 197,
+    }
+    text = prompts_mod._build_analysis_prompt(activity, detail)
+    assert "THIS TEST RESULT" in text
+    assert "FTP 220 W" in text
+    assert "Prior FTP on record" in text
+    assert "214 W" in text  # prior, labelled
+    assert "Cite THIS figure as today's FTP" in text

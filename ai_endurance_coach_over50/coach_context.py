@@ -280,6 +280,22 @@ def _section_today_session_prescriptions(today: date) -> list[str]:
             "  MAINTENANCE WINDOW (to 14 Sep): deficits suspended through the "
             "charity ride — do not advise a calorie deficit."
         )
+    elif tt.get("camp"):
+        lines.append(
+            "  CAMP WINDOW: suspend UK deficit; fuel hard days — do not advise a cut."
+        )
+    elif tt.get("cut_phase") == "hard":
+        lines.append(
+            f"  BASE CUT (hard → {tt.get('cut_target_kg', 80.5)} kg by 21 Dec): "
+            f"planned deficit {tt.get('planned_deficit')} kcal — intentional for HR Base; "
+            "do not advise surplus unless illness/fatigue flags fire."
+        )
+    elif tt.get("cut_phase") == "ease":
+        lines.append(
+            f"  BASE CUT (ease into Christmas camp → {tt.get('cut_target_kg', 80.5)} kg): "
+            f"smaller planned deficit {tt.get('planned_deficit')} kcal — soft landing; "
+            "do not push a harder cut."
+        )
     elif tt.get("planned_deficit"):
         lines.append(f"  Planned deficit: {tt['planned_deficit']} kcal below stable TDEE")
     if tt.get("carbs_g_per_hr"):
@@ -833,6 +849,23 @@ def _section_phase_nutrition(today: date) -> list[str]:
                     "peak adaptation pull against each other at 50+. Steer toward maintenance for this "
                     "block; place the deficit in base weeks."
                 )
+            elif avg_bal <= -300 and cat == "base":
+                from .energy import active_cut_phase
+                cp = active_cut_phase(today)
+                if cp == "hard":
+                    lines.append(
+                        "  Base Cut (hard) intentional — 80–81 kg by Christmas camp; "
+                        "monitor readiness and long-ride quality."
+                    )
+                elif cp == "ease":
+                    lines.append(
+                        "  Base Cut ease phase — soft landing into Christmas camp; "
+                        "do not increase the deficit."
+                    )
+                else:
+                    lines.append(
+                        "  Sustained deficit in Base — appropriate place for a cut if readiness holds."
+                    )
             elif avg_bal <= -300 and cat == "taper":
                 lines.append("  ⚠ Deficit during taper/event window — fuel the event; do not cut into it.")
             elif avg_bal <= -300:

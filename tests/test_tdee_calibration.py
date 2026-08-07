@@ -75,17 +75,31 @@ def test_apply_tdee_correction():
 
 # ── DB-backed ────────────────────────────────────────────────────────────────
 
-def _seed_losing_trend_with_intake():
-    """28-day window: downward weight trend + steady intake + model TDEE inputs."""
+def _seed_losing_trend_with_intake(*, daily_weighins: bool = False):
+    """28-day window: downward weight trend + steady intake + model TDEE inputs.
+
+    With ``daily_weighins=True`` (28 points) confidence can reach ``high`` when
+    other guardrails pass, so the calibration offset is applied in tdee_history.
+    Weekly weigh-ins alone leave confidence ``limited`` (minimum weigh-ins).
+    """
     today = date.today()
     weights = []
-    for i in range(5):
-        d = today - timedelta(days=27 - i * 7)
-        weights.append({
-            "date": d.isoformat(),
-            "weight_kg": 82.0 - i * 0.6,
-            "fat_pct": 22.0,
-        })
+    if daily_weighins:
+        for offset in range(28):
+            d = today - timedelta(days=27 - offset)
+            weights.append({
+                "date": d.isoformat(),
+                "weight_kg": 82.0 - offset * (2.4 / 27),
+                "fat_pct": 22.0,
+            })
+    else:
+        for i in range(5):
+            d = today - timedelta(days=27 - i * 7)
+            weights.append({
+                "date": d.isoformat(),
+                "weight_kg": 82.0 - i * 0.6,
+                "fat_pct": 22.0,
+            })
     save_body_metrics(weights)
 
     for offset in range(28):
@@ -120,15 +134,29 @@ def test_tdee_calibration_backtest_runs_on_seeded_data():
         assert "error_kg_per_day" in bt
 
 
-def test_tdee_history_applies_correction():
-    _seed_losing_trend_with_intake()
+def test_tdee_history_applies_correction_when_confidence_high():
+    _seed_losing_trend_with_intake(daily_weighins=True)
     cal = tdee_calibration(28)
     assert cal is not None
+    assert cal["confidence"]["level"] == "high"
     rows = [r for r in tdee_history(14) if r.get("tdee_model") is not None]
     assert rows
     for row in rows:
         assert row["calibration_kcal"] == cal["correction"]
         assert row["tdee"] == row["tdee_model"] + cal["correction"]
+
+
+def test_tdee_history_skips_correction_when_confidence_limited():
+    # Weekly weigh-ins → "only minimum weigh-ins" → limited confidence.
+    _seed_losing_trend_with_intake(daily_weighins=False)
+    cal = tdee_calibration(28)
+    assert cal is not None
+    assert cal["confidence"]["level"] == "limited"
+    rows = [r for r in tdee_history(14) if r.get("tdee_model") is not None]
+    assert rows
+    for row in rows:
+        assert row["calibration_kcal"] is None
+        assert row["tdee"] == row["tdee_model"]
 
 
 def test_tdee_calibration_guardrail_insufficient_weighins():

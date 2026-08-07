@@ -29,8 +29,12 @@ from garminconnect.workout import (
 from .plan import (
     TRAINING_WEEKS, PLAN_START,
     MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
-    CAMP_GRID_WORKOUTS, EVENT_PREP_DAYS, POSITION_BRIDGE_DAYS, POSITION_BRIDGE_END,
+    CAMP_GRID_WORKOUTS, CAMP_PUSH_WORKOUTS, EVENT_PREP_DAYS, POSITION_BRIDGE_DAYS,
+    POSITION_BRIDGE_END,
 )
+
+# Bulk Garmin sync ceiling (charity + Aug Tenerife + HR Base through Christmas camp).
+HR_WORKOUTS_END = date(2026, 12, 31)
 
 _SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cycling",           "displayOrder": 1}
 # garminconnect 0.3.6 (needed for the per-date push API) renumbered SportType and
@@ -43,6 +47,11 @@ _CARDIO_SPORT = {"sportTypeId": 11,                          "sportTypeKey": "ca
 
 _BIKE_TYPES         = {"bike", "tempo", "ftp", "long", "endurance", "sweetspot", "vo2", "recovery", "back_to_back"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
+
+# Position-programme strength pushed as FE kettlebell (not Recovery Spin).
+_STRENGTH_FE_A = frozenset({"KB + Trunk", "Strength + Core"})
+_STRENGTH_FE_B = frozenset({"Gym — Strength", "Gym — Maintenance"})
+_STRENGTH_FE_LABELS = _STRENGTH_FE_A | _STRENGTH_FE_B
 
 
 # ── Target type dicts ────────────────────────────────────────────────────────
@@ -61,8 +70,19 @@ def _no_target() -> dict[str, Any]:
 def _open_target() -> dict[str, Any]:
     return {"workoutTargetTypeId": getattr(TargetType, "OPEN", 6), "workoutTargetTypeKey": "open", "displayOrder": 6}
 
-def _power_lap_target() -> dict[str, Any]:
-    return {"workoutTargetTypeId": TargetType.POWER_LAP, "workoutTargetTypeKey": "power.lap", "displayOrder": 9}
+def _power_target() -> dict[str, Any]:
+    """Absolute watt range target (Connect UI + head unit).
+
+    Garmin stores ``power.lap`` (id 9) but Connect's workout editor shows it as
+    "No Target". Absolute watt ranges must use ``power.zone`` (id 2) with
+    ``targetValueOne`` / ``targetValueTwo`` in watts — same shape as native
+    Connect power-range steps.
+    """
+    return {
+        "workoutTargetTypeId": TargetType.POWER_ZONE,
+        "workoutTargetTypeKey": "power.zone",
+        "displayOrder": 2,
+    }
 
 
 def _latest_ftp_w() -> int | None:
@@ -82,7 +102,7 @@ def _quality_interval(
 ) -> ExecutableStep:
     """Quality interval: %FTP watts when FTP known, else HR zone (endurance stays HR-only)."""
     if ftp_w:
-        return _interval(order, secs, _power_lap_target(),
+        return _interval(order, secs, _power_target(),
                          round(ftp_w * pct_lo), round(ftp_w * pct_hi))
     return _interval(order, secs, _hr_zone_target(), hr_lo, hr_hi)
 
@@ -98,7 +118,7 @@ def _endurance_interval(
     """Z2 endurance block: %FTP when FTP known, with HR backstop note on power steps."""
     if ftp_w:
         return _interval(
-            order, secs, _power_lap_target(),
+            order, secs, _power_target(),
             round(ftp_w * pct_lo), round(ftp_w * pct_hi),
             description=_ENDURANCE_HR_NOTE,
         )
@@ -319,7 +339,7 @@ def _ramp_test(dur_min: int) -> CyclingWorkout:
     order = 2
     watts = 100
     while watts <= 400:
-        steps.append(_interval(order, 60, _power_lap_target(), watts, watts + 19))
+        steps.append(_interval(order, 60, _power_target(), watts, watts + 19))
         order += 1
         watts += 20
     steps.append(_interval(order, 120, _open_target()))
@@ -391,7 +411,7 @@ def _low_cadence_ride(dur_min: int) -> CyclingWorkout:
         # Cadence-capped sweetspot: power when FTP known, else HR Z3
         if ftp_w:
             steps.append(_interval(
-                o, 480, _power_lap_target(),
+                o, 480, _power_target(),
                 round(ftp_w * 0.88), round(ftp_w * 0.94),
                 description="60–65 rpm, big gear",
             ))
@@ -553,7 +573,7 @@ def _low_cadence_sweetspot(dur_min: int) -> CyclingWorkout:
     for _ in range(3):
         if ftp_w:
             steps.append(_interval(
-                o, 720, _power_lap_target(),
+                o, 720, _power_target(),
                 round(ftp_w * 0.88), round(ftp_w * 0.94),
                 description="Cadence 60–70 rpm",
             ))
@@ -590,6 +610,34 @@ def _hr_long_ride(name: str, dur_min: int) -> CyclingWorkout:
     return _long_ride(name, dur_min)
 
 
+def _camp_easy(name: str, dur_min: int) -> CyclingWorkout:
+    """August camp easy / openers — HR Z1–Z2, Garmin name starts with Camp."""
+    return _make(f"{name} {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _interval(2, max(60.0, (dur_min - 20) * 60), _hr_zone_target(), 1, 2),
+        create_cooldown_step(600.0, step_order=3),
+    ], dur_min)
+
+
+def _camp_recovery(name: str, dur_min: int) -> CyclingWorkout:
+    """August camp active-recovery spin — HR Z1."""
+    return _make(f"{name} {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _interval(2, max(60.0, (dur_min - 20) * 60), _hr_zone_target(), 1, 1),
+        create_cooldown_step(600.0, step_order=3),
+    ], dur_min)
+
+
+def _camp_z2(name: str, dur_min: int) -> CyclingWorkout:
+    """August camp easy endurance — %FTP Z2 when known."""
+    ftp_w = _latest_ftp_w()
+    return _make(f"{name} {dur_min}m", [
+        create_warmup_step(600.0, step_order=1),
+        _endurance_interval(2, max(60.0, (dur_min - 20) * 60), ftp_w),
+        create_cooldown_step(600.0, step_order=3),
+    ], dur_min)
+
+
 # ── Cycling label → builder dispatch ─────────────────────────────────────────
 
 _BUILDERS: dict[str, Any] = {
@@ -597,8 +645,6 @@ _BUILDERS: dict[str, Any] = {
     "Zone 2 Steady":    lambda d: _zone2_steady(d),
     "Recovery Spin":    lambda d: _recovery_spin(d),
     "Recovery + Core":  lambda d: _recovery_spin(d),
-    "KB + Trunk":       lambda d: _recovery_spin(d),  # trunk is off-bike; Garmin gets easy spin only
-    "Strength + Core":  lambda d: _recovery_spin(d),
     "Structured Z2":    lambda d: _structured_z2(d),
     "Z2 + Hills":       lambda d: _z2_hills(d),
     "Cadence Drills":   lambda d: _cadence_drills(d),
@@ -672,17 +718,34 @@ _BUILDERS: dict[str, Any] = {
     "Simulation Day 1": lambda d: _hr_long_ride("Simulation Day 1", d),
     "Simulation Day 2": lambda d: _hr_long_ride("Simulation Day 2", d),
     "Simulation Day 3": lambda d: _hr_long_ride("Simulation Day 3", d),
+    # August Tenerife camp (CAMP_PUSH_WORKOUTS)
+    "Camp Leg Openers":      lambda d: _camp_easy("Camp Leg Openers", d),
+    "Camp Harbour Recovery": lambda d: _camp_recovery("Camp Harbour Recovery", d),
+    "Camp Cliffs Recovery":  lambda d: _camp_recovery("Camp Cliffs Recovery", d),
+    "Camp Coastal Easy":     lambda d: _camp_z2("Camp Coastal Easy", d),
+    "Camp Coastal Ramble":   lambda d: _camp_z2("Camp Coastal Ramble", d),
+    "Camp Farewell":         lambda d: _camp_z2("Camp Farewell", d),
+    "Camp Tamaimo Teno":     lambda d: _hr_long_ride("Camp Tamaimo Teno", d),
+    "Camp Chio Recon":       lambda d: _hr_long_ride("Camp Chio Recon", d),
+    "Camp Tamaimo North":    lambda d: _hr_long_ride("Camp Tamaimo North", d),
+    "Camp Teide":            lambda d: _hr_long_ride("Camp Teide", d),
+    "Camp Tamaimo Finale":   lambda d: _hr_long_ride("Camp Tamaimo Finale", d),
 }
 
 # Name prefixes used when generating workout names — used to find and delete stale uploads
 _NAME_PREFIXES: tuple[str, ...] = (
     "Easy Spin ", "Zone 2 Steady ", "Recovery Spin ", "Structured Z2 ", "Z2 + Hills ",
     "Cadence Drills ", "Hilly Z2 ", "Z2 Endurance ", "Low Cadence ", "Easy Prep Ride ",
-    "FTP Test", "FTP Re-test", "Final FTP Test", "Ramp Test", "FTP Ramp Test", "Tempo Intervals ", "Long Ride ",
-    "Long Ride Easy ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ", "Sweetspot Ride ",
-    "Over-Unders ", "Threshold Ride ", "Hill Repeats ", "Pre-Event Long Ride ",
+    "FTP Test", "FTP Re-test", "Final FTP Test", "FTP Baseline Test", "FTP Final Test",
+    "Ramp Test", "FTP Ramp Test", "Tempo Intervals ", "Long Ride ",
+    "Long Ride Easy ", "Long Ride Moderate ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ",
+    "Sweetspot Ride ", "Short Sweetspot ", "Over-Unders ", "Under-Overs ",
+    "Threshold Ride ", "Hill Repeats ", "Pre-Event Long Ride ", "Tempo Sharpener ",
+    "VO2 Intervals ", "Back-to-Back Day ", "Simulation Day ",
+    "Camp ", "Tenerife Tamaimo", "Tenerife Teide", "Tenerife Masca", "Tenerife Camp",
+    "Camp Mountain Stage ", "Camp Summit Day ", "Camp BTB Day ", "Camp Stage Sim ",
     # Strength & ruck
-    "Kettlebell Wk", "Light KB Wk", "MaxiClimber Wk", "Ruck ",
+    "Kettlebell Wk", "Light KB Wk", "MaxiClimber Wk", "Ruck ", "KB Position ",
 )
 
 
@@ -749,6 +812,14 @@ def _kb_light_workout(week_num: int, dur_min: int) -> FitnessEquipmentWorkout:
     return _make_fe(f"Light KB Wk{week_num} {dur_min}m", steps, dur_min)
 
 
+def _kb_position_workout(variant: str, dur_min: int) -> FitnessEquipmentWorkout:
+    """Lebe Stark + trunk/carries for HR KB + Trunk (A) or Gym (B) days."""
+    from .plan import POSITION_KB_SPEC_A, POSITION_KB_SPEC_B
+    spec = POSITION_KB_SPEC_A if variant == "A" else POSITION_KB_SPEC_B
+    steps = _kb_workout_steps(spec, dur_min)
+    return _make_fe(f"KB Position {variant} {dur_min}m", steps, dur_min)
+
+
 def _maxiclimber_workout(week_num: int, dur_min: int) -> CyclingWorkout:
     """Structured MaxiClimber intervals from MAXI_INTERVALS for the given week.
 
@@ -808,6 +879,10 @@ def _build_strength_ruck_workout(kind: str, week_num: int, dur_min: int) -> Any 
         return _kb_full_workout(week_num, dur_min)
     if kind == "KB Light":
         return _kb_light_workout(week_num, dur_min)
+    if kind == "KB Position A":
+        return _kb_position_workout("A", dur_min)
+    if kind == "KB Position B":
+        return _kb_position_workout("B", dur_min)
     if kind == "MaxiClimber":
         return _maxiclimber_workout(week_num, dur_min)
     if kind == "Ruck":
@@ -823,6 +898,7 @@ def _resolve_bike_session(d: date, stype: str, label: str, dur: int) -> tuple[st
 
     An override that swaps a day to a non-bike type (ruck/strength/rest) drops that
     cycling workout entirely so the stale one is removed on the next full re-sync.
+    Position-programme strength labels (KB + Trunk / Gym) are never treated as bike.
     """
     from .history import get_plan_override
 
@@ -831,7 +907,7 @@ def _resolve_bike_session(d: date, stype: str, label: str, dur: int) -> tuple[st
         o_type = ov.get("session_type") or stype
         o_label = ov.get("label") or label
         o_dur = ov.get("duration_min") or dur
-        if o_type not in _BIKE_TYPES:
+        if o_type not in _BIKE_TYPES or o_label in _STRENGTH_FE_LABELS:
             # Swapped to a non-cycling session — no Garmin cycling workout for this day.
             return None
         if _resolve_builder(o_label) is None:
@@ -839,18 +915,30 @@ def _resolve_bike_session(d: date, stype: str, label: str, dur: int) -> tuple[st
                   f"builder; using plan label '{label}'")
             o_label = label
         stype, label, dur = o_type, o_label, o_dur
+    if label in _STRENGTH_FE_LABELS:
+        return None
     if stype in _BIKE_TYPES:
         return label, dur
     return None
 
 
+def _filter_schedule_from(schedule: dict, from_date: date) -> dict:
+    """Keep only dates on or after from_date; drop empty template keys."""
+    start = from_date.isoformat()
+    out: dict = {}
+    for key, dates in schedule.items():
+        filtered = [d for d in dates if d >= start]
+        if filtered:
+            out[key] = filtered
+    return out
+
+
 def _workout_schedule() -> dict[tuple[str, int], list[str]]:
     """Map (label, duration) → dates for cycling sessions, applying any coach plan overrides.
 
-    Covers the 12-week plan plus the camp-window spins (`CAMP_GRID_WORKOUTS`,
-    Aug 10–11/29–30), the event-prep block (`EVENT_PREP_DAYS`), and the
-    post-charity position bridge (`POSITION_BRIDGE_DAYS`, 15 Sep – 4 Oct).
-    Tenerife camp days themselves are unstructured rides and are never pushed.
+    Covers the 12-week plan, camp-window spins (`CAMP_GRID_WORKOUTS`), August Tenerife
+    camp rides (`CAMP_PUSH_WORKOUTS`), event prep, position bridge, and Haute Route
+    bike days through ``HR_WORKOUTS_END``.
     """
     schedule: dict[tuple[str, int], list[str]] = defaultdict(list)
     for wk_idx, week in enumerate(TRAINING_WEEKS):
@@ -859,7 +947,7 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
             resolved = _resolve_bike_session(d, stype, label, dur)
             if resolved:
                 schedule[(resolved[0], resolved[1])].append(d.isoformat())
-    for d, w in list(CAMP_GRID_WORKOUTS.items()) + [
+    for d, w in list(CAMP_GRID_WORKOUTS.items()) + list(CAMP_PUSH_WORKOUTS.items()) + [
         (ep["date"], ep) for ep in EVENT_PREP_DAYS
     ] + [
         (bd, bw) for bd, bw in POSITION_BRIDGE_DAYS.items()
@@ -867,6 +955,20 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
         resolved = _resolve_bike_session(d, w["type"], w["label"], w["dur_min"])
         if resolved:
             schedule[(resolved[0], resolved[1])].append(d.isoformat())
+
+    from .hr_plan import HR_PLAN_START, hr_session_for_date
+    d = HR_PLAN_START
+    while d <= HR_WORKOUTS_END:
+        sess = hr_session_for_date(d)
+        if sess:
+            stype, label, dur = sess
+            # hr_session_for_date already applies overrides — skip FE strength.
+            if label not in _STRENGTH_FE_LABELS and stype in _BIKE_TYPES:
+                if _resolve_builder(label) is None:
+                    print(f"  [warn] no builder for HR label '{label}' on {d.isoformat()}")
+                else:
+                    schedule[(label, dur)].append(d.isoformat())
+        d += timedelta(days=1)
     return schedule
 
 
@@ -881,6 +983,10 @@ def _specs_for(stype: str, label: str, dur: int, week_num: int) -> list[tuple]:
     (`_workouts_for_date`). week_num=0 is used for ruck (all durations share
     structure regardless of week).
     """
+    if label in _STRENGTH_FE_A:
+        return [("sr", "KB Position A", 0, dur)]
+    if label in _STRENGTH_FE_B:
+        return [("sr", "KB Position B", 0, dur)]
     if stype in _BIKE_TYPES:
         return [("bike", label, dur)]
     if stype not in _STRENGTH_RUCK_TYPES:
@@ -907,8 +1013,10 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
 
     Compound sessions (KB + MaxiClimber, Ruck + KB) are split into two sub-templates
     so each appears as a separate workout on the Garmin calendar (see `_specs_for`).
+    Includes Haute Route KB Position A/B days through ``HR_WORKOUTS_END``.
     """
     from .history import get_plan_override
+    from .hr_plan import HR_PLAN_START, hr_session_for_date
 
     schedule: dict[tuple[str, int, int], list[str]] = defaultdict(list)
 
@@ -923,7 +1031,7 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
                 o_type = ov.get("session_type") or stype
                 o_label = ov.get("label") or label
                 o_dur = ov.get("duration_min") or dur
-                if o_type not in _STRENGTH_RUCK_TYPES:
+                if o_type not in _STRENGTH_RUCK_TYPES and o_label not in _STRENGTH_FE_LABELS:
                     continue
                 stype, label, dur = o_type, o_label, o_dur
 
@@ -945,6 +1053,21 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
             if s[0] == "sr"
         ):
             schedule[(sr_label, sr_week, sr_dur)].append(date_str)
+
+    # Haute Route position strength (KB + Trunk / Gym) through Dec 31
+    d = HR_PLAN_START
+    while d <= HR_WORKOUTS_END:
+        sess = hr_session_for_date(d)
+        if sess:
+            stype, label, dur = sess
+            date_str = d.isoformat()
+            for kind, sr_label, sr_week, sr_dur in (
+                (s[0], s[1], s[2], s[3])
+                for s in _specs_for(stype, label, dur, 0)
+                if s[0] == "sr"
+            ):
+                schedule[(sr_label, sr_week, sr_dur)].append(date_str)
+        d += timedelta(days=1)
 
     return schedule
 
@@ -1137,8 +1260,16 @@ def _schedule_dates(api: Any, workout_id: Any, dates: list[str],
             print(f"    [error] schedule {date_str}: {exc}")
 
 
-def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
+def upload_and_schedule(
+    api: Any,
+    dry_run: bool = False,
+    from_date: date | None = None,
+) -> dict[str, int]:
     """Delete stale plan workouts, upload fresh ones (override-aware), and schedule them.
+
+    Only unschedules and re-schedules dates on or after ``from_date`` (default:
+    today). Past calendar entries are left alone. Library templates are still
+    deleted and rebuilt so future schedules pick up current %FTP watt targets.
 
     Schedule failures are retried once at the end; any dates still unscheduled
     are returned in the summary so the caller knows a re-run is needed.
@@ -1149,13 +1280,20 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     # its already-scheduled calendar items (Garmin keeps the schedule and the template
     # as independent objects), so without this pass a re-sync stacks a fresh copy on
     # top of the existing one and every plan day doubles up.
-    # The range extends past the 12-week plan to cover the camp-window spins and the
-    # event-prep block, which are synced too; only plan-prefixed titles are touched,
-    # so athlete-created workouts in that window survive.
-    plan_end = PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1)
-    sync_end = max([plan_end, *CAMP_GRID_WORKOUTS, POSITION_BRIDGE_END,
-                    *(ep["date"] for ep in EVENT_PREP_DAYS)])
-    unsched = unschedule_plan_workouts_in_range(api, PLAN_START, sync_end, dry_run=dry_run)
+    # The range covers camp buffer, August Tenerife rides, event prep, position
+    # bridge, and Haute Route through HR_WORKOUTS_END; only plan-prefixed titles
+    # are touched, so athlete-created workouts in that window survive.
+    start = from_date or date.today()
+    sync_end = max(
+        PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1),
+        *CAMP_GRID_WORKOUTS,
+        *CAMP_PUSH_WORKOUTS,
+        POSITION_BRIDGE_END,
+        *(ep["date"] for ep in EVENT_PREP_DAYS),
+        HR_WORKOUTS_END,
+    )
+    print(f"Re-sync window: {start.isoformat()} .. {sync_end.isoformat()}")
+    unsched = unschedule_plan_workouts_in_range(api, start, sync_end, dry_run=dry_run)
     print(f"  {unsched['unscheduled']} existing plan calendar entr(y/ies) cleared "
           f"({unsched['found']} found, {unsched['errors']} error(s))")
 
@@ -1163,7 +1301,7 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
     failed_schedules: list[tuple[Any, str]] = []
 
     # ── Cycling workouts ──────────────────────────────────────────────────────
-    schedule = _workout_schedule()
+    schedule = _filter_schedule_from(_workout_schedule(), start)
     total_sessions = sum(len(v) for v in schedule.values())
     print(f"\nCycling plan: {len(schedule)} unique templates, {total_sessions} sessions")
 
@@ -1200,7 +1338,7 @@ def upload_and_schedule(api: Any, dry_run: bool = False) -> dict[str, int]:
         _schedule_dates(api, workout_id, dates, summary, failed_schedules)
 
     # ── Strength & ruck workouts ──────────────────────────────────────────────
-    sr_schedule = _workout_schedule_strength_ruck()
+    sr_schedule = _filter_schedule_from(_workout_schedule_strength_ruck(), start)
     sr_total = sum(len(v) for v in sr_schedule.values())
     print(f"\nStrength/ruck plan: {len(sr_schedule)} unique templates, {sr_total} sessions")
 

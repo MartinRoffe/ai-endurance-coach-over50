@@ -470,7 +470,12 @@ def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
         s = CAMP_GRID_WORKOUTS[d]
         return (s["type"], s["label"], s["dur_min"])
 
-    # Tenerife cycling camp
+    # August Tenerife camp — Garmin push mapping (preferred over itinerary-only labels)
+    camp = CAMP_PUSH_WORKOUTS.get(d)
+    if camp:
+        return (camp["type"], camp["label"], camp["dur_min"])
+
+    # Tenerife cycling camp (travel/rest; or itinerary display when no push entry)
     for day in TENERIFE_DAYS:
         if day["date"] == d:
             if day["intensity"] in ("travel", "rest"):
@@ -609,15 +614,15 @@ TENERIFE_DAYS: list[dict] = [
     {"day": 0,  "date": date(2026, 8, 13), "intensity": "travel", "label": "Travel — Arrive Tenerife",              "km": 0,   "elev_m": 0},
     {"day": 1,  "date": date(2026, 8, 14), "intensity": "easy",   "label": "Leg Openers — Coastal Loop South",      "km": 40,  "elev_m": 450},
     {"day": 2,  "date": date(2026, 8, 15), "intensity": "medium", "label": "Tamaimo Climb + Teno Loop",              "km": 65,  "elev_m": 1100},
-    {"day": 3,  "date": date(2026, 8, 16), "intensity": "hard",   "label": "Teide from the West — TF-38 Ascent",    "km": 90,  "elev_m": 2100},
+    {"day": 3,  "date": date(2026, 8, 16), "intensity": "medium", "label": "Chío Recon — TF-38 Lower Slopes",       "km": 55,  "elev_m": 950},
     {"day": 4,  "date": date(2026, 8, 17), "intensity": "easy",   "label": "Active Recovery — Harbour Spin",        "km": 30,  "elev_m": 300},
-    {"day": 5,  "date": date(2026, 8, 18), "intensity": "hard",   "label": "Masca + North Coast Grand Tour",        "km": 105, "elev_m": 2200},
+    {"day": 5,  "date": date(2026, 8, 18), "intensity": "medium", "label": "Tamaimo + North Coast — No Masca",     "km": 80,  "elev_m": 1400},
     {"day": 6,  "date": date(2026, 8, 19), "intensity": "easy",   "label": "Banana Plantations & Alcalá Coffee",   "km": 45,  "elev_m": 500},
     {"day": 7,  "date": date(2026, 8, 20), "intensity": "rest",   "label": "Full Rest — Explore Los Gigantes",      "km": 0,   "elev_m": 0},
     {"day": 8,  "date": date(2026, 8, 21), "intensity": "easy",   "label": "Legs Back — Coastal Ramble",            "km": 50,  "elev_m": 600},
-    {"day": 9,  "date": date(2026, 8, 22), "intensity": "hard",   "label": "Teide Full Loop — West Up, South Down", "km": 115, "elev_m": 2400},
+    {"day": 9,  "date": date(2026, 8, 22), "intensity": "hard",   "label": "Teide O&B — Chío to Cable Car",        "km": 115, "elev_m": 2400},
     {"day": 10, "date": date(2026, 8, 23), "intensity": "easy",   "label": "Recovery Spin — Cliffs Views Route",   "km": 35,  "elev_m": 350},
-    {"day": 11, "date": date(2026, 8, 24), "intensity": "hard",   "label": "Masca + Teide Double — Camp Finale",   "km": 130, "elev_m": 3200},
+    {"day": 11, "date": date(2026, 8, 24), "intensity": "hard",   "label": "Tamaimo + Coastal Finale",              "km": 95,  "elev_m": 1500},
     {"day": 12, "date": date(2026, 8, 25), "intensity": "easy",   "label": "The Farewell Loop — Cliffs & Coffee",  "km": 40,  "elev_m": 400},
     {"day": 0,  "date": date(2026, 8, 26), "intensity": "rest",   "label": "Rest Before Flight",                    "km": 0,   "elev_m": 0},
     {"day": 0,  "date": date(2026, 8, 27), "intensity": "travel", "label": "Travel — Home",                         "km": 0,   "elev_m": 0},
@@ -679,6 +684,31 @@ CAMP_GRID_WORKOUTS: dict[date, dict] = {
     date(2026, 8, 29): {"type": "bike",  "label": "Easy Spin",     "dur_min": 30},
     date(2026, 8, 30): {"type": "bike",  "label": "Recovery Spin", "dur_min": 45},
 }
+
+# Structured Garmin push for August Tenerife camp rides (travel/rest omitted).
+# Durations from itinerary km ≈ 19 km/h, rounded to 15 min (floor 45).
+# Labels are short "Camp …" names so workouts.NAME_PREFIXES can match them.
+CAMP_PUSH_WORKOUTS: dict[date, dict] = {
+    date(2026, 8, 14): {"type": "bike", "label": "Camp Leg Openers",      "dur_min": 120},  # 40 km easy
+    date(2026, 8, 15): {"type": "long", "label": "Camp Tamaimo Teno",     "dur_min": 210},  # 65 km
+    date(2026, 8, 16): {"type": "long", "label": "Camp Chio Recon",       "dur_min": 180},  # 55 km
+    date(2026, 8, 17): {"type": "bike", "label": "Camp Harbour Recovery", "dur_min": 90},   # 30 km easy
+    date(2026, 8, 18): {"type": "long", "label": "Camp Tamaimo North",    "dur_min": 255},  # 80 km
+    date(2026, 8, 19): {"type": "bike", "label": "Camp Coastal Easy",     "dur_min": 150},  # 45 km
+    date(2026, 8, 21): {"type": "bike", "label": "Camp Coastal Ramble",   "dur_min": 150},  # 50 km
+    date(2026, 8, 22): {"type": "long", "label": "Camp Teide",            "dur_min": 360},  # 115 km
+    date(2026, 8, 23): {"type": "bike", "label": "Camp Cliffs Recovery",  "dur_min": 105},  # 35 km
+    date(2026, 8, 24): {"type": "long", "label": "Camp Tamaimo Finale",   "dur_min": 300},  # 95 km
+    date(2026, 8, 25): {"type": "bike", "label": "Camp Farewell",         "dur_min": 120},  # 40 km
+}
+
+
+def camp_workout_for_date(d: date) -> tuple[str, str, int] | None:
+    """Return (type, label, dur_min) for an August Tenerife Garmin push day, else None."""
+    w = CAMP_PUSH_WORKOUTS.get(d)
+    if not w:
+        return None
+    return w["type"], w["label"], w["dur_min"]
 
 # ── Ghent–Amsterdam Event Prep ────────────────────────────────────────────────
 # Recovery → soft Z2 → sweetspot → back-to-back simulation → taper.

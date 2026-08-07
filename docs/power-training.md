@@ -149,14 +149,25 @@ regardless of power — it complements Pw:HR decoupling for aerobic fitness.
 ## Garmin workouts (%FTP)
 
 Structured cycling workouts uploaded via `endurance-coach --workouts` or
-`/sync-workouts` use **%FTP power targets** on quality and endurance builders
-when:
+`/sync-workouts` use **absolute watt ranges** (from %FTP × measured FTP) on
+quality and endurance builders when:
 
 - `power_meter_active()` is true, and
 - a measured `ftp_w` exists in `ftp_tests`.
 
 Z1 recovery builders stay HR/RPE only. Interval and endurance steps include an
 HR backstop in the workout description for days when you ride without the meter.
+
+**Future-only re-sync:** `--workouts` and `/sync-workouts` only unschedule and
+re-schedule from **today** onward (`--from-date YYYY-MM-DD` to override). Past
+calendar entries are left alone; library templates are rebuilt so new schedules
+get current watt targets.
+
+**Coverage:** remaining charity/event-prep/position-bridge days, **August
+Tenerife** camp rides (`CAMP_PUSH_WORKOUTS`), and **Haute Route** bike + KB/Gym
+strength through **31 Dec 2026**. Christmas Tenerife structured days in the HR
+plan are pushed; KB + Trunk / Gym days upload as fitness-equipment kettlebell
+workouts (not Recovery Spin).
 
 Per-date overrides from coach chat, HRV modulation, or FTP retest use the same
 `ftp_w` when pushing a single day to Garmin (`/apply-plan-change`).

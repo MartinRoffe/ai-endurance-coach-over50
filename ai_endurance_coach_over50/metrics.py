@@ -73,6 +73,7 @@ class DailyMetrics:
     calorie_goal_adjusted: Optional[float] = None # Garmin intake GOAL adjusted for activity (NOT expenditure; real TDEE computed in energy.py)
     carbs_consumed: Optional[float] = None        # grams of carbohydrate logged
     protein_consumed: Optional[float] = None      # grams of protein logged
+    fat_consumed: Optional[float] = None          # grams of fat logged (Garmin food log)
     # Fluid intake (Garmin hydration log — not bioimpedance body-water %)
     water_intake_ml: Optional[float] = None       # ml logged in Garmin Connect / watch
     water_goal_ml: Optional[float] = None         # Garmin daily hydration goal (ml)
@@ -361,6 +362,9 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
             protein = content.get("protein") or content.get("totalProtein")
             if protein is not None:
                 m.protein_consumed = float(protein)
+            fat = content.get("fat") or content.get("totalFat") or content.get("fats")
+            if fat is not None:
+                m.fat_consumed = float(fat)
     except Exception as e:
         logger.debug("Nutrition fetch failed: %s", e)
 

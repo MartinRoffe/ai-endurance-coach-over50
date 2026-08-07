@@ -190,10 +190,30 @@ LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
 
 # Deficits are suspended (maintenance) in these date windows: the final big
 # training weeks into the charity ride carry too much load for a 50+ athlete
-# to absorb in a deficit. Block A cut resumes in the position bridge (15 Sep).
+# to absorb in a deficit. Base Cut (hard) starts in the position bridge (15 Sep).
 MAINTENANCE_WINDOWS: list[tuple[date, date]] = [
     (date(2026, 7, 27), date(2026, 9, 14)),
 ]
+
+# Sep–Dec Base Cut → 80–81 kg by Christmas Tenerife camp (camp windows suspend).
+CUT_TARGET_KG = 80.5
+CUT_TARGET_DEADLINE = date(2026, 12, 21)  # Christmas camp start
+CUT_PHASES: list[tuple[date, date, str]] = [
+    (date(2026, 9, 15), date(2026, 11, 22), "hard"),  # bridge + Base wks 1–8
+    (date(2026, 11, 23), date(2026, 12, 20), "ease"),  # Base wks 9–11 soft landing
+]
+
+# Harder deficits during the front-loaded cut; ease ≈ INTAKE_DEFICIT_BY_TIER.
+CUT_DEFICIT_BY_PHASE: dict[str, dict[str, int]] = {
+    "hard": {
+        "rest": 550,
+        "training": 450,
+        "ruck": 300,
+        "long": 100,
+        "recovery": 550,
+    },
+    "ease": dict(INTAKE_DEFICIT_BY_TIER),
+}
 
 
 def in_maintenance_window(d: Optional[date]) -> bool:
@@ -201,6 +221,30 @@ def in_maintenance_window(d: Optional[date]) -> bool:
     if d is None:
         return False
     return any(start <= d <= end for start, end in MAINTENANCE_WINDOWS)
+
+
+def active_cut_phase(d: Optional[date]) -> Optional[str]:
+    """Return ``hard`` / ``ease`` when ``d`` falls in a cut phase, else None."""
+    if d is None:
+        return None
+    for start, end, name in CUT_PHASES:
+        if start <= d <= end:
+            return name
+    return None
+
+
+def deficit_for_tier(tier_key: str, ref_date: Optional[date] = None) -> int:
+    """Planned kcal below stable TDEE for this day type and date.
+
+    Precedence for the deficit *value* (camp still short-circuits earlier in
+    ``resolve_calorie_target``): maintenance → 0; cut phase map; else default.
+    """
+    if in_maintenance_window(ref_date):
+        return 0
+    phase = active_cut_phase(ref_date)
+    if phase:
+        return CUT_DEFICIT_BY_PHASE[phase].get(tier_key, 300)
+    return INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
 
 
 def intake_target_kcal(
@@ -213,7 +257,7 @@ def intake_target_kcal(
     """Prescribed intake (kcal) from calibrated TDEE and day type.
 
     Returns None when ``tdee`` is unknown (caller should fall back to static tiers).
-    ``ref_date`` enables the maintenance windows; None keeps the plain deficit.
+    ``ref_date`` enables maintenance windows and cut-phase deficit maps.
     """
     if tdee is None:
         return None
@@ -223,7 +267,7 @@ def intake_target_kcal(
         return None
     if burn <= 0:
         return None
-    deficit = 0 if in_maintenance_window(ref_date) else INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
+    deficit = deficit_for_tier(tier_key, ref_date)
     target = round(burn) - deficit
     if tier_key == "long" and long_ride_extra_min > 0:
         target += round(LONG_RIDE_EXTRA_KCAL_PER_HOUR * (long_ride_extra_min / 60.0))

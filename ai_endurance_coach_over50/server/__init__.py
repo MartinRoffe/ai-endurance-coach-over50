@@ -154,9 +154,11 @@ from .context import (  # noqa: F401
     _apply_overrides,
     _body_context,
     _build_calendar_ctx,
+    _cut_context,
     build_event_tracker,
     build_nutrition_today,
     build_trends_context,
+    cut_status_line,
     _build_context,
     _build_preplan_weeks,
     _calendar_weeks,
@@ -266,9 +268,12 @@ def send_email_now():
 
 @app.get("/sync-workouts", response_class=RedirectResponse)
 async def sync_workouts_now():
-    """Re-upload and re-schedule all plan cycling workouts to Garmin, applying any
-    coach plan overrides. Manual trigger only (button / CLI). Outward-facing — mutates
-    the athlete's Garmin Connect calendar."""
+    """Re-upload and re-schedule plan workouts to Garmin from today onward.
+
+    Past calendar entries are left alone. Manual trigger only (button / CLI).
+    Mutates the athlete's Garmin Connect calendar.
+    """
+    from datetime import date as _date
     from fastapi.concurrency import run_in_threadpool
     from ..workouts import upload_and_schedule
 
@@ -279,7 +284,9 @@ async def sync_workouts_now():
 
     try:
         api = get_api(email_addr, password)
-        summary = await run_in_threadpool(upload_and_schedule, api)
+        summary = await run_in_threadpool(
+            upload_and_schedule, api, False, _date.today()
+        )
         n = summary.get("scheduled", 0)
         from ..history import set_cached_text
         set_cached_text("workouts_stale_ftp", "")
@@ -1317,6 +1324,7 @@ async def nutrition_plan(request: Request):
 
     m = load(today) or DailyMetrics(date=today)
     nutrition_today = build_nutrition_today(m, today)
+    cut_line = cut_status_line(today)
 
     return TEMPLATES.TemplateResponse(
         request=request,
@@ -1330,6 +1338,7 @@ async def nutrition_plan(request: Request):
             "sunday_fuel": sunday_fuel,
             "sunday_ride_min": sunday_ride_min,
             "nutrition_today": nutrition_today,
+            "cut_line": cut_line,
             "cal_today":     int(m.calories_consumed)    if m.calories_consumed is not None    else None,
             "tdee_today":    int(round(_tdee_today)) if _tdee_today else None,
             "carbs_today":   round(m.carbs_consumed)     if m.carbs_consumed is not None       else None,
@@ -1338,6 +1347,17 @@ async def nutrition_plan(request: Request):
             "supplement_disclaimer": _SUPPLEMENT_DISCLAIMER,
             "protein_target": protein_target_g(),
         },
+    )
+
+
+@app.get("/nutrition/cut", response_class=HTMLResponse)
+async def nutrition_cut(request: Request):
+    today = _today()
+    cut = _cut_context(today)
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="cut.html",
+        context={"cut": cut, "today": today.isoformat()},
     )
 
 

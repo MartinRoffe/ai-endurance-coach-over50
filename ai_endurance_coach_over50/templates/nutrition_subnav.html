@@ -1,4 +1,4 @@
-{# nutrition_section: overview | fuelling | sunday (meals/recipes pages reuse these) #}
+{# nutrition_section: overview | fuelling | sunday | cut (meals/recipes pages reuse these) #}
 <style>
   .nut-subnav {
     background: rgba(17, 17, 20, 0.92);
@@ -80,5 +80,6 @@
     <a href="/nutrition" class="{% if nutrition_section == 'overview' %}active{% endif %}">Today</a>
     <a href="/nutrition/fuelling" class="{% if nutrition_section == 'fuelling' %}active{% endif %}">Ride Fuel</a>
     <a href="/nutrition/sunday" class="{% if nutrition_section in ('sunday', 'shopping', 'lidl_shopping') %}active{% endif %}">Sunday Cook + Shop</a>
+    <a href="/nutrition/cut" class="{% if nutrition_section == 'cut' %}active{% endif %}">Cut</a>
   </div>
 </nav>

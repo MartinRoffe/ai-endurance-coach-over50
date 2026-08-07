@@ -130,10 +130,21 @@ def test_nutrition_coach_context_uk_day_lists_meals():
 
 
 def test_camp_day_profile_hard_teide():
-    prof = camp_day_profile(date(2026, 8, 16))
+    prof = camp_day_profile(date(2026, 8, 22))  # Day 9 Teide O&B
     assert prof is not None
     assert prof["hard_day"] is True
     assert "Teide" in (prof.get("session_label") or "")
+
+
+def test_camp_day_3_chio_is_medium():
+    intensity, label = camp_day_intensity(date(2026, 8, 16))
+    assert intensity == "medium"
+    assert label is not None and "Chío" in label
+    prof = camp_day_profile(date(2026, 8, 16))
+    assert prof is not None
+    # Nutrition treats medium as a camp hard-fuelling day (_CAMP_HARD_INTENSITIES).
+    assert prof["hard_day"] is True
+    assert "Teide" not in (prof.get("session_label") or "")
 
 
 def test_camp_day_intensity_rest_day():

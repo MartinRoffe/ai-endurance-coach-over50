@@ -267,7 +267,16 @@ def main() -> None:
         "--workouts",
         action="store_true",
         help="Upload training plan bike workouts to Garmin Connect and schedule them "
-             "(applies any coach plan overrides; use --dry-run to preview)",
+             "(applies any coach plan overrides; use --dry-run to preview; "
+             "only dates on/after today unless --from-date is set)",
+    )
+    parser.add_argument(
+        "--from-date",
+        type=str,
+        metavar="YYYY-MM-DD",
+        default=None,
+        help="With --workouts: only unschedule/re-schedule from this date onward "
+             "(default: today). Past calendar entries are left alone.",
     )
     parser.add_argument(
         "--withings-sync",
@@ -313,18 +322,27 @@ def main() -> None:
         return
 
     if args.workouts:
+        from datetime import date as _date
         from .workouts import upload_and_schedule
         email_addr = os.getenv("GARMIN_EMAIL")
         password_val = os.getenv("GARMIN_PASSWORD")
         if not email_addr or not password_val:
             console.print("[red]GARMIN_EMAIL and GARMIN_PASSWORD must be set[/red]")
             sys.exit(1)
+        from_d = None
+        if getattr(args, "from_date", None):
+            try:
+                from_d = _date.fromisoformat(args.from_date)
+            except ValueError:
+                console.print(f"[red]Invalid --from-date: {args.from_date}[/red]")
+                sys.exit(1)
+        else:
+            from_d = _date.today()
         if args.dry_run:
-            from .workouts import upload_and_schedule
-            upload_and_schedule(None, dry_run=True)
+            upload_and_schedule(None, dry_run=True, from_date=from_d)
         else:
             api = get_api(email_addr, password_val)
-            upload_and_schedule(api, dry_run=False)
+            upload_and_schedule(api, dry_run=False, from_date=from_d)
         return
 
     email = os.getenv("GARMIN_EMAIL")

@@ -36,7 +36,7 @@ def _work_steps(workout):
 def test_sweetspot_uses_power_lap_when_ftp_known():
     _activate_power_meter(250)
     work = _work_steps(_sweetspot_ride(90))[1]
-    assert work.targetType["workoutTargetTypeKey"] == "power.lap"
+    assert work.targetType["workoutTargetTypeKey"] == "power.zone"
     assert work.targetValueOne == round(250 * 0.88)
     assert work.targetValueTwo == round(250 * 0.93)
 
@@ -53,7 +53,7 @@ def test_over_unders_power_targets():
     set1 = steps[1].workoutSteps
     over, under = set1[0], set1[1]
     assert steps[1].numberOfIterations == 4
-    assert over.targetType["workoutTargetTypeKey"] == "power.lap"
+    assert over.targetType["workoutTargetTypeKey"] == "power.zone"
     assert over.targetValueOne == round(250 * 1.05)
     assert under.targetValueOne == round(250 * 0.95)
     # second set (after the 5m recovery) mirrors the first
@@ -65,7 +65,7 @@ def test_over_unders_power_targets():
 def test_threshold_ride_power_targets():
     _activate_power_meter(250)
     work = _work_steps(_threshold_ride(90))[1]
-    assert work.targetType["workoutTargetTypeKey"] == "power.lap"
+    assert work.targetType["workoutTargetTypeKey"] == "power.zone"
     assert work.targetValueOne == round(250 * 0.95)
     assert work.targetValueTwo == round(250 * 1.00)
 
@@ -73,7 +73,7 @@ def test_threshold_ride_power_targets():
 def test_hill_repeats_power_targets():
     _activate_power_meter(250)
     work = _work_steps(_hill_repeats(60))[1]
-    assert work.targetType["workoutTargetTypeKey"] == "power.lap"
+    assert work.targetType["workoutTargetTypeKey"] == "power.zone"
     assert work.targetValueOne == round(250 * 1.06)
     assert work.targetValueTwo == round(250 * 1.20)
 
@@ -81,7 +81,7 @@ def test_hill_repeats_power_targets():
 def test_endurance_power_with_hr_backstop_description():
     _activate_power_meter(250)
     work = _work_steps(_z2_endurance(90))[1]
-    assert work.targetType["workoutTargetTypeKey"] == "power.lap"
+    assert work.targetType["workoutTargetTypeKey"] == "power.zone"
     assert work.targetValueOne == round(250 * 0.56)
     assert work.targetValueTwo == round(250 * 0.75)
     assert "HR backstop" in (work.description or "")

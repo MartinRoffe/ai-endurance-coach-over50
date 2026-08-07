@@ -2,9 +2,9 @@
 
 **Nav:** top-level **Nutrition** tab.
 
-Sticky subnav primaries: **Today** · **Sunday Prep** · **Shopping**.
+Sticky subnav primaries: **Today** · **Ride Fuel** · **Sunday Prep** · **Cut**.
 
-Secondary (More): **Fuelling** · **This week** (meal week-viewer).
+Secondary (More): **This week** (meal week-viewer) via demoted links.
 
 Legacy recipe URLs (`/nutrition/recipes*`) stay for deep links from Sunday Prep
 components; they are not primary tabs.
@@ -35,16 +35,27 @@ Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
 Three distinct numbers appear across Nutrition and Body:
 
 - **Burn (TDEE)** — today's estimated expenditure: Katch-McArdle BMR + Garmin
-  active calories + 28-day weight-trend calibration. Shown on the Body tab as
-  "TDEE Today". It is *incomplete until end of day*, so mid-day "vs burn"
+  active calories + optional 28-day weight-trend calibration (applied only when
+  confidence is **high** — typically ≥70% intake coverage). Shown on the Body
+  tab as "TDEE Today". It is *incomplete until end of day*, so mid-day "vs burn"
   comparisons are informational only.
 - **Intake target** — what you should eat: **stable TDEE** (7-day average of
-  calibrated daily burn, preferring days with real active-calorie data) minus a
-  session-type deficit — rest/recovery −350, training −250, ruck −150, long
-  ride −50 (plus ~175 kcal per ride-hour beyond 2 h) — floored at 1,600 kcal.
+  calibrated-or-model daily burn, preferring days with real active-calorie data)
+  minus a session-type deficit. During the **Base Cut** (15 Sep–20 Dec 2026)
+  hard deficits are rest/recovery −550, training −450, ruck −300, long −100;
+  ease phase (23 Nov–20 Dec) uses rest −350 / training −250 / ruck −150 /
+  long −50. Floored at 1,600 kcal; long rides add ~175 kcal per hour beyond 2 h.
   Computed by `resolve_calorie_target()`; Tenerife camp windows suspend the
-  deficit entirely.
+  UK deficit entirely. See **Cut** (`/nutrition/cut`) for pace vs 80–81 kg.
 - **Logged** — what the Garmin food diary says you ate.
+
+**Base Cut (Sep–Dec 2026):** dedicated page at `/nutrition/cut` — target **80.5 kg**
+(band 80–81) by Christmas camp (21 Dec). Hard cut 15 Sep–22 Nov, ease
+23 Nov–20 Dec, then camp fueling. Protein lean-mass floor is locked at cut
+start. The Cut page also shows **today’s Garmin logged kcal vs intake target**
+(gap / room left); the full meal plan stays on Nutrition Today. After changing
+deficit maps, clear stale AI targets:
+`DELETE FROM nutrition_targets WHERE session_key LIKE '%_v2_%'`.
 
 Prescribed meals in `nutrition_plan.py` are portioned so each day type's meal
 kcal sum lands within ~100 kcal of its target at the design TDEE (~2,000).
@@ -52,9 +63,10 @@ Flexible carb/fat slots (rice, snacks, dessert starch, on-bike fuel) scale
 further when stable TDEE drifts — protein anchors stay fixed. The Today page
 flags any gap portions cannot close without cutting protein.
 
-**Calibration confidence** (Body tab): `high` / `limited` / `inactive` reflects
-intake coverage, weigh-ins, body-comp freshness, and whether the correction is
-near the ±25% clamp.
+**Calibration confidence** (Body tab + Cut page): `high` / `limited` / `inactive`
+reflects intake coverage, weigh-ins, body-comp freshness, and whether the
+correction is near the ±25% clamp. Low confidence → model TDEE only (no large
+negative offset), so planned deficits actually bite.
 
 **Camp mode** (Tenerife windows): UK batch meals and weekday "nothing on the bike"
 rules are suspended. Nutrition Today shows camp fuelling from actual ride

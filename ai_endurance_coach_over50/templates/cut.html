@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+<title>Base Cut — 80–81 kg</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f0c;
+    --surface: #161713;
+    --surface2: #1d1f1a;
+    --border: #2a2d25;
+    --accent: #c8f135;
+    --accent2: #f1a035;
+    --accent3: #35c8f1;
+    --text: #e8ead4;
+    --muted: #7a7d6a;
+    --warn: #f14a35;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; min-height:100vh; }
+  a { color:var(--accent); }
+  .hero { position:relative; padding:28px 40px 20px; overflow:hidden; border-bottom:1px solid var(--border); }
+  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:400px; height:400px; background:radial-gradient(circle,rgba(241,160,53,0.07) 0%,transparent 70%); pointer-events:none; }
+  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent2); text-transform:uppercase; margin-bottom:10px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(32px,5vw,48px); line-height:0.95; letter-spacing:0.02em; margin-bottom:8px; }
+  .hero h1 span { color:var(--accent2); }
+  .hero-sub { font-size:13px; color:var(--muted); max-width:560px; }
+  .container { max-width:980px; margin:0 auto; padding:0 24px; }
+  section { padding:28px 0; border-bottom:1px solid var(--border); }
+  section:last-child { border-bottom:none; }
+  .section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  .stat-row { display:flex; flex-wrap:wrap; gap:18px 28px; }
+  .stat .lbl { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+  .stat .val { font-family:'Bebas Neue',sans-serif; font-size:36px; line-height:1; margin-top:4px; }
+  .stat .sub { font-size:12px; color:var(--muted); margin-top:4px; }
+  .pace-ahead { color:var(--accent); }
+  .pace-on_track { color:var(--accent3); }
+  .pace-behind { color:var(--warn); }
+  .timeline { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:720px) { .timeline { grid-template-columns:1fr 1fr; } }
+  .tl-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:14px 16px; }
+  .tl-card.active { border-color:var(--accent2); background:rgba(241,160,53,0.08); }
+  .tl-card .nm { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.03em; }
+  .tl-card .dt { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.06em; margin-top:4px; }
+  .tl-card.active .nm { color:var(--accent2); }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px 18px; }
+  .warn-banner { border-left:3px solid var(--warn); background:rgba(241,74,53,0.08); border:1px solid rgba(241,74,53,0.25); border-left-width:3px; border-radius:0 4px 4px 0; padding:12px 16px; margin-bottom:18px; font-size:13px; color:#f0b0a8; }
+  table.def { width:100%; border-collapse:collapse; font-size:13px; }
+  table.def th, table.def td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  table.def th { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); font-weight:400; }
+  table.def td.n { font-family:'DM Mono',monospace; }
+  .rules { list-style:none; }
+  .rules li { padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; color:#b0b39a; }
+  .rules li:last-child { border-bottom:none; }
+  .rules strong { color:var(--text); font-weight:500; }
+</style>
+</head>
+<body>
+
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'cut' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+
+<div class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">Base Cut · {{ cut.phase_label }}</div>
+    <h1>CUT TO <span>{{ cut.cut_band }} kg</span></h1>
+    <p class="hero-sub">15 Sep – 20 Dec 2026 · hold through Christmas Tenerife camp · race weight ~78 kg is later</p>
+  </div>
+</div>
+
+<div class="container">
+
+{% if cut.logging_warn %}
+<section style="padding-top:24px;border-bottom:none;padding-bottom:0">
+  <div class="warn-banner">
+    Log food daily — TDEE calibration confidence is
+    <strong style="color:var(--text)">{{ cut.calibration.level }}</strong>
+    {% if cut.calibration.coverage_pct is not none %}
+    (intake on {{ cut.calibration.coverage_pct }}% of days)
+    {% endif %}.
+    Targets use model burn until coverage ≥70% and confidence is high.
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <div class="section-label">Status</div>
+  <div class="stat-row">
+    <div class="stat">
+      <div class="lbl">Now</div>
+      <div class="val">{% if cut.weight_kg is not none %}{{ "%.1f"|format(cut.weight_kg) }}{% else %}—{% endif %}</div>
+      <div class="sub">kg</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Target</div>
+      <div class="val">{{ cut.cut_target_kg }}</div>
+      <div class="sub">band {{ cut.cut_band }} · by {{ cut.deadline_label }}</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Remaining</div>
+      <div class="val">{% if cut.remaining_kg is not none %}{{ "%.1f"|format(cut.remaining_kg) }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if cut.days_left is not none %}{{ cut.days_left }} days left{% endif %}</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Pace</div>
+      <div class="val {% if cut.pace %}pace-{{ cut.pace }}{% endif %}">
+        {% if cut.pace == 'ahead' %}Ahead
+        {% elif cut.pace == 'behind' %}Behind
+        {% elif cut.pace == 'on_track' %}On track
+        {% else %}—{% endif %}
+      </div>
+      <div class="sub">
+        {% if cut.required_kg_per_week is not none %}need {{ cut.required_kg_per_week }} kg/wk{% endif %}
+        {% if cut.actual_kg_per_week is not none %} · actual {{ cut.actual_kg_per_week }} kg/wk{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Phases</div>
+  <div class="timeline">
+    {% for t in cut.timeline %}
+    <div class="tl-card {% if t.active %}active{% endif %}">
+      <div class="nm">{{ t.label }}</div>
+      <div class="dt">{{ t.dates }}{% if t.active %} · today{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Today’s prescription</div>
+  <div class="panel">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="lbl">Intake target</div>
+        <div class="val" style="font-size:28px">{{ "{:,}".format(cut.targets.kcal) }}</div>
+        <div class="sub">kcal · {{ cut.targets.kcal_source }}
+          {% if cut.targets.calorie_tier %} · {{ cut.targets.calorie_tier }} tier{% endif %}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Planned deficit</div>
+        <div class="val" style="font-size:28px">
+          {% if cut.targets.maintenance or cut.phase_key == 'camp' %}0
+          {% elif cut.targets.planned_deficit is not none %}{{ cut.targets.planned_deficit }}
+          {% else %}—{% endif %}
+        </div>
+        <div class="sub">
+          {% if cut.stable_tdee %}stable TDEE {{ "{:,}".format(cut.stable_tdee) }}{% endif %}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Protein</div>
+        <div class="val" style="font-size:28px">{{ cut.targets.protein_low }}–{{ cut.targets.protein_high }}</div>
+        <div class="sub">g{% if cut.targets.protein_lean_locked %} · lean locked{% endif %}</div>
+      </div>
+    </div>
+    {% if cut.targets.session %}
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)">
+      Session: <strong style="color:var(--text)">{{ cut.targets.session.label }}</strong>
+      ({{ cut.targets.session.type }}, {{ cut.targets.session.dur_min }} min)
+    </p>
+    {% endif %}
+
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:12px">
+        <div class="lbl">Garmin logged today</div>
+        <a href="/nutrition" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Meals / log →</a>
+      </div>
+      {% if cut.logged_kcal is not none %}
+      <div class="stat-row">
+        <div class="stat">
+          <div class="lbl">Logged</div>
+          <div class="val" style="font-size:28px;color:var(--accent3)">{{ "{:,}".format(cut.logged_kcal) }}</div>
+          <div class="sub">kcal</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Target</div>
+          <div class="val" style="font-size:28px">{{ "{:,}".format(cut.targets.kcal) }}</div>
+          <div class="sub">kcal intake target</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Gap</div>
+          <div class="val" style="font-size:28px{% if cut.vs_target is not none and cut.vs_target < 0 %};color:var(--warn){% elif cut.vs_target is not none and cut.vs_target > 0 %};color:var(--accent){% endif %}">
+            {% if cut.vs_target is not none %}{% if cut.vs_target > 0 %}+{% endif %}{{ cut.vs_target }}{% else %}—{% endif %}
+          </div>
+          <div class="sub">{% if cut.vs_target is not none and cut.vs_target > 0 %}under target · room left{% elif cut.vs_target is not none and cut.vs_target < 0 %}over target{% elif cut.vs_target == 0 %}on target{% else %}—{% endif %}{% if cut.vs_tdee is not none %} · vs burn {{ "{:+d}".format(cut.vs_tdee) }}{% endif %}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="lbl" style="margin-bottom:10px">Macros logged</div>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="lbl">Protein</div>
+            <div class="val" style="font-size:28px;color:var(--accent3)">{% if cut.logged_protein is not none %}{{ cut.logged_protein }}{% else %}—{% endif %}</div>
+            <div class="sub">
+              g · floor {{ cut.targets.protein_low }}–{{ cut.targets.protein_high }}
+              {% if cut.protein_vs_floor is not none %}
+                {% if cut.protein_vs_floor >= 0 %} · +{{ cut.protein_vs_floor }} vs floor{% else %} · {{ cut.protein_vs_floor }} vs floor{% endif %}
+              {% endif %}
+              {% if cut.macro_kcal %} · {{ cut.macro_kcal.protein_pct }}% kcal{% endif %}
+            </div>
+          </div>
+          <div class="stat">
+            <div class="lbl">Carbs</div>
+            <div class="val" style="font-size:28px">{% if cut.logged_carbs is not none %}{{ cut.logged_carbs }}{% else %}—{% endif %}</div>
+            <div class="sub">g{% if cut.macro_kcal %} · {{ cut.macro_kcal.carbs_pct }}% kcal{% endif %}</div>
+          </div>
+          <div class="stat">
+            <div class="lbl">Fat{% if cut.logged_fat_estimated %} (est.){% endif %}</div>
+            <div class="val" style="font-size:28px">{% if cut.logged_fat is not none %}{{ cut.logged_fat }}{% else %}—{% endif %}</div>
+            <div class="sub">g{% if cut.macro_kcal %} · {{ cut.macro_kcal.fat_pct }}% kcal{% endif %}{% if cut.logged_fat_estimated %} · from kcal − P − C{% endif %}</div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <p style="font-size:13px;color:var(--muted);margin:0">Not logged — log food in Garmin Connect, then refresh the dashboard.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Deficit by day type (kcal below stable TDEE)</div>
+  <div class="panel" style="padding:0;overflow:hidden">
+    <table class="def">
+      <thead>
+        <tr>
+          <th>Tier</th>
+          <th>Hard (15 Sep–22 Nov)</th>
+          <th>Ease (23 Nov–20 Dec)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in cut.deficit_rows %}
+        <tr>
+          <td>{{ r.tier }}</td>
+          <td class="n">−{{ r.hard }}</td>
+          <td class="n">−{{ r.ease }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:10px;font-size:12px;color:var(--muted)">Long rides also add ~175 kcal per hour beyond 2 h. Floor 1,600 kcal. Camp overrides both columns.</p>
+</section>
+
+<section>
+  <div class="section-label">TDEE &amp; logging</div>
+  <div class="panel">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="lbl">Stable TDEE</div>
+        <div class="val" style="font-size:28px">{% if cut.stable_tdee %}{{ "{:,}".format(cut.stable_tdee) }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Confidence</div>
+        <div class="val" style="font-size:28px">{{ cut.calibration.level }}</div>
+        <div class="sub">{% if cut.calibration.applied %}correction applied{% else %}using model burn{% endif %}</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Intake coverage</div>
+        <div class="val" style="font-size:28px">{% if cut.calibration.coverage_pct is not none %}{{ cut.calibration.coverage_pct }}%{% else %}—{% endif %}</div>
+      </div>
+    </div>
+    {% if cut.calibration.reasons %}
+    <ul style="margin:14px 0 0;padding-left:18px;font-size:12px;color:var(--muted)">
+      {% for reason in cut.calibration.reasons %}
+      <li>{{ reason }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Rules</div>
+  <ul class="rules">
+    <li><strong>Fuel long days</strong> — near energy balance on long / back-to-back; never under-fuel the key endurance session.</li>
+    <li><strong>Don’t cut through camp</strong> — Christmas Tenerife (21 Dec–2 Jan) is energy availability first.</li>
+    <li><strong>Protein floor holds</strong> — lean-mass target locked at cut start so it does not drift down with the scale.</li>
+    <li><strong>Race weight ~78 kg is later</strong> — this block lands 80–81; finish toward 78 in 2027 Build after the volume camp.</li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>
