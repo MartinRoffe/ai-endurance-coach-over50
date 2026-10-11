@@ -234,7 +234,6 @@ def generate_advice(
         message = client.messages.create(
             model=MODEL_SMART,
             max_tokens=_ADVICE_MAX_TOKENS,
-            temperature=0,
             messages=[{"role": "user", "content": prompt}],
             system=system,
         )
