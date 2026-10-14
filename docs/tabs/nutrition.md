@@ -49,11 +49,10 @@ Three distinct numbers appear across Nutrition and Body:
   maintenance on long/quality days.
   - **Maintenance** (27 Jul–14 Sep 2026): deficit 0 every day (charity peak).
   - **Maintenance** (9 Oct 2026–3 Jan 2027): deficit 0 through the kidney-stone
-    return, Christmas camp, and the post-camp rest day. No replacement cut
-    target after that.
-  - **Base Cut hard** (15 Sep–22 Nov, outside the windows above): rest/recovery −550, training −450,
-    ruck −300, long −100.
-  - **Ease** (23 Nov–20 Dec, outside the windows above): rest −350 / training −250 / ruck −150 / long −50.
+    return, Christmas camp, and the post-camp rest day.
+  - **Ease** (4 Jan–31 Mar 2027, `CUT_PHASES` in `energy.py`): toward 80 kg by
+    31 Mar (`CUT_TARGET_KG`). Rest/recovery −350, training −250, ruck −150,
+    long −50. The old hard map (rest/recovery −550, training −450) is not scheduled.
   - Floor 1,600 kcal. Tenerife **camp** windows suspend the UK deficit.
   - Optional `session_work_kcal` (FTP × % targets) is context only — it does
     **not** change the crowned intake when stable TDEE exists.
