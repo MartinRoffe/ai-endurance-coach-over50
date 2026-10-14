@@ -18,7 +18,7 @@ The home Sunday ride grows by 15 minutes a week and reaches **3 hours on Sun 20 
 
 ## Weeks through Scotland
 
-Harder days are Tuesday and Saturday, except the Lakes weekend, which is the one deliberate pair of hard days, and the Scotland placeholder week.
+Harder days are Tuesday and Saturday. The Lakes weekend is one deliberate pair of hard days, and the Scotland placeholder week is the other break in the pattern. The BUSAR test is the weekend before the Lakes, so the lead-in week of 22 Feb stays light.
 
 ### Procedure
 
@@ -53,7 +53,7 @@ Ride easy to steady. One mid-camp rest day. Strength once, on Tue 29 Dec, which 
 
 ### Keswick build · 4 Jan – 21 Feb 2027
 
-Tuesday is the strength day: loaded step-up, rear-foot-elevated split squat, single-leg deadlift, slow step-downs. Saturday adds either minutes or kilograms. Poles from Sat 9 Jan.
+Tuesday is the strength day: loaded step-up, rear-foot-elevated split squat, single-leg deadlift, slow step-downs. Saturday adds either minutes or kilograms through Sat 13 Feb. Poles from Sat 9 Jan. Sat 20 and Sun 21 Feb are the BUSAR test, in place of that week's ruck and long ride. Monday to Friday of that week stay the Keswick pattern.
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -63,11 +63,11 @@ Tuesday is the strength day: loaded step-up, rear-foot-elevated split squat, sin
 | 25 Jan 2027 | Rest | Strength — heavy · 50m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | Hill ruck 12 kg · 1h30 | Long Ride (Easy) · 2h |
 | 1 Feb 2027 | Rest | Strength — heavy · 50m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | Hill ruck 12 kg · 1h45 | Long Ride (Easy) · 2h15 |
 | 8 Feb 2027 | Rest | Strength — heavy · 50m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | Hill ruck 14 kg · 1h45 | Long Ride (Easy) · 2h30 |
-| 15 Feb 2027 | Rest | Strength — heavy · 50m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | BUSAR test | BUSAR test |
+| 15 Feb 2027 | Rest | Strength — heavy · 50m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | BUSAR test — pack test, step-overs, trap-bar deadlift, burpee pull-ups | BUSAR test — pack test, step-overs, trap-bar deadlift, burpee pull-ups |
 
 ### Lakes · 27–28 Feb 2027, Keswick
 
-Tuesday that week is light. Default routes: Saturday high is Skiddaw by Jenkin Hill, lower is High Spy–Cat Bells. Sunday high is Blencathra by Blease Fell (leave Sharp Edge and Hall’s Fell). Lower is Walla Crag–Bleaberry Fell. Pick from the fell-top report that week. The following week is walks and short easy spins only.
+The BUSAR test is the weekend before (Sat 20 and Sun 21 Feb). The rest of this lead-in week stays light: Tuesday is a 25-minute circuit, and the other weekdays are short walks and an easy ride. Default routes: Saturday high is Skiddaw by Jenkin Hill, lower is High Spy–Cat Bells. Sunday high is Blencathra by Blease Fell (leave Sharp Edge and Hall’s Fell). Lower is Walla Crag–Bleaberry Fell. Pick from the fell-top report that week. The following week is walks and short easy spins only.
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -106,7 +106,7 @@ Three UK summer hill blocks, a weekend or a short week each. Date them later. Th
 
 **Strength — heavy** (from 4 Jan). Loaded step-up, rear-foot-elevated split squat, single-leg deadlift, slow 4-second step-downs, row or pull-up. Stop with reps in reserve.
 
-**Strength — light.** Same movements, one easy set. Used the Tuesday before the Lakes weekend.
+**Strength — light.** Same movements, one easy set. Used on Tue 23 Feb, in the light week between the BUSAR test and the Lakes weekend.
 
 **Z2 Easy.** Turbo or flat road. Conversational. Heart rate stays in the easy band you already use.
 
@@ -118,18 +118,20 @@ Three UK summer hill blocks, a weekend or a short week each. Date them later. Th
 
 **Keswick days.** See the route pair above. Times are the long option. Start lower on the hill if the wind or the surface says so.
 
+**BUSAR test.** Sat 20 and Sun 21 Feb. Pack test, step-overs, trap-bar deadlift, and burpee pull-ups. Not pushed to Garmin.
+
 ## What the app does with this
 
 - The dashboard and calendar read these weeks from `fitness_plan.py`.
 - Garmin receives **Z2 Easy** and **Long Ride (Easy)** only. The procedure week, hikes, rucks, and strength are not pushed. Teide labels are not pushed.
-- Intake is at maintenance from **9 Oct 2026 through 3 Jan 2027**. After that the Sep–Dec cut stays off. No new target weight is set here.
+- Intake is at maintenance from **9 Oct 2026 through 3 Jan 2027** (procedure, return, and Christmas camp). From **4 Jan through 31 Mar 2027** the ease deficit applies (`CUT_PHASES` in `energy.py`): rest and recovery −350 kcal, training −250, ruck −150, long −50. The target is **80 kg** by **31 Mar 2027** (`CUT_TARGET_KG`). The harder 450–550 kcal map is not used.
 - Gravel bike flag is off. Sunday stays a road or turbo ride until it is turned on.
-- BUSAR (below) is a later benchmark. Nothing is scheduled.
+- BUSAR is scheduled for **Sat 20 and Sun 21 Feb 2027** (below). It is not pushed to Garmin.
 - Haute Route Alpes 2028 stays the named goal. The week-by-week race block stays off until after the **3 Oct 2027** checkpoint.
 
-## BUSAR — later benchmark
+## BUSAR — 20–21 Feb 2027
 
-Not a date in this plan. Saturday walking, step-ups, and pull-ups (once a bar exists) point at it. The deadlift needs a trap bar or a gym.
+Scheduled on the weekend before the Lakes (27–28 Feb). Both days are the test. Monday to Friday of the test week stay the Keswick pattern. The week of 22 Feb, the Lakes lead-in, stays light. The deadlift needs a trap bar or a gym. Burpee pull-ups need a bar, and bodyweight pull-ups first.
 
 | Component | Standard |
 | --- | --- |
