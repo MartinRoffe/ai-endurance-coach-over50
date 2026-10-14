@@ -1,6 +1,10 @@
 """Sonnet climb analysis essays (Phase 2), cached in text_cache."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 from typing import Any, Optional
 
@@ -241,6 +245,7 @@ def generate_climb_essay(
         set_cached_text(key, text)
         return text
     except Exception:
+        logger.warning("generate_climb_essay failed", exc_info=True)
         text = _rule_based_climb_essay(climb, named)
         set_cached_text(key, text)
         return text

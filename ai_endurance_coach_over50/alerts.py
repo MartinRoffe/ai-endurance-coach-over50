@@ -1,6 +1,10 @@
 """Proactive fatigue alert checks."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import statistics
 from datetime import date, timedelta
 from typing import Optional
@@ -151,7 +155,7 @@ def check_fatigue_alerts(today: date) -> list[dict]:
                 ),
             })
     except Exception:
-        pass
+        logger.warning("check_fatigue_alerts failed", exc_info=True)
 
     # 6. WEIGHT_PERFORMANCE: weight loss appears to be costing performance —
     #    the race-weight discovery signal (falling FTP watts and/or a sustained
@@ -177,6 +181,6 @@ def check_fatigue_alerts(today: date) -> list[dict]:
                 ),
             })
     except Exception:
-        pass
+        logger.warning("check_fatigue_alerts failed", exc_info=True)
 
     return alerts

@@ -1,6 +1,10 @@
 """FTP tests, durability, BTB, monotony/strain, intensity distribution, fuelling logs."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date, timedelta
 from typing import Optional
 
@@ -145,7 +149,7 @@ def power_activation_status(days: int = 60) -> dict:
             ).fetchone()
             power_zones_n = row["n"] or 0
     except Exception:
-        pass
+        logger.exception("power_activation_status failed")
 
     steps = [
         {
@@ -390,6 +394,7 @@ def load_btb_summary() -> list[dict]:
             if (d2 - d1).days != 1:
                 continue
         except Exception:
+            logger.exception("load_btb_summary failed")
             continue
         n1 = btb_notes.get(day1["date"], {})
         n2 = btb_notes.get(day2["date"], {})
@@ -594,6 +599,7 @@ def ftp_retest_due(today: date, max_age_days: int = 42,
         try:
             last_d = date.fromisoformat(last["date"])
         except Exception:
+            logger.exception("ftp_retest_due failed")
             return None
         age = (today - last_d).days
         if age > max_age_days:
@@ -1307,6 +1313,6 @@ def enrich_climbs_with_names(activity_id: int, climbs: list[dict]) -> list[dict]
         try:
             save_climb_analyses(activity_id, climbs)
         except Exception:
-            pass
+            logger.exception("enrich_climbs_with_names failed")
     return climbs
 

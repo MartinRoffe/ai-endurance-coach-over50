@@ -10,6 +10,10 @@ the plan and a static number would drift out of date.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import html
 import re
 from collections import Counter
@@ -28,6 +32,7 @@ def current_weight_kg() -> float:
         w = latest_weight_kg()
         return w if w else _FALLBACK_WEIGHT_KG
     except Exception:
+        logger.warning("current_weight_kg failed", exc_info=True)
         return _FALLBACK_WEIGHT_KG
 
 
@@ -82,6 +87,7 @@ def _ensure_cut_lean_snapshot(lean: float | None) -> float | None:
         set_cached_text(_CUT_LEAN_CACHE_KEY, f"{lean:.2f}")
         return round(lean, 2)
     except Exception:
+        logger.warning("_ensure_cut_lean_snapshot failed", exc_info=True)
         return lean
 
 
@@ -96,6 +102,7 @@ def protein_target_g(ref_date: date | None = None) -> dict:
         from .history import latest_lean_mass_kg
         lean = latest_lean_mass_kg()
     except Exception:
+        logger.warning("protein_target_g failed", exc_info=True)
         lean = None
     locked = False
     ref = ref_date or date.today()
@@ -138,6 +145,7 @@ def _stable_tdee(days: int = 7) -> float | None:
     try:
         return stable_tdee_kcal(days)
     except Exception:
+        logger.warning("_stable_tdee failed", exc_info=True)
         return None
 
 
@@ -1265,7 +1273,7 @@ def _sunday_planned_ride_min(plan_start: date, ref: date) -> int | None:
         if stype in ("long", "bike") and dur >= 75:
             return dur
     except Exception:
-        pass
+        logger.warning("_sunday_planned_ride_min failed", exc_info=True)
     return None
 
 
@@ -1427,6 +1435,7 @@ def _optional_session_work_kcal(
         kj = planned_session_kj(ftp_w, lo, hi, dur)
         return ride_kcal_from_kj(kj) if kj else None
     except Exception:
+        logger.warning("_optional_session_work_kcal failed", exc_info=True)
         return None
 
 
@@ -1463,10 +1472,10 @@ def today_targets(ref_date: date | None = None) -> dict:
                     label = ov.get("label") or label
                     dur = ov.get("duration_min") or dur
             except Exception:
-                pass
+                logger.warning("today_targets failed", exc_info=True)
             session = {"type": stype, "label": label, "dur_min": dur}
     except Exception:
-        pass
+        logger.warning("today_targets failed", exc_info=True)
     stype = session["type"] if session else None
     label = session["label"] if session else None
     dur = session["dur_min"] if session else 0
@@ -1503,7 +1512,7 @@ def today_targets(ref_date: date | None = None) -> dict:
             from .analysis import _load_fuelling_plans, fuelling_session_key
             ai_fuel_plan = _load_fuelling_plans().get(fuelling_session_key(stype, dur))
         except Exception:
-            pass
+            logger.warning("today_targets failed", exc_info=True)
 
     phase = _intake_phase(target)
     why = format_intake_why(target, tier, session=session)

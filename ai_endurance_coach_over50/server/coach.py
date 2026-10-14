@@ -521,6 +521,7 @@ def _enrich_plan_proposal(raw: dict) -> dict:
         proposal["current_session_label"] = current_label
         proposal["current_duration_min"] = current_dur
     except Exception:
+        logger.warning("_enrich_plan_proposal failed", exc_info=True)
         proposal.setdefault("session_label", None)
         proposal.setdefault("current_session_label", None)
     return proposal
@@ -604,6 +605,7 @@ def _should_update_memo() -> bool:
         age_h = (_dt.utcnow() - _dt.fromisoformat(memo["updated_at"])).total_seconds() / 3600
         return age_h >= _MEMO_STALE_HOURS
     except Exception:
+        logger.warning("_should_update_memo failed", exc_info=True)
         return False
 
 
@@ -645,7 +647,7 @@ def _regenerate_coach_memory(api_key: str) -> None:
         )
         set_coach_memory(resp.content[0].text)
     except Exception:
-        pass
+        logger.warning("_regenerate_coach_memory failed", exc_info=True)
 
 
 def _maybe_update_memo_bg(api_key: str) -> None:

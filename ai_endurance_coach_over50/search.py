@@ -1,6 +1,10 @@
 """Global app search: keyword index over pages, Help, plan, nutrition, live data."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -289,7 +293,7 @@ def _plan() -> list[SearchHit]:
                 )
             )
     except Exception:
-        pass
+        logger.warning("_plan failed", exc_info=True)
 
     return out
 
@@ -692,6 +696,7 @@ def _live(q: str, limit: int = 15) -> list[SearchHit]:
         from .history.db import _conn
         from .analysis.db import _ensure_analysis_schema
     except Exception:
+        logger.warning("_live failed", exc_info=True)
         return out
 
     try:
@@ -710,7 +715,7 @@ def _live(q: str, limit: int = 15) -> list[SearchHit]:
                 )
             )
     except Exception:
-        pass
+        logger.warning("_live failed", exc_info=True)
 
     try:
         for a in load_recent_activities(90):
@@ -736,7 +741,7 @@ def _live(q: str, limit: int = 15) -> list[SearchHit]:
                 )
             )
     except Exception:
-        pass
+        logger.warning("_live failed", exc_info=True)
 
     # Analysis text substring (lightweight)
     try:
@@ -778,7 +783,7 @@ def _live(q: str, limit: int = 15) -> list[SearchHit]:
                 )
             )
     except Exception:
-        pass
+        logger.warning("_live failed", exc_info=True)
 
     out.sort(key=lambda h: (-h.score, h.title.lower()))
     return out[:limit]

@@ -119,6 +119,14 @@
     </div>
   </div>
 
+  {% if stale_data_notices %}
+  {% for note in stale_data_notices %}
+  <div style="background:rgba(250,204,21,0.10);border-left:3px solid #facc15;padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px">
+    <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">⚠ {{ note.message }}</span>
+  </div>
+  {% endfor %}
+  {% endif %}
+
   {# HIGH severity fatigue alerts only #}
   {% if fatigue_alerts %}
   {% for alert in fatigue_alerts if alert.severity == 'HIGH' %}

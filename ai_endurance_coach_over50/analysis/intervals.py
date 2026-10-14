@@ -1,6 +1,10 @@
 """Lap-split mining: interval reps, FTP efforts, HR/power durability."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from typing import Any, Optional
 
 
@@ -252,6 +256,7 @@ def _extract_interval_data(api: Any, activity_id: int, session_label: str,
             reps.append(rep)
         return {"interval_reps": reps} if reps else {}
     except Exception:
+        logger.warning("_extract_interval_data failed", exc_info=True)
         return {}
 
 
@@ -274,6 +279,7 @@ def _ftp_effort_from_summary(api: Any, activity_id: int) -> dict:
             result["ftp_effort_max_hr"] = round(float(max_hr))
         return result
     except Exception:
+        logger.warning("_ftp_effort_from_summary failed", exc_info=True)
         return {}
 
 
@@ -367,6 +373,7 @@ def _extract_ftp_effort(api: Any, activity_id: int) -> dict:
 
         return _ftp_effort_from_summary(api, activity_id)
     except Exception:
+        logger.warning("_extract_ftp_effort failed", exc_info=True)
         return {}
 
 
@@ -398,6 +405,7 @@ def _extract_ramp_ftp(api: Any, activity_id: int) -> dict:
             result["ftp_effort_max_hr"] = round(best_lap["maxHR"])
         return result
     except Exception:
+        logger.warning("_extract_ramp_ftp failed", exc_info=True)
         return {}
 
 
@@ -459,6 +467,7 @@ def _extract_durability(api: Any, activity: dict) -> Optional[dict]:
             "n_laps": len(hr_laps),
         }
     except Exception:
+        logger.warning("_extract_durability failed", exc_info=True)
         return None
 
 
@@ -527,4 +536,5 @@ def _extract_power_durability(api: Any, activity: dict) -> Optional[dict]:
             "n_laps": len(power_laps),
         }
     except Exception:
+        logger.warning("_extract_power_durability failed", exc_info=True)
         return None

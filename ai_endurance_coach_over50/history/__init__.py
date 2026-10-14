@@ -166,3 +166,8 @@ from .training_store import (  # noqa: F401
     weekly_monotony_strain,
     weekly_tss,
 )
+from .sync_status import (  # noqa: F401
+    freshness_warnings,
+    record_sync,
+    sync_garmin_metrics,
+)

@@ -1,6 +1,10 @@
 """Haute Route stage plans, charity-day plans, peak-sim decoupling flags."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -89,7 +93,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
                 plans[stage["day"]] = _json.loads(cached)
                 continue
             except Exception:
-                pass
+                logger.exception("generate_hr_stage_plans failed")
         missing.append(stage)
 
     if not missing:
@@ -118,7 +122,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
         if tests and tests[-1].get("ftp_hr"):
             lthr_note = f"LTHR ≈ {tests[-1]['ftp_hr']} bpm (from FTP test {tests[-1]['date']})"
     except Exception:
-        pass
+        logger.exception("generate_hr_stage_plans failed")
 
     if has_power:
         measured = latest_measured_wkg()
@@ -156,7 +160,7 @@ def generate_hr_stage_plans() -> dict[int, dict]:
             if wkg:
                 ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only."
         except Exception:
-            pass
+            logger.exception("generate_hr_stage_plans failed")
         athlete_note += ftp_note
         json_schema = (
             '{"pacing": "2-3 sentence stage pacing strategy", '
@@ -249,7 +253,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
                 plans[cd["day"]] = _json.loads(cached)
                 continue
             except Exception:
-                pass
+                logger.exception("generate_charity_day_plans failed")
         missing.append(cd)
 
     if not missing:
@@ -276,7 +280,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
         if tests and tests[-1].get("ftp_hr"):
             lthr_note = f"LTHR ≈ {tests[-1]['ftp_hr']} bpm (from FTP test {tests[-1]['date']})"
     except Exception:
-        pass
+        logger.exception("generate_charity_day_plans failed")
 
     has_power = power_meter_active()
     if has_power:
@@ -306,7 +310,7 @@ def generate_charity_day_plans() -> dict[int, dict]:
             if wkg:
                 ftp_note = f" Estimated FTP ≈ {wkg['est_ftp_w']} W ({wkg['wkg']} W/kg) — estimate only, no power meter."
         except Exception:
-            pass
+            logger.exception("generate_charity_day_plans failed")
         athlete_line = f"Athlete: male, 50+, HR-based training (no power meter). {lthr_note}.{ftp_note}"
         json_schema = (
             '{"pacing": "3-4 sentence pacing strategy for the day", '

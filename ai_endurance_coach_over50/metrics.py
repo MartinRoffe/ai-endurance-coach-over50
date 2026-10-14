@@ -194,7 +194,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
             if v is not None:
                 setattr(m, dest, float(v))
     except Exception as e:
-        logger.debug("Sleep fetch failed: %s", e)
+        logger.warning("Sleep fetch failed: %s", e)
 
     # --- HRV ---
     try:
@@ -207,7 +207,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
         m.hrv_weekly_avg = float(weekly) if weekly is not None else None
         m.hrv_status = summary.get("status")
     except Exception as e:
-        logger.debug("HRV fetch failed: %s", e)
+        logger.warning("HRV fetch failed: %s", e)
 
     # --- Body Battery ---
     try:
@@ -235,7 +235,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                 else:
                     m.body_battery_morning = max(v for _, v in all_readings)
     except Exception as e:
-        logger.debug("Body Battery fetch failed: %s", e)
+        logger.warning("Body Battery fetch failed: %s", e)
 
     # --- Stress ---
     try:
@@ -247,7 +247,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
         m.avg_stress = float(avg) if avg is not None and avg >= 0 else None
         m.rest_stress = float(rest) if rest is not None and rest >= 0 else None
     except Exception as e:
-        logger.debug("Stress fetch failed: %s", e)
+        logger.warning("Stress fetch failed: %s", e)
 
     # --- Training Status (ACWR, VO2 Max, training status label) ---
     try:
@@ -302,13 +302,14 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                         m.altitude_acclimation = float(v)
                         break
     except Exception as e:
-        logger.debug("Training status fetch failed: %s", e)
+        logger.warning("Training status fetch failed: %s", e)
 
     # --- Daily summary (steps + active calories / NEAT + resting HR) ---
     # The garminconnect library exposes this as get_user_summary (alias
     # get_stats); there is no get_daily_summary. Try both names so the data is
     # still picked up if the library renames the method again.
     daily = None
+    summary_error = False
     for _method in ("get_user_summary", "get_stats"):
         fn = getattr(api, _method, None)
         if fn is None:
@@ -319,7 +320,10 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                 daily = resp
                 break
         except Exception as e:
+            summary_error = True
             logger.debug("%s fetch failed: %s", _method, e)
+    if daily is None and summary_error:
+        logger.warning("Daily summary fetch failed (get_user_summary / get_stats)")
     if isinstance(daily, dict):
         m.total_steps = daily.get("totalSteps")
         cals = daily.get("activeKilocalories") or daily.get("activeCalories")
@@ -339,7 +343,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
                 if v is not None:
                     m.resting_hr = float(v)
         except Exception as e:
-            logger.debug("RHR fetch failed: %s", e)
+            logger.warning("RHR fetch failed: %s", e)
 
     # --- Nutrition (food log) ---
     try:
@@ -366,7 +370,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
             if fat is not None:
                 m.fat_consumed = float(fat)
     except Exception as e:
-        logger.debug("Nutrition fetch failed: %s", e)
+        logger.warning("Nutrition fetch failed: %s", e)
 
     # --- Fluid intake (Garmin hydration log) ---
     try:
@@ -379,7 +383,7 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
             if goal is not None:
                 m.water_goal_ml = float(goal)
     except Exception as e:
-        logger.debug("Hydration intake fetch failed: %s", e)
+        logger.warning("Hydration intake fetch failed: %s", e)
 
     return m
 
@@ -460,7 +464,7 @@ def fetch_activities(api, days: int = 7) -> list[dict]:
     try:
         raw = api.get_activities_by_date(start, end) or []
     except Exception as e:
-        logger.debug("Activities fetch failed: %s", e)
+        logger.warning("Activities fetch failed: %s", e)
         return []
 
     results = []

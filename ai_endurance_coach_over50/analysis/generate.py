@@ -1,6 +1,10 @@
 """AI analysis generation, refresh loop, retrieval, recovery suggestions."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import sqlite3
 from datetime import date
@@ -52,6 +56,7 @@ def generate_analysis(activity: dict, detail: dict, companion: Optional[dict] = 
         )
         return msg.content[0].text
     except Exception:
+        logger.exception("generate_analysis failed")
         return _rule_based_analysis(activity, detail)
 
 
@@ -121,7 +126,7 @@ def regenerate_analysis_for_activity(activity_id: int) -> Optional[str]:
             activity["max_temperature"] = meta.get("temp_max")
             activity["min_temperature"] = meta.get("temp_min")
     except Exception:
-        pass
+        logger.exception("regenerate_analysis_for_activity failed")
 
     companion = None
     act_date = activity.get("date")
@@ -132,6 +137,7 @@ def regenerate_analysis_for_activity(activity_id: int) -> Optional[str]:
             day_acts = load_activities_by_date(d_obj, d_obj).get(act_date, [])
             companion = _find_compound_companion(activity, day_acts)
         except Exception:
+            logger.exception("regenerate_analysis_for_activity failed")
             companion = None
 
     text = generate_analysis(activity, detail, companion=companion)
@@ -185,7 +191,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                 if dur_row:
                     save_durability(act_id, dur_row)
         except Exception:
-            pass
+            logger.exception("refresh_analyses failed")
         try:
             from ..history import power_durability_exists, save_power_durability
             if (act.get("type_key") in _CYCLING_TYPES
@@ -196,7 +202,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                 if pd_row:
                     save_power_durability(act_id, pd_row)
         except Exception:
-            pass
+            logger.exception("refresh_analyses failed")
         # Backfill ftp_tests for already-analysed FTP sessions that pre-date the auto-population logic
         existing = load_analysis(act_id)
         if existing is not None:
@@ -209,7 +215,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                         and not load_interval_analyses(act_id)):
                     ingest_fit_for_activity(api, act)
             except Exception:
-                pass
+                logger.exception("refresh_analyses failed")
             try:
                 act_date = act.get("date")
                 if act_date:
@@ -235,7 +241,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                             if ftp_w:
                                 _mark_workouts_stale(int(ftp_w))
             except Exception:
-                pass
+                logger.exception("refresh_analyses failed")
             continue  # already analysed — nothing more to do
         try:
             companion = _find_compound_companion(act, acts_by_date.get(act["date"], []))
@@ -252,7 +258,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                         detail["fit_intervals"] = fit_result.get("intervals") or []
                         detail["fit_meta"] = fit_result.get("meta") or {}
                 except Exception:
-                    pass
+                    logger.exception("refresh_analyses failed")
             text = generate_analysis(act, detail, companion=companion)
             save_detail(act_id, detail, text)
             # Auto-populate FTP trend table for FTP test sessions
@@ -278,7 +284,7 @@ def refresh_analyses(api: Any, days: int = 14) -> None:
                         if ftp_w:
                             _mark_workouts_stale(int(ftp_w))
                 except Exception:
-                    pass
+                    logger.exception("refresh_analyses failed")
         except Exception as exc:
             import logging
             logging.getLogger(__name__).warning("analysis failed for %s: %s", act_id, exc)
@@ -421,4 +427,5 @@ def generate_recovery_suggestion(
         set_cached_text(cache_key, text)
         return text
     except Exception:
+        logger.exception("generate_recovery_suggestion failed")
         return _rule_based_recovery(stype, days_left_in_week)

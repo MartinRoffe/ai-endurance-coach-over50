@@ -1,6 +1,10 @@
 """Generic text cache and daily-advice persistence."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date
 from typing import Literal, Optional
 
@@ -98,12 +102,12 @@ def delete_advice(target_date: date, mode: Optional[AdviceMode] = None) -> None:
             try:
                 set_cached_text(key, "")
             except Exception:
-                pass
+                logger.exception("delete_advice failed")
     if mode in (None, "post"):
         try:
             set_cached_text(f"advice_mode_post_v1_{iso}", "")
         except Exception:
-            pass
+            logger.exception("delete_advice failed")
 
 
 def load_advice(target_date: date, mode: AdviceMode = "pre") -> Optional[str]:

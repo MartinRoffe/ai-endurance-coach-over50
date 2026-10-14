@@ -1,6 +1,10 @@
 """Shared coaching context for daily advice and coach chat."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
@@ -227,6 +231,7 @@ def _section_power_pmc() -> list[str]:
     try:
         hist = power_pmc_history(days=14)
     except Exception:
+        logger.warning("_section_power_pmc failed", exc_info=True)
         return []
     if not hist:
         return []
@@ -265,6 +270,7 @@ def _section_today_session_prescriptions(today: date) -> list[str]:
     try:
         tt = today_targets(today)
     except Exception:
+        logger.warning("_section_today_session_prescriptions failed", exc_info=True)
         return lines
     sess = tt.get("session")
     if sess is None or sess["type"] == "rest":
@@ -320,6 +326,7 @@ def _section_recent_analyses(recent_acts: list[dict], limit: int = 3) -> list[st
     try:
         enriched = load_analyses_for_activities(recent_acts[:8])
     except Exception:
+        logger.warning("_section_recent_analyses failed", exc_info=True)
         return []
     with_text = [a for a in enriched if (a.get("analysis_text") or "").strip()]
     if not with_text:
@@ -346,7 +353,7 @@ def _section_ftp_flags(today: date) -> list[str]:
             else:
                 lines.append("  FTP retest due: no test on record (3+ weeks into plan)")
     except Exception:
-        pass
+        logger.warning("_section_ftp_flags failed", exc_info=True)
     try:
         stale = get_cached_text("workouts_stale_ftp")
         if stale:
@@ -354,7 +361,7 @@ def _section_ftp_flags(today: date) -> list[str]:
                 f"  Garmin workouts stale after new FTP ({stale}W) — re-sync %FTP targets"
             )
     except Exception:
-        pass
+        logger.warning("_section_ftp_flags failed", exc_info=True)
     if not lines:
         return []
     return ["## FTP / Workout Sync Flags", *lines]
@@ -375,7 +382,7 @@ def _section_pmc(today_pmc: dict, m: Optional["DailyMetrics"] = None) -> list[st
             if wk:
                 lines.append(f"Power TSS this week: {round(wk[-1]['total_tss'])}")
     except Exception:
-        pass
+        logger.warning("_section_pmc failed", exc_info=True)
     return lines
 
 
@@ -407,7 +414,7 @@ def _section_alerts(target: date) -> list[str]:
                 parts.append(f"  [{a['severity']}] {a['type']}: {a['message']}")
             return parts
     except Exception:
-        pass
+        logger.warning("_section_alerts failed", exc_info=True)
     return []
 
 
@@ -532,7 +539,7 @@ def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None
         if day_note:
             lines.append(f"  Coach note for this day: {day_note}")
     except Exception:
-        pass
+        logger.warning("_section_today_session failed", exc_info=True)
     return lines
 
 
@@ -780,6 +787,7 @@ def _section_commitments(today: date) -> list[str]:
         from .history import list_coach_commitments
         rows = list_coach_commitments("open")
     except Exception:
+        logger.warning("_section_commitments failed", exc_info=True)
         return []
     if not rows:
         return []
@@ -806,6 +814,7 @@ def _section_session_notes(today: date, days: int = 14) -> list[str]:
         from .history import list_session_notes
         notes = list_session_notes()
     except Exception:
+        logger.warning("_section_session_notes failed", exc_info=True)
         return []
     end = (today + timedelta(days=days)).isoformat()
     upcoming = sorted((d, n) for d, n in notes.items() if today.isoformat() <= d <= end)
@@ -922,7 +931,7 @@ def _section_phase_nutrition(today: date) -> list[str]:
                     "and watch the muscle-mass rolling average."
                 )
     except Exception:
-        pass
+        logger.warning("_section_phase_nutrition failed", exc_info=True)
     return lines
 
 
@@ -985,7 +994,7 @@ def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) 
     try:
         parts += ["", *hr_2012_lessons_context()]
     except Exception:
-        pass
+        logger.warning("build_advice_context failed", exc_info=True)
     parts += ["", ATHLETE_CONSTRAINTS]
     return "\n".join(parts)
 
@@ -1041,6 +1050,7 @@ def _section_history_rebuild() -> list[str]:
         from .archive_findings import load_archive_findings
         findings = load_archive_findings()
     except Exception:
+        logger.warning("_section_history_rebuild failed", exc_info=True)
         return []
     if not findings:
         return []
@@ -1384,7 +1394,7 @@ def build_coach_context() -> str:
                 _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
                 _tdee_by_date[_di] = _t.get("tdee")
         except Exception:
-            pass
+            logger.warning("build_coach_context failed", exc_info=True)
 
         def _row_iso(r):
             _d = r["date"]
@@ -1412,7 +1422,7 @@ def build_coach_context() -> str:
                             f"Katch-McArdle+Garmin model (28-day weight trend)"
                         )
                 except Exception:
-                    pass
+                    logger.warning("build_coach_context failed", exc_info=True)
             carbs_vals   = [r["carbs_consumed"]   for r in history_14 if r.get("carbs_consumed")   is not None]
             protein_vals = [r["protein_consumed"] for r in history_14 if r.get("protein_consumed") is not None]
             if carbs_vals:
@@ -1454,7 +1464,7 @@ def build_coach_context() -> str:
                             f"ride work {round(kj_total)} kJ (~{ride_kcal_from_kj(kj_total)} kcal mechanical)"
                         )
                 except Exception:
-                    pass
+                    logger.warning("build_coach_context failed", exc_info=True)
                 body_parts.append("  |  ".join(parts))
 
         # Inject cached AI advisor text if available
@@ -1510,7 +1520,7 @@ def build_coach_context() -> str:
                             f"    Note: RPE {rpe['rpe']}/5 with supra-threshold power — possible stale FTP"
                         )
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Named test-climb PBs (season tracker)
     climb_pb_parts: list[str] = []
@@ -1531,7 +1541,7 @@ def build_coach_context() -> str:
                 bits.append(f"vs first {s['delta_vs_first_pct']:+.1f}%")
             climb_pb_parts.append("  " + " · ".join(bits))
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Fuelling compliance logs
     fuel_parts: list[str] = []
@@ -1546,7 +1556,7 @@ def build_coach_context() -> str:
                 note_str = f" — {r['note']}" if r.get("note") else ""
                 fuel_parts.append(f"  {r['date']}: {planned} → {actual}, {fluid}{note_str}")
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Back-to-back training history
     btb_rows = load_btb_summary()
@@ -1594,7 +1604,7 @@ def build_coach_context() -> str:
             for a in alerts:
                 alert_parts.append(f"  [{a['severity']}] {a['type']}: {a['message']}")
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # HRV traffic light + modulation
     tl_parts: list[str] = []
@@ -1657,7 +1667,7 @@ def build_coach_context() -> str:
                     f"  wk {r['label']}: load {r['weekly_load']:.0f}  monotony {mono_str}  strain {strain_str}"
                 )
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Blood pressure (latest)
     bp_parts: list[str] = []
@@ -1704,7 +1714,7 @@ def build_coach_context() -> str:
                         f"({w['total_min']}min, {w['activity_count']} rides)"
                     )
         except Exception:
-            pass
+            logger.warning("build_coach_context failed", exc_info=True)
         try:
             pdec_rows = load_power_durability(90)
             if pdec_rows:
@@ -1715,7 +1725,7 @@ def build_coach_context() -> str:
                         f"(HR drift {r['hr_drift_pct']:+.1f}%, power drift {r['power_drift_pct']:+.1f}%)"
                     )
         except Exception:
-            pass
+            logger.warning("build_coach_context failed", exc_info=True)
 
     # Plan compliance summary (full block: 12-week plan + camp + event prep)
     compliance_parts: list[str] = []
@@ -1747,7 +1757,7 @@ def build_coach_context() -> str:
                 if missed:
                     compliance_parts.append("  Recently missed: " + ", ".join(missed[-6:]))
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Sleep trend (30-day averages) — complements the 7-day detail above
     sleep_trend_parts: list[str] = []
@@ -1770,7 +1780,7 @@ def build_coach_context() -> str:
                 sleep_trend_parts += ["  Coach's sleep analysis (from Sleep tab):",
                                       "  " + cached_sleep.replace("\n", "\n  ")]
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Heat / altitude acclimation
     accl_parts: list[str] = []
@@ -1786,7 +1796,7 @@ def build_coach_context() -> str:
                 accl_parts = ["## Heat / Altitude Acclimation",
                               f"  {accl.get('date')}: " + ", ".join(bits)]
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Zone distribution (recent weeks) — polarisation check
     zone_parts: list[str] = []
@@ -1801,7 +1811,7 @@ def build_coach_context() -> str:
                     f"({w['total_min']}min, {w['activity_count']} rides)"
                 )
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Haute Route phase overview — only when the week-by-week block is live
     hr_phase_parts: list[str] = []
@@ -1824,7 +1834,7 @@ def build_coach_context() -> str:
                 "The live year is general fitness through 3 Oct 2027.",
             ]
     except Exception:
-        pass
+        logger.warning("build_coach_context failed", exc_info=True)
 
     # Training interference flags (next 14 days)
     interference_parts = _interference_flags(14)

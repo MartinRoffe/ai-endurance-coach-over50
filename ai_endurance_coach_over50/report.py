@@ -1,6 +1,8 @@
 """HTML email builder: assembles readiness data, Claude advice, and planned workout."""
 from __future__ import annotations
 
+import html as _html
+import logging
 import os
 import smtplib
 from datetime import date, timedelta
@@ -9,6 +11,8 @@ from email.mime.text import MIMEText
 from typing import Optional
 
 import anthropic
+
+logger = logging.getLogger(__name__)
 
 from .display import FIELD_LABELS, fmt_value, readiness_label, enrich_activity
 from .plan import session_for_date, session_for_date_extended, charity_event_summary
@@ -455,6 +459,7 @@ def _daily_food_html(d: date) -> str:
         food = build_today_food(PLAN_START, d)
         tt = today_targets(d)
     except Exception:
+        logger.exception("_daily_food_html failed")
         return ""
     if not food:
         return ""
@@ -681,7 +686,7 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
                 f'FTP {pp["ftp_w"]} W{wkg_bit} &middot; tested {pp["test_date"]}</p>'
             )
     except Exception:
-        pass
+        logger.exception("build_html failed")
 
     # Route line: days to the A event (HR 2028) or medical pause notice
     route_line = ""
@@ -712,7 +717,7 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
                     f'Ghent &rarr; Amsterdam &middot; J&ndash;{days_out}</p>'
                 )
     except Exception:
-        pass
+        logger.exception("build_html failed")
 
     briefing_no = m.date.timetuple().tm_yday
 
@@ -812,6 +817,15 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
 </html>"""
 
 
+def _freshness_notes() -> list[dict]:
+    try:
+        from .history import freshness_warnings
+        return freshness_warnings()
+    except Exception:
+        logger.exception("freshness check failed for daily email")
+        return []
+
+
 def send_email(html: str, subject: str, to_addr: str, from_addr: str, app_password: str) -> None:
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -844,6 +858,22 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
     subject = f"Readiness {m.date.strftime('%-d %b')} · {score_str} {label}"
     html = build_html(m, stats, comp_z, advice, activities)
 
+    stale_notes = _freshness_notes()
+    if stale_notes:
+        stale_text = " ".join(n["message"] for n in stale_notes)
+        stale_block = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0e6c9;'
+            f'border-left:5px solid {_AMBER};">'
+            f'<tr><td style="padding:10px 14px;font-family:{_SERIF};font-size:13px;line-height:1.55;color:#6b4a0d;">'
+            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;text-transform:uppercase;">'
+            f'&#9888; Stale data</strong> &nbsp;{_html.escape(stale_text)}'
+            f'</td></tr></table>'
+        )
+        html = html.replace(
+            "<!-- Advice -->",
+            f"<!-- Stale data -->\n        <tr><td style='padding:18px 28px 0;'>{stale_block}</td></tr>\n\n        <!-- Advice -->",
+        )
+
     # Prepend HIGH fatigue alerts to the email
     fatigue_alerts = [a for a in check_fatigue_alerts(m.date) if a["severity"] == "HIGH"]
     if fatigue_alerts:
@@ -867,6 +897,7 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
         from .modulation import resolve_modulation
         traffic_light, modulation = resolve_modulation(m.date, m, comp_z)
     except Exception:
+        logger.exception("run_report failed")
         modulation = None
         traffic_light = None
 
@@ -932,6 +963,11 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
 
     if dry_run:
         print(f"Subject: {subject}\n")
+        if stale_notes:
+            print("--- Stale data ---")
+            for note in stale_notes:
+                print(note["message"])
+            print()
         print("--- Advice ---")
         print(advice)
         return
@@ -977,6 +1013,7 @@ def _current_block_phase(today: date) -> str:
                 return f"Haute Route 2027 plan, week {hr_week} — {ph['label']} phase"
         return f"Haute Route 2027 plan, week {hr_week}"
     except Exception:
+        logger.exception("_current_block_phase failed")
         return "unknown (assume a build block unless body signals say otherwise)"
 
 
@@ -1145,6 +1182,7 @@ def generate_pmc_analysis(history: list[dict], m=None, comp_z: Optional[float] =
         set_cached_text(cache_key, text)
         return text
     except Exception:
+        logger.exception("generate_pmc_analysis failed")
         return _rule_based_pmc(history)
 
 
@@ -1192,6 +1230,7 @@ def generate_pmc_explainer() -> str:
         set_cached_text(_PMC_EXPLAINER_KEY, text)
         return text
     except Exception:
+        logger.exception("generate_pmc_explainer failed")
         return ""
 
 
@@ -1245,6 +1284,7 @@ def generate_dashboard_explainer() -> str:
         set_cached_text(_DASHBOARD_EXPLAINER_KEY, text)
         return text
     except Exception:
+        logger.exception("generate_dashboard_explainer failed")
         return ""
 
 
@@ -1346,6 +1386,7 @@ def generate_sleep_analysis(data: list[dict], avgs_7: dict, avgs_30: dict) -> st
         set_cached_text(cache_key, text)
         return text
     except Exception:
+        logger.exception("generate_sleep_analysis failed")
         return _rule_based_sleep(data, avgs_7)
 
 
@@ -1484,7 +1525,7 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
             _di = _d.isoformat() if hasattr(_d, "isoformat") else str(_d)
             _tdee_by_date[_di] = _t.get("tdee")
     except Exception:
-        pass
+        logger.exception("_build_body_prompt failed")
 
     def _row_iso(r):
         _d = r.get("date")
@@ -1517,7 +1558,7 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
                     f"Katch-McArdle+Garmin model (28-day weight trend)"
                 )
         except Exception:
-            pass
+            logger.exception("_build_body_prompt failed")
         lines += [
             "  Note: a sustained deficit of ~500 kcal/day ≈ 0.5 kg/week fat loss."
             " If deficit exceeds 700 kcal/day on training days, flag risk of under-fuelling.",
@@ -1627,7 +1668,7 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
                 "on the next long ride.\n"
             )
     except Exception:
-        pass
+        logger.exception("generate_weekly_briefing failed")
 
     # Haute Route Build/Specific: flag stale measured FTP with W/kg trend
     if has_power and 14 <= hr_week <= 35:
@@ -1696,6 +1737,7 @@ def generate_weekly_briefing(week_sessions: list[tuple], pmc_today: dict, comp_z
         set_cached_text(cache_key, text)
         return text
     except Exception:
+        logger.exception("generate_weekly_briefing failed")
         return None
 
 
@@ -1731,4 +1773,5 @@ def generate_body_analysis(body_rows: list[dict], latest: dict, pmc_today: dict,
         set_cached_text(cache_key, text)
         return text
     except Exception:
+        logger.exception("generate_body_analysis failed")
         return _rule_based_body(latest)

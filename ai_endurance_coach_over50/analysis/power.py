@@ -1,6 +1,10 @@
 """Power enrichment and activity-detail fetching from the Garmin API."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date, timedelta
 from typing import Any, Optional
 
@@ -71,6 +75,7 @@ def ftp_w_on_date(d: date) -> Optional[int]:
         try:
             td = date.fromisoformat(t["date"])
         except Exception:
+            logger.exception("ftp_w_on_date failed")
             continue
         if td <= d and t.get("ftp_w"):
             ftp_w = int(t["ftp_w"])
@@ -124,7 +129,7 @@ def enrich_activities_power(api: Any, activities: list[dict]) -> int:
                         patch_fields["intensity_factor"] = if_val
                         patch_fields["tss"] = tss
                 except Exception:
-                    pass
+                    logger.exception("enrich_activities_power failed")
             if not patch_activity_power(act_id, patch_fields):
                 continue
             act.update(patch_fields)
@@ -139,7 +144,7 @@ def enrich_activities_power(api: Any, activities: list[dict]) -> int:
             if existing and detail.get("power_zones"):
                 patch_analysis_power(act_id, detail)
         except Exception:
-            pass
+            logger.exception("enrich_activities_power failed")
     return enriched
 
 
@@ -219,7 +224,7 @@ def fetch_activity_detail(api: Any, activity_id: int, activity: Optional[dict] =
             try:
                 result.update(_fetch_power_summary_from_api(api, activity_id))
             except Exception:
-                pass
+                logger.exception("fetch_activity_detail failed")
         if result.get("has_power_meter"):
             result["power_zones"] = _fetch_power_zones(api, activity_id)
         if session_label in _RAMP_SESSION_LABELS:
@@ -281,6 +286,7 @@ def _session_label_for_date(d: date) -> Optional[str]:
         sess = hr_session_for_date(d)
         return sess[1] if sess else None
     except Exception:
+        logger.exception("_session_label_for_date failed")
         return None
 
 
@@ -291,6 +297,7 @@ def _session_label_for_activity(act: dict) -> Optional[str]:
     try:
         return _session_label_for_date(date.fromisoformat(act_date))
     except Exception:
+        logger.exception("_session_label_for_activity failed")
         return None
 
 
@@ -328,6 +335,7 @@ def _try_save_ftp_from_detail(act: dict, detail: dict, session_label: Optional[s
             _mark_workouts_stale(int(ftp_w))
         return True
     except Exception:
+        logger.exception("_try_save_ftp_from_detail failed")
         return False
 
 
@@ -374,7 +382,7 @@ def refresh_power_backfill(api: Any, days: int = 30) -> dict:
                     save_power_durability(act_id, pd_row)
                     stats["durability_added"] += 1
             except Exception:
-                pass
+                logger.exception("refresh_power_backfill failed")
 
         session_label = _session_label_for_activity(act)
         try:
@@ -391,7 +399,7 @@ def refresh_power_backfill(api: Any, days: int = 30) -> dict:
                 if _try_save_ftp_from_detail(act, detail, session_label):
                     stats["ftp_seeded"] += 1
         except Exception:
-            pass
+            logger.exception("refresh_power_backfill failed")
 
     refresh_analyses(api, days=days)
     stats["tss_backfilled"] = backfill_tss(days)
@@ -417,6 +425,7 @@ def backfill_tss(days: int = 30) -> int:
             try:
                 ftp_w = ftp_w_on_date(date.fromisoformat(act["date"]))
             except Exception:
+                logger.exception("backfill_tss failed")
                 continue
             if not ftp_w:
                 continue

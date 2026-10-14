@@ -44,37 +44,102 @@ current form, the key session of the week, and an execution cue. When power is
 active, the briefing may include dual-channel intensity notes and FTP retest
 reminders. It's generated once per week and cached, so it's consistent all week.
 
-## Running it in the background (macOS)
+## Why a 7 a.m. email used to arrive later (or not at all)
 
-On macOS the app installs two `launchd` agents — a daily 7 a.m. email and an
-always-on web server:
+The macOS job is a launchd `StartCalendarInterval`. That fires at the clock
+time only while the Mac is awake and you are logged in. Apple's launchd runs a
+missed interval the next time the computer wakes, so a shut lid turns "07:00"
+into "whenever the lid opened" — recent sends landing around 12:00 and 14:26
+match that, not a second schedule.
+
+Two further bugs made it worse:
+
+- The plist this repo installed used **Hour 8**, while the docs said 7 a.m.
+  An email at about 08:04 is an 08:00 start plus Garmin login, not a late 07:00.
+- The email agent had **no `RunAtLoad`**. If the Mac was powered off through
+  the slot, or the user session never unlocked that day, the job did not run.
+  Only exit code 2 (watch not synced yet) was retried. Garmin, SMTP, and
+  missing-environment failures exited immediately, and many of those errors
+  were swallowed or logged at DEBUG. The scheduled process only shows WARNING
+  and above, so `daily.log` often had no traceback.
+
+`--setup-schedule` now installs a 07:00 job with catch-up, and the email
+command logs failures. A `sent_YYYY-MM-DD` file plus an exclusive lock means
+the catch-up cannot send a second email the same day. The shell wrapper still
+retries while the watch has not synced (until 10:00, or three hours from a
+later wake) and writes a timestamped line for every attempt.
+
+## Running it in the background
 
 ```bash
 endurance-coach --setup-schedule
 ```
 
-After changing any code, restart the background server so it picks up the change:
+On **macOS** this installs two launchd agents: the dashboard (`RunAtLoad` +
+`KeepAlive`) and the email (`StartCalendarInterval` at 07:00 **and**
+`RunAtLoad`, so a login after 07:00 still sends once).
+
+On **Linux** it installs systemd user units:
+
+- `ai-endurance-coach.service` — dashboard, `Restart=on-failure`
+- `ai-endurance-coach-email.service` + `ai-endurance-coach-email.timer` —
+  07:00, `Persistent=true` (if the laptop was off at 07:00, the missed run
+  happens at next boot), `TimeoutStartSec=infinity` so the watch-sync retry
+  is not killed by systemd's 90-second start timeout
+
+Both bind the server to **127.0.0.1** only. Use Tailscale
+(`tailscale serve --bg 8743`) to open it from a phone. Do not publish port
+8743 on a public interface. Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` if
+anything besides this machine can reach it.
+
+After changing code, restart the server:
 
 ```bash
+# macOS
 launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
+
+# Linux
+systemctl --user restart ai-endurance-coach.service
 ```
 
-> **Background runs need their own environment.** `launchd` starts without your
-> shell's environment, so copy your `.env` to `~/.ai_endurance_coach_over50/.env` as well —
-> that's where the scheduled runs read your credentials from.
+> **Background runs need their own environment.** launchd and systemd do not
+> see your shell. `--setup-schedule` copies `./.env` to
+> `~/.ai_endurance_coach_over50/.env` when that file is missing, and the
+> wrapper scripts point `DOTENV_PATH` at it.
+
+### Moving from a Mac to an always-on Ubuntu laptop
+
+1. Copy the data directory (database, `.env`, Garmin tokens, Withings files):
+
+   ```bash
+   rsync -a ~/.ai_endurance_coach_over50/ user@laptop:~/.ai_endurance_coach_over50/
+   ```
+
+2. On the laptop, `pip install .` then `sudo loginctl enable-linger "$USER"`
+   so the user services survive logout, then `endurance-coach --setup-schedule`.
+
+3. On the Mac, disable the old agents:
+
+   ```bash
+   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.server"
+   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.daily"
+   ```
+
+Logs: `~/.ai_endurance_coach_over50/daily.log` and `server.log`. On Linux also
+`journalctl --user -u ai-endurance-coach.service -u ai-endurance-coach-email.service`.
 
 ## All command-line flags
 
 | Command | What it does |
 |---|---|
 | `endurance-coach` | Fetch today's data and print a readiness report in the terminal |
-| `endurance-coach --serve` | Start the web dashboard at **http://127.0.0.1:8743** |
+| `endurance-coach --serve` | Start the web dashboard at **http://127.0.0.1:8743** (localhost; `--host` / `COACH_BIND_HOST` to change a manual run) |
 | `endurance-coach --email [--dry-run]` | Send the daily email (or preview it) |
 | `endurance-coach --backfill 30` | Pull the last *N* days from Garmin to build your baseline |
 | `endurance-coach --activate-power 30` | Backfill power ingest, TSS, decoupling, and FTP seed (7–90 days; also `GET /activate-power` on Performance) |
 | `endurance-coach --workouts [--dry-run]` | Upload the plan's structured cycling workouts to Garmin Connect and schedule them on their dates |
 | `endurance-coach --withings-sync` | Push recent Withings measurements to Garmin, then continue the fetch |
-| `endurance-coach --setup-schedule` | Install the macOS launchd agents (daily email + server) |
+| `endurance-coach --setup-schedule` | Install the 07:00 email and the always-on server (launchd on macOS, systemd --user on Linux) |
 
 ### About `--workouts`
 

@@ -84,7 +84,7 @@ def _field(msg: Any, name: str, default: Any = None) -> Any:
         if msg.has_field(name):
             return msg.get_value(name, fallback=default)
     except Exception:
-        pass
+        log.warning("_field failed", exc_info=True)
     return default
 
 
@@ -99,6 +99,7 @@ def _as_dt(val: Any) -> Optional[datetime]:
         try:
             return _FIT_EPOCH + timedelta(seconds=float(val))
         except Exception:
+            log.warning("_as_dt failed", exc_info=True)
             return None
     return None
 
@@ -269,6 +270,7 @@ def _local_tz():
     try:
         return datetime.now().astimezone().tzinfo or timezone.utc
     except Exception:
+        log.warning("_local_tz failed", exc_info=True)
         return timezone.utc
 
 
@@ -293,6 +295,7 @@ def _parse_activity_start(st: Any) -> Optional[datetime]:
             cand = cand.replace(tzinfo=_local_tz())
         return cand.astimezone(timezone.utc)
     except Exception:
+        log.warning("_parse_activity_start failed", exc_info=True)
         return None
 
 

@@ -9,6 +9,11 @@ from datetime import date, timedelta
 from typing import Optional
 
 from dotenv import load_dotenv
+
+from .paths import data_dir
+
+logger = logging.getLogger(__name__)
+_EMAIL_LOCK_FH = None
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
@@ -176,15 +181,15 @@ def _load_or_fetch(target: date, api=None, force: bool = False) -> DailyMetrics:
     if api is None:
         raise RuntimeError("API client required to fetch data")
 
-    m = fetch_metrics(api, target)
-    save(m)
+    from .history import sync_garmin_metrics
+    m = sync_garmin_metrics(api, target)
     try:
         acts = fetch_activities(api, days=7)
         save_activities(acts)
         from .analysis import enrich_activities_power
         enrich_activities_power(api, acts)
     except Exception:
-        pass
+        logger.exception("activity refresh after Garmin sync failed for %s", target)
     from .hr_profile import refresh_hr_profile_if_needed
     refresh_hr_profile_if_needed(api, force=force)
     return m
@@ -197,10 +202,13 @@ def main() -> None:
         load_dotenv(_env_path)
     else:
         load_dotenv()  # tries CWD/.env first
-        _fallback = Path.home() / ".ai_endurance_coach_over50" / ".env"
+        _fallback = data_dir() / ".env"
         if _fallback.exists():
             load_dotenv(_fallback, override=False)
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     import argparse
 
@@ -238,7 +246,14 @@ def main() -> None:
     parser.add_argument(
         "--serve",
         action="store_true",
-        help="Start the web dashboard at http://127.0.0.1:8743",
+        help="Start the web dashboard (default http://127.0.0.1:8743)",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.getenv("COACH_BIND_HOST", "127.0.0.1"),
+        help="Bind address for --serve (default 127.0.0.1, or COACH_BIND_HOST). "
+             "Stay on localhost and use Tailscale for remote access; "
+             "do not publish the dashboard on a public interface.",
     )
     parser.add_argument(
         "--port",
@@ -286,12 +301,17 @@ def main() -> None:
     parser.add_argument(
         "--setup-schedule",
         action="store_true",
-        help="Install a launchd job to email daily at 7am",
+        help="Install the 07:00 email and always-on dashboard "
+             "(launchd on macOS, systemd --user on Linux)",
     )
     args = parser.parse_args()
 
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, force=True)
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            force=True,
+        )
 
     if args.setup_schedule:
         _setup_schedule()
@@ -317,8 +337,15 @@ def main() -> None:
 
     if args.serve:
         from .server import run as serve_run
-        console.print(f"[bold]Dashboard at[/bold] http://127.0.0.1:{args.port}")
-        serve_run(port=args.port)
+        host = args.host
+        console.print(f"[bold]Dashboard at[/bold] http://{host}:{args.port}")
+        if host in {"0.0.0.0", "::", "[::]"}:
+            console.print(
+                "[yellow]Bound on all interfaces.[/yellow] Prefer Tailscale "
+                "(`tailscale serve --bg 8743`) and set DASHBOARD_USER / "
+                "DASHBOARD_PASSWORD. Do not port-forward this to the internet."
+            )
+        serve_run(host=host, port=args.port)
         return
 
     if args.workouts:
@@ -453,7 +480,12 @@ def main() -> None:
                 f"sending today ({target.isoformat()}).[/yellow]"
             )
 
-        sentinel = Path.home() / ".ai_endurance_coach_over50" / f"sent_{target.isoformat()}"
+        if not args.dry_run and not _hold_email_lock():
+            console.print("[dim]Another email job is already running — exiting.[/dim]")
+            sys.exit(0)
+
+        sentinel = data_dir() / f"sent_{target.isoformat()}"
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
         if sentinel.exists() and not args.dry_run:
             console.print(f"[dim]Email already sent for {target}, skipping.[/dim]")
             sys.exit(0)
@@ -468,6 +500,9 @@ def main() -> None:
         if m.date != target:
             _missing.append(f"metrics date {m.date} != today {target}")
         if _missing and not args.dry_run:
+            logger.warning(
+                "email deferred; watch not synced yet: %s", ", ".join(_missing)
+            )
             console.print(
                 f"[yellow]Watch hasn't synced yet — missing: {', '.join(_missing)}. "
                 "Will retry later.[/yellow]"
@@ -475,7 +510,7 @@ def main() -> None:
             sys.exit(2)
 
         # Touch the sentinel BEFORE sending so a crash after SMTP delivery can't
-        # cause a duplicate email on the launchd retry. On a clean failure the
+        # cause a duplicate email on the scheduler retry. On a clean failure the
         # sentinel is removed again so the retry loop still works.
         if not args.dry_run:
             sentinel.touch()
@@ -483,6 +518,7 @@ def main() -> None:
             with console.status("Generating advice…"):
                 run_report(m, dry_run=args.dry_run)
         except Exception:
+            logger.exception("daily email send failed")
             if not args.dry_run:
                 sentinel.unlink(missing_ok=True)
             raise
@@ -494,129 +530,28 @@ def main() -> None:
     _render_dashboard(m, stats, comp_z)
 
 
+def _hold_email_lock() -> bool:
+    """One email process at a time. The sentinel stops a second send later."""
+    global _EMAIL_LOCK_FH
+    import fcntl
+    path = data_dir() / "email.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(path, "a+")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fh.close()
+        return False
+    _EMAIL_LOCK_FH = fh
+    return True
+
+
 def _setup_schedule() -> None:
-    import shutil
-    import subprocess
-    from pathlib import Path
+    from .schedule import setup_schedule
+    for line in setup_schedule():
+        console.print(line)
+    console.print("\n  Test email: [bold]endurance-coach --email --dry-run[/bold]")
 
-    python = sys.executable
-    project_dir = str(Path(__file__).parent.parent)
-    # Use ~/.ai_endurance_coach_over50/.env — accessible to launchd without Full Disk Access
-    env_file = Path.home() / ".ai_endurance_coach_over50" / ".env"
-    src_env = Path.cwd() / ".env"
-    if not env_file.exists() and src_env.exists():
-        import shutil as _shutil
-        _shutil.copy2(src_env, env_file)
-        env_file.chmod(0o600)
-    scripts_dir = Path.home() / ".ai_endurance_coach_over50"
-    scripts_dir.mkdir(parents=True, exist_ok=True)
-
-    # Write wrapper scripts — more reliable than EnvironmentVariables in plists
-    serve_script = scripts_dir / "serve.sh"
-    email_script = scripts_dir / "email.sh"
-
-    serve_script.write_text(
-        f"#!/bin/bash\n"
-        f"export PYTHONPATH={project_dir}\n"
-        f"export DOTENV_PATH={env_file}\n"
-        f"exec {python} -m ai_endurance_coach_over50.cli --serve\n"
-    )
-    email_script.write_text(
-        f"#!/bin/bash\n"
-        f"export PYTHONPATH={project_dir}\n"
-        f"export DOTENV_PATH={env_file}\n"
-        f"# Retry every 30 min until 10:00 if watch hasn't synced yet (exit 2 = not ready)\n"
-        f"START_DAY=$(date +%Y-%m-%d)\n"
-        f"DEADLINE=$(date -v+3H +%s 2>/dev/null || date --date='+3 hours' +%s)\n"
-        f"while true; do\n"
-        f"    TODAY=$(date +%Y-%m-%d)\n"
-        f"    if [ \"$TODAY\" != \"$START_DAY\" ]; then\n"
-        f"        echo 'Calendar day changed — exiting stale retry loop'\n"
-        f"        exit 2\n"
-        f"    fi\n"
-        f"    {python} -m ai_endurance_coach_over50.cli --withings-sync --email --fetch\n"
-        f"    CODE=$?\n"
-        f"    [ $CODE -eq 0 ] && exit 0\n"
-        f"    [ $CODE -ne 2 ] && exit $CODE\n"
-        f"    [ $(date +%s) -ge $DEADLINE ] && {{\n"
-        f"        echo 'Watch never synced by 10:00 — giving up'\n"
-        f"        exit 2\n"
-        f"    }}\n"
-        f"    echo 'Watch not synced yet, retrying in 30 min…'\n"
-        f"    sleep 1800\n"
-        f"done\n"
-    )
-    serve_script.chmod(0o755)
-    email_script.chmod(0o755)
-
-    label = "com.ai-endurance-coach-over50.daily"
-    plist_path = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
-    plist_path.parent.mkdir(parents=True, exist_ok=True)
-
-    def _plist(label: str, script: Path, extra_keys: str = "") -> str:
-        return f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>{label}</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>{script}</string>
-    </array>
-    {extra_keys}
-    <key>StandardOutPath</key>
-    <string>{Path.home()}/.ai_endurance_coach_over50/{label.split(".")[-1]}.log</string>
-    <key>StandardErrorPath</key>
-    <string>{Path.home()}/.ai_endurance_coach_over50/{label.split(".")[-1]}.log</string>
-</dict>
-</plist>"""
-
-    plist = _plist(
-        label,
-        email_script,
-        """<key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>8</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>""",
-    )
-
-    # ── Server plist ─────────────────────────────────────────────────────
-    server_label = "com.ai-endurance-coach-over50.server"
-    server_plist_path = Path.home() / "Library" / "LaunchAgents" / f"{server_label}.plist"
-
-    server_plist = _plist(
-        server_label,
-        serve_script,
-        """<key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>""",
-    )
-
-    server_plist_path.write_text(server_plist)
-    plist_path.write_text(plist)
-
-    # ── Load both ─────────────────────────────────────────────────────────
-    ok = True
-    for p, name in [(server_plist_path, "server"), (plist_path, "daily email")]:
-        subprocess.run(["launchctl", "unload", str(p)], capture_output=True)
-        r = subprocess.run(["launchctl", "load", str(p)], capture_output=True, text=True)
-        if r.returncode == 0:
-            console.print(f"[green]✓[/green] {name}")
-        else:
-            console.print(f"[red]✗ {name}:[/red] {r.stderr.strip()}")
-            ok = False
-
-    if ok:
-        console.print(f"\n  Dashboard: [bold]http://127.0.0.1:8743[/bold]")
-        console.print(f"  Email:     daily at 07:00 (or on wake)")
-        console.print(f"  Logs:      ~/.ai_endurance_coach_over50/server.log  /  daily.log")
-        console.print(f"\n  Test email: [bold]endurance-coach --email --dry-run[/bold]")
 
 
 class _null_ctx:

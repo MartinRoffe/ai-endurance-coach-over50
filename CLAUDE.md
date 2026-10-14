@@ -30,11 +30,14 @@ endurance-coach --workouts [--dry-run]
 # Backfill power ingest + TSS (7–90 days)
 endurance-coach --activate-power 30
 
-# Install launchd agents (macOS): daily 7am email + always-on server
+# Install the 07:00 email + always-on server (launchd on macOS, systemd --user on Linux)
 endurance-coach --setup-schedule
 
-# Restart the launchd server after code changes
+# Restart the server after code changes
+# macOS:
 launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
+# Linux:
+systemctl --user restart ai-endurance-coach.service
 ```
 
 ## Architecture
@@ -159,7 +162,7 @@ The Performance tab additionally renders: durability drift chart (`activity_dura
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Env vars are also loaded from `~/.ai_endurance_coach_over50/.env` (used by launchd since it runs without shell environment).
+Copy `.env.example` to `.env`. Env vars are also loaded from `~/.ai_endurance_coach_over50/.env` (used by launchd and systemd, which run without a shell environment). `endurance-coach --serve` binds `127.0.0.1` unless `--host` / `COACH_BIND_HOST` is set; the scheduled server always binds localhost. Use Tailscale Serve for remote access.
 
 Key vars: `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `REPORT_TO`, `DASHBOARD_USER`, `DASHBOARD_PASSWORD`.
 

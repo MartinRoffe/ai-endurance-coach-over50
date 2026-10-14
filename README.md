@@ -97,7 +97,9 @@ Copy `.env.example` to `.env` and populate:
 | `DASHBOARD_USER` | — | Basic auth username (dashboard is open if unset) |
 | `DASHBOARD_PASSWORD` | — | Basic auth password |
 
-On macOS with launchd, also copy `.env` to `~/.ai_endurance_coach_over50/.env` (launchd runs without a shell environment).
+Scheduled jobs (macOS launchd and Linux systemd) do not see your shell environment. Copy `.env` to `~/.ai_endurance_coach_over50/.env` as well — `--setup-schedule` does this when that file is missing.
+
+The dashboard binds to **127.0.0.1** by default (`--host`, or `COACH_BIND_HOST`). That is localhost only. For a phone or another computer, use [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) (`tailscale serve --bg 8743`) rather than binding `0.0.0.0` or port-forwarding the app onto a public network. Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` if anything other than this machine can open it. The installed server service always passes `--host 127.0.0.1` and ignores `COACH_BIND_HOST`.
 
 ## Usage
 
@@ -105,7 +107,7 @@ On macOS with launchd, also copy `.env` to `~/.ai_endurance_coach_over50/.env` (
 # Terminal readiness report
 endurance-coach
 
-# Web dashboard at http://127.0.0.1:8743
+# Web dashboard at http://127.0.0.1:8743 (localhost only)
 endurance-coach --serve
 
 # Send daily email (add --dry-run to preview without sending)
@@ -120,7 +122,8 @@ endurance-coach --activate-power 30
 # Upload structured cycling workouts to Garmin Connect
 endurance-coach --workouts [--dry-run]
 
-# Install launchd agents (macOS): 7 am email + always-on web server
+# Install the 07:00 email + always-on server
+# macOS: launchd agents. Linux: systemd --user units.
 endurance-coach --setup-schedule
 ```
 
@@ -180,12 +183,52 @@ Post-workout analysis uses Claude Sonnet. Recovery suggestions, workout descript
 
 `workouts_stale_ftp` is set when a new measured FTP is saved; cleared on `/sync-workouts`.
 
-## macOS background service
+## Background service
 
 ```bash
-# Install: runs daily 7 am email + persistent web server
+# macOS launchd, or Linux systemd --user: 07:00 email + localhost server
 endurance-coach --setup-schedule
+```
 
-# Restart the server after code changes
+On macOS, restart the server after code changes:
+
+```bash
 launchctl kickstart -k "gui/$(id -u)/com.ai-endurance-coach-over50.server"
 ```
+
+On Linux:
+
+```bash
+systemctl --user restart ai-endurance-coach.service
+```
+
+### Moving from the Mac to an always-on Ubuntu laptop
+
+1. On the Ubuntu machine, install the app (`pip install .`) and copy the whole data directory across, including the database and credentials:
+
+   ```bash
+   rsync -a ~/.ai_endurance_coach_over50/ user@laptop:~/.ai_endurance_coach_over50/
+   ```
+
+   That directory holds `history.db`, `.env`, the Garmin token cache, and Withings OAuth files. Do not commit it.
+
+2. Enable lingering so the user services keep running when you are not logged in:
+
+   ```bash
+   sudo loginctl enable-linger "$USER"
+   ```
+
+3. Install the units (localhost server with `Restart=on-failure`, email timer at 07:00 with `Persistent=true`):
+
+   ```bash
+   endurance-coach --setup-schedule
+   ```
+
+4. On the Mac, unload the old agents so it stops sending as well:
+
+   ```bash
+   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.server"
+   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.daily"
+   ```
+
+The email job records a `sent_YYYY-MM-DD` sentinel and takes an exclusive lock, so a 07:00 run plus a catch-up after wake or boot cannot send twice. If 07:00 was missed because the machine was asleep or off, the job runs at next wake (macOS `RunAtLoad` / calendar coalescing) or next boot (systemd `Persistent=true`). See [Email & Automation](docs/email-and-automation.md).

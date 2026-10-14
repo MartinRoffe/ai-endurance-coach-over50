@@ -46,6 +46,7 @@ def process_fit_session(
         try:
             weight = latest_weight_kg()
         except Exception:
+            log.warning("process_fit_session failed", exc_info=True)
             weight = None
 
     intervals = compute_interval_metrics(fit, ftp_w, weight_kg=weight)

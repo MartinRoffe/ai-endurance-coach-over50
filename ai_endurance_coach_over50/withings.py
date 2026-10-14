@@ -4,12 +4,24 @@ from __future__ import annotations
 import calendar
 import logging
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any
+
+from .paths import data_dir
 
 logger = logging.getLogger(__name__)
 
-WITHINGS_CONFIG = Path.home() / ".ai_endurance_coach_over50" / "withings"
+
+def withings_config_dir():
+    """Withings OAuth files. Resolved at call time so tests can redirect them."""
+    return data_dir() / "withings"
+
+
+def _record(ok: bool, error: str | None = None, detail: str | None = None) -> None:
+    try:
+        from .history.sync_status import record_sync
+        record_sync("withings", ok=ok, error=error, detail=detail)
+    except Exception:
+        logger.exception("could not record Withings sync status")
 
 
 def _to_unix(d: date) -> int:
@@ -33,26 +45,30 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
     try:
         from withings_sync.withings2 import WithingsAccount
     except ImportError:
+        # Optional. Do not record a failure — a Garmin-only setup would
+        # otherwise show a permanent Withings banner.
         logger.warning("withings-sync not installed — run: pip install withings-sync")
         return False
 
-    WITHINGS_CONFIG.mkdir(parents=True, exist_ok=True)
-    config_folder = str(WITHINGS_CONFIG)
+    config_dir = withings_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_folder = str(config_dir)
 
     # Silence the "app config not found" warning by copying the bundled config once
-    app_cfg = WITHINGS_CONFIG / "withings_app.json"
+    app_cfg = config_dir / "withings_app.json"
     if not app_cfg.exists():
         try:
             from withings_sync.withings2 import APP_CONFIG
             import shutil
             shutil.copy2(APP_CONFIG, app_cfg)
         except Exception:
-            pass
+            logger.exception("could not copy Withings app config")
 
     try:
         withings = WithingsAccount(config_folder=config_folder)
     except Exception as e:
-        logger.warning("Withings auth failed: %s", e)
+        logger.exception("Withings auth failed")
+        _record(False, error=f"{type(e).__name__}: {e}")
         return False
 
     end = date.today() + timedelta(days=1)  # end-of-today inclusive
@@ -65,11 +81,13 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
         )
         height = withings.get_height()
     except Exception as e:
-        logger.warning("Withings fetch failed: %s", e)
+        logger.exception("Withings fetch failed")
+        _record(False, error=f"{type(e).__name__}: {e}")
         return False
 
     if not groups:
-        logger.debug("No Withings measurements in the last %d days", days)
+        logger.info("No Withings measurements in the last %d days", days)
+        _record(True, detail="no measurements")
         return False
 
     body_records = []
@@ -99,8 +117,8 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
                     muscle_mass=muscle,
                     bmi=bmi,
                 )
-            except Exception as e:
-                logger.warning("Body composition upload to Garmin failed for %s: %s", ts, e)
+            except Exception:
+                logger.exception("Body composition upload to Garmin failed for %s", ts)
 
             body_records.append({
                 "date": cal_date,
@@ -126,8 +144,8 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
                     pulse=int(pulse) if pulse else 0,
                     timestamp=ts,
                 )
-            except Exception as e:
-                logger.warning("Blood pressure upload to Garmin failed for %s: %s", ts, e)
+            except Exception:
+                logger.exception("Blood pressure upload to Garmin failed for %s", ts)
 
             bp_records.append({
                 "date": cal_date,
@@ -160,6 +178,9 @@ def sync_withings_to_garmin(api: Any, days: int = 30) -> bool:
         try:
             withings.set_lastsync()
         except Exception:
-            pass
+            logger.exception("Withings set_lastsync failed")
+        _record(True, detail=f"body={len(body_records)} bp={len(bp_records)}")
+    else:
+        _record(True, detail="nothing to upload")
 
     return synced
