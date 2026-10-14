@@ -111,6 +111,19 @@
     .pb-note{flex-basis:100%;}
     .shop-grid{grid-template-columns:1fr;}
   }
+  .num-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:8px; }
+  .num-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 16px 14px; }
+  .num-card .lbl { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .num-card .val { font-family:'Bebas Neue',sans-serif; font-size:40px; line-height:1; letter-spacing:0.02em; margin:6px 0 4px; }
+  .num-card .note { font-size:12px; color:var(--muted); line-height:1.45; }
+  .habit-line { margin-top:16px; font-size:15px; }
+  .stone-line { margin-top:8px; font-size:13px; color:var(--muted); line-height:1.55; max-width:720px; }
+  .meal-line { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  .meal-line .slot { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent2); width:88px; flex-shrink:0; padding-top:3px; }
+  details.advanced { margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:12px 16px; }
+  details.advanced summary { cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  details.advanced .adv { margin-top:12px; font-size:13px; color:var(--muted); line-height:1.6; }
+  @media(max-width:720px){ .num-grid{grid-template-columns:1fr 1fr;} }
 </style>
 </head>
 <body>
@@ -122,29 +135,10 @@
 
 <div class="hero">
   <div class="container">
-    <div class="hero-eyebrow">Nutrition · Cycle week {{ (cycle_week | default(0)) + 1 }} of 4</div>
+    <div class="hero-eyebrow">Nutrition{% if card %} · {{ card.kind_label }} day{% endif %}</div>
     <h1>EAT <span>TODAY</span></h1>
     {% if today_food %}
-    <p class="hero-sub">{{ today_food.day_name }} · protein floor {{ protein_target.low }}–{{ protein_target.high }} g</p>
-    <div class="hero-meta">
-      <span class="badge {{ today_food.badge }}">{{ today_food.session }}</span>
-      <span class="hero-kcal">~{{ "{:,}".format(today_food.kcal_target) }} kcal target</span>
-      {% if today_food.protein_low is defined %}
-      <span class="hero-kcal" style="color:var(--muted)">protein {{ today_food.protein_low }}–{{ today_food.protein_high }} g</span>
-      {% endif %}
-      {% if today_food.why %}
-      <span class="hero-kcal" style="color:{% if today_food.maintenance %}var(--accent){% else %}var(--muted){% endif %}">{{ today_food.why }}</span>
-      {% elif today_food.maintenance %}
-      <span class="hero-kcal" style="color:var(--accent)">maintenance — no deficit</span>
-      {% elif today_food.kcal_from_tdee and today_food.stable_tdee and today_food.planned_deficit is not none %}
-      <span class="hero-kcal" style="color:var(--muted)">stable TDEE {{ "{:,}".format(today_food.stable_tdee) }} {% if today_food.planned_deficit >= 0 %}− {{ today_food.planned_deficit }}{% else %}+ {{ -today_food.planned_deficit }}{% endif %} kcal</span>
-      {% endif %}
-      {% if today_food.carbs_g_per_hr %}
-      <span class="hero-kcal" style="color:var(--accent3, #35c8f1)">ride fuel {{ today_food.carbs_g_per_hr }} g/h</span>
-      {% endif %}
-    </div>
-    {% else %}
-    <p class="hero-sub">Protein floor {{ protein_target.low }}–{{ protein_target.high }} g/day · bulk-staple plan</p>
+    <p class="hero-sub">{{ today_food.day_name }}{% if today_food.session %} · {{ today_food.session }}{% endif %}</p>
     {% endif %}
   </div>
 </div>
@@ -163,140 +157,74 @@
   </section>
 {% endif %}
 
-{% if today_food and today_food.camp_mode %}
+{% if card %}
   <section style="padding-top:24px">
-    <div class="section-label">Camp nutrition</div>
-    <div class="today-food" style="border-left:3px solid #34d399">
-      <div class="today-food-head">
-        <div class="today-food-title">{{ today_food.day_name }} — {{ today_food.camp.label }}</div>
-        <a href="/tenerife" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Tenerife guide →</a>
+    <div class="num-grid">
+      <div class="num-card">
+        <div class="lbl">Calories · {{ card.kind_label }}</div>
+        <div class="val">{{ "{:,}".format(card.kcal) }}</div>
+        <div class="note">kcal</div>
       </div>
-      <p style="font-size:13px;color:#b0b39a;margin:0 0 14px 0;line-height:1.6">
-        UK batch-meal cycle is <strong style="color:var(--text)">suspended</strong> during camp.
-        Target <strong style="color:#60a5fa">~{{ "{:,}".format(today_food.kcal_target) }} kcal</strong>
-        {% if today_food.camp.hard_day %}— hard day{% else %}— easy/rest day{% endif %}.
-        On-bike <strong>{{ today_food.camp.on_bike_g_per_hr }} g/h</strong> carbs ·
-        protein <strong>{{ today_food.camp.protein_g_per_kg }} g/kg</strong> ·
-        recovery <strong>{{ today_food.camp.recovery_window }}</strong>.
-      </p>
-      <ul style="margin:0;padding-left:18px;color:#b0b39a;font-size:13px;line-height:1.7">
-        {% for item in today_food.checklist %}
-        <li style="margin-bottom:6px">{{ item }}</li>
-        {% endfor %}
-      </ul>
+      <div class="num-card">
+        <div class="lbl">Protein</div>
+        <div class="val">{{ card.protein_g }}</div>
+        <div class="note">{{ card.protein_line }}</div>
+      </div>
+      <div class="num-card">
+        <div class="lbl">Carbs</div>
+        <div class="val">{{ card.carbs_g }}</div>
+        <div class="note">{{ card.carbs_line }}</div>
+      </div>
+      <div class="num-card">
+        <div class="lbl">Fluids</div>
+        <div class="val" style="font-size:32px">{{ card.fluids }}</div>
+        <div class="note">{{ card.fluids_note }}</div>
+      </div>
     </div>
-  </section>
-{% elif today_food and today_food.meals %}
-  <section style="padding-top:24px">
-    <div class="section-label">Prescribed today</div>
-    <div class="today-food">
-      <div class="today-food-head">
-        <div class="today-food-title">{{ today_food.day_name }}</div>
-        <a href="/nutrition/meals" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Full week →</a>
-      </div>
-      <table class="meal-table">
-        {% for m in today_food.meals %}
-        <tr>
-          <td class="meal-type-cell">{{ m.type }}</td>
-          <td>
-            <div class="meal-name">{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
-            {% if m.detail_html %}<div class="meal-detail">{{ m.detail_html }}</div>
-            {% elif m.detail %}<div class="meal-detail">{{ m.detail }}</div>{% endif %}
-            <div class="meal-macros">
-              <span class="macro m-kcal">{{ m.macros.kcal }} kcal</span>
-              <span class="macro m-p">P: {{ m.macros.p }}g</span>
-              <span class="macro m-c">C: {{ m.macros.c }}g</span>
-              {% if m.macros.f %}<span class="macro m-f">F: {{ m.macros.f }}g</span>{% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      {% if today_food.meals_kcal_total is defined %}
-      <div style="display:flex;justify-content:flex-end;gap:8px;padding:8px 12px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">
-        Meals total <strong style="color:var(--text)">{{ "{:,}".format(today_food.meals_kcal_total) }} kcal</strong>
-        · target ~{{ "{:,}".format(today_food.kcal_target) }} kcal
-      </div>
-      {% endif %}
-      {% if today_food.scale_meta is defined and today_food.scale_meta.note %}
-      <div style="padding:8px 18px;border-top:1px solid var(--border);font-size:12px;color:#fbbf24;background:rgba(251,191,36,0.06)">
-        {{ today_food.scale_meta.note }}
-      </div>
-      {% elif today_food.scale_meta is defined and today_food.scale_meta.adjusted %}
-      <div style="padding:8px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
-        Portions adjusted to match your intake target (base plate {{ today_food.scale_meta.base_kcal }} kcal).
-      </div>
-      {% endif %}
-      {% if today_food.pre_din_p is defined %}
-      <div class="protein-bar-row">
-        <span class="pb-label">Pre-dinner P</span>
-        <div class="pb-track"><div class="pb-fill" style="width:{{ [100, (today_food.pre_din_p / protein_target.low * 100) | round | int] | min }}%"></div></div>
-        <span class="pb-val">{{ today_food.pre_din_p }}g</span>
-        {% if today_food.protein_note %}<span class="pb-note">{{ today_food.protein_note }}</span>{% endif %}
-      </div>
-      {% endif %}
-    </div>
-    {% if sunday_fuel %}
-    <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);padding:12px 18px;border-radius:4px;font-size:13px;color:#b0b39a">
-      <strong style="color:var(--accent2)">This Sunday (~{{ sunday_fuel.ride_hours }} h):</strong>
-      make <strong style="color:var(--text)">{{ sunday_fuel.rice_cakes }} rice cakes</strong> Friday eve,
-      mix bottles <strong style="color:var(--text)">{{ sunday_fuel.bottles | join(' + ') }}</strong>
-      {% if sunday_fuel.carb_drink_bottles %}· <strong style="color:var(--text)">{{ sunday_fuel.carb_drink_bottles }}× carb drink</strong> (~{{ sunday_fuel.target_g_per_hr }} g/h){% endif %}
-      {% if sunday_fuel.flapjack %}· pack 1 protein bar (or flapjack){% endif %}.
-      <a href="/nutrition/fuelling" style="color:var(--accent);margin-left:6px">Full calculator →</a>
-    </div>
-    {% endif %}
+    <p class="habit-line">{{ card.habit }}</p>
+    <p class="stone-line">{{ card.stone_line }}</p>
   </section>
 {% endif %}
 
-{% if cal_today %}
-  <section style="padding-top:{% if today_food %}8px{% else %}24px{% endif %}">
+{% if today_food and today_food.meals %}
+  <section style="padding-top:8px">
+    <div class="section-label">Today’s meals</div>
+    {% for m in today_food.meals %}
+    <div class="meal-line">
+      <div class="slot">{{ m.type }}</div>
+      <div>{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
+    </div>
+    {% endfor %}
+    <p style="margin-top:10px"><a href="/nutrition/meals">This week →</a></p>
+  </section>
+{% endif %}
+
+{% if cal_today or protein_today %}
+  <section>
     <div class="section-label">Logged vs target</div>
     <div class="cal-strip">
+      {% if cal_today and card %}
       <div>
-        <div class="lbl">Today logged</div>
-        <div class="val" style="color:var(--accent3)">{{ cal_today }} kcal</div>
+        <div class="lbl">Calories</div>
+        <div class="val" style="color:var(--accent3)">{{ "{:,}".format(cal_today) }}</div>
+        <div class="note" style="font-size:12px;color:var(--muted)">of {{ "{:,}".format(card.kcal) }} kcal</div>
       </div>
-      {% if today_food and today_food.kcal_target %}
+      {% elif cal_today %}
       <div>
-        <div class="lbl">Intake target</div>
-        <div class="val" style="color:#60a5fa">{{ "{:,}".format(today_food.kcal_target) }} kcal</div>
-      </div>
-      {% set plan_gap = today_food.kcal_target - cal_today %}
-      <div>
-        <div class="lbl">vs plan</div>
-        <div class="val" style="color:{% if plan_gap > 400 %}#fbbf24{% elif plan_gap > 0 %}var(--accent){% else %}var(--accent2){% endif %}">{{ "%+d"|format(plan_gap) }} kcal</div>
+        <div class="lbl">Calories logged</div>
+        <div class="val" style="color:var(--accent3)">{{ "{:,}".format(cal_today) }}</div>
       </div>
       {% endif %}
-      {% if tdee_today %}
-      {% set deficit = tdee_today - cal_today %}
-      <div>
-        <div class="lbl">TDEE (burn)</div>
-        <div class="val" style="color:var(--text)">{{ tdee_today }} kcal</div>
-      </div>
-      <div>
-        <div class="lbl">vs burn (so far)</div>
-        <div class="val" style="color:{% if deficit > 700 %}#fbbf24{% elif deficit > 250 %}var(--accent){% elif deficit > -100 %}#fbbf24{% else %}var(--accent2){% endif %}">
-          {{ "%+d"|format(deficit) }} kcal
-        </div>
-      </div>
-      {% endif %}
-      {% if carbs_today %}
-      <div>
-        <div class="lbl">Carbs</div>
-        <div class="val" style="color:var(--carbs)">{{ carbs_today }}g</div>
-      </div>
-      {% endif %}
-      {% if protein_today %}
+      {% if protein_today and card %}
       <div>
         <div class="lbl">Protein</div>
-        <div class="val" style="color:var(--protein)">{{ protein_today }}g</div>
+        <div class="val" style="color:var(--protein)">{{ protein_today }} g</div>
+        <div class="note" style="font-size:12px;color:var(--muted)">of {{ card.protein_g }} g</div>
       </div>
-      {% endif %}
-      {% if nutrition_today and nutrition_today.ride_work_kj %}
+      {% elif protein_today %}
       <div>
-        <div class="lbl">Ride work</div>
-        <div class="val" style="color:var(--accent2)">{{ nutrition_today.ride_work_kj }} kJ</div>
+        <div class="lbl">Protein logged</div>
+        <div class="val" style="color:var(--protein)">{{ protein_today }} g</div>
       </div>
       {% endif %}
     </div>
@@ -306,39 +234,50 @@
   <section>
     <div class="section-label">Weekly shop</div>
     <div class="shop-grid">
-      <a class="shop-card lidl" href="/nutrition/lidl-shopping-list">
-        <div class="store">Lidl</div>
-        <p class="blurb">Walk-order list for cycle week {{ (cycle_week | default(0)) + 1 }} — produce → bakery → chilled → frozen → ambient. Tick off as you go.</p>
-        <span class="go">Open Lidl list →</span>
-      </a>
-      <a class="shop-card asda" href="/nutrition/shopping-list">
-        <div class="store">Asda</div>
-        <p class="blurb">Same weekly items, grouped for Asda aisle order — with Find links into Asda’s site.</p>
-        <span class="go">Open Asda list →</span>
+      <a class="shop-card" href="/nutrition/shopping-list">
+        <div class="store">One list</div>
+        <p class="blurb">This week’s one-pots and soups, plus yoghurt, milk, eggs, fruit and lemons. Same list at Asda or Lidl.</p>
+        <span class="go">Open the list →</span>
       </a>
     </div>
   </section>
 
   <section>
-    <div class="section-label">Keep it simple</div>
-    <p class="rules-line">
-      Protein floor {{ protein_target.low }}–{{ protein_target.high }} g · Mon–Sun evening plates from
-      <a href="/nutrition/sunday">Sunday Prep</a> (component prep + air-fryer finish) ·
-      overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu
-      {% if cycle_week == 3 %}(egg muffins this recovery week){% endif %} ·
-      shop from the <a href="/nutrition/lidl-shopping-list">Lidl</a> or <a href="/nutrition/shopping-list">Asda</a> list.
-    </p>
-    <p class="rules-line" style="margin-top:10px;font-size:12px;color:var(--muted)">
-      Intake = stable TDEE − session deficit (periodized: harder cut on rest days, near maintenance on long rides).
-      Maintenance through 3 Jan 2027 zeros the deficit. From 4 Jan the goal is 84–85 kg by 31 Mar.
-      Meal slots follow today’s plan session. More detail in <a href="/help/nutrition">Help → Nutrition</a>.
-    </p>
+    <details class="advanced">
+      <summary>Advanced</summary>
+      <div class="adv">
+        {% if card and card.why %}<p>{{ card.why }}</p>{% endif %}
+        {% if card and card.tdee %}
+        <p>Stable TDEE {{ "{:,}".format(card.tdee) }} kcal{% if card.deficit is not none %} · planned deficit {{ card.deficit }} kcal{% endif %}{% if card.maintenance %} · maintenance, no deficit{% endif %}.</p>
+        {% endif %}
+        {% if card and card.protein_basis %}<p>Protein basis: {{ card.protein_basis }}.</p>{% endif %}
+        {% if tdee_today and cal_today %}
+        <p>Today’s burn so far {{ "{:,}".format(tdee_today) }} kcal · logged {{ "{:,}".format(cal_today) }}.</p>
+        {% endif %}
+        {% if carbs_today %}<p>Carbs logged {{ carbs_today }} g.</p>{% endif %}
+        {% if nutrition_today and nutrition_today.ride_work_kj %}<p>Ride work {{ nutrition_today.ride_work_kj }} kJ.</p>{% endif %}
+        {% if ea_report %}<p>{{ ea_report.words }}</p>{% endif %}
+        {% if today_food and today_food.meals %}
+        <p>Per meal:
+          {% for m in today_food.meals %}{{ m.type }} {{ m.macros.kcal }} kcal / P {{ m.macros.p }} g / C {{ m.macros.c }} g{% if not loop.last %} · {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+        {% if sunday_fuel %}
+        <p>Sunday ride about {{ sunday_fuel.ride_hours }} h: {{ sunday_fuel.rice_cakes }} rice cakes, bottles {{ sunday_fuel.bottles | join(' + ') }}{% if sunday_fuel.carb_drink_bottles %}, {{ sunday_fuel.carb_drink_bottles }} carb drink{% endif %}. <a href="/nutrition/fuelling">Fuelling</a>.</p>
+        {% endif %}
+        {% if supplements %}
+        <p style="margin-top:10px">{{ supplement_disclaimer }}</p>
+        <ul style="margin:8px 0 0 18px">
+          {% for s in supplements %}<li><strong style="color:var(--text)">{{ s.name }}</strong> — {{ s.dose }}. {{ s.why }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </details>
   </section>
 
   <div class="quiet-links">
-    <a href="/nutrition/sunday">Sunday Prep</a>
-    <a href="/nutrition/lidl-shopping-list">Lidl shop</a>
-    <a href="/nutrition/shopping-list">Asda shop</a>
+    <a href="/nutrition/sunday">Batch cook</a>
+    <a href="/nutrition/shopping-list">Shop</a>
     <a href="/nutrition/fuelling">Fuelling</a>
     <a href="/nutrition/meals">This week’s meals</a>
   </div>

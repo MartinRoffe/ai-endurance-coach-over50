@@ -45,22 +45,18 @@ _PROTEIN_G_PER_KG_LEAN_LOW = 2.2
 _PROTEIN_G_PER_KG_LEAN_HIGH = 2.6
 
 
-# ── Calorie tiers ─────────────────────────────────────────────────────────────
-CALORIE_TIERS = {
-    "rest":     {"label": "Rest / Monday",            "kcal": 2050},
-    "training": {"label": "Training days (Tue–Fri)",  "kcal": 2350},
-    "ruck":     {"label": "Ruck Saturday",             "kcal": 2500},
-    "long":     {"label": "Long ride Sunday",          "kcal": 2700,
-                 "note": "baseline ~2 h; +150–200 kcal per extra hour beyond 2 h"},
-    "recovery": {"label": "Recovery week Mon–Fri",     "kcal": 2050},
-}
+# One static intake used only when a stable TDEE is not available yet.
+FALLBACK_INTAKE_KCAL = 2200
 
+from .coach_voice import STONE_SAFE_LINE
 from .energy import (
     CUT_TARGET_KG,
     LONG_RIDE_EXTRA_KCAL_PER_HOUR,
     MIN_INTAKE_KCAL,
     active_cut_phase,
+    day_kind,
     deficit_for_tier,
+    fluid_target_litres,
     in_maintenance_window,
     intake_target_kcal,
     ride_kcal_from_kj,
@@ -162,9 +158,9 @@ def resolve_calorie_target(
     ``tdee`` should be the stable multi-day TDEE (``_stable_tdee()``), not
     today's partial burn. Returns ``kcal``, ``from_tdee``, optional
     ``planned_deficit`` (TDEE − target), ``tier_deficit``, ``long_fuel_topup``,
-    and ``static_fallback`` from ``CALORIE_TIERS``.
+    and ``static_fallback`` (one number, used when TDEE is unknown).
     """
-    static = CALORIE_TIERS[tier_key]["kcal"]
+    static = FALLBACK_INTAKE_KCAL
     cut_phase = active_cut_phase(ref_date)
     camp = camp_nutrition_window(ref_date)
     if camp:
@@ -228,77 +224,20 @@ def resolve_calorie_target(
     }
 
 
-def adjust_for_session_kj(tier_kcal: int, planned_kj: float) -> dict:
-    """Annotate a static calorie tier with estimated session mechanical work."""
-    if not planned_kj or planned_kj <= 0:
-        return {"tier_kcal": tier_kcal, "planned_kj": None, "note": None}
-    kcal = ride_kcal_from_kj(planned_kj)
-    return {
-        "tier_kcal": tier_kcal,
-        "planned_kj": round(planned_kj),
-        "planned_kcal_equiv": kcal,
-        "note": f"planned ride work ≈ {round(planned_kj)} kJ (~{kcal} kcal mechanical)",
-    }
-
-# ── Simple rules (primary athlete-facing cheat sheet) ─────────────────────────
+# ── Simple rules (the whole cheat sheet) ──────────────────────────────────────
 SIMPLE_RULES = [
-    "Protein anchor every meal — chicken, scotch egg, tuna, prawns, Greek yogurt, or whey "
-    "(hit the lean-mass protein floor every day; see the dashboard for your current range).",
-    "Breakfast is fixed — overnight oats Mon/Wed/Fri; scotch egg + 200 g yogurt Tue/Thu "
-    "(egg muffins Tue/Thu in recovery week only).",
-    "Weekday rides ≤90 min — banana 45 min before, nothing on the bike. Whey shake after as planned.",
-    "Lunch = Sunday batch — batch rice + chicken + yogurt Mon/Tue/Thu; Wednesday Chinese chicken "
-    "+ egg fried rice (day-old batch rice); Friday is a ready-made paella pouch + prawns; weekend "
-    "is chicken + salad with leftover dinner carbs (potato/rice). Assemble in 2 min (Wed: fry rice "
-    "Tue night, microwave Wed).",
-    "Dinner — plate-style evenings Mon–Sun (unique each night). Sunday component-prep; "
-    "15–20 min air-fryer/oven finish; protein dessert included. No stews, no cheese, no spice.",
-    "Protein dessert (150 g skyr / 0% Greek yogurt) closes every evening dinner; short on "
-    "protein? half-scoop whey in yogurt (avoid cheese).",
-    "Protein bar (Nature Valley or home-baked #03) — Tue/Thu mid-morning only.",
-    "Weekend long rides — rice cakes + electrolyte bottles; from rides ≥150 min add "
-    "maltodextrin/fructose carb drink bottles to hit the gut-training target (60→75→90 g/h). "
-    "Prep Friday eve: see fuel_prep_for_ride() for batch counts.",
-    "Carb periodization: Z2 rides ≤75 min may run lower-carb; VO2/threshold days are high-carb "
-    "(glycogen-dependent). Match carbs to session mechanical work when power data is available.",
-    "Strength days (KB / MaxiClimber): 20–40 g protein within ~1 h peri-session (whey shake or "
-    "yogurt) to hit the leucine threshold for 50+ muscle retention.",
-    "Christmas Tenerife stays at maintenance. From 4 Jan 2027 the goal is 84–85 kg by 31 Mar "
-    "(about 0.5 kg a week), using ordinary day-type deficits. Hard days keep carbohydrate up. "
-    "The August 2026 camp window is historical.",
+    "Calories — three day types only. Easy or rest: stable TDEE minus 600. "
+    "Hard: minus 250. Long: maintenance plus ride fuel. Floor 1,600 kcal. No cut before 3 Jan 2027.",
+    "Protein — one lean-mass target, eaten as 4 doses (breakfast, lunch, dinner, and an evening "
+    "dairy dose such as Greek yoghurt, skyr, kefir or milk). About 35–40 g a dose.",
+    "Carbs — easy about 3 g/kg (a quarter plate); hard about 5 g/kg (half a plate, plus something "
+    "before and after); long about 6–7 g/kg plus 60–90 g/h on the bike.",
+    "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
+    "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Batch one-pots and soups "
+    "(4 portions, freeze). Chicken and rice stays in the rotation, not every day.",
 ]
 
-# ── Principles (detail behind the simple rules) ───────────────────────────────
-PRINCIPLES = [
-    "Cost strategy (bulk-staple rebuild): batch-roasted chicken, scotch eggs, a 1 kg Greek yogurt "
-    "tub, a 1 kg whey tub, bulk oats and basmati. Target ≈£28–32/week.",
-    "Energy strategy: no kilogram target before Christmas (maintenance through 3 Jan 2027). "
-    "From 4 Jan 2027 the goal is 84–85 kg by 31 Mar (about 0.5 kg a week, roughly 500 kcal a day), "
-    "using ordinary day-type deficits. Hard days take a smaller deficit so carbohydrate stays high. "
-    "Long-ride days stay closer to energy balance. Protein stays on the lean-mass floor.",
-    "Protein target: lean-mass based (≈2.2 g/kg fat-free mass), locked at cut-start lean mass "
-    "during the Base Cut so the floor does not ratchet down. Greek yogurt at lunch Mon–Thu; "
-    "whey shake Wed/Thu/Fri/Sat/Sun as prescribed.",
-    "Carbs around training: batch rice + chicken lunches Mon/Tue/Thu; Wednesday Chinese chicken "
-    "+ egg fried rice from day-old batch rice; banana 45 min pre-session on weekdays. "
-    "Saturday evening plate is carb-rich — fuels Sunday — not breakfast.",
-    "Dinners: unique Mon–Sun plates (Mediterranean / Chinese / BBQ / British pub / Italian). "
-    "Sunday component-prep for 1; air-fryer/oven finish ≤20 min; no cheese, no spice, no stew mush; "
-    "protein dessert standard (≥60 g protein at dinner).",
-    "Sunday long ride: half banana before rolling; rice cakes on the bike from minute 0; "
-    "electrolyte bottles for hydration; on rides ≥150 min add maltodextrin/fructose carb "
-    "drink bottles to close the gap to 60→75→90 g/h gut-training targets. "
-    "Recovery: chocolate milk → protein overnight oats jar.",
-    "In-ride solids are weekends only (Sunday long ride ≥75 min). Weekday 60 min rides: banana only.",
-    "August 2026 Tenerife is historical. Christmas Tenerife (21 Dec–2 Jan) is maintenance "
-    "calories and normal easy-ride fuelling, not a race-camp carb load. "
-    "May 2027 race-sim camp is not in the live plan.",
-    "Recovery week (W4): same plate styles, fewer snacks, lighter ~560 kcal dinners. "
-    "Protein floor holds; egg muffins replace scotch eggs Tue/Thu.",
-    "Thursday: evening plate + protein dessert closes the day at 60–68 g protein. "
-    "KB/MaxiClimber days: 20–40 g peri-session protein (whey or yogurt).",
-    "Saturday: chicken lunch (not eggs on toast), yogurt post-ruck, evening whey shake.",
-]
+HABIT_LINE = "Veg or fruit at every meal, plus creatine 3–5 g."
 
 # ── Supplements (evidence-based for 50+; discuss with GP before starting) ─────
 # Framed as coach guidance, NOT prescriptions. Each entry: (name, dose, why).
@@ -312,10 +251,11 @@ SUPPLEMENTS: list[tuple[str, str, str]] = [
      "UK sun is insufficient Oct–Mar; dose to a measured blood level rather than guessing. "
      "Pair with dietary calcium (dairy/yogurt already in the meal plan) — D3 alone is not enough "
      "for bone health."),
-    ("Calcium (dietary first)", "Aim ~1000–1200 mg/day from food",
-     "Masters bone health for a low-impact cyclist. Greek yogurt, milk, cheese and fortified "
-     "alternatives in the meal plan usually cover this; supplement only if intake is low or "
-     "DEXA/GP advises."),
+    ("Calcium (dietary first)", "1,000–1,200 mg/day from dairy, with meals",
+     "Do not cut this. Milk, Greek yoghurt, skyr and kefir cover it when they are eaten with "
+     "meals. A calcium pill is only for a day the food does not get there, and only if your GP agrees."),
+    ("Vitamin C", "A standard multivitamin dose only",
+     "High-dose vitamin C raises oxalate. Stay at a normal supplement dose, or skip it and eat fruit."),
     ("Iron awareness", "Screen if unexplained fatigue / GP directed",
      "Male masters cyclists on high-volume blocks can drift low. Do not self-supplement iron — "
      "test first. Red flags: persistent fatigue despite sleep, rising resting HR, poor ride "
@@ -330,211 +270,22 @@ _SUPPLEMENT_DISCLAIMER = (
     "especially alongside any medication or blood-pressure management."
 )
 
-# ── Weekday breakfasts (fixed pattern; recovery week swaps Tue/Thu to muffins) ─
-# Each entry: (name, detail, kcal, protein_g, carbs_g)
+# Breakfasts and the rotating one-pots/soups live in meal_library.
+# BREAKFASTS stays as (name, detail, kcal, protein, carbs) for search.
+from .meal_library import BREAKFASTS as _LIB_BREAKFASTS, PROTEIN_DOSE_G
+
 BREAKFASTS: dict[str, tuple[str, str, int, int, int]] = {
-    "mwf": (
-        "High-Protein Overnight Oats",
-        "Per 350ml jar: 40g oats + 1 scoop whey + 120ml milk + 90g Greek yogurt + 1 tbsp chia; "
-        "100g berries in a separate pot. Spoon, pour, seal — no cooking. Mon/Wed/Fri.",
-        420, 42, 38,
-    ),
-    "scotch_tuth": (
-        "Scotch Egg + Greek Yogurt",
-        "1 baked scotch egg (lean turkey/chicken mince wrap) + 200g Greek yogurt. "
-        "Make 2 on Sunday (Tue/Thu) — they only keep 4 days.",
-        420, 32, 18,
-    ),
-    "muffin_tuth": (
-        "Egg & Veg Muffins ×2",
-        "5-egg, 6-muffin tray bake with potato, pepper, spinach and bacon/ham. Bake Sunday; "
-        "2 muffins per breakfast Tue/Thu. Recovery week only.",
-        340, 28, 12,
-    ),
+    item["id"]: (
+        item["name"],
+        item["detail"],
+        PROTEIN_DOSE_G * 4 + 120,
+        PROTEIN_DOSE_G,
+        30,
+    )
+    for item in _LIB_BREAKFASTS
 }
 
-# ── Evening dinners (Mon–Sun unique plates; macros include 150 g protein dessert) ──
-# Build weeks Mon–Fri ~620 kcal; Sat carb-rich ~600; Sun recovery ~520.
-# Recovery week (index 3) Mon–Fri ~560; weekend ~520. Cook for 1 — component prep Sunday.
-# Each entry: (name, detail, kcal, protein_g, carbs_g). Names use " + " for shopping tally.
-_DINNER_DETAIL = (
-    "Serves 1. Sunday component-prep; 15–20 min air-fryer/oven/hob finish. "
-    "No cheese, no spice, crisp sides (not stew). "
-    "Macros include 150 g skyr / 0% Greek yogurt protein dessert. "
-    "Methods: /nutrition/sunday."
-)
-
-# cycle_week → weekday (0=Mon … 6=Sun) → (name, detail, kcal, protein_g, carbs_g)
-EVENING_DINNERS: dict[int, dict[int, tuple[str, str, int, int, int]]] = {
-    0: {
-        0: (
-            "BBQ rub chicken breast + AF potatoes + corn + vinegar slaw",
-            _DINNER_DETAIL + " Mild BBQ rub (no chilli). Optional Blackstone finish.",
-            620, 66, 42,
-        ),
-        1: (
-            "Pork loin apple-mustard glaze + mash + green beans",
-            _DINNER_DETAIL + " British pub plate — glaze spoon, not a pool of sauce.",
-            620, 64, 45,
-        ),
-        2: (
-            "Soy-ginger chicken stir-fry + basmati + crisp peppers",
-            _DINNER_DETAIL + " Chinese-style; no chilli. Veg stay crisp.",
-            620, 65, 48,
-        ),
-        3: (
-            "Lean beef meatballs + passata spoon + WW spaghetti + salad",
-            _DINNER_DETAIL + " Italian — tomato spoon only, no cheese.",
-            620, 68, 50,
-        ),
-        4: (
-            "Lemon-herb chicken + roasted peppers + courgette + baby potatoes",
-            _DINNER_DETAIL + " Mediterranean roast; high heat for crisp veg.",
-            620, 65, 44,
-        ),
-        5: (
-            "BBQ pork medallions + larger potato + corn + slaw",
-            _DINNER_DETAIL + " Carb-rich — fuels Sunday's ride. Optional Blackstone.",
-            600, 60, 62,
-        ),
-        6: (
-            "AF white fish + potato wedges + peas + greens",
-            _DINNER_DETAIL + " British air-fryer chippy — lighter recovery plate.",
-            520, 60, 40,
-        ),
-    },
-    1: {
-        0: (
-            "Italian lean rump strips + roasted tomatoes + potatoes",
-            _DINNER_DETAIL + " Tomato not creamy; potatoes roasted crisp.",
-            620, 66, 44,
-        ),
-        1: (
-            "Soy-ginger prawn stir-fry + basmati + crisp veg",
-            _DINNER_DETAIL + " Chinese-style; no chilli. Quick hob finish.",
-            620, 64, 48,
-        ),
-        2: (
-            "Mustard chicken breast + mash + greens",
-            _DINNER_DETAIL + " British pub — light mustard finish, not a sauce bowl.",
-            620, 65, 45,
-        ),
-        3: (
-            "Mediterranean turkey patties + couscous + roasted courgette",
-            _DINNER_DETAIL + " No cheese in patties. Roast veg high and fast.",
-            620, 66, 46,
-        ),
-        4: (
-            "Pork apple-mustard + smaller mash + greens",
-            _DINNER_DETAIL + " Pub plate; smaller mash than Tue.",
-            620, 64, 42,
-        ),
-        5: (
-            "Lean beef + tomato pasta (larger carb)",
-            _DINNER_DETAIL + " Italian carb-rich pre-Sunday — passata spoon, no cheese.",
-            600, 62, 62,
-        ),
-        6: (
-            "AF cod + potato wedges + greens",
-            _DINNER_DETAIL + " Lighter chippy recovery plate.",
-            520, 60, 40,
-        ),
-    },
-    2: {
-        0: (
-            "Chinese chicken stir-fry + rice + crisp veg",
-            _DINNER_DETAIL + " Soy-ginger only; no chilli heat.",
-            620, 65, 48,
-        ),
-        1: (
-            "BBQ chicken thighs + AF potato + vinegar slaw",
-            _DINNER_DETAIL + " Skinless thighs; mild rub. Optional Blackstone.",
-            620, 66, 44,
-        ),
-        2: (
-            "Italian chicken breast + passata spoon + WW pasta + salad",
-            _DINNER_DETAIL + " Tomato spoon, no cheese.",
-            620, 68, 50,
-        ),
-        3: (
-            "Mediterranean white fish + baby potatoes + roasted veg",
-            _DINNER_DETAIL + " High-roast peppers/courgette stay firm.",
-            620, 62, 42,
-        ),
-        4: (
-            "Pub pork + mash + green beans",
-            _DINNER_DETAIL + " Apple-mustard glaze spoon.",
-            620, 64, 45,
-        ),
-        5: (
-            "BBQ chicken + larger potato + corn",
-            _DINNER_DETAIL + " Carb-rich pre-Sunday ride. Optional Blackstone.",
-            600, 60, 62,
-        ),
-        6: (
-            "Lean steak + small potatoes + greens",
-            _DINNER_DETAIL + " Recovery plate — smaller potato mound.",
-            520, 62, 38,
-        ),
-    },
-    3: {
-        0: (
-            "BBQ chicken + small AF potatoes + vinegar slaw",
-            _DINNER_DETAIL + " Recovery week — lighter carb side.",
-            560, 64, 36,
-        ),
-        1: (
-            "Mustard pork + half mash + greens",
-            _DINNER_DETAIL + " Recovery week — half mash.",
-            560, 62, 38,
-        ),
-        2: (
-            "Prawn stir-fry + smaller rice + crisp veg",
-            _DINNER_DETAIL + " Recovery week — smaller rice mound.",
-            560, 62, 40,
-        ),
-        3: (
-            "Turkey patties + couscous + roasted veg",
-            _DINNER_DETAIL + " Recovery week — no cheese.",
-            560, 64, 38,
-        ),
-        4: (
-            "Lemon-herb chicken + roasted veg + small potatoes",
-            _DINNER_DETAIL + " Recovery week Mediterranean plate.",
-            560, 64, 36,
-        ),
-        5: (
-            "BBQ chicken or pork + moderate potato + corn",
-            _DINNER_DETAIL + " Still fuels Sunday if riding; lighter than build Sat.",
-            520, 60, 48,
-        ),
-        6: (
-            "AF white fish + small wedges + greens",
-            _DINNER_DETAIL + " End-of-cycle recovery chippy.",
-            520, 60, 36,
-        ),
-    },
-}
-
-# Back-compat alias — same Mon–Sun map (weekday keys, not A/B).
-WEEKDAY_DINNERS = EVENING_DINNERS
-
-_EVENING_DINNER_TYPES = frozenset({
-    "rest", "training", "bike", "thursday", "bike_fri",
-    "ruck", "long", "recovery_weekday", "recovery_saturday", "recovery_sunday",
-})
-
-# Legacy name — evening plates inject for all these day types.
-_WEEKDAY_DINNER_TYPES = _EVENING_DINNER_TYPES
-
-_WEEKDAY_BREAKFAST_TYPES = frozenset({
-    "rest", "training", "bike", "bike_fri", "thursday", "recovery_weekday",
-})
-
-_BREAKFAST_LABEL = (
-    "Overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu "
-    "(egg muffins Tue/Thu in recovery week)"
-)
+_BREAKFAST_LABEL = "Eggs and yoghurt, or skyr with oats and fruit."
 
 _WEEKDAY_SHORT = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -553,29 +304,32 @@ def breakfast_key(cycle_week: int, weekday: int) -> str:
     return "scotch_tuth"
 
 
-def evening_dinner(cycle_week: int, weekday: int) -> tuple:
-    """Mon–Sun evening plate for the cycle week as a Dinner meal tuple."""
-    name, detail, kcal, prot, carbs = EVENING_DINNERS[cycle_week][weekday]
-    return ("Dinner", name, detail, kcal, prot, carbs)
+def evening_dinner(cycle_week: int, weekday: int, kind: str = "easy") -> tuple:
+    """Dinner one-pot for this cycle slot."""
+    from .meal_library import dinner_tuple
+    return dinner_tuple(cycle_week, weekday, kind)
 
 
 def weekday_dinner(cycle_week: int, weekday: int) -> tuple | None:
-    """Evening plate for any weekday 0–6 (Mon–Sun). None only if out of range."""
-    if weekday not in EVENING_DINNERS.get(cycle_week, {}):
+    """Evening one-pot for any weekday 0–6. None only if out of range."""
+    if not 0 <= weekday <= 6 or not 0 <= cycle_week <= 3:
         return None
     return evening_dinner(cycle_week, weekday)
 
 
-def _recovery_dinner_summary() -> tuple:
-    """Synthetic dinner row for the W4 Mon–Fri collapsed meals card."""
-    names = [EVENING_DINNERS[3][wd][0].split(" + ")[0] for wd in range(5)]
-    return (
-        "Dinner",
-        " · ".join(names) + " (Mon–Fri plates)",
-        "Recovery week: unique Mon–Fri evening plates (~560 kcal with protein dessert); "
-        "carb sides lighter. Methods: /nutrition/sunday.",
-        560, 62, 38,
-    )
+def _evening_index() -> dict[int, dict[int, tuple]]:
+    """(name, detail, kcal, protein, carbs) for callers that still index by week."""
+    out: dict[int, dict[int, tuple]] = {}
+    for cw in range(4):
+        out[cw] = {}
+        for wd in range(7):
+            meal = evening_dinner(cw, wd)
+            out[cw][wd] = meal[1:]
+    return out
+
+
+EVENING_DINNERS = _evening_index()
+WEEKDAY_DINNERS = EVENING_DINNERS
 
 
 def _skip_am_snack(_cycle_week: int, weekday: int) -> bool:
@@ -770,26 +524,16 @@ def _resolve_day_meals(
         session_dur=session_dur,
     )
     day_data = DAY_TYPES[dtype]
-    meals = list(_assemble_meals(dtype, cycle_week, weekday))
-
-    if dtype in ("long", "recovery_sunday") and session_dur and session_dur > 120:
-        meals = [
-            (
-                slot, name, detail,
-                on_bike_fuel_kcal(session_dur), prot,
-                round(_ON_BIKE_G_PER_HR * session_dur / 60),
-            ) if slot == "On-Bike" else (slot, name, detail, kcal, prot, carbs)
-            for slot, name, detail, kcal, prot, carbs in meals
-        ]
-
     # Single crowned kcal — same number as dashboard / Cut / email.
     tt = today_targets(ref_date)
+    from .meal_library import day_meals, rotation_index_for_date
+    meals = day_meals(rotation_index_for_date(ref_date), day_kind(tt["calorie_tier"]))
     target = {
         "kcal": tt["kcal"],
         "from_tdee": tt["kcal_source"] in ("tdee", "camp"),
         "tdee": tt.get("stable_tdee"),
         "planned_deficit": tt.get("planned_deficit"),
-        "static_fallback": CALORIE_TIERS[day_data["calorie_tier"]]["kcal"],
+        "static_fallback": FALLBACK_INTAKE_KCAL,
         "camp": bool(tt.get("camp")),
         "maintenance": bool(tt.get("maintenance")),
         "cut_phase": tt.get("cut_phase"),
@@ -799,9 +543,13 @@ def _resolve_day_meals(
         "why": tt.get("why"),
         "phase": tt.get("phase"),
     }
-    tgt_kcal = target["kcal"]
-
-    meals, scale_meta = scale_meals_to_target(meals, tgt_kcal)
+    scale_meta = {
+        "adjusted": False,
+        "base_kcal": sum(m[3] for m in meals),
+        "target_kcal": target["kcal"],
+        "gap_kcal": target["kcal"] - sum(m[3] for m in meals),
+        "note": None,
+    }
     return meals, {
         "target": target,
         "scale_meta": scale_meta,
@@ -812,22 +560,12 @@ def _resolve_day_meals(
 
 
 def _assemble_meals(dtype: str, cycle_week: int, weekday: int) -> list[tuple]:
-    """Inject weekday breakfast + Mon–Sun evening plate into day-type meal lists."""
-    raw = list(DAY_TYPES[dtype]["meals"])
-    if dtype in _EVENING_DINNER_TYPES:
-        dinner = weekday_dinner(cycle_week, weekday)
-        if dinner is not None and raw and raw[-1][0] == "Dinner":
-            raw[-1] = dinner
-    if dtype not in _WEEKDAY_BREAKFAST_TYPES:
-        return raw
-    key = breakfast_key(cycle_week, weekday)
-    name, detail, kcal, prot, carbs = BREAKFASTS[key]
-    result: list[tuple] = [("Breakfast", name, detail, kcal, prot, carbs)]
-    for slot, mname, mdetail, mkcal, mprot, mcarbs in raw:
-        if slot == "AM Snack" and _skip_am_snack(cycle_week, weekday):
-            continue
-        result.append((slot, mname, mdetail, mkcal, mprot, mcarbs))
-    return result
+    """Four protein doses: breakfast, soup, one-pot, evening dairy."""
+    from .meal_library import day_meals, rotation_index
+    tier = "easy"
+    if dtype in DAY_TYPES:
+        tier = day_kind(DAY_TYPES[dtype].get("calorie_tier"))
+    return day_meals(rotation_index(cycle_week, weekday), tier)
 
 
 def _pre_dinner_protein(meals: list[tuple]) -> int:
@@ -838,207 +576,29 @@ def _pre_dinner_protein(meals: list[tuple]) -> int:
 
 
 # ── Day-type templates ────────────────────────────────────────────────────────
-# Each meal: (slot, name, detail, kcal, protein_g, carbs_g)
-# Weekday breakfasts are injected by `_assemble_meals()` — not stored here.
-DAY_TYPES: dict[str, dict] = {
+# Meal rows come from meal_library. These keys only name the day and its calorie tier.
+_DOSE_NOTE = "Four protein doses. The carb side follows the day type."
 
-    "rest": {
-        "label": "Rest day",
-        "calorie_tier": "rest",
-        "pre_dinner_protein_g": 111,
-        "protein_note": "~111g pre-dinner; evening plate + protein dessert closes at 60g+.",
-        "meals": [
-            ("AM Snack", "Protein Bar (Nature Valley)", "Grab-and-go Nature Valley Protein bar (or home-baked #03). Tue/Thu mid-morning only.", 200, 10, 15),
-            ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
-             "Smaller rice portion (150g cooked basmati) + full 240g batch-roasted chicken, "
-             "small Greek-yogurt portion alongside for the protein top-up.", 500, 68, 45),
-            ("PM Snack", "Banana", "Afternoon energy.", 90, 1, 23),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 620, 66, 45),
-        ],
-    },
-
-    "training": {
-        "label": "Kettlebell + MaxiClimber",
-        "calorie_tier": "training",
-        "pre_dinner_protein_g": 111,
-        "protein_note": "~111g pre-dinner; evening plate + protein dessert closes at protein floor.",
-        "meals": [
-            ("AM Snack", "Protein Bar (Nature Valley)", "Grab-and-go (or home-baked #03). Tue mid-morning only.", 200, 10, 15),
-            ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
-             "Full 240g batch-roasted chicken + small Greek-yogurt portion on a smaller rice "
-             "base — protein floor needs the yogurt on training days too.", 500, 68, 45),
-            ("PM Snack", "Banana", "45 min before evening session.", 90, 1, 23),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 620, 65, 48),
-        ],
-    },
-
-    "bike": {
-        "label": "Outdoor Bike 60 min",
-        "calorie_tier": "training",
-        "pre_dinner_protein_g": 148,
-        "protein_note": "~148g pre-dinner (Chinese lunch + whey shake). Evening plate closes the day.",
-        "meals": [
-            ("Lunch", "Chinese Chicken + Egg Fried Rice + Greek Yogurt",
-             "Soy-glazed batch chicken (#01b) with a smaller egg-fried-rice portion from cold "
-             "batch basmati — fried Tuesday night at home, reheated Wednesday at the office "
-             "(microwave only). Good fuel for the afternoon ride.", 560, 80, 50),
-            ("PM Snack", "Banana", "45 min before riding — nothing on the bike for a 60 min weekday ride.", 90, 1, 23),
-            ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
-             "Post-ride or between PM snack and dinner. One scoop from the 1kg tub. Aids recovery "
-             "on the Wednesday ride day.", 150, 25, 5),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 620, 64, 50),
-        ],
-    },
-
-    "bike_fri": {
-        "label": "Outdoor Bike 60 min — Friday plate",
-        "calorie_tier": "training",
-        "pre_dinner_protein_g": 108,
-        "protein_note": "~108g pre-dinner (paella pouch + prawns + whey shake). Evening plate closes at 60g+.",
-        "meals": [
-            ("Lunch", "Ready-made Paella Pouch + Prawns 150g",
-             "Microwave paella pouch with ~150g cooked & peeled prawns stirred through — zero prep. "
-             "The prawns lift the low-protein pouch back toward target.", 420, 40, 58),
-            ("PM Snack", "Banana", "45 min before ride — nothing on the bike for a 60 min weekday ride.", 90, 1, 23),
-            ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
-             "Post-ride or between PM snack and dinner. Closes the gap left by the lower-protein "
-             "pouch lunch so the evening plate hits target.", 150, 25, 5),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 620, 65, 44),
-        ],
-    },
-
-    "thursday": {
-        "label": "Kettlebell + MaxiClimber",
-        "calorie_tier": "training",
-        "pre_dinner_protein_g": 111,
-        "protein_note": "~111g pre-dinner (rice + chicken lunch). Chicken lunch means Thursday is "
-                        "no longer the low-protein day; evening plate + dessert closes the day.",
-        "meals": [
-            ("AM Snack", "Protein Bar (Nature Valley)", "Grab-and-go (or home-baked #03). Thu mid-morning only.", 200, 10, 15),
-            ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
-             "Full 240g batch-roasted chicken on a smaller rice base; Greek-yogurt portion "
-             "alongside. Solid carbs for the evening kettlebell.", 500, 68, 45),
-            ("PM Snack", "Banana", "45 min before session. Carbs matter tonight.", 90, 1, 23),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 620, 64, 48),
-        ],
-    },
-
-    "ruck": {
-        "label": "Rucking 60–90 min",
-        "calorie_tier": "ruck",
+def _day_type(label: str, tier: str) -> dict:
+    return {
+        "label": label,
+        "calorie_tier": tier,
         "pre_dinner_protein_g": 120,
-        "protein_note": "Protein floor is lean-mass based — chicken lunch + Greek yogurt in the "
-                        "post-ruck meal + evening shake keep Saturday on track.",
-        "meals": [
-            ("On Waking", "Banana out the door (or fasted)",
-             "Very early start — fasted at easy pace is fine. Banana if you want fuel.", 100, 1, 25),
-            ("Post-Ruck", "Porridge 60g + Milk + 2 Eggs + Greek Yogurt",
-             "On return — the recovery meal. 60g oats, semi-skimmed milk, 2 eggs, "
-             "Greek-yogurt portion. The yogurt is essential here — without it Saturday protein collapses.", 480, 35, 50),
-            ("Lunch", "Chicken 240g + Salad + Leftover Dinner Carbs",
-             "Full 240g batch-roasted chicken — NOT eggs on toast (22g vs 58g protein). "
-             "No batch rice at the weekend; lean on leftover potato/rice from Friday's plate.", 520, 58, 38),
-            ("PM Snack", "Banana",
-             "Afternoon energy — the evening shake carries the protein top-up.", 90, 1, 23),
-            ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
-             "Evening, before dinner. Saturday's structure makes it hard to hit the protein floor "
-             "without a shake — treat this as a planned meal, not optional.", 150, 25, 5),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals. "
-             "Carb-rich Saturday plate fuels Sunday.", 600, 60, 62),
-        ],
-    },
+        "protein_note": _DOSE_NOTE,
+        "meals": [],
+    }
 
-    "long": {
-        "label": "Long Ride — building to 3h30",
-        "calorie_tier": "long",
-        "pre_dinner_protein_g": 102,
-        "protein_note": "~102g pre-dinner (whey in recovery meal + chicken at lunch). "
-                        "Evening plate at 60g closes the day above the floor. On-bike fuel scales with ride length.",
-        "meals": [
-            ("On Waking", "Half banana",
-             "15–25 g fast carbs, 10–15 min before rolling. Saturday evening plate was the real pre-ride meal.", 90, 1, 22),
-            ("On-Bike", "Standard rice cakes + electrolyte bottles (E1, E2…)",
-             "Weekend long ride only. Pack count from fuel_prep_for_ride(planned duration). "
-             "~55 g carbs/hr from solids; sip electrolyte bottles from minute 0. No carb powder in bottles. "
-             "Kcal shown scale with the planned ride length.", 450, 6, 104),
-            ("Recovery", "Chocolate Milk → Protein Overnight Oats Jar",
-             "Chocolate milk in car first, then a smaller recovery oats jar with whey "
-             "(≥30 g protein) within 60 min.", 500, 40, 50),
-            ("Lunch", "Chicken 240g + Salad + Leftover Dinner Carbs",
-             "A few hours after the ride. Full 240g chicken for recovery; salad base with a "
-             "small helping of leftover potato/rice from Saturday.", 430, 55, 25),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 520, 60, 40),
-        ],
-    },
-
-    "recovery_weekday": {
-        "label": "Recovery week Mon–Fri",
-        "calorie_tier": "recovery",
-        "pre_dinner_protein_g": 135,
-        "protein_note": "Recovery week: the lean-mass protein floor holds — cut from carbs/fat only. "
-                        "Whey shake stays in even on recovery week.",
-        "meals": [
-            ("AM Snack", "Protein Bar (Nature Valley)",
-             "Tue/Thu mid-morning only — skipped automatically on rest days.", 200, 10, 15),
-            ("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt",
-             "Lunch stays identical to Weeks 1–3 (smaller rice base + 240g chicken + yogurt). "
-             "The calorie cut comes from a lighter dinner and snack reduction, not lunch.", 500, 68, 45),
-            ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
-             "Keep the shake even in recovery week — the protein floor doesn't drop.", 150, 25, 5),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals. "
-             "Recovery week lighter carb sides (~560 kcal).", 560, 62, 38),
-        ],
-    },
-
-    "recovery_saturday": {
-        "label": "Recovery week Saturday — easy ruck",
-        "calorie_tier": "recovery",
-        "pre_dinner_protein_g": 106,
-        "protein_note": "Recovery Saturday still needs the lean-mass protein floor. Chicken lunch "
-                        "and Greek yogurt in the post-ruck meal are required — same rules as build-week Saturday.",
-        "meals": [
-            ("On Waking", "Fasted or banana", "Easy recovery ruck — fasted at easy pace is fine.", 90, 1, 23),
-            ("Post-Ruck", "50g Porridge + 2 Eggs + Greek Yogurt",
-             "On return — smaller than a build week (50g oats vs 60g) but the yogurt stays in.", 470, 40, 40),
-            ("Lunch", "Chicken 150g + Salad + Leftover Dinner Carbs",
-             "Chicken not eggs on toast — same rule as build Saturday. 150g chicken (not 240g) "
-             "reflects the lighter recovery day. No batch rice at the weekend; light leftover "
-             "potato/rice for carbs.", 420, 40, 30),
-            ("Protein Shake", "Whey shake — 25g protein (home-mixed)",
-             "Saturday protein gap exists even in recovery week. Shake stays in.", 150, 25, 5),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 520, 60, 48),
-        ],
-    },
-
-    "recovery_sunday": {
-        "label": "Recovery week Sunday — shorter ride 75–90 min",
-        "calorie_tier": "recovery",
-        "pre_dinner_protein_g": 82,
-        "protein_note": "Whey in the recovery meal; evening plate at 60g closes the day near the floor — "
-                        "acceptable for recovery week.",
-        "meals": [
-            ("On Waking", "Half banana", "Small fast carbs only.", 90, 1, 23),
-            ("On-Bike", "Rice cakes + electrolyte (E1)",
-             "Recovery-pace ride ≥75 min — pack count from fuel_prep_for_ride(planned duration).", 120, 3, 28),
-            ("Recovery", "Chocolate Milk → Protein Overnight Oats Jar",
-             "Same two-tier stack as build-week Sunday, smaller jar.", 500, 36, 50),
-            ("Lunch", "Chicken 150g + Salad + Leftover Dinner Carbs",
-             "Recovery ride: 150g chicken (lighter than build week 240g). "
-             "Still essential to get protein in post-ride. No batch rice at the weekend; "
-             "light leftover potato/rice for carbs.", 420, 42, 30),
-            ("Dinner", "Evening plate — see rotation",
-             "Fallback only — replaced by EVENING_DINNERS via _assemble_meals.", 520, 60, 36),
-        ],
-    },
+DAY_TYPES: dict[str, dict] = {
+    "rest": _day_type("Rest day", "rest"),
+    "training": _day_type("Training day", "training"),
+    "bike": _day_type("Easy ride", "training"),
+    "bike_fri": _day_type("Easy ride", "training"),
+    "thursday": _day_type("Training day", "training"),
+    "ruck": _day_type("Ruck", "ruck"),
+    "long": _day_type("Long ride", "long"),
+    "recovery_weekday": _day_type("Easy day", "recovery"),
+    "recovery_saturday": _day_type("Easy day", "recovery"),
+    "recovery_sunday": _day_type("Long ride", "long"),
 }
 
 # ── Day-of-week → day type mapping ────────────────────────────────────────────
@@ -1230,11 +790,8 @@ def fuel_prep_for_ride(duration_min: int, *, ref_date: date | None = None) -> di
     }
 
 
-# ── Tenerife camp nutrition windows (suspend UK deficit tiers) ────────────────
-# August 2026 camp only. Christmas stays on maintenance calories.
-CAMP_NUTRITION_WINDOWS: list[tuple[date, date, str]] = [
-    (date(2026, 8, 13), date(2026, 8, 27), "August Tenerife (charity prep)"),
-]
+# No live camp-nutrition window. Christmas Tenerife is maintenance, not a carb-load camp.
+CAMP_NUTRITION_WINDOWS: list[tuple[date, date, str]] = []
 
 CAMP_NUTRITION = {
     "hard_day_kcal": "3,200–3,800",
@@ -1325,29 +882,29 @@ def calorie_tier_for_session(
     weekday_tier: str,
     label: str | None = None,
 ) -> str:
-    """Map a planned session type to an intake deficit tier.
+    """Map a planned session onto easy, hard, or long.
 
-    Falls back to the Mon–Sun food-cycle tier when there is no session.
-    Threshold and VO2 days use the ``hard`` tier so the deficit is smaller
-    and carbohydrate stays up. Protein is not reduced to make the deficit.
+    Easy covers rest, recovery and ordinary training. Threshold and VO2 days
+    are hard so the deficit is smaller. Long rides are maintenance plus ride fuel.
     """
     if not stype and not label:
-        return weekday_tier
+        return day_kind(weekday_tier)
     low = (label or "").lower()
-    if stype in _HARD_SESSION_TYPES or any(tok in low for tok in ("threshold", "vo2", "tempo")):
+    if stype in _HARD_SESSION_TYPES or any(tok in low for tok in ("threshold", "vo2", "tempo", "sweetspot")):
         return "hard"
+    if stype in ("long", "back_to_back"):
+        return "long"
     if not stype:
-        return weekday_tier
-    if stype in _SESSION_CALORIE_TIER:
-        return _SESSION_CALORIE_TIER[stype]
-    return "training"
+        return day_kind(weekday_tier)
+    return "easy"
 
 
 _TIER_WHY_LABEL = {
-    "rest": "Rest cut day",
-    "recovery": "Recovery cut day",
-    "training": "Training day",
-    "ruck": "Active day",
+    "easy": "Easy day",
+    "rest": "Easy day",
+    "recovery": "Easy day",
+    "training": "Easy day",
+    "ruck": "Easy day",
     "long": "Long ride",
     "hard": "Hard day",
 }
@@ -1555,12 +1112,69 @@ def today_targets(ref_date: date | None = None) -> dict:
         "session_work_kcal": session_work,
         "protein_low": pt["low"],
         "protein_high": pt["high"],
+        "protein_g": round((pt["low"] + pt["high"]) / 2),
         "protein_basis": pt["basis"],
         "protein_lean_locked": bool(pt.get("lean_locked")),
         "carbs_g_per_hr": carbs_g_per_hr,
         "fuel_prep": fuel_prep,
         "ai_fuel_plan": ai_fuel_plan,
         "camp": camp_day_profile(ref),
+    }
+
+
+_CARB_G_PER_KG = {"easy": 3.0, "hard": 5.0, "long": 6.5}
+_CARB_LINE = {
+    "easy": "about 3 g/kg · a quarter plate",
+    "hard": "about 5 g/kg · half a plate, plus something before and after",
+    "long": "about 6–7 g/kg, plus 60–90 g/h on the bike",
+}
+_KIND_LABEL = {"easy": "Easy", "hard": "Hard", "long": "Long"}
+
+
+def _litres(value: float) -> str:
+    return f"{value:.1f}".rstrip("0").rstrip(".")
+
+
+def today_card(ref_date: date | None = None) -> dict:
+    """The four numbers and one habit for Today and the email."""
+    ref = ref_date or date.today()
+    tt = today_targets(ref)
+    kind = day_kind(tt["calorie_tier"])
+    protein_g = int(tt["protein_g"])
+    dose = max(1, round(protein_g / 4))
+    if 35 <= dose <= 40:
+        protein_line = "4 doses of 35–40 g — breakfast, lunch, dinner, evening dairy"
+    else:
+        protein_line = f"4 doses of about {dose} g — breakfast, lunch, dinner, evening dairy"
+    carbs_g = round(_CARB_G_PER_KG[kind] * current_weight_kg())
+    sess = tt.get("session") or {}
+    dur = 0
+    if sess.get("type") not in (None, "rest") and sess.get("dur_min"):
+        dur = int(sess["dur_min"])
+    fluid = fluid_target_litres(dur)
+    fluids_note = "urine pale"
+    if fluid["extra_l"]:
+        fluids_note = "includes 0.5 L per training hour · urine pale"
+    return {
+        "kind": kind,
+        "kind_label": _KIND_LABEL[kind],
+        "kcal": tt["kcal"],
+        "protein_g": protein_g,
+        "protein_line": protein_line,
+        "carbs_g": carbs_g,
+        "carbs_line": _CARB_LINE[kind],
+        "fluids": f"{_litres(fluid['low_l'])}–{_litres(fluid['high_l'])} L",
+        "fluids_note": fluids_note,
+        "habit": HABIT_LINE,
+        "stone_line": STONE_SAFE_LINE,
+        "why": tt.get("why"),
+        "tdee": tt.get("stable_tdee"),
+        "deficit": tt.get("planned_deficit"),
+        "protein_basis": tt.get("protein_basis"),
+        "protein_low": tt["protein_low"],
+        "protein_high": tt["protein_high"],
+        "maintenance": bool(tt.get("maintenance")),
+        "carbs_g_per_hr": tt.get("carbs_g_per_hr"),
     }
 
 
@@ -1584,60 +1198,19 @@ def today_checklist(plan_start: date, today: date) -> list[str]:
         plan_start, today,
         session_type=session_type, session_dur=session_dur, session_label=session_label,
     )
-    pt = protein_target_g()
-    dtype = _ctx["dtype"]
-
-    items: list[str] = []
-    breakfast = next((m for m in meals if m[0] == "Breakfast"), None)
-    if breakfast:
-        items.append(f"Breakfast: {breakfast[1]}")
-    elif dtype in ("ruck", "long", "recovery_saturday", "recovery_sunday"):
-        waking = next((m for m in meals if m[0] == "On Waking"), None)
-        if waking:
-            items.append(f"On waking: {waking[1]}")
-
-    lunch = next((m for m in meals if m[0] == "Lunch"), None)
-    if lunch:
-        items.append(f"Lunch: {lunch[1]}")
-    elif dtype == "recovery_weekday":
-        items.append("Lunch: batch rice + chicken (same as build weeks)")
-
-    if dtype in ("bike", "bike_fri"):
-        items.append("Pre-ride: banana 45 min before — nothing on the bike (60 min weekday ride)")
-    elif dtype in ("training", "thursday"):
-        items.append("Pre-session: banana 45 min before evening KB")
-    elif dtype == "long":
-        ride_min = _sunday_planned_ride_min(plan_start, today) or 120
-        prep = fuel_prep_for_ride(ride_min, ref_date=today)
-        bike = (
-            f"On the bike: {prep['rice_cakes']} rice cakes + "
-            f"{' + '.join(prep['bottles'])} electrolyte bottles"
-        )
-        if prep.get("carb_drink_bottles"):
-            bike += (
-                f" + {prep['carb_drink_bottles']}× carb drink "
-                f"(~{prep['target_g_per_hr']} g/h target)"
-            )
-        items.append(bike)
-        items.append("Recovery: chocolate milk → protein overnight oats jar")
-
-    if dtype in ("training", "thursday"):
-        items.append("Peri-strength: 20–40 g protein within ~1 h of KB/MaxiClimber")
-
-    shake = next((m for m in meals if m[0] == "Protein Shake"), None)
-    if shake:
-        items.append("Whey shake today (planned)")
-
-    dinner = meals[-1] if meals else None
-    if dinner:
-        items.append(f"Dinner: {dinner[1]}")
-
-    if today.weekday() in (4, 5):  # Fri/Sat — flag Sunday prep
-        fuel_line = fuel_prep_context(plan_start, today)
-        if fuel_line:
-            items.append(fuel_line.replace("**", ""))
-
-    items.append(f"Protein floor today: {pt['low']}–{pt['high']} g")
+    card = today_card(today)
+    items = [
+        f"{card['kind_label']} · {card['kcal']:,} kcal",
+        f"Protein {card['protein_g']} g · {card['protein_line']}",
+        f"Carbs {card['carbs_g']} g · {card['carbs_line']}",
+        f"Fluids {card['fluids']} · {card['fluids_note']}",
+        card["habit"],
+        card["stone_line"],
+    ]
+    for meal in meals:
+        items.append(f"{meal[0]}: {meal[1]}")
+    if card.get("carbs_g_per_hr"):
+        items.append(f"On the bike: {card['carbs_g_per_hr']} g/h")
     return items
 
 
@@ -1671,20 +1244,12 @@ _BADGE_BY_SESSION_TYPE = {
 _DELOAD_PLAN_WEEKS = frozenset({4, 8})
 
 _WEEK_BANNERS = {
-    0: "<strong>Cycle week 1 — build.</strong> Fixed breakfasts; evening plates Mon–Sun "
-       "(BBQ chicken, pork apple-mustard, soy-ginger stir-fry, meatballs, lemon chicken, "
-       "carb-rich BBQ pork Sat, AF fish Sun). "
-       "Friday eve: prep Sunday ride fuel per batch calculator. "
-       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
-    1: "<strong>Cycle week 2 — build.</strong> Evening plates: Italian rump, prawn stir-fry, "
-       "mustard chicken, turkey patties, pork apple-mustard, tomato pasta Sat, AF cod Sun. "
-       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
-    2: "<strong>Cycle week 3 — build.</strong> Evening plates: Chinese stir-fry, BBQ thighs, "
-       "Italian chicken pasta, Med fish, pub pork, carb-rich BBQ Sat, lean steak Sun. "
-       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
-    3: "<strong>Cycle week 4 — recovery.</strong> Egg muffins Tue/Thu; lighter evening plates "
-       "(~560 kcal Mon–Fri); protein floor holds. "
-       "<a href=\"/nutrition/sunday\">Sunday Prep</a>.",
+    i: (
+        "<strong>One-pot and soup rotation.</strong> Lunch is a soup, dinner is a one-pot. "
+        "Batch 4 portions and freeze. Chicken and rice is in the mix, not every day. "
+        "<a href=\"/nutrition/sunday\">Batch cook</a>."
+    )
+    for i in range(4)
 }
 
 
@@ -1719,18 +1284,14 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
         banner = (
             f"<strong>This week — plan week {week_num} ({phase}).</strong> "
             "Workout badges match the <a href=\"/calendar\">training calendar</a> "
-            "(including overrides). Meal slots follow the planned session; "
-            "breakfast/dinner still rotate on the nutrition cycle "
-            f"(cycle week {cycle_week + 1}"
-            + (" — recovery" if cycle_week == 3 else "")
-            + "). "
-            "<a href=\"/nutrition/sunday\">Sunday Prep</a>."
+            "(including overrides). Lunch is a soup and dinner is a one-pot. "
+            "<a href=\"/nutrition/sunday\">Batch cook</a>."
         )
     else:
         banner = (
             "<strong>This week.</strong> Workout badges match the training calendar where a "
-            "session is planned; meals follow the nutrition cycle. "
-            "<a href=\"/nutrition/sunday\">Sunday Prep</a>."
+            "session is planned. Lunch is a soup and dinner is a one-pot. "
+            "<a href=\"/nutrition/sunday\">Batch cook</a>."
         )
 
     days_out = []
@@ -1801,47 +1362,6 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
 def build_meal_week(cycle_week: int) -> dict:
     """Structured week data for meals.html (server-rendered)."""
     stable = _stable_tdee()
-    if cycle_week == 3:
-        days_out = []
-        rw = DAY_TYPES["recovery_weekday"]
-        meals_rw = _assemble_meals("recovery_weekday", cycle_week, 0)
-        # Collapsed Mon–Fri card: summary of W4 Mon–Fri plates (unique each night).
-        if meals_rw and meals_rw[-1][0] == "Dinner":
-            meals_rw = list(meals_rw)
-            meals_rw[-1] = _recovery_dinner_summary()
-        rw_target = resolve_calorie_target(stable, rw["calorie_tier"], date.today())
-        days_out.append({
-            "name": "Mon–Fri",
-            "badge": _BADGE_BY_TYPE["recovery_weekday"],
-            "type": rw["label"],
-            "kcal": f"~{rw_target['kcal']:,} kcal",
-            "meals": [_meal_dict(m) for m in meals_rw],
-            "preDinP": _pre_dinner_protein(meals_rw),
-            "note": rw["protein_note"],
-            "noteWarn": False,
-        })
-        for wd, key in ((5, "recovery_saturday"), (6, "recovery_sunday")):
-            dd = DAY_TYPES[key]
-            meals = _assemble_meals(key, cycle_week, wd)
-            target = resolve_calorie_target(
-                stable, dd["calorie_tier"], date.today()
-            )
-            days_out.append({
-                "name": _WEEKDAY_LABELS[wd],
-                "badge": _BADGE_BY_TYPE[key],
-                "type": dd["label"],
-                "kcal": f"~{target['kcal']:,} kcal",
-                "meals": [_meal_dict(m) for m in meals],
-                "preDinP": _pre_dinner_protein(meals),
-                "note": dd["protein_note"],
-                "noteWarn": False,
-            })
-        return {
-            "banner": _WEEK_BANNERS[3],
-            "recovery": True,
-            "days": days_out,
-        }
-
     days_out = []
     ref_date = date.today()
     for wd in range(7):
@@ -1874,6 +1394,10 @@ def meal_recipe_url(
     weekday: int | None = None,
 ) -> str | None:
     """Best recipe/method URL for a prescribed meal row, or None if none exists."""
+    from .meal_library import recipe_url
+    found = recipe_url(slot, name)
+    if found:
+        return found
     slot_l = (slot or "").lower()
     name_l = (name or "").lower()
 
@@ -2118,8 +1642,8 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
     day_data = ctx["day_data"]
     dtype = ctx["dtype"]
     cycle_week = ctx["cycle_week"]
-    tier = CALORIE_TIERS[day_data["calorie_tier"]]
-    cycle_label = f"Week {cycle_week + 1}" + (" — Recovery" if cycle_week == 3 else "")
+    tier = {"label": day_kind(day_data["calorie_tier"]).title(), "note": None}
+    cycle_label = f"Week {cycle_week + 1}"
 
     total_protein = sum(m[4] for m in meals)
     pre_din = _pre_dinner_protein(meals)
@@ -2144,7 +1668,16 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
             + (f" ({tier['note']})" if tier.get("note") else "")
         )
 
+    card = today_card(today)
     lines = [
+        "## Nutrition — four numbers",
+        f"Calories ({card['kind_label']}): {card['kcal']:,} kcal",
+        f"Protein: {card['protein_g']} g. {card['protein_line']}",
+        f"Carbs: {card['carbs_g']} g. {card['carbs_line']}",
+        f"Fluids: {card['fluids']}. {card['fluids_note']}",
+        f"Habit: {card['habit']}",
+        card["stone_line"],
+        "",
         "## Nutrition Plan — Today's Prescribed Meals",
         f"Cycle: {cycle_label}  |  Day type: {day_data['label']}  |  {target_line}",
         plan_line,
@@ -2155,8 +1688,7 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
         )
     if scale_meta.get("note"):
         lines.append(f"Note: {scale_meta['note']}")
-    if dtype in _WEEKDAY_BREAKFAST_TYPES:
-        lines.append(f"Breakfast pattern: {_BREAKFAST_LABEL}")
+    lines.append(f"Breakfast pattern: {_BREAKFAST_LABEL}")
     fuel_line = fuel_prep_context(plan_start, today)
     if fuel_line and today.weekday() in (4, 5):
         lines.append(f"Weekend fuel prep: {fuel_line.replace('**', '')}")
@@ -2168,8 +1700,8 @@ def nutrition_coach_context(plan_start: date, today: date) -> str:
         "Meals:",
     ]
 
-    for slot, name, detail, kcal, prot, carbs in meals:
-        lines.append(f"  {slot}: {name} — {kcal} kcal, {prot}g protein, {carbs}g carbs")
+    for slot, name, detail, _kcal, _prot, _carbs in meals:
+        lines.append(f"  {slot}: {name}")
         lines.append(f"    {detail}")
 
     lines += ["", "Simple rules:"]
@@ -2260,8 +1792,8 @@ def meal_cycle_full() -> str:
         "FULL 4-WEEK NUTRITION CYCLE (repeats every 28 days).",
         f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}).",
         f"Breakfast: {_BREAKFAST_LABEL}.",
-        "Evening dinners: unique Mon–Sun plates (component-prep Sunday, air-fryer/oven finish). "
-        "Week 4: lighter recovery plates (~560 kcal).",
+        "Lunches are soups and dinners are one-pots (4 portions, freeze). "
+        "Chicken and rice is in the rotation, not every day.",
         "",
     ]
     stable = _stable_tdee()

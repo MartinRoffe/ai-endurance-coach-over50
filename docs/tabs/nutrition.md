@@ -18,18 +18,19 @@ Week 4 is the recovery cycle week.
 
 **Route:** `/nutrition`
 
-Prescribed meal table for the day (from `build_today_food()`), meals-total vs
-intake target, a plain-English **why** line (maintenance / cut phase + deficit),
-and Garmin logged strip (logged / intake target / vs plan / carbs / protein).
-Short Sunday-fuel callout when a long ride is upcoming.
+Four numbers and one habit, from `today_card()`:
 
-**Meal slots follow the training-plan session** (Rest never gets Post-Ruck copy).
-Breakfast and dinner still rotate on the Mon–Sun food cycle (overnight oats
-Mon/Wed/Fri; scotch egg + yogurt Tue/Thu; egg muffins Tue/Thu in recovery week
-only). Mon–Thu dinners are Sunday batch (Batch A Mon/Tue, Batch B Wed/Thu —
-cycle-week rotation); Fri–Sun are griddle.
+- **Calories** — one figure. Easy or rest is stable TDEE minus 600. Hard is minus 250. Long is maintenance plus ride fuel.
+- **Protein** — one midpoint from the lean-mass target, eaten as four doses (breakfast, lunch, dinner, evening dairy).
+- **Carbs** — one gram figure from current weight. Easy about 3 g/kg, hard about 5 g/kg, long about 6–7 g/kg plus 60–90 g/h on the bike.
+- **Fluids** — 2.5–3 L plus 0.5 L per training hour. Urine pale.
+- **Habit** — veg or fruit at every meal, plus creatine 3–5 g.
 
-Dinner and breakfast methods live on **Sunday Prep**, not a separate recipes hub.
+Logged food is compared with calories and protein only. TDEE, the deficit, calibration, per-meal macros, and the 7-day energy-availability note sit in **Advanced**.
+
+Meals are names only: breakfast, a soup for lunch, a one-pot for dinner, and evening dairy. Chicken and rice stays in the rotation, about once or twice a week.
+
+A one-line stone rule sits under the habit: calcium from dairy with meals, salt under about 6 g off the bike, skip spinach, chia, nuts, beetroot and rhubarb (or pair a small portion with dairy), lemon or lime in water, spread animal protein, vitamin C at a standard dose.
 
 ---
 
@@ -47,13 +48,12 @@ Three distinct numbers appear across Nutrition and Body:
   (`stable_tdee − deficit`), plus long-ride fuel top-up beyond 2 h when needed.
   This is periodized cut fueling: larger deficit on rest/easy days, near
   maintenance on long/quality days.
-  - **Maintenance** (27 Jul–14 Sep 2026): deficit 0 every day (charity peak).
   - **Maintenance** (9 Oct 2026–3 Jan 2027): deficit 0 through the kidney-stone
-    return, Christmas camp, and the post-camp rest day.
+    return and Christmas. The earlier July–September 2026 window has expired.
   - **Ease** (4 Jan–31 Mar 2027, `CUT_PHASES` in `energy.py`): toward 84–85 kg by
-    31 Mar (`CUT_TARGET_KG` 84.5). About 0.5 kg/week. Rest/recovery −650, training −550,
-    ruck −450, long −350, hard (threshold/VO2) −250. Protein stays on the floor.
-  - Floor 1,600 kcal. Tenerife **camp** windows suspend the UK deficit.
+    31 Mar (`CUT_TARGET_KG` 84.5). About 0.5 kg/week. Easy −600, hard −250, long 0
+    plus ride fuel. Protein stays on the lean-mass lock.
+  - Floor 1,600 kcal. There is no live camp-nutrition window.
   - Optional `session_work_kcal` (FTP × % targets) is context only — it does
     **not** change the crowned intake when stable TDEE exists.
 - **Logged** — what the Garmin food diary says you ate.
@@ -64,20 +64,22 @@ Cut page compares logged to stable TDEE, not today’s incomplete burn.
 **Weight goal:** 84–85 kg by 31 Mar 2027, on `/nutrition/cut`. There is no kilogram
 target before Christmas. Maintenance (no deficit) runs 9 Oct 2026 through
 3 Jan 2027, including Christmas camp. From 4 Jan through 31 Mar the ordinary
-day-type deficits apply (about 500 kcal/day, ~0.5 kg/week). Hard days take a
-smaller deficit so carbohydrate stays up. Protein lean-mass floor stays locked.
-Energy availability under 30 kcal/kg fat-free mass raises an alert. The Cut page shows
+day-type deficits apply (five easy days, one hard day and one long day, about
+460 kcal/day, ~0.5 kg/week). Hard days take a smaller deficit so carbohydrate
+stays up. Protein lean-mass floor stays locked.
+Energy availability uses logged food minus **session** calories (not Garmin
+active calories) over 7 days, and only when food is logged on at least 5 of
+those days. Under 30 kcal/kg fat-free mass raises a moderate alert. The Cut page shows
 today’s prescription + **why**, a weekly deficit budget strip, and Garmin
 logged vs intake target. Full meal plan stays on Nutrition Today. On rest days,
 delaying the first meal (≈12–14 h overnight) is fine if the protein floor is
 still hit by evening. After changing deficit maps, clear stale AI targets:
 `DELETE FROM nutrition_targets WHERE session_key LIKE '%_v2_%'`.
 
-Prescribed meals in `nutrition_plan.py` are portioned so each day type's meal
-kcal sum lands within ~100 kcal of its target at the design TDEE (~2,000).
-Flexible carb/fat slots (rice, snacks, dessert starch, on-bike fuel) scale
-further when stable TDEE drifts — protein anchors stay fixed. The Today page
-flags any gap portions cannot close without cutting protein.
+Meals are a rotating library of about eight one-pots and six soups
+(`meal_library.py`). Each portion is one protein dose. The carb side changes
+with the day type. Portions are not scaled to force the plate onto the calorie
+target.
 
 **Calibration confidence** (Body tab + Cut page): `high` / `limited` / `inactive`
 reflects intake coverage, weigh-ins, body-comp freshness, and whether the
@@ -142,18 +144,17 @@ griddle, weekday dinners archive, travel checklist).
 Still available for bookmarks and Sunday Prep component links. Prefer **Sunday
 Prep** for the active week’s cook day.
 
-**Weekday dinners archive:** `/nutrition/recipes/weekday-dinners` — full 4-week
-A/B methods (same partial as Sunday Prep; plated macros match `WEEKDAY_DINNERS`).
+**One-pots and soups:** `/nutrition/recipes/weekday-dinners` — the live library
+(methods for each pot and soup). Chicken and rice is included, not every day.
 
 ---
 
 ## Shopping
 
-**Route:** `/nutrition/shopping-list` and `/nutrition/lidl-shopping-list`
+**Route:** `/nutrition/shopping-list` (the Lidl URL serves the same page)
 
-Primary tab. Category filters (breakfast, lunch, weekday dinners, weekend ride,
-griddle, staples). Cycle week 1–4 buttons filter dinner ingredients to the
-current food cycle. Switch stores via the Asda / Lidl controls on the page.
+One list for this cook-week’s batches plus everyday staples (yoghurt, milk,
+eggs, fruit, lemons, creatine). Use it at Asda or Lidl.
 
 ---
 

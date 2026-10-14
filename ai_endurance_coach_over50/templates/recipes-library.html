@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-pots and soups</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0e0f0c; --surface:#161713; --border:#2a2d25; --accent:#c8f135; --text:#e8ead4; --muted:#7a7d6a; --accent2:#f1a035; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.65; }
+  a { color:var(--accent); }
+  .hero { padding:32px 40px 20px; border-bottom:1px solid var(--border); }
+  h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(36px,6vw,56px); }
+  .container { max-width:800px; margin:0 auto; padding:24px; }
+  article { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 18px; margin-bottom:14px; }
+  h2 { font-size:18px; font-weight:500; }
+  .meta { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent2); margin:4px 0 8px; }
+  h3.sec { font-family:'Bebas Neue',sans-serif; font-size:28px; margin:18px 0 10px; }
+  #evening-dairy { margin-top:8px; color:var(--muted); }
+</style>
+</head>
+<body>
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'overview' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+<div class="hero">
+  <h1>ONE-POTS AND SOUPS</h1>
+  <p style="color:var(--muted);max-width:640px;margin-top:8px">Low oxalate, light salt, one protein dose per bowl. Batch four and freeze. Chicken and rice stays in the rotation, about once or twice a week.</p>
+</div>
+<div class="container">
+  <h3 class="sec">Dinners</h3>
+  {% for meal in pots %}
+  <article id="{{ meal.id }}">
+    <h2>{{ meal.name }}</h2>
+    <div class="meta">{{ meal.method }}</div>
+    <p>{{ meal.steps }}</p>
+  </article>
+  {% endfor %}
+  <h3 class="sec">Soups</h3>
+  {% for meal in soups %}
+  <article id="{{ meal.id }}">
+    <h2>{{ meal.name }}</h2>
+    <div class="meta">{{ meal.method }}</div>
+    <p>{{ meal.steps }}</p>
+  </article>
+  {% endfor %}
+  <p id="evening-dairy">Evening dairy is about 350 g Greek yoghurt or skyr, or enough kefir or milk to match that protein. That dose is calcium, with the meal, not extra meat.</p>
+</div>
+</body>
+</html>

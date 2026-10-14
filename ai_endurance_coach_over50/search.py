@@ -358,26 +358,29 @@ _WEEKDAY_DINNER_ANCHORS = {
 
 
 def _nutrition() -> list[SearchHit]:
+    from .meal_library import ONE_POTS, SOUPS
     from .nutrition_plan import (
         BREAKFASTS,
-        CALORIE_TIERS,
         CAMP_NUTRITION_WINDOWS,
         DAY_TYPES,
-        EVENING_DINNERS,
         SUPPLEMENTS,
     )
 
     out: list[SearchHit] = []
 
-    for key, tier in CALORIE_TIERS.items():
+    for key, title, note in (
+        ("easy", "Easy day", "Stable TDEE minus 600 kcal"),
+        ("hard", "Hard day", "Stable TDEE minus 250 kcal"),
+        ("long", "Long day", "Maintenance plus ride fuel"),
+    ):
         out.append(
             _entry(
                 id=f"tier-{key}",
                 type="nutrition",
-                title=tier["label"],
-                subtitle=f"Calorie tier · ~{tier['kcal']} kcal",
+                title=title,
+                subtitle="Day type",
                 url="/nutrition",
-                extra=str(tier.get("note", "")),
+                extra=note,
             )
         )
 
@@ -406,9 +409,8 @@ def _nutrition() -> list[SearchHit]:
             )
 
     _bf_urls = {
-        "mwf": "/nutrition/recipes/overnight-oats",
-        "scotch_tuth": "/nutrition/recipes#scotch-eggs",
-        "muffin_tuth": "/nutrition/recipes#egg-muffins",
+        "skyr-oats": "/nutrition/recipes/overnight-oats",
+        "eggs-yoghurt": "/nutrition/recipes#eggs",
     }
     for key, (name, detail, *_rest) in BREAKFASTS.items():
         out.append(
@@ -422,30 +424,27 @@ def _nutrition() -> list[SearchHit]:
             )
         )
 
-    _day_labels = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    for cw, nights in EVENING_DINNERS.items():
-        for wd, (name, detail, *_rest) in nights.items():
-            anchor = _WEEKDAY_DINNER_ANCHORS[(cw, wd)]
-            out.append(
-                _entry(
-                    id=f"dinner-{anchor}",
-                    type="nutrition",
-                    title=name,
-                    subtitle=f"Evening plate · Week {cw + 1} {_day_labels[wd]}",
-                    url=f"/nutrition/recipes/weekday-dinners#{anchor}",
-                    extra=detail,
-                )
+    for meal in ONE_POTS + SOUPS:
+        out.append(
+            _entry(
+                id=f"dinner-{meal['id']}",
+                type="nutrition",
+                title=meal["name"],
+                subtitle="One-pot" if meal["kind"] == "dinner" else "Soup",
+                url=f"/nutrition/recipes/weekday-dinners#{meal['id']}",
+                extra=meal.get("steps", ""),
             )
-            out.append(
-                _entry(
-                    id=f"sunday-{anchor}",
-                    type="nutrition",
-                    title=f"{name} (Sunday Prep)",
-                    subtitle=f"Sunday prep · Week {cw + 1} {_day_labels[wd]}",
-                    url=f"/nutrition/sunday#{anchor}",
-                    extra=detail,
-                )
+        )
+        out.append(
+            _entry(
+                id=f"sunday-{meal['id']}",
+                type="nutrition",
+                title=f"{meal['name']} (batch cook)",
+                subtitle="Batch cook",
+                url=f"/nutrition/sunday#{meal['id']}",
+                extra=meal.get("steps", ""),
             )
+        )
 
     out.append(
         _entry(
@@ -572,31 +571,27 @@ def _nutrition() -> list[SearchHit]:
 
 
 def _shopping_items() -> list[SearchHit]:
-    path = Path(__file__).resolve().parent / "templates" / "shopping_list_data.html"
-    if not path.is_file():
-        return []
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return []
+    from .meal_library import shopping_list
+
     out: list[SearchHit] = []
     seen: set[str] = set()
-    for m in re.finditer(r'name:"((?:\\.|[^"\\])*)"', text):
-        name = m.group(1).replace('\\"', '"')
-        key = _norm(name)
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        out.append(
-            _entry(
-                id=f"shop-item-{key[:50]}",
-                type="shopping",
-                title=name,
-                subtitle="Shopping list item",
-                url="/nutrition/lidl-shopping-list",
-                extra="asda lidl groceries",
-            )
-        )
+    for week in range(4):
+        for group in shopping_list(week):
+            for name in group["items"]:
+                key = _norm(name)
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                out.append(
+                    _entry(
+                        id=f"shop-item-{key[:50]}",
+                        type="shopping",
+                        title=name,
+                        subtitle="Shopping list item",
+                        url="/nutrition/lidl-shopping-list",
+                        extra="asda lidl groceries",
+                    )
+                )
     return out
 
 
