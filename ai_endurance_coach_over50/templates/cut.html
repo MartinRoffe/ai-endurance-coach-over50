@@ -262,23 +262,21 @@
     <table class="def">
       <thead>
         <tr>
-          <th>Tier</th>
-          <th>Hard (15 Sep–22 Nov)</th>
-          <th>Ease (23 Nov–20 Dec)</th>
+          <th>Day</th>
+          <th>Below stable TDEE</th>
         </tr>
       </thead>
       <tbody>
         {% for r in cut.deficit_rows %}
         <tr>
           <td>{{ r.tier }}</td>
-          <td class="n">−{{ r.hard }}</td>
-          <td class="n">−{{ r.ease }}</td>
+          <td class="n">{% if r.kcal %}−{{ r.kcal }}{% else %}0{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <p style="margin-top:10px;font-size:12px;color:var(--muted)">Long rides also add ~175 kcal per hour beyond 2 h. Floor 1,600 kcal. Camp overrides both columns.</p>
+  <p style="margin-top:10px;font-size:12px;color:var(--muted)">Easy covers rest and ordinary training. Long rides also add about 175 kcal per hour beyond 2 h. Floor 1,600 kcal. Maintenance through 3 Jan 2027 zeros every row.</p>
 </section>
 
 <section>

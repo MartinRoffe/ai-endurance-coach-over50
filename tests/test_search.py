@@ -36,7 +36,7 @@ def test_overnight_oats_recipe():
 
 
 def test_weekday_dinner_bbq_chicken():
-    hits = search("BBQ rub chicken", limit=10)
+    hits = search("Lemon chicken and rice", limit=10)
     assert hits
     assert any("weekday-dinners" in h["url"] or "sunday" in h["url"] for h in hits)
 

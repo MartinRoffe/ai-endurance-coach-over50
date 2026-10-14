@@ -240,11 +240,11 @@
       {% endif %}
       {% if tv.nutrition %}
       <p style="margin:14px 0 0;font-family:var(--font-m);font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">
-        🍽 <a href="/nutrition" style="color:var(--text-dim);text-decoration:none">~{{ "{:,}".format(tv.nutrition.kcal) }} kcal
-        · protein {{ tv.nutrition.protein_low }}–{{ tv.nutrition.protein_high }} g{% if tv.nutrition.carbs_g_per_hr %}
-        · ride fuel {{ tv.nutrition.carbs_g_per_hr }} g/h{% endif %}{% if nutrition_pill %}
-        · logged {{ "{:,}".format(nutrition_pill.calories) }}{% endif %}{% if tv.nutrition.maintenance %}
-        · <span style="color:var(--accent)">maintenance — no deficit</span>{% endif %}</a>
+        🍽 <a href="/nutrition" style="color:var(--text-dim);text-decoration:none">{{ tv.nutrition.kind_label }}
+        · {{ "{:,}".format(tv.nutrition.kcal) }} kcal
+        · {{ tv.nutrition.protein_g }} g protein
+        · {{ tv.nutrition.carbs_g }} g carbs
+        · {{ tv.nutrition.fluids }}</a>
       </p>
       {% endif %}
     </div>

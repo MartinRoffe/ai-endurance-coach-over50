@@ -1383,11 +1383,12 @@ async def compliance_view(request: Request):
 @app.get("/nutrition", response_class=HTMLResponse)
 async def nutrition_plan(request: Request):
     today = _today()
+    from ..alerts import weekly_ea_report
     from ..nutrition_plan import (
         SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g,
         SIMPLE_RULES, today_checklist, cycle_week_index,
         fuel_prep_for_ride, _sunday_planned_ride_min, build_today_food,
-        in_camp_nutrition_window,
+        in_camp_nutrition_window, today_card,
     )
 
     _tdee_today = None
@@ -1408,6 +1409,12 @@ async def nutrition_plan(request: Request):
     m = load(today) or DailyMetrics(date=today)
     nutrition_today = build_nutrition_today(m, today)
     cut_line = cut_status_line(today)
+    card = today_card(today)
+    try:
+        ea_report = weekly_ea_report(today)
+    except Exception:
+        logger.exception("nutrition_plan ea report failed")
+        ea_report = None
 
     return TEMPLATES.TemplateResponse(
         request=request,
@@ -1429,6 +1436,8 @@ async def nutrition_plan(request: Request):
             "supplements":   [{"name": n, "dose": d, "why": w} for n, d, w in SUPPLEMENTS],
             "supplement_disclaimer": _SUPPLEMENT_DISCLAIMER,
             "protein_target": protein_target_g(),
+            "card": card,
+            "ea_report": ea_report,
         },
     )
 
@@ -1479,35 +1488,18 @@ async def nutrition_fuelling(request: Request):
 @app.get("/nutrition/sunday", response_class=HTMLResponse)
 async def nutrition_sunday(request: Request):
     today = _today()
-    from ..nutrition_plan import (
-        EVENING_DINNERS, prep_cycle_week_index,
-        fuel_prep_for_ride, _sunday_planned_ride_min,
-    )
-    # Fri–Sun: cook for next week's Mon–Sun (not the week ending today).
+    from ..meal_library import cook_plan, shopping_list
+    from ..nutrition_plan import prep_cycle_week_index
     cycle_week = prep_cycle_week_index(_PLAN_START, today)
-    dinner_weeks = {}
-    for wi, nights in EVENING_DINNERS.items():
-        dinner_weeks[wi] = {
-            str(wd): {
-                "name": nights[wd][0],
-                "kcal": nights[wd][2],
-                "p": nights[wd][3],
-                "c": nights[wd][4],
-            }
-            for wd in range(7)
-        }
-    dinners = dinner_weeks[cycle_week]
-    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today) if sunday_ride_min else None
+    plan = cook_plan(cycle_week)
     return TEMPLATES.TemplateResponse(
         request=request,
         name="sunday_prep.html",
         context={
             "cycle_week": cycle_week,
-            "dinners": dinners,
-            "dinner_weeks": dinner_weeks,
-            "sunday_fuel": sunday_fuel,
-            "sunday_ride_min": sunday_ride_min,
+            "pots": plan["pots"],
+            "soups": plan["soups"],
+            "groups": shopping_list(cycle_week),
         },
     )
 
@@ -1540,12 +1532,11 @@ async def nutrition_recipes_griddle(request: Request):
 
 @app.get("/nutrition/recipes/weekday-dinners", response_class=HTMLResponse)
 async def nutrition_recipes_weekday_dinners(request: Request):
-    today = _today()
-    from ..nutrition_plan import prep_cycle_week_index
+    from ..meal_library import ONE_POTS, SOUPS
     return TEMPLATES.TemplateResponse(
         request=request,
-        name="recipes-weekday-dinners.html",
-        context={"cycle_week": prep_cycle_week_index(_PLAN_START, today)},
+        name="recipes-library.html",
+        context={"pots": ONE_POTS, "soups": SOUPS},
     )
 
 
@@ -1558,13 +1549,13 @@ async def nutrition_recipes_travel(request: Request):
 @app.get("/nutrition/shopping-list", response_class=HTMLResponse)
 async def nutrition_shopping_list(request: Request):
     ctx = _shopping_list_context()
-    return TEMPLATES.TemplateResponse(request=request, name="asda-shopping-list.html", context=ctx)
+    return TEMPLATES.TemplateResponse(request=request, name="shopping.html", context=ctx)
 
 
 @app.get("/nutrition/lidl-shopping-list", response_class=HTMLResponse)
 async def nutrition_lidl_shopping_list(request: Request):
     ctx = _shopping_list_context()
-    return TEMPLATES.TemplateResponse(request=request, name="lidl-shopping-list.html", context=ctx)
+    return TEMPLATES.TemplateResponse(request=request, name="shopping.html", context=ctx)
 
 
 def _bundled_html(*names: str) -> Path:

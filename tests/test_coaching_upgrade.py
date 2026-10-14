@@ -93,9 +93,9 @@ def test_foster_load_prefers_rpe_and_terrains_a_ruck():
 
 def test_cut_lands_near_84_kg_and_protects_hard_days():
     assert CUT_TARGET_KG == 84.5
-    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 1850
+    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 1800
     assert intake_target_kcal(2400, "hard", ref_date=date(2027, 1, 4)) == 2150
-    assert intake_target_kcal(2400, "long", ref_date=date(2027, 1, 4)) == 2050
+    assert intake_target_kcal(2400, "long", ref_date=date(2027, 1, 4)) == 2400
 
 
 def test_energy_availability_and_fluid_targets():
@@ -104,11 +104,11 @@ def test_energy_availability_and_fluid_targets():
     assert energy_availability(1800, 400, ffm) < 30
     assert energy_availability(None, 400, ffm) is None
     target = fluid_target_litres(120)
-    assert target["low_l"] == 3.0
+    assert target["low_l"] == 3.5
     assert target["high_l"] == 4.0
     assert fluid_shortfall_l(None, 0) is None
-    assert fluid_shortfall_l(2.0, 0) is None
-    assert fluid_shortfall_l(1.4, 0) == pytest.approx(0.6)
+    assert fluid_shortfall_l(2.0, 0) == pytest.approx(0.5)
+    assert fluid_shortfall_l(1.4, 0) == pytest.approx(1.1)
 
 
 def test_low_ea_and_muscle_loss_alert(monkeypatch):
@@ -122,7 +122,7 @@ def test_low_ea_and_muscle_loss_alert(monkeypatch):
     monkeypatch.setattr(alerts, "load_ftp_tests", lambda: [])
     monkeypatch.setattr(alerts, "history_for_chart", lambda days=14: [])
     monkeypatch.setattr(alerts, "load", lambda d: DailyMetrics(
-        date=today, calories_consumed=1500, active_calories=900,
+        date=today, calories_consumed=2800, active_calories=2000,
     ))
     monkeypatch.setattr(alerts, "load_body_metrics", lambda days=30: [
         {"date": "2026-06-01", "weight_kg": 90.0, "fat_pct": 20.0, "muscle_mass_kg": 40.0},
@@ -130,8 +130,43 @@ def test_low_ea_and_muscle_loss_alert(monkeypatch):
         {"date": "2026-06-20", "weight_kg": 89.0, "fat_pct": 20.0, "muscle_mass_kg": 39.2},
     ])
     types = {a["type"] for a in alerts.check_fatigue_alerts(today)}
-    assert "LOW_EA" in types
+    # Active calories are high, but no logged session calories, so EA stays comfortable.
+    assert "LOW_EA" not in types
     assert "MUSCLE_DOWN" in types
+
+
+def test_low_ea_uses_session_calories_and_needs_five_logged_days(monkeypatch):
+    import ai_endurance_coach_over50.alerts as alerts
+
+    today = date(2026, 6, 20)
+    monkeypatch.setattr(alerts, "raw_history", lambda days=5: [])
+    monkeypatch.setattr(alerts, "pmc_history", lambda days=6: [])
+    monkeypatch.setattr(alerts, "weekly_monotony_strain", lambda weeks=2: [])
+    monkeypatch.setattr(alerts, "load_ftp_tests", lambda: [])
+    monkeypatch.setattr(alerts, "history_for_chart", lambda days=14: [])
+    monkeypatch.setattr(alerts, "load_body_metrics", lambda days=30: [
+        {"date": "2026-06-20", "weight_kg": 90.0, "fat_pct": 20.0, "muscle_mass_kg": 40.0},
+    ])
+    monkeypatch.setattr(alerts, "load", lambda d: DailyMetrics(
+        date=d, calories_consumed=2200, active_calories=1800,
+    ))
+    monkeypatch.setattr(alerts, "load_activities_by_date", lambda a, b: {
+        (today - timedelta(days=i)).isoformat(): [{"calories": 900}]
+        for i in range(7)
+    })
+    types = {a["type"] for a in alerts.check_fatigue_alerts(today)}
+    assert "LOW_EA" in types
+    low = next(a for a in alerts.check_fatigue_alerts(today) if a["type"] == "LOW_EA")
+    assert low["severity"] == "MODERATE"
+
+    def sparse(d):
+        if (today - d).days < 4:
+            return DailyMetrics(date=d, calories_consumed=1500, active_calories=2000)
+        return DailyMetrics(date=d, active_calories=2000)
+
+    monkeypatch.setattr(alerts, "load", sparse)
+    types = {a["type"] for a in alerts.check_fatigue_alerts(today)}
+    assert "LOW_EA" not in types
 
 
 def test_wellness_red_flag_forces_rest(monkeypatch):
