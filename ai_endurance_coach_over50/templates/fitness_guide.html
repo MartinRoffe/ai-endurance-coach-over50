@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <title>Guide · Fitness block</title>
+  <style>
+    .page { max-width: 1080px; margin: 0 auto; padding: 36px 24px 80px; }
+    .kicker {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: var(--font-d);
+      font-size: clamp(48px, 8vw, 80px);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+      font-weight: 400;
+      margin-bottom: 16px;
+    }
+    .lede { max-width: 640px; color: var(--text-dim); font-size: 16px; margin-bottom: 28px; }
+    .rules, .phase {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .rules h2, .phase h2 {
+      font-family: var(--font-m);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .phase h2 span { color: var(--muted); font-weight: 400; margin-left: 8px; }
+    .rules ul { margin: 0; padding-left: 18px; color: var(--text-dim); }
+    .rules li + li { margin-top: 6px; }
+    .note { color: var(--text-dim); margin: 0 0 12px; }
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    .day {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 10px 8px;
+      min-width: 0;
+    }
+    .day .wd {
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .day .tx { font-size: 13px; line-height: 1.35; }
+    .weeks { list-style: none; margin: 0; padding: 0; }
+    .weeks li {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .weeks li:first-child { border-top: none; }
+    .weeks .when {
+      font-family: var(--font-m);
+      font-size: 12px;
+      color: var(--blue);
+    }
+    .aside { margin-top: 22px; color: var(--muted); font-size: 14px; }
+    .aside a { color: var(--blue); }
+    @media (max-width: 800px) {
+      .days { grid-template-columns: 1fr 1fr; }
+      .weeks li { grid-template-columns: 1fr; gap: 2px; }
+    }
+  </style>
+</head>
+<body>
+{% set active_tab = 'training' %}
+{% set plan_section = plan_section | default('programme') %}
+{% include 'nav.html' %}
+{% include 'plan_subnav.html' %}
+
+<div class="page">
+  <p class="kicker">{{ plan_start.strftime('%-d %b %Y') }} – {{ plan_end.strftime('%-d %b %Y') }}</p>
+  <h1>FITNESS<br>BLOCK</h1>
+  <p class="lede">General fitness through the October 2027 checkpoint. The day you do is on <a href="/calendar" style="color:var(--blue)">Sessions</a>. This page is the same plan, written by phase. Haute Route week-by-week is not written yet.</p>
+
+  <section class="rules">
+    <h2>How to use it</h2>
+    <ul>
+      <li>Easy riding only. No sweetspot, tempo, or VO2 in this block.</li>
+      <li>Garmin receives <strong>Z2 Easy</strong> and <strong>Long Ride (Easy)</strong>. Walks, rucks, and strength stay off the watch schedule.</li>
+      <li>Home Sunday rides stop at {{ sunday_cap }}. {{ gravel_note }}</li>
+    </ul>
+  </section>
+
+  {% for phase in phases %}
+  <section class="phase">
+    <h2>{{ phase.name }}<span>{{ phase.span }}</span></h2>
+    {% if phase.note %}<p class="note">{{ phase.note }}</p>{% endif %}
+    {% if phase.days %}
+    <div class="days">
+      {% for day in phase.days %}
+      <div class="day">
+        <div class="wd">{{ day.weekday }}</div>
+        <div class="tx">{{ day.text }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if phase.weeks %}
+    <ul class="weeks">
+      {% for row in phase.weeks %}
+      <li><span class="when">{{ row.label }}</span><span>{{ row.text }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <p class="aside">BUSAR standards are a later benchmark, not a date on this plan: {{ busar | join(' ') }}</p>
+  <p class="aside">The cancelled Ghent→Amsterdam 12-week programme is kept as an <a href="/training/charity">archive</a>.</p>
+</div>
+</body>
+</html>

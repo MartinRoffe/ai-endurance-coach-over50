@@ -79,7 +79,9 @@ def _coach_system() -> str:
         "Projections: when sketching trajectories (FTP, weight, W/kg, CTL), give RANGES anchored "
         "to scheduled checkpoints (FTP retests, camps), state the assumptions, and recalibrate at "
         "each test. A solid training block yields roughly 5–15W — do not compound best-case block "
-        "gains into a precise long-range point estimate.\n\n"
+        "gains into a precise long-range point estimate. If a Historical Rebuild Rate section is "
+        "present in context, prefer those personal layoff-rebuild weeks over generic "
+        "3–5%/year FTP rules when advising time-to-target or return-from-layoff.\n\n"
         "When you recommend modifying a planned session, call propose_plan_change once per date — "
         "each call renders its own confirmation card. For multi-day swaps (e.g. defer quality to tomorrow), "
         "call the tool separately for every date that changes. After the tool call(s), briefly explain "
@@ -96,15 +98,16 @@ def _coach_system() -> str:
         "Nutrition: lead with the SIMPLE RULES and Today's Nutrition Checklist in context when discussing "
         "food; only cite full meal-level detail if asked. Weekend in-ride solids are for long rides only — "
         "use fuel_prep_for_ride batch counts (rice cakes + electrolyte bottles) keyed to planned ride length.\n\n"
-        "Training plan context: 12-week plan runs 18 May – 9 Aug 2026, followed by Tenerife cycling camp "
-        "(13–27 Aug; bike hire 14–24 Aug) and event prep block (Aug 31 – Sep 12). Builds from Zone 2 base "
-        "to back-to-back long rides simulating the 2-day event. Key sessions: Zone 2 rides, FTP tests "
-        "(wks 3/7/12), hill repeats and tempo from wk 5, progressive rucking (Mersea Coastal Spur build in "
-        "wks 9–10), KB + MaxiClimber strength.\n\n"
-        "Haute Route 2027 also has two Tenerife camps inside the 46-week plan: (1) Christmas volume camp "
-        "wks 12–13 (arrive 22 Dec 2026, bike 23–31 Dec, home 2 Jan) — August-style Teide overload as a "
-        "Base aerobic boost, then wk 14 absorption before Build quality; (2) May race-simulation camp "
-        "wk 31 — consecutive stage-sim days rehearsing Haute Route pacing/fuelling/back-to-back fatigue.\n\n"
+        "Training plan context: the 12-week charity block (18 May – 9 Aug 2026) and the "
+        "August 2026 Tenerife camp are HISTORICAL. The Ghent→Amsterdam charity ride "
+        "(13–14 Sep 2026) is CANCELLED. The medical pause (1–21 Sep 2026) has ended. "
+        "A further procedure is on 15 Oct 2026. Structured training starts only after "
+        "discharge advice. The live year is general fitness for road and hills, "
+        "12 Oct 2026 – 3 Oct 2027. Christmas Tenerife (21 Dec 2026 – 2 Jan 2027) is "
+        "CONFIRMED; stored ride minutes are a ceiling. May 2027 race-sim is not in the "
+        "live plan. The 46-week Haute Route template is not live. A-event is Haute Route "
+        "Alpes 2028 (late August, dates TBC). Do NOT prescribe Sweetspot, Tempo, VO2, "
+        "Pre-Event Long, or Haute Route race weeks.\n\n"
         "PMC note: Garmin TSB units differ from Coggan TSS. Rough bands: "
         "fresh > −50, moderate load −50 to −150, heavy load −150 to −250, very high fatigue < −250.\n\n"
         "Build-phase framing: during a build block, a deeply negative TSB and ACWR above ~1.3 are the "
@@ -273,7 +276,7 @@ _READ_TOOLS = [
     },
     {
         "name": "get_hr_plan",
-        "description": "Full 46-week Haute Route Alpes 2027 plan: phases and week-by-week sessions, plus the 7 event stages (km/elevation/key climb).",
+        "description": "Two-year rebuild phases toward Haute Route Alpes 2028, plus placeholder event stages. Week-by-week Year 2 sessions are not live yet.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -298,7 +301,7 @@ _READ_TOOLS = [
     },
     {
         "name": "get_event_plans",
-        "description": "AI pacing & fuelling plans for the two Ghent→Amsterdam charity-ride days and the Haute Route stages. May take a moment if not yet generated.",
+        "description": "Haute Route Alpes 2028 stage pacing/fuelling placeholders (charity ride cancelled — no charity day plans).",
         "input_schema": {"type": "object", "properties": {}},
     },
 ]
@@ -402,41 +405,33 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
             return "\n".join(lines) if len(lines) > 1 else "No performance detail available yet."
 
         if name == "get_hr_plan":
-            from ..hr_plan import (
-                hr_session_for_date as _hrs,
-                HR_PLAN_START as _HRS,
-                HR_EVENT_STAGES,
-                power_target_for,
-                power_watts_range,
+            from ..hr_plan import HR_EVENT_STAGES
+            from ..medical import (
+                REBUILD_PHASES,
+                YEAR2_PLAN_ACTIVE,
+                YEAR2_START,
+                hr_a_event_summary,
+                medical_context_lines,
             )
-            from ..history import load_ftp_tests
-            ftp_w = None
-            for t in reversed(load_ftp_tests()):
-                if t.get("ftp_w"):
-                    ftp_w = int(t["ftp_w"])
-                    break
-            lines = ["## Haute Route Alpes 2027 — full plan"]
-            for ph in HR_PHASES:
-                lines.append(f"Phase {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}")
-            for wk in range(46):
-                wk_start = _HRS + timedelta(days=wk * 7)
-                day_lines = []
-                for off in range(7):
-                    d = wk_start + timedelta(days=off)
-                    sess = _hrs(d)
-                    if sess and sess[0] != "rest":
-                        pt = power_target_for(sess[0], sess[1])
-                        pw = power_watts_range(ftp_w, pt) if ftp_w else (
-                            f"{pt[0]}–{pt[1]}% FTP" if isinstance(pt, tuple) else pt
-                        )
-                        extra = f" [{pw}]" if pw else ""
-                        day_lines.append(f"{d.strftime('%a')} {sess[1]} ({sess[2]}min){extra}")
-                if day_lines:
-                    lines.append(f"Wk{wk+1} ({wk_start.isoformat()}): " + "; ".join(day_lines))
-            lines.append("Event stages:")
+            lines = [
+                f"## {hr_a_event_summary()}",
+                *medical_context_lines(),
+                "",
+                "## Rebuild phases",
+            ]
+            for p in REBUILD_PHASES:
+                lines.append(f"  [{p['status']}] {p['label']} ({p['approx']}): {p['content']}")
+            lines.append("")
+            lines.append(
+                f"Year 2 week-by-week plan active: {YEAR2_PLAN_ACTIVE} "
+                f"(placeholder start {YEAR2_START.isoformat()})."
+            )
+            lines.append("Event stages (route placeholder until 2028 published):")
             for s in HR_EVENT_STAGES:
-                lines.append(f"  Stage {s['day']} ({s['date'].isoformat()}) {s['label']}: "
-                             f"{s['km']}km, {s['elev_m']}m, key climb {s['key_climb']}")
+                lines.append(
+                    f"  Stage {s['day']} ({s['date'].isoformat()}) {s['label']}: "
+                    f"{s['km']}km, {s['elev_m']}m, key climb {s['key_climb']}"
+                )
             return "\n".join(lines)
 
         if name == "get_compliance_detail":
@@ -465,23 +460,22 @@ def _dispatch_read_tool(name: str, tool_input: dict) -> str:
             return "\n".join(f"{k}: {v}" for k, v in plan.items() if v not in (None, ""))
 
         if name == "get_event_plans":
-            from ..analysis import generate_charity_day_plans, generate_hr_stage_plans
-            lines = ["## Charity ride (Ghent→Amsterdam) — day plans"]
-            charity = generate_charity_day_plans()
-            if charity:
-                for day in sorted(charity):
-                    p = charity[day]
-                    lines.append(f"Day {day}: " + "; ".join(f"{k}: {v}" for k, v in p.items()))
-            else:
-                lines.append("  (not generated yet)")
-            lines.append("## Haute Route — stage plans")
+            from ..analysis import generate_hr_stage_plans
+            from ..medical import CHARITY_CANCELLED, hr_a_event_summary
+            lines = [f"## {hr_a_event_summary()}"]
+            if CHARITY_CANCELLED:
+                lines.append(
+                    "Charity ride (Ghent→Amsterdam 13–14 Sep 2026): CANCELLED — "
+                    "no charity day pacing/fuelling plans."
+                )
+            lines.append("## Haute Route — stage plans (placeholders until 2028 route published)")
             stages = generate_hr_stage_plans()
             if stages:
                 for day in sorted(stages):
                     p = stages[day]
                     lines.append(f"Stage {day}: " + "; ".join(f"{k}: {v}" for k, v in p.items()))
             else:
-                lines.append("  (not generated yet)")
+                lines.append("  (not generated yet / Year 2 not started)")
             return "\n".join(lines)
 
         return f"Unknown tool: {name}"
@@ -633,7 +627,8 @@ def _regenerate_coach_memory(api_key: str) -> None:
         f"Recent conversations:\n{conv_text}\n\n"
         f"Live context summary (for reference only — don't repeat this):\n{context[:600]}\n\n"
         "Write a replacement memo (150–250 words) covering:\n"
-        "- Goals and timeline (Ghent to Amsterdam charity ride 13–14 Sep 2026, Haute Route Alpes 2027)\n"
+        "- Goals and timeline (charity ride CANCELLED; Haute Route Alpes 2028 TBC; "
+        "medical pause after kidney stones / stent — stent removal 8 Sep 2026)\n"
         "- Tendencies (e.g. pushes through fatigue, HRV baseline, training response)\n"
         "- Plan decisions made via coach chat (formal checkpoints/guardrails live in the "
         "coach_commitments store and are injected separately — don't duplicate them here)\n"

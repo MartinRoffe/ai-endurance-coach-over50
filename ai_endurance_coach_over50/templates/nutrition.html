@@ -129,8 +129,13 @@
     <div class="hero-meta">
       <span class="badge {{ today_food.badge }}">{{ today_food.session }}</span>
       <span class="hero-kcal">~{{ "{:,}".format(today_food.kcal_target) }} kcal target</span>
-      {% if today_food.maintenance %}
-      <span class="hero-kcal" style="color:var(--accent)">maintenance to 14 Sep — no deficit</span>
+      {% if today_food.protein_low is defined %}
+      <span class="hero-kcal" style="color:var(--muted)">protein {{ today_food.protein_low }}–{{ today_food.protein_high }} g</span>
+      {% endif %}
+      {% if today_food.why %}
+      <span class="hero-kcal" style="color:{% if today_food.maintenance %}var(--accent){% else %}var(--muted){% endif %}">{{ today_food.why }}</span>
+      {% elif today_food.maintenance %}
+      <span class="hero-kcal" style="color:var(--accent)">maintenance — no deficit</span>
       {% elif today_food.kcal_from_tdee and today_food.stable_tdee and today_food.planned_deficit is not none %}
       <span class="hero-kcal" style="color:var(--muted)">stable TDEE {{ "{:,}".format(today_food.stable_tdee) }} {% if today_food.planned_deficit >= 0 %}− {{ today_food.planned_deficit }}{% else %}+ {{ -today_food.planned_deficit }}{% endif %} kcal</span>
       {% endif %}
@@ -324,8 +329,9 @@
       shop from the <a href="/nutrition/lidl-shopping-list">Lidl</a> or <a href="/nutrition/shopping-list">Asda</a> list.
     </p>
     <p class="rules-line" style="margin-top:10px;font-size:12px;color:var(--muted)">
-      Intake targets use stable TDEE minus a session deficit (rest −350, training −250, ruck −150, long −50+).
-      More detail in <a href="/help/nutrition">Help → Nutrition</a>.
+      Intake = stable TDEE − session deficit (periodized: harder cut on rest days, near maintenance on long rides).
+      Maintenance through 3 Jan 2027 zeros the deficit. From 4 Jan the goal is 80 kg by 31 Mar.
+      Meal slots follow today’s plan session. More detail in <a href="/help/nutrition">Help → Nutrition</a>.
     </p>
   </section>
 

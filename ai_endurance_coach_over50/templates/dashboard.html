@@ -132,11 +132,12 @@
   {% if today_verdict %}
   {% set tv = today_verdict %}
   {% set fs = tv.final_session %}
-  {% set _vc = {'green': '#34d399', 'amber': '#fbbf24', 'red': '#f87171'}.get(tv.status, '#71717a') %}
+  {% set _vc = {'green': '#34d399', 'amber': '#fbbf24', 'red': '#f87171', 'medical': '#38bdf8'}.get(tv.status, '#71717a') %}
   {% set type_badge = {
     'bike': 'border-emerald-700 text-emerald-300', 'tempo': 'border-yellow-700 text-yellow-300',
     'ftp': 'border-orange-700 text-orange-300', 'long': 'border-amber-700 text-amber-300',
     'strength': 'border-violet-700 text-violet-300', 'ruck': 'border-pink-800 text-pink-300',
+    'hike': 'border-teal-800 text-teal-300', 'scramble': 'border-cyan-800 text-cyan-300',
     'recovery': 'border-sky-800 text-sky-300', 'rest': 'border-zinc-700 text-zinc-400',
   } %}
   <div class="card" style="margin-bottom:12px;border-left:3px solid {{ _vc }}">
@@ -189,7 +190,7 @@
         · protein {{ tv.nutrition.protein_low }}–{{ tv.nutrition.protein_high }} g{% if tv.nutrition.carbs_g_per_hr %}
         · ride fuel {{ tv.nutrition.carbs_g_per_hr }} g/h{% endif %}{% if nutrition_pill %}
         · logged {{ "{:,}".format(nutrition_pill.calories) }}{% endif %}{% if tv.nutrition.maintenance %}
-        · <span style="color:var(--accent)">maintenance to 14 Sep</span>{% endif %}</a>
+        · <span style="color:var(--accent)">maintenance — no deficit</span>{% endif %}</a>
       </p>
       {% endif %}
     </div>

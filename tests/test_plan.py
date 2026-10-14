@@ -43,8 +43,20 @@ def test_session_for_date_respects_override():
 
 
 def test_hr_session_for_date_boundaries():
-    assert hr_session_for_date(HR_PLAN_START) == HR_TRAINING_WEEKS[0][0]
-    last = HR_PLAN_START + timedelta(days=_HR_PLAN_DAYS - 1)
-    assert hr_session_for_date(last) == HR_TRAINING_WEEKS[-1][6]
-    assert hr_session_for_date(HR_PLAN_START - timedelta(days=1)) is None
-    assert hr_session_for_date(HR_PLAN_START + timedelta(days=_HR_PLAN_DAYS)) is None
+    """Year-2 week-by-week is gated off — sessions resolve only when YEAR2_PLAN_ACTIVE."""
+    from ai_endurance_coach_over50 import medical as med
+
+    assert med.YEAR2_PLAN_ACTIVE is False
+    assert hr_session_for_date(HR_PLAN_START) is None
+    assert hr_session_for_date(HR_PLAN_START + timedelta(days=10)) is None
+
+    # With the gate flipped, boundaries match the stored template.
+    med.YEAR2_PLAN_ACTIVE = True
+    try:
+        assert hr_session_for_date(HR_PLAN_START) == HR_TRAINING_WEEKS[0][0]
+        last = HR_PLAN_START + timedelta(days=_HR_PLAN_DAYS - 1)
+        assert hr_session_for_date(last) == HR_TRAINING_WEEKS[-1][6]
+        assert hr_session_for_date(HR_PLAN_START - timedelta(days=1)) is None
+        assert hr_session_for_date(HR_PLAN_START + timedelta(days=_HR_PLAN_DAYS)) is None
+    finally:
+        med.YEAR2_PLAN_ACTIVE = False

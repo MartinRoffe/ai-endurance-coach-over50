@@ -23,18 +23,44 @@ def test_charity_week_11_is_tue_and_thu_not_monday():
 
 
 def test_hr_base_week_1_is_thu_and_sat():
-    """HR Base pairs a Thursday KB session with a 60-min Saturday gym slot."""
-    week = week_of(date(2026, 10, 5))
-    assert [d["weekday"] for d in week if d["is_strength"]] == ["Thu", "Sat"]
-    saturday = next(d for d in week if d["weekday"] == "Sat")
-    assert saturday["dur_min"] == 60
-    assert saturday["label"] == "Gym — Strength"
+    """HR Base pairs a Thursday KB session with a 60-min Saturday gym slot.
+
+    Year-2 sessions are gated off by default; flip the gate for this assertion.
+    """
+    from ai_endurance_coach_over50 import medical as med
+    from ai_endurance_coach_over50.hr_plan import HR_PLAN_START
+
+    med.YEAR2_PLAN_ACTIVE = True
+    try:
+        week = week_of(HR_PLAN_START)
+        assert [d["weekday"] for d in week if d["is_strength"]] == ["Thu", "Sat"]
+        saturday = next(d for d in week if d["weekday"] == "Sat")
+        assert saturday["dur_min"] == 60
+        assert saturday["label"] == "Gym — Strength"
+    finally:
+        med.YEAR2_PLAN_ACTIVE = False
 
 
 def test_hr_build_week_is_a_single_wednesday():
     """_destack_quality() swaps Wed/Thu at import time — the derived week must
     reflect the post-swap order, not the literal in HR_TRAINING_WEEKS."""
-    assert strength_weekdays(date(2027, 1, 11)) == ["Wed"]
+    from ai_endurance_coach_over50 import medical as med
+    from ai_endurance_coach_over50.hr_plan import HR_PLAN_START
+    from datetime import timedelta
+
+    med.YEAR2_PLAN_ACTIVE = True
+    try:
+        # Week 15 of the template (after destack) has Strength on Wednesday
+        build_mon = HR_PLAN_START + timedelta(weeks=14)
+        assert strength_weekdays(build_mon) == ["Wed"]
+    finally:
+        med.YEAR2_PLAN_ACTIVE = False
+
+
+def test_year2_gated_means_no_hr_strength_in_oct_2026():
+    """Until Year 2 is live, Oct 2026 is not an HR Base strength week."""
+    week = week_of(date(2026, 10, 5))
+    assert not any(d["is_strength"] for d in week)
 
 
 def test_tenerife_camp_week_has_no_strength():
@@ -63,6 +89,22 @@ def test_mobility_is_capped_and_avoids_strength_and_key_rides():
         for d in mobility:
             assert not d["is_strength"]
             assert d["type"] not in ctx._POSITION_KEY_TYPES
+
+
+def test_hr_mobility_when_year2_active():
+    from ai_endurance_coach_over50 import medical as med
+    from ai_endurance_coach_over50.hr_plan import HR_PLAN_START
+
+    med.YEAR2_PLAN_ACTIVE = True
+    try:
+        week = week_of(HR_PLAN_START)
+        mobility = [d for d in week if d["mobility"]]
+        assert len(mobility) <= ctx._POSITION_MOBILITY_TARGET
+        for d in mobility:
+            assert not d["is_strength"]
+            assert d["type"] not in ctx._POSITION_KEY_TYPES
+    finally:
+        med.YEAR2_PLAN_ACTIVE = False
 
 
 def test_next_strength_spans_the_tenerife_gap():

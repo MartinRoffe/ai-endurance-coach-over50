@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
-  <title>Training Calendar · 12 Weeks</title>
+  <title>Training Calendar · Fitness year</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #09090b; }
@@ -14,6 +14,8 @@
     .sess-tempo    { background: #1c1600; border-color: #ca8a04; color: #fde047; }
     .sess-ftp      { background: #1c0c00; border-color: #ea580c; color: #fdba74; }
     .sess-ruck     { background: #1c0714; border-color: #be185d; color: #f9a8d4; }
+    .sess-hike     { background: #0a1a18; border-color: #0f766e; color: #5eead4; }
+    .sess-scramble { background: #0c1a1f; border-color: #0e7490; color: #67e8f9; }
     .sess-long     { background: #181000; border-color: #b45309; color: #fde68a; }
     .sess-camp-hard   { background: #1c0c0c; border-color: #ef4444; color: #fca5a5; }
     .sess-camp-medium { background: #1c1400; border-color: #fbbf24; color: #fde68a; }
@@ -43,7 +45,8 @@
       <div>
         <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">Interactive plan + completion</p>
         <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:#fafafa;line-height:1">Sessions</h1>
-        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">{{ plan_start.strftime("%-d %b %Y") }} → HR Base · Oct 2026</p>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">12 Oct 2026 → 3 Oct 2027 · road and hills</p>
+        <p style="font-family:'DM Mono',monospace;font-size:12px;color:#a1a1aa;margin-top:4px"><a href="{{ archive_plan_href | default('/training/charity') }}" style="color:#5eead4">Cancelled charity plan (archive)</a></p>
       </div>
       {% if current_streak > 0 %}
       <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;padding:6px 14px;border:1px solid #166534;color:#4ade80;background:#052e16/40;border-radius:2px;white-space:nowrap;align-self:flex-start;margin-top:4px">
@@ -70,6 +73,7 @@
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-tempo" style="border-radius:2px">Tempo</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-ftp" style="border-radius:2px">FTP Test</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-ruck" style="border-radius:2px">Ruck</span>
+      <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-hike" style="border-radius:2px">Hike</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-long" style="border-radius:2px">Long Ride</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-rest" style="border-radius:2px">Rest</span>
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-left:6px">· click any cycling session for details</span>
@@ -153,6 +157,12 @@
       <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:#5eead4;white-space:nowrap">🛠 POSITION BRIDGE · 15 SEP – 4 OCT · 2× Lebe Stark · trunk after strength · <a href="/position" style="color:#fbbf24;text-decoration:underline">how-to</a></span>
       <div style="flex:1;height:1px;background:rgba(47,122,110,0.35)"></div>
     </div>
+    {% elif week.phase_start and week.phase == 'fitness' %}
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0 6px">
+      <div style="flex:1;height:1px;background:rgba(94,234,212,0.25)"></div>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:#5eead4;white-space:nowrap">FITNESS · 12 OCT 2026 – 3 OCT 2027 · road and hills · Christmas rides are a ceiling</span>
+      <div style="flex:1;height:1px;background:rgba(94,234,212,0.25)"></div>
+    </div>
     {% elif week.phase_start and week.phase == 'hr_teaser' %}
     <div style="display:flex;align-items:center;gap:12px;margin:20px 0 6px">
       <div style="flex:1;height:1px;background:rgba(167,139,250,0.25)"></div>
@@ -161,7 +171,7 @@
     </div>
     {% endif %}
 
-    <div class="grid grid-cols-8 gap-1 mb-1" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% elif week.phase == 'bridge' %}background:rgba(19,78,74,0.18);border-radius:4px;{% elif week.phase == 'hr_teaser' %}background:rgba(76,29,149,0.14);border-radius:4px;{% endif %}">
+    <div class="grid grid-cols-8 gap-1 mb-1" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% elif week.phase == 'bridge' %}background:rgba(19,78,74,0.18);border-radius:4px;{% elif week.phase == 'fitness' %}background:rgba(15,60,55,0.2);border-radius:4px;{% elif week.phase == 'hr_teaser' %}background:rgba(76,29,149,0.14);border-radius:4px;{% endif %}">
 
       <!-- Week sidebar -->
       <div class="flex flex-col items-end justify-center pr-2">
@@ -190,6 +200,9 @@
           <span class="text-[12px] font-semibold" style="color:#38bdf8">{{ week.week_label }}</span>
         {% elif week.phase == 'bridge' %}
           <span class="text-[12px] font-semibold" style="color:#5eead4">{{ week.week_label }}</span>
+        {% elif week.phase == 'fitness' %}
+          <span class="text-[12px] font-semibold" style="color:#5eead4">{{ week.week_label }}</span>
+          {% if week.phase_name %}<span class="text-[10px] text-slate-500">{{ week.phase_name }}</span>{% endif %}
         {% elif week.phase == 'hr_teaser' %}
           <span class="text-[13px] font-bold" style="color:#c4b5fd">HR{{ "%02d"|format(week.week_num) }}</span>
           <span class="text-[12px] text-slate-400">{{ week.start.strftime("%-d %b") }}</span>
@@ -421,6 +434,23 @@
             {% if day.dur_fmt %}<p class="text-[12px] opacity-80 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
           {% else %}
             <p class="text-[12px] opacity-65 mt-auto">Rest</p>
+          {% endif %}
+        </div>
+
+      {% elif week.phase == 'fitness' %}
+        <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type if day.type else 'rest' }}
+                    {% if day.is_today %}today-ring{% endif %}
+                    {% if day.is_past %}is-past{% endif %}"
+             data-cal-date="{{ day.date.isoformat() }}">
+          <div class="flex items-start justify-between mb-0.5">
+            <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
+            {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
+          </div>
+          {% if day.type != 'rest' and day.label %}
+            <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
+            {% if day.dur_fmt %}<p class="text-[12px] opacity-80 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
+          {% else %}
+            <p class="text-[12px] opacity-65 mt-auto">{{ day.label if day.label and day.label != 'Rest' else 'Rest' }}</p>
           {% endif %}
         </div>
 

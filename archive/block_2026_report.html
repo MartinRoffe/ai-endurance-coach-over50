@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2026 block vs 2009–2016 archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1f24;
+    --ink-soft: #3d4750;
+    --mute: #6b7580;
+    --paper: #f7f5f0;
+    --paper-2: #efece4;
+    --line: #d4d0c6;
+    --band: #e8e4da;
+    --amber: #c45c1a;
+    --amber-soft: #f3e0d2;
+    --teal: #1f6b63;
+    --teal-soft: #d8ebe8;
+    --danger: #9b2c2c;
+    --danger-soft: #f0d9d9;
+    --ok: #2f6b3a;
+    --ok-soft: #d9eadc;
+    --max: 920px;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-optical-sizing: auto;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.55;
+    font-size: 16px;
+  }
+
+  /* Asphalt grain — soft noise via layered gradients, not a flat sheet */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(196, 92, 26, 0.07), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgba(31, 107, 99, 0.06), transparent 50%),
+      linear-gradient(180deg, #f9f7f2 0%, var(--paper) 40%, #f3f0ea 100%);
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 1.5rem 0 2rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.75rem;
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin-bottom: 0.75rem;
+  }
+
+  h1 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 6vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    max-width: 14ch;
+  }
+
+  .hero-lede {
+    margin-top: 1rem;
+    max-width: 42rem;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    align-items: end;
+  }
+
+  @media (max-width: 720px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+
+  .big-watt {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.4rem 1.2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .big-watt::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--amber);
+  }
+
+  .big-watt .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(247, 245, 240, 0.55);
+    margin-bottom: 0.35rem;
+  }
+
+  .big-watt .value {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: clamp(3.2rem, 8vw, 4.2rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .big-watt .value span {
+    font-size: 0.45em;
+    opacity: 0.7;
+    margin-left: 0.15em;
+  }
+
+  .big-watt .meta {
+    margin-top: 0.65rem;
+    font-size: 0.88rem;
+    color: rgba(247, 245, 240, 0.72);
+  }
+
+  .ftp-vs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .ftp-vs .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .ftp-vs .row.strike .num {
+    text-decoration: line-through;
+    color: var(--mute);
+  }
+
+  .ftp-vs .k {
+    font-size: 0.8rem;
+    color: var(--mute);
+  }
+
+  .ftp-vs .num {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+
+  .ftp-vs .num.good { color: var(--teal); }
+
+  /* ── Nav ── */
+  .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 2rem;
+  }
+
+  .toc a {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    text-decoration: none;
+    color: var(--ink-soft);
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.5);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .toc a:hover, .toc a:focus-visible {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    outline: none;
+  }
+
+  /* ── Callouts / pills ── */
+  .callout {
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1rem 0 1.5rem;
+    border: 1px solid var(--line);
+    background: var(--amber-soft);
+    border-left: 4px solid var(--amber);
+  }
+
+  .callout.neutral {
+    background: var(--band);
+    border-left-color: var(--ink-soft);
+  }
+
+  .callout.danger {
+    background: var(--danger-soft);
+    border-left-color: var(--danger);
+  }
+
+  .callout strong {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .callout p { color: var(--ink-soft); font-size: 0.92rem; }
+
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.75rem 0 1.5rem;
+  }
+
+  .pill {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: var(--band);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  .pill.teal { background: var(--teal-soft); color: var(--teal); border-color: transparent; }
+  .pill.amber { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+  .pill.danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+
+  /* ── Stats ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+
+  .stat {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.85rem 0.95rem;
+  }
+
+  .stat .slabel {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  .stat .sval {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 1.85rem;
+    line-height: 1.15;
+    margin-top: 0.15rem;
+  }
+
+  .stat.accent .sval { color: var(--teal); }
+  .stat.warn .sval { color: var(--danger); }
+  .stat.ok .sval { color: var(--ok); }
+
+  /* ── Sections ── */
+  section {
+    padding: 1.75rem 0;
+    border-top: 1px solid var(--line);
+  }
+
+  h2 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: 1.85rem;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.65rem;
+  }
+
+  h2 .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1.35rem 0 0.55rem;
+    color: var(--ink);
+  }
+
+  p, li { color: var(--ink-soft); }
+  p { margin-bottom: 0.75rem; }
+
+  ul { padding-left: 1.15rem; margin-bottom: 0.85rem; }
+  li { margin-bottom: 0.3rem; }
+
+  .caption {
+    font-size: 0.78rem;
+    color: var(--mute);
+    margin-top: 0.45rem;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* ── Charts ── */
+  .chart-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem 1rem 0.75rem;
+    margin: 1rem 0;
+  }
+
+  .chart-card h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  .chart-wrap { position: relative; width: 100%; height: 240px; }
+  .chart-wrap.tall { height: 280px; }
+
+  .png-chart {
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: #fff;
+    margin: 1rem 0;
+  }
+
+  /* ── Tables ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1rem 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  th, td {
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mute);
+    background: var(--paper-2);
+    font-weight: 500;
+  }
+
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.mono { font-family: "JetBrains Mono", monospace; font-size: 0.8rem; }
+
+  tr.highlight td {
+    background: var(--teal-soft);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  /* ── Two-col cards ── */
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 720px) {
+    .pair { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.15rem 1.2rem;
+  }
+
+  .card h3 {
+    margin: 0 0 0.75rem;
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+  }
+
+  .card p:last-child { margin-bottom: 0; }
+
+  .emph { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+    color: var(--mute);
+  }
+
+  footer code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    background: var(--band);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Archive compare · MEASURED_MMP · generated 2026-08-07</p>
+    <h1>2026 twelve-week block vs the archive</h1>
+    <p class="hero-lede">
+      Same validated wall-clock MMP engine as 2009–2016. Consistency helpers unchanged.
+      Read the FTP provenance before any watt comparison.
+    </p>
+
+    <div class="hero-grid">
+      <div class="big-watt">
+        <div class="label">Raw stream MMP-20 — the archive comparator</div>
+        <div class="value">222.6<span>W</span></div>
+        <div class="meta">Outdoor Final FTP Test · 89.9 kg · 2.48 W/kg · Assioma</div>
+      </div>
+      <div class="ftp-vs">
+        <div class="row strike">
+          <span class="k">App FTP (do not compare to archive)</span>
+          <span class="num">220 W</span>
+        </div>
+        <div class="row">
+          <span class="k">20-min effort avg → ×0.95</span>
+          <span class="num">232 W</span>
+        </div>
+        <div class="row">
+          <span class="k">Stream MMP-20 MEASURED_MMP</span>
+          <span class="num good">222.6 W</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#ftp">FTP provenance</a>
+    <a href="#consistency">1 Consistency</a>
+    <a href="#ef">2 EF response</a>
+    <a href="#power">3 Power position</a>
+    <a href="#forward">4 Forward</a>
+    <a href="#autumn">5 Autumn risk</a>
+  </nav>
+
+  <div class="stats">
+    <div class="stat accent">
+      <div class="slabel">Stream MMP-20</div>
+      <div class="sval">222.6 W</div>
+    </div>
+    <div class="stat">
+      <div class="slabel">App FTP ×0.95</div>
+      <div class="sval">220 W</div>
+    </div>
+    <div class="stat warn">
+      <div class="slabel">≥3-ride streak</div>
+      <div class="sval">3 wk</div>
+    </div>
+    <div class="stat ok">
+      <div class="slabel">Archive streak</div>
+      <div class="sval">8 wk</div>
+    </div>
+  </div>
+
+  <div class="pills">
+    <span class="pill teal">Outdoor road</span>
+    <span class="pill danger">Streak beaten? NO</span>
+    <span class="pill danger">Largest 6-wk block? NO</span>
+    <span class="pill amber">EF vs top-5 hours: not valid</span>
+  </div>
+
+  <section id="ftp">
+    <h2><span class="num">PROVENANCE</span>FTP test — read before any power comparison</h2>
+    <div class="callout">
+      <strong>Do not compare 220 W FTP to archive MMP-20</strong>
+      <p>
+        Activity <code>23884317052</code> — Southend-on-Sea Final FTP Test, 2026-08-07.
+        Protocol <strong>20-min effort × 0.95</strong>. Analysed effort 232 W → app FTP 220 W.
+        Stream MMP-20 = <strong>222.6 W MEASURED_MMP</strong> is the like-for-like number.
+        Indoor confound: none (matches archive outdoor bests). Assioma vs 2012-era meter still applies.
+      </p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Activity</td><td class="mono">23884317052 — Southend-on-Sea Final FTP Test</td></tr>
+          <tr><td>Date</td><td>2026-08-07</td></tr>
+          <tr><td>Setting</td><td>Outdoor (road_biking)</td></tr>
+          <tr><td>Protocol</td><td>20-min effort × 0.95</td></tr>
+          <tr><td>Recorded FTP</td><td class="num">220 W</td></tr>
+          <tr><td>Effort avg</td><td class="num">232.0 W</td></tr>
+          <tr class="highlight"><td>Raw MMP-20</td><td class="num">222.6 W MEASURED_MMP</td></tr>
+          <tr><td>Weight / W/kg</td><td class="num">89.9 kg · 2.48</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="consistency">
+    <h2><span class="num">ANALYSIS 01</span>Consistency</h2>
+    <p>
+      Cycling-only, same <code>longest_streak_ge3</code> / <code>peak_blocks</code> rules as the archive.
+      Plan 2026-05-18 → 2026-08-09 · <strong>43.8 h</strong> total · 2.25 rides/wk · median 76.8 min ·
+      no ≥10-day gaps. Five of twelve plan weeks hit ≥3 rides.
+    </p>
+    <div class="callout danger">
+      <strong>Did this block beat the archive streak? NO — 3 vs 8</strong>
+      <p>
+        Longest unbroken ≥3-rides streak: 3 weeks (2026-07-14 → 2026-07-28), same W-MON week key
+        as the archive record of 8 weeks (2012-04-10 → 2012-05-29).
+      </p>
+    </div>
+
+    <div class="chart-card">
+      <h3>2026 plan — cycling hours by week</h3>
+      <div class="chart-wrap"><canvas id="chartHours"></canvas></div>
+      <p class="caption">Plan weeks Mon–Sun. ≥3-ride weeks shaded teal on the axis labels.</p>
+    </div>
+
+    <h3>Hours density vs top archive blocks</h3>
+    <p>
+      Archive tops are rolling 6-week scored windows (~9–10 h/wk). 2026 best 6-wk sub-block is
+      <strong>4.4 h/wk</strong> (26.4 h). Full 12-wk is longer structure, not denser.
+      <span class="emph">Not the largest block in the dataset</span> — archive #1 remains 59.4 h.
+    </p>
+    <div class="chart-card">
+      <h3>Hours per week — archive top-5 vs 2026</h3>
+      <div class="chart-wrap tall"><canvas id="chartDensity"></canvas></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Block</th>
+            <th class="num">Span wk</th>
+            <th class="num">Hours</th>
+            <th class="num">h/wk</th>
+            <th class="num">rides/wk</th>
+            <th class="num">median min</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>2009-06-23 → 2009-08-24</td><td class="num">6</td><td class="num">59.4</td><td class="num">9.9</td><td class="num">2.7</td><td class="num">139</td></tr>
+          <tr><td>2009-06-16 → 2009-07-27</td><td class="num">6</td><td class="num">57.1</td><td class="num">9.52</td><td class="num">2.5</td><td class="num">141</td></tr>
+          <tr><td>2009-02-10 → 2009-05-04</td><td class="num">6</td><td class="num">55.9</td><td class="num">9.32</td><td class="num">3.7</td><td class="num">144</td></tr>
+          <tr><td>2012-07-17 → 2012-08-27</td><td class="num">6</td><td class="num">54.7</td><td class="num">9.12</td><td class="num">3.2</td><td class="num">149</td></tr>
+          <tr><td>2009-06-09 → 2009-07-20</td><td class="num">6</td><td class="num">54.5</td><td class="num">9.08</td><td class="num">2.3</td><td class="num">141</td></tr>
+          <tr class="highlight"><td>2026 best 6-wk</td><td class="num">6</td><td class="num">26.4</td><td class="num">4.4</td><td class="num">2.2</td><td class="num">85</td></tr>
+          <tr class="highlight"><td>2026 full 12-wk</td><td class="num">11.57</td><td class="num">43.8</td><td class="num">3.78</td><td class="num">2.25</td><td class="num">76.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Full archive context</h3>
+    <img class="png-chart" src="charts/training_hours_2009_2026.png" alt="Weekly cycling hours 2009–2016 with 2026 block overlay and gaps shaded" />
+    <p class="caption">charts/training_hours_2009_2026.png · gaps ≥21d shaded</p>
+  </section>
+
+  <section id="ef">
+    <h2><span class="num">ANALYSIS 02</span>Response — EF (% max HR)</h2>
+    <p>
+      Metric: median weekly <strong>EF = NP ÷ (% of HRmax)</strong> on rides ≥45 min with NP+HR.
+      2026 HRmax = 188 (block max). Archive HRmax = 204. Power meter from late June — EF starts then.
+    </p>
+    <div class="callout neutral">
+      <strong>EF vs archive top-5 hours blocks — not a valid comparison</strong>
+      <p>
+        Those blocks (mostly 2009 / 2012) have zero <code>normalized_power</code> in the Garmin export.
+        No EF slope is invented for them. 2015 NP strip is secondary context only (not a top hours block).
+      </p>
+    </div>
+
+    <div class="chart-card">
+      <h3>2026 EF trend excluding FTP-labelled rides</h3>
+      <div class="chart-wrap"><canvas id="chartEf"></canvas></div>
+      <p class="caption">Shape: mid_peak_then_fade · still climbing at end? False</p>
+    </div>
+
+    <div class="callout">
+      <strong>Finding (ex-FTP)</strong>
+      <p>
+        EF peaked mid-block (quality weeks ~Jul 14) then faded; the final non-test week was below
+        the powered-window open. Do not read this as adaptation still climbing at week 12.
+        The all-rides series looks stronger mainly because the final week is the FTP test.
+      </p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Series</th>
+            <th class="num">HRmax</th>
+            <th class="num">Slope /wk</th>
+            <th class="num">Δ EF</th>
+            <th>Shape</th>
+            <th>Still climbing?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight">
+            <td>2026 ex-FTP</td>
+            <td class="num">188</td>
+            <td class="num">0.00572</td>
+            <td class="num">−0.0707</td>
+            <td>mid_peak_then_fade</td>
+            <td>False</td>
+          </tr>
+          <tr>
+            <td>2015 NP strip (secondary)</td>
+            <td class="num">204</td>
+            <td class="num">0.00025</td>
+            <td class="num">0.0005</td>
+            <td>back_loaded</td>
+            <td>False</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="power">
+    <h2><span class="num">ANALYSIS 03</span>Honest power positioning</h2>
+    <p>
+      All rows: <strong>MEASURED_MMP</strong> from the same wall-clock engine.
+      2026 = best across powered rides in the block (n=15). App FTP 220 is not in this table.
+    </p>
+
+    <div class="chart-card">
+      <h3>MMP-20 and MMP-60 by year</h3>
+      <div class="chart-wrap tall"><canvas id="chartMmp"></canvas></div>
+      <p class="caption">2011 &amp; 2016 ratio bands FAIL (coverage caveat) · 2026 short powered window</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th class="num">MMP-20</th>
+            <th class="num">MMP-60</th>
+            <th class="num">kg</th>
+            <th class="num">W/kg₂₀</th>
+            <th class="num">W/kg₆₀</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>2011</td><td class="num">210.3</td><td class="num">179.0</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td>coverage FAIL</td></tr>
+          <tr><td>2012</td><td class="num">281.7</td><td class="num">267.1</td><td class="num">78.0</td><td class="num">3.61</td><td class="num">3.42</td><td>Alps era</td></tr>
+          <tr><td>2013</td><td class="num">302.3</td><td class="num">296.3</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td>plateau ride</td></tr>
+          <tr><td>2014</td><td class="num">273.8</td><td class="num">258.6</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td></td></tr>
+          <tr><td>2015</td><td class="num">303.7</td><td class="num">271.5</td><td class="num">84.4</td><td class="num">3.60</td><td class="num">3.22</td><td>peak MMP-20</td></tr>
+          <tr><td>2016</td><td class="num">213.9</td><td class="num">172.5</td><td class="num">82.0</td><td class="num">2.61</td><td class="num">2.10</td><td>coverage FAIL</td></tr>
+          <tr class="highlight"><td>2026</td><td class="num">222.6</td><td class="num">186.1</td><td class="num">89.9</td><td class="num">2.48</td><td class="num">2.07</td><td>block bests · outdoor</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Confounds (stated, not adjusted away)</h3>
+    <ul>
+      <li>13 years older (archive peaks ~35–39; now 50).</li>
+      <li>~12 kg heavier than 2012 Alps weight (78 kg); test weight 89.9 kg.</li>
+      <li>Different meters — 2012-era unit had known climbing-physics discrepancy; Assioma almost certainly more accurate.</li>
+      <li>Outdoor test — no turbo confound for headline MMP-20.</li>
+      <li>2026 curve from ~6 weeks powered riding, not a full-season shortlist.</li>
+    </ul>
+
+    <h3>MMP curve — FTP test ride vs block bests</h3>
+    <div class="chart-card">
+      <h3>Power–duration (MEASURED_MMP)</h3>
+      <div class="chart-wrap"><canvas id="chartCurve"></canvas></div>
+    </div>
+  </section>
+
+  <section id="forward">
+    <h2><span class="num">ANALYSIS 04</span>Forward projection</h2>
+    <div class="pair">
+      <div class="card">
+        <h3>Observed rate</h3>
+        <p>MMP-20: re-test 208.1 W (2 Jul) → final 222.6 W (7 Aug) ≈ <span class="emph">+2.8 W/week</span>.</p>
+        <p>Naive linear: ~296 W at +6 mo, ~369 W at +12 mo.</p>
+        <p><span class="emph">Do not believe the linear numbers.</span> Curves flatten; early gains do not extrapolate.</p>
+      </div>
+      <div class="card">
+        <h3>Next 12 weeks</h3>
+        <p>Protect the ≥3 rides/week streak. One quality day + one long ride weekly.</p>
+        <p>Monthly outdoor MMP sample. Avoid Nov–Jan zero; if travel forces a cut, cap layoff at ≤3 weeks then rebuild deliberately.</p>
+        <p>Archive rebuild central estimate: <span class="emph">~5 weeks</span> after a typical layoff.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="autumn">
+    <h2><span class="num">ANALYSIS 05</span>Autumn layoff risk</h2>
+    <div class="callout danger">
+      <strong>~13 weeks lost · return near today’s MMP-20, not ahead of it</strong>
+      <p>
+        Every archive year shows a 6–12 week Nov–Jan layoff. Three never recovered.
+        Typical path from here: 8 weeks off + ~5 weeks rebuild.
+        If recovery succeeds you might revisit ~223 W — the linear fantasy (369 W) is forfeited.
+        Cost: ~13 weeks of calendar and zero expected net MMP-20 gain. Progress clock resets.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Engine: <code>archive/mmp_engine.py</code> · Report: <code>block_2026_analysis.md</code> ·
+      CSV: <code>mmp_by_year_with_2026.csv</code> · Changelog §8 · Canvas twin for IDE.
+    </p>
+    <p style="margin-top:0.4rem">
+      Open this file from the <code>archive/</code> folder so chart PNGs resolve, or use the interactive charts above (CDN Chart.js).
+    </p>
+  </footer>
+</div>
+
+<script>
+const INK = "#1a1f24";
+const MUTE = "#6b7580";
+const TEAL = "#1f6b63";
+const AMBER = "#c45c1a";
+const BAND = "#d4d0c6";
+const GRID = "rgba(26,31,36,0.08)";
+
+Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+Chart.defaults.color = MUTE;
+Chart.defaults.borderColor = GRID;
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+Chart.defaults.plugins.legend.labels.boxHeight = 12;
+
+const weeks = [
+  { w: "W1", h: 2.22, ge3: false },
+  { w: "W2", h: 3.3, ge3: false },
+  { w: "W3", h: 4.23, ge3: true },
+  { w: "W4", h: 1.06, ge3: false },
+  { w: "W5", h: 4.16, ge3: true },
+  { w: "W6", h: 2.4, ge3: false },
+  { w: "W7", h: 5.49, ge3: false },
+  { w: "W8", h: 1.22, ge3: false },
+  { w: "W9", h: 6.14, ge3: true },
+  { w: "W10", h: 4.45, ge3: true },
+  { w: "W11", h: 7.18, ge3: false },
+  { w: "W12", h: 1.92, ge3: false },
+];
+
+new Chart(document.getElementById("chartHours"), {
+  type: "bar",
+  data: {
+    labels: weeks.map(d => d.w),
+    datasets: [{
+      label: "Hours",
+      data: weeks.map(d => d.h),
+      backgroundColor: weeks.map(d => d.ge3 ? TEAL : "rgba(26,31,36,0.35)"),
+      borderRadius: 3,
+      maxBarThickness: 36,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: {
+      afterLabel: (c) => weeks[c.dataIndex].ge3 ? "≥3 rides" : "<3 rides",
+    }}},
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, title: { display: true, text: "Hours / week" } },
+    },
+  },
+});
+
+const blocks = [
+  { label: "2009-06-23", hpw: 9.9 },
+  { label: "2009-06-16", hpw: 9.52 },
+  { label: "2009-02-10", hpw: 9.32 },
+  { label: "2012-07-17", hpw: 9.12 },
+  { label: "2009-06-09", hpw: 9.08 },
+  { label: "2026 best 6wk", hpw: 4.4 },
+  { label: "2026 full 12wk", hpw: 3.78 },
+];
+
+new Chart(document.getElementById("chartDensity"), {
+  type: "bar",
+  data: {
+    labels: blocks.map(b => b.label),
+    datasets: [{
+      label: "h/wk",
+      data: blocks.map(b => b.hpw),
+      backgroundColor: blocks.map((_, i) => i >= 5 ? TEAL : "rgba(26,31,36,0.35)"),
+      borderRadius: 3,
+      maxBarThickness: 22,
+    }],
+  },
+  options: {
+    indexAxis: "y",
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { beginAtZero: true, title: { display: true, text: "Hours / week" } },
+      y: { grid: { display: false } },
+    },
+  },
+});
+
+const ef = [
+  { w: "6/23", v: 2.0005 },
+  { w: "6/30", v: 2.0188 },
+  { w: "7/07", v: 2.0735 },
+  { w: "7/14", v: 2.2803 },
+  { w: "7/21", v: 2.1344 },
+  { w: "7/28", v: 1.9298 },
+];
+
+new Chart(document.getElementById("chartEf"), {
+  type: "line",
+  data: {
+    labels: ef.map(d => d.w),
+    datasets: [{
+      label: "EF = NP ÷ %HRmax (ex-FTP)",
+      data: ef.map(d => d.v),
+      borderColor: TEAL,
+      backgroundColor: "rgba(31,107,99,0.12)",
+      fill: true,
+      tension: 0.25,
+      pointRadius: 4,
+      pointBackgroundColor: TEAL,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        title: { display: true, text: "EF" },
+        suggestedMin: 1.85,
+        suggestedMax: 2.35,
+      },
+      x: { grid: { display: false }, title: { display: true, text: "Week start" } },
+    },
+  },
+});
+
+new Chart(document.getElementById("chartMmp"), {
+  type: "bar",
+  data: {
+    labels: ["2011", "2012", "2013", "2014", "2015", "2016", "2026"],
+    datasets: [
+      {
+        label: "MMP-20",
+        data: [210.3, 281.7, 302.3, 273.8, 303.7, 213.9, 222.6],
+        backgroundColor: AMBER,
+        borderRadius: 3,
+        maxBarThickness: 28,
+      },
+      {
+        label: "MMP-60",
+        data: [179.0, 267.1, 296.3, 258.6, 271.5, 172.5, 186.1],
+        backgroundColor: TEAL,
+        borderRadius: 3,
+        maxBarThickness: 28,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, title: { display: true, text: "Watts" } },
+    },
+  },
+});
+
+new Chart(document.getElementById("chartCurve"), {
+  type: "line",
+  data: {
+    labels: ["1 min", "2 min", "5 min", "20 min", "60 min"],
+    datasets: [
+      {
+        label: "FTP test ride",
+        data: [301.7, 282.6, 252.6, 222.6, null],
+        borderColor: AMBER,
+        backgroundColor: AMBER,
+        tension: 0.2,
+        spanGaps: false,
+        pointRadius: 4,
+      },
+      {
+        label: "Block best",
+        data: [346.7, 282.6, 252.6, 222.6, 186.1],
+        borderColor: TEAL,
+        backgroundColor: TEAL,
+        tension: 0.2,
+        pointRadius: 4,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: false, suggestedMin: 150, title: { display: true, text: "Watts" } },
+      x: { grid: { display: false } },
+    },
+  },
+});
+</script>
+</body>
+</html>

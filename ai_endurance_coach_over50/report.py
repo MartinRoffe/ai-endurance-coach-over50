@@ -124,11 +124,12 @@ def _build_advice_prompt(
 
     lines += ["", f"7-day composite trend (oldest→today): {seven_day_composite_trend_csv()}"]
     lines += [build_advice_context(target, timing)]
+    from .medical import hr_a_event_summary, charity_status_summary
     lines += [
         "",
-        "Official A-event names (use these exactly; never invent nicknames like 'Lap the Map'):",
-        f"  - {charity_event_summary()}",
-        f"  - {HR_EVENT_NAME} (23–29 Aug 2027)",
+        "Official event names (use these exactly; never invent nicknames like 'Lap the Map'):",
+        f"  - {charity_status_summary()}",
+        f"  - {hr_a_event_summary()}",
     ]
     if timing["post_workout"]:
         lines += [
@@ -682,20 +683,34 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
     except Exception:
         pass
 
-    # Route line: days to the A event
+    # Route line: days to the A event (HR 2028) or medical pause notice
     route_line = ""
     try:
-        from .plan import CHARITY_DAYS
-        event_day = CHARITY_DAYS[0]["date"]
-        if isinstance(event_day, str):
-            event_day = date.fromisoformat(event_day)
-        days_out = (event_day - m.date).days
-        if 0 < days_out <= 120:
+        from .medical import (
+            CHARITY_CANCELLED,
+            HR_A_EVENT_NAME,
+            HR_A_EVENT_START,
+            in_medical_pause,
+        )
+        if in_medical_pause(m.date) or CHARITY_CANCELLED:
+            days_out = (HR_A_EVENT_START - m.date).days
             route_line = (
                 f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:10px;'
                 f'letter-spacing:0.14em;text-transform:uppercase;color:{_RED};">'
-                f'Ghent &rarr; Amsterdam &middot; J&ndash;{days_out}</p>'
+                f'Medical pause &middot; {HR_A_EVENT_NAME} &middot; J&ndash;{days_out} (TBC)</p>'
             )
+        else:
+            from .plan import CHARITY_DAYS
+            event_day = CHARITY_DAYS[0]["date"]
+            if isinstance(event_day, str):
+                event_day = date.fromisoformat(event_day)
+            days_out = (event_day - m.date).days
+            if 0 < days_out <= 120:
+                route_line = (
+                    f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:10px;'
+                    f'letter-spacing:0.14em;text-transform:uppercase;color:{_RED};">'
+                    f'Ghent &rarr; Amsterdam &middot; J&ndash;{days_out}</p>'
+                )
     except Exception:
         pass
 
@@ -1336,21 +1351,17 @@ def generate_sleep_analysis(data: list[dict], avgs_7: dict, avgs_30: dict) -> st
 
 # ── Body composition advisor ──────────────────────────────────────────────────
 
-_TENERIFE_DATE = date(2026, 8, 13)
-_CHARITY_DATE  = date(2026, 9, 13)
-
-
 def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, recent_metrics: list[dict]) -> str:
     today = date.today()
-    weeks_to_tenerife = max(0, (_TENERIFE_DATE - today).days // 7)
-    weeks_to_charity  = max(0, (_CHARITY_DATE  - today).days // 7)
+    from .medical import HR_A_EVENT_NAME, HR_A_EVENT_START, charity_status_summary
 
     lines = [
         f"Date: {today.isoformat()} ({today.strftime('%A')})",
         f"Athlete profile: male, 50+, amateur endurance athlete. "
-        f"Targets: Tenerife cycling camp {_TENERIFE_DATE.strftime('%-d %b %Y')} ({weeks_to_tenerife} weeks), "
-        f"Ghent→Amsterdam charity ride {_CHARITY_DATE.strftime('%-d %b %Y')} ({weeks_to_charity} weeks). "
-        f"Training 6–8 hours/week: Zone 2 cycling, tempo intervals, kettlebell strength, rucking.",
+        f"{charity_status_summary()} "
+        f"Primary A-event: {HR_A_EVENT_NAME} "
+        f"({HR_A_EVENT_START.strftime('%-d %b %Y')}, dates TBC). "
+        f"Rebuild phase: medical pause / Year 1 aerobic + hills before Year 2 cycling specificity.",
         "",
     ]
 
@@ -1409,16 +1420,23 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
         second_avg = sum(r["weight_kg"] for r in weight_rows[mid:]) / max(len(weight_rows[mid:]), 1)
         weekly_delta = (second_avg - first_avg) / max((len(weight_rows) // 2) / 7, 1)
 
-        # Project to Tenerife
-        projected = latest["weight_kg"] + weekly_delta * weeks_to_tenerife if latest.get("weight_kg") else None
+        weeks_out = max(0, (HR_A_EVENT_START - today).days // 7)
+        projected = (
+            latest["weight_kg"] + weekly_delta * weeks_out
+            if latest.get("weight_kg") and weeks_out
+            else None
+        )
 
         lines += [
             f"Weight trend (approx weekly rate): {weekly_delta:+.2f} kg/week  "
             f"({'losing' if weekly_delta < 0 else 'gaining'} weight)",
         ]
         if projected:
-            lines.append(f"  → Projected weight at Tenerife ({_TENERIFE_DATE.strftime('%-d %b')}): {projected:.1f} kg  "
-                         f"(if current rate continues)")
+            lines.append(
+                f"  → Projected weight at {HR_A_EVENT_NAME} "
+                f"({HR_A_EVENT_START.strftime('%-d %b %Y')}): {projected:.1f} kg  "
+                f"(if current rate continues, {weeks_out} weeks)"
+            )
         lines.append("")
 
     # Compact trend table (every 7th reading, up to 13 rows)
@@ -1521,7 +1539,8 @@ def _build_body_prompt(body_rows: list[dict], latest: dict, pmc_today: dict, rec
     lines += [
         power_line,
         "Please provide a concise body composition analysis covering:",
-        "1. Weight trajectory — at current rate, what weight will the athlete reach by Tenerife (13 Aug)?",
+        f"1. Weight trajectory — at current rate, what weight will the athlete reach by "
+        f"{HR_A_EVENT_NAME} ({HR_A_EVENT_START.strftime('%-d %b %Y')})?",
         "   Discuss qualitatively how that weight change helps climbing/power-to-weight on mountain stages "
         + ("(lighter = easier climbing at the same watts)." if has_power else
            "(lighter = easier climbing at the same effort), without citing watts."),

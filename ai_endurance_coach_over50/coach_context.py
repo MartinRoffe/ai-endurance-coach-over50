@@ -114,7 +114,7 @@ def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
         + ATHLETE_CONSTRAINTS + "\n\n"
         + task + "\n\n"
         + "When referring to A-events, use only the official names in context "
-        f"(e.g. \"{CHARITY_EVENT_NAME}\", \"{HR_EVENT_NAME}\"). "
+        f"(e.g. \"{HR_EVENT_NAME}\"; charity ride is cancelled — do not treat it as live). "
         "Never invent alternative names or nicknames.\n\n"
         + hr_channel_note(has_power)
     )
@@ -277,8 +277,8 @@ def _section_today_session_prescriptions(today: date) -> list[str]:
     ]
     if tt.get("maintenance"):
         lines.append(
-            "  MAINTENANCE WINDOW (to 14 Sep): deficits suspended through the "
-            "charity ride — do not advise a calorie deficit."
+            "  MAINTENANCE: no kilogram target before Christmas (through 3 Jan 2027). "
+            "Do not advise a calorie deficit."
         )
     elif tt.get("camp"):
         lines.append(
@@ -286,15 +286,14 @@ def _section_today_session_prescriptions(today: date) -> list[str]:
         )
     elif tt.get("cut_phase") == "hard":
         lines.append(
-            f"  BASE CUT (hard → {tt.get('cut_target_kg', 80.5)} kg by 21 Dec): "
+            f"  BASE CUT (hard → {tt.get('cut_target_kg', 80)} kg): "
             f"planned deficit {tt.get('planned_deficit')} kcal — intentional for HR Base; "
             "do not advise surplus unless illness/fatigue flags fire."
         )
     elif tt.get("cut_phase") == "ease":
         lines.append(
-            f"  BASE CUT (ease into Christmas camp → {tt.get('cut_target_kg', 80.5)} kg): "
-            f"smaller planned deficit {tt.get('planned_deficit')} kcal — soft landing; "
-            "do not push a harder cut."
+            f"  TOWARD 80 kg BY 31 MAR: planned deficit {tt.get('planned_deficit')} kcal. "
+            "Day-type deficits only. Do not push a harder cut."
         )
     elif tt.get("planned_deficit"):
         lines.append(f"  Planned deficit: {tt['planned_deficit']} kcal below stable TDEE")
@@ -657,8 +656,30 @@ def _section_key_dates(today: date) -> list[str]:
 
     lines = ["## Key Dates (canonical — read timing from here, never from memory)"]
     plan_end = PLAN_START + timedelta(days=_PLAN_DAYS - 1)
+    from .fitness_plan import PLAN_END as FIT_END, PLAN_START as FIT_START
+    from .medical import XMAS_CAMP_HOME
+    if today >= date(2026, 8, 10):
+        lines.append(
+            f"  Fitness year (live plan): {FIT_START.isoformat()} → {FIT_END.isoformat()} "
+            f"(starts {_until(FIT_START)})"
+        )
+        proc = date(2026, 10, 15)
+        lines.append(
+            f"  Procedure: {proc.isoformat()} ({_until(proc)}). "
+            "Structured training only after discharge advice."
+        )
+        xmas_start = date(2026, 12, 21)
+        lines.append(
+            f"  Christmas Tenerife (confirmed): {xmas_start.isoformat()} → "
+            f"{XMAS_CAMP_HOME.isoformat()} (starts {_until(xmas_start)}). "
+            "Easy rides. Stored minutes are a ceiling; shorten when fitness is not there."
+        )
+        lines.append(
+            "  No kilogram target before Christmas. "
+            "August 2026 Tenerife camp is historical, not the live camp."
+        )
     lines.append(
-        f"  12-week charity plan: {PLAN_START.isoformat()} → {plan_end.isoformat()} "
+        f"  12-week charity plan (historical): {PLAN_START.isoformat()} → {plan_end.isoformat()} "
         f"(ends {_until(plan_end)})"
     )
     next_ftp = None
@@ -673,15 +694,26 @@ def _section_key_dates(today: date) -> list[str]:
             f"  Next FTP test: {next_ftp[0].strftime('%a %d %b %Y')} ({next_ftp[0].isoformat()}) "
             f"— {next_ftp[1]} ({_until(next_ftp[0])})"
         )
-    lines.append(
-        f"  Tenerife camp: {CAMP_START.isoformat()} → {CAMP_END.isoformat()} "
-        f"(starts {_until(CAMP_START)})"
-    )
-    if CHARITY_DAYS:
+    if today < date(2026, 8, 10):
+        lines.append(
+            f"  Tenerife camp: {CAMP_START.isoformat()} → {CAMP_END.isoformat()} "
+            f"(starts {_until(CAMP_START)})"
+        )
+    from .medical import CHARITY_CANCELLED, charity_status_summary, hr_a_event_summary, year2_sessions_live
+    if CHARITY_CANCELLED:
+        lines.append(f"  {charity_status_summary()}")
+    elif CHARITY_DAYS:
         c1, c2 = CHARITY_DAYS[0]["date"], CHARITY_DAYS[-1]["date"]
         lines.append(f"  {CHARITY_EVENT_NAME}: {c1.isoformat()} → {c2.isoformat()} (starts {_until(c1)})")
-    lines.append(f"  Haute Route 46-week plan starts: {HR_PLAN_START.isoformat()} ({_until(HR_PLAN_START)})")
-    if HR_EVENT_STAGES:
+    lines.append(f"  Primary A-event: {hr_a_event_summary()}")
+    if year2_sessions_live():
+        lines.append(f"  Haute Route Year-2 week-by-week starts: {HR_PLAN_START.isoformat()} ({_until(HR_PLAN_START)})")
+    else:
+        lines.append(
+            f"  Haute Route Year-2 week-by-week: not live yet "
+            f"(placeholder start {HR_PLAN_START.isoformat()})"
+        )
+    if year2_sessions_live() and HR_EVENT_STAGES:
         h1, h2 = HR_EVENT_STAGES[0]["date"], HR_EVENT_STAGES[-1]["date"]
         lines.append(f"  {HR_EVENT_NAME}: {h1.isoformat()} → {h2.isoformat()} (starts {_until(h1)})")
     return lines
@@ -786,11 +818,17 @@ def _section_session_notes(today: date, days: int = 14) -> list[str]:
 
 
 def _current_training_phase(today: date) -> tuple[str, str]:
-    """(label, category); category ∈ base/build/peak/taper/camp/transition."""
+    """(label, category); category ∈ base/build/peak/taper/camp/transition/medical."""
     from .plan import CAMP_START, CHARITY_DAYS, _PLAN_DAYS
+    from .medical import CHARITY_CANCELLED, in_medical_pause, hr_a_event_summary, year2_sessions_live
+    from .fitness_plan import PLAN_START as FIT_START, _phase_name, in_plan, in_procedure_week
+    if in_medical_pause(today):
+        return ("Medical pause (post-stent recovery — no structured training)", "medical")
     if CAMP_START <= today <= CAMP_END:
         return ("Tenerife camp (concentrated overload)", "camp")
-    if CHARITY_DAYS and CHARITY_DAYS[0]["date"] - timedelta(days=14) <= today <= CHARITY_DAYS[-1]["date"]:
+    if CHARITY_CANCELLED and date(2026, 9, 1) <= today <= date(2026, 10, 4):
+        return ("Medical rebuild toward " + hr_a_event_summary(), "transition")
+    if (not CHARITY_CANCELLED) and CHARITY_DAYS and CHARITY_DAYS[0]["date"] - timedelta(days=14) <= today <= CHARITY_DAYS[-1]["date"]:
         return (f"{CHARITY_EVENT_NAME} taper/event window", "taper")
     delta = (today - PLAN_START).days
     if 0 <= delta < _PLAN_DAYS:
@@ -799,7 +837,17 @@ def _current_training_phase(today: date) -> tuple[str, str]:
             return (f"12-week charity plan, week {wk}/12 (deload)", "base")
         cat = "base" if wk <= 4 else "build"
         return (f"12-week charity plan, week {wk}/12 ({cat})", cat)
-    if today >= HR_PLAN_START:
+    if today == FIT_START - timedelta(days=1):
+        return ("Fitness year — procedure week starts 12 Oct 2026", "medical")
+    if in_plan(today):
+        mon = today - timedelta(days=today.weekday())
+        name = _phase_name(mon)
+        if name == "Procedure" or in_procedure_week(today):
+            return (f"Fitness year — {name}", "medical")
+        if name == "Tenerife":
+            return (f"Fitness year — {name}", "camp")
+        return (f"Fitness year — {name}", "base")
+    if year2_sessions_live() and today >= HR_PLAN_START:
         wk = (today - HR_PLAN_START).days // 7 + 1
         for ph in HR_PHASES:
             if ph["week_start"] <= wk <= ph["week_end"]:
@@ -854,13 +902,13 @@ def _section_phase_nutrition(today: date) -> list[str]:
                 cp = active_cut_phase(today)
                 if cp == "hard":
                     lines.append(
-                        "  Base Cut (hard) intentional — 80–81 kg by Christmas camp; "
-                        "monitor readiness and long-ride quality."
+                        "  Cut phase is on. Day-type deficits only, toward 80 kg by 31 Mar 2027. "
+                        "Do not increase the deficit."
                     )
                 elif cp == "ease":
                     lines.append(
-                        "  Base Cut ease phase — soft landing into Christmas camp; "
-                        "do not increase the deficit."
+                        "  Toward 80 kg by 31 Mar 2027 — day-type deficit only. "
+                        "Do not increase the deficit."
                     )
                 else:
                     lines.append(
@@ -879,10 +927,13 @@ def _section_phase_nutrition(today: date) -> list[str]:
 
 
 def _section_athlete_goals() -> list[str]:
+    from .medical import charity_status_summary, hr_a_event_summary, medical_context_lines
     return [
         "## Athlete Goals",
-        f"  Primary A-event: {charity_event_summary()}",
-        f"  Secondary A-event: {HR_EVENT_NAME} (23–29 Aug 2027)",
+        f"  {charity_status_summary()}",
+        f"  Primary A-event: {hr_a_event_summary()}",
+        "",
+        *medical_context_lines(),
     ]
 
 
@@ -984,6 +1035,140 @@ def _interference_flags(days: int = 14) -> list[str]:
     return [f"## Training Interference Flags (next {days} days)", *flagged] if flagged else []
 
 
+def _section_history_rebuild() -> list[str]:
+    """Compact personal rebuild-rate facts from archive/findings.json."""
+    try:
+        from .archive_findings import load_archive_findings
+        findings = load_archive_findings()
+    except Exception:
+        return []
+    if not findings:
+        return []
+    rb_sum = findings.get("rebuild") or {}
+    rb_fit = findings.get("rebuild_fit") or {}
+    mmp = findings.get("mmp") or {}
+    rb = rb_fit if rb_fit.get("central_estimate_weeks") is not None else rb_sum
+    cur = findings.get("current_athlete") or {}
+    lines = [
+        "## Historical Rebuild Rate (Garmin 2009–2016 archive)",
+        "When advising time-to-target or return-from-layoff, prefer these personal numbers "
+        "over generic 3–5% FTP/year rules of thumb.",
+    ]
+    source = "FIT-grounded (shortlist streams)" if rb is rb_fit else "summary proxies"
+    if rb.get("central_estimate_weeks") is not None:
+        iqr = rb.get("iqr") or []
+        iqr_s = f", IQR {iqr[0]}–{iqr[1]}" if len(iqr) == 2 else ""
+        lines.append(
+            f"Central rebuild estimate ({source}): **{rb['central_estimate_weeks']} weeks** "
+            f"to recover prior fitness after a ≥6-week cycling layoff "
+            f"({rb.get('n_full_recoveries', 0)} full recoveries{iqr_s}; "
+            f"{rb.get('n_plateaued', 0)} plateaued lower)."
+        )
+        if rb_fit and rb_sum and rb is rb_fit and rb_sum.get("central_estimate_weeks") is not None:
+            lines.append(
+                f"Summary-only estimate was {rb_sum['central_estimate_weeks']} weeks "
+                f"(FIT baselines {rb_fit.get('n_layoffs_with_fit_baseline')}/"
+                f"restarts {rb_fit.get('n_layoffs_with_fit_restart')})."
+            )
+    else:
+        lines.append("No full-recovery layoffs measured in the archive period.")
+    if rb.get("proxy_notes"):
+        lines.append(f"Method: {rb['proxy_notes']}")
+    power_r = rb.get("power_era_recoveries") or []
+    hr_r = rb.get("hr_era_recoveries") or []
+    if power_r:
+        lines.append(f"Power-era recoveries (weeks): {power_r}")
+    if hr_r:
+        lines.append(f"HR/speed-era recoveries (weeks): {hr_r}")
+
+    # Prefer FIT MMP year peaks
+    if mmp.get("by_year"):
+        bits = []
+        for p in mmp["by_year"]:
+            w = p.get("mmp_20min") or p.get("mmp_60min") or p.get("mmp_5min")
+            if w:
+                bits.append(f"{p['year']} MMP20/60 ~{w}W")
+        if bits:
+            lines.append(
+                f"True MMP (shortlist FITs, {mmp.get('n_with_power', 0)} rides): "
+                + ", ".join(bits)
+            )
+        all_fit_c = findings.get("contradictions_fit") or []
+        conflicts = [c for c in all_fit_c if c.get("conflicts")]
+        device = [c for c in all_fit_c if c.get("stated_provenance") == "DEVICE_SETTING"]
+        if conflicts:
+            lines.append("FIT MEASURED_MMP vs stated peaks (conflicts only):")
+            for c in conflicts[:3]:
+                lines.append(
+                    f"  {c.get('year')}: {c.get('archive_best_mmp_w')}W MEASURED_MMP "
+                    f"vs stated {c.get('stated_peak_w')}W "
+                    f"{c.get('stated_provenance') or '?'}"
+                )
+        if device:
+            lines.append(
+                "DEVICE_SETTING FTP values are not measurements — do not contradict "
+                "them against MMP/proxies:"
+            )
+            for c in device[:3]:
+                lines.append(
+                    f"  {c.get('year')}: {c.get('stated_peak_w')}W DEVICE_SETTING "
+                    f"({c.get('stated') or ''})"
+                )
+        cw = findings.get("coupled_weight_power") or {}
+        if cw.get("note"):
+            lines.append(f"Weight/power framing: {cw['note']}")
+    else:
+        conflicts = [c for c in (findings.get("contradictions") or []) if c.get("conflicts")]
+        if conflicts:
+            lines.append("Archive vs stated peaks (conflicts):")
+            for c in conflicts[:3]:
+                lines.append(
+                    f"  {c.get('year')}: archive best {c.get('archive_best_proxy_w')} W "
+                    f"vs stated ~{c.get('stated_peak_w')} W"
+                )
+        else:
+            peaks = findings.get("power_proxies_by_year") or []
+            powered = [p for p in peaks if p.get("has_power")]
+            if powered:
+                bits = []
+                for p in powered[-4:]:
+                    w = p.get("best_np_ge60min") or p.get("best_max_power_20min") or p.get("best_np_ge20min")
+                    if w:
+                        bits.append(f"{p['year']}~{w}W")
+                if bits:
+                    lines.append("Best whole-ride power proxies by year: " + ", ".join(bits))
+
+    streak = (findings.get("consistency") or {}).get("longest_streak_weeks") or {}
+    if streak.get("weeks"):
+        lines.append(
+            f"Longest ≥3-rides/week streak: {streak['weeks']} weeks "
+            f"({streak.get('start')} → {streak.get('end')})."
+        )
+    if cur:
+        lines.append(
+            f"Goals link: current ~{cur.get('wkg')} W/kg "
+            f"→ target {cur.get('target_wkg')} (stretch {cur.get('stretch_wkg')})."
+        )
+    if mmp.get("n_with_power"):
+        lines.append(
+            f"Caveat: true MMP from shortlist only ({mmp.get('n_with_power')} FITs with power); "
+            "not exhaustive year coverage."
+        )
+    else:
+        lines.append(
+            "Caveat: summaries only (not true MMP); run archive FIT Stage 3 for streams."
+        )
+    # Prefer MMP narrative takeaway, else Stage 2
+    for key in ("ai_narrative_mmp", "ai_narrative"):
+        md = (findings.get(key) or {}).get("markdown") or ""
+        for line in md.splitlines():
+            t = line.strip().lstrip("#").lstrip("*").strip()
+            if len(t) > 60 and not t.startswith("|"):
+                lines.append(f"Coach narrative takeaway: {t[:280]}")
+                return lines
+    return lines
+
+
 def build_coach_context() -> str:
     today = date.today()
     history = pmc_history(days=7)
@@ -1037,19 +1222,59 @@ def build_coach_context() -> str:
                     f"{day['label']} — {detail} [{day['intensity']}]"
                 )
 
-    # Event prep days (Aug 31 – Sep 6)
-    event_prep_future = [ep for ep in EVENT_PREP_DAYS if ep["date"] >= today]
-    if event_prep_future:
-        upcoming_lines.append(f"  --- Event Prep ({CHARITY_EVENT_NAME}, 13–14 Sep 2026) ---")
-        for ep in event_prep_future:
-            upcoming_lines.append(
-                f"  {ep['date'].strftime('%a %d %b')} ({ep['date'].isoformat()}): "
-                f"{ep['label']} ({ep['dur_min']}min) [{ep['type']}]"
-            )
+    # Event prep / medical pause window
+    from .medical import CHARITY_CANCELLED, in_medical_pause, pause_session_for_date
+    if CHARITY_CANCELLED or in_medical_pause(today):
+        pause_lines: list[str] = []
+        for i in range(14):
+            d = today + timedelta(days=i)
+            if d > date(2026, 10, 4):
+                break
+            if in_medical_pause(d):
+                stype, label, dur = pause_session_for_date(d)
+                pause_lines.append(
+                    f"  {d.strftime('%a %d %b')} ({d.isoformat()}): {label}"
+                    + (f" ({dur}min)" if dur else "")
+                    + f" [{stype}]"
+                )
+        if pause_lines:
+            upcoming_lines.append("  --- Medical pause / charity cancelled (not live event prep) ---")
+            upcoming_lines.extend(pause_lines)
+    else:
+        event_prep_future = [ep for ep in EVENT_PREP_DAYS if ep["date"] >= today]
+        if event_prep_future:
+            upcoming_lines.append(f"  --- Event Prep ({CHARITY_EVENT_NAME}, 13–14 Sep 2026) ---")
+            for ep in event_prep_future:
+                upcoming_lines.append(
+                    f"  {ep['date'].strftime('%a %d %b')} ({ep['date'].isoformat()}): "
+                    f"{ep['label']} ({ep['dur_min']}min) [{ep['type']}]"
+                )
 
-    # Haute Route 46-week plan (Oct 2026 – Aug 2027): show next 8 weeks of sessions
+    # Fitness year: next 21 days once the charity block is over
+    from .fitness_plan import PLAN_START as _FIT_START, session_for_date as _fit_sess
+    if today >= _FIT_START - timedelta(days=7):
+        fit_lines: list[str] = []
+        for i in range(21):
+            d = today + timedelta(days=i)
+            sess = _fit_sess(d)
+            if sess is None:
+                continue
+            stype, label, dur = sess
+            if stype == "rest" and not dur:
+                continue
+            fit_lines.append(
+                f"  {d.strftime('%a %d %b')} ({d.isoformat()}): {label}"
+                + (f" ({dur}min)" if dur else "")
+                + f" [{stype}]"
+            )
+        if fit_lines:
+            upcoming_lines.append("  --- Fitness year (road and hills, next 21 days) ---")
+            upcoming_lines.extend(fit_lines)
+
+    # Haute Route Year 2 (when live): show next 8 weeks of sessions
     from .hr_plan import HR_PLAN_START as _HR_START, hr_session_for_date as _hr_sess
-    if today >= _HR_START or (_HR_START - today).days <= 56:
+    from .medical import year2_sessions_live, hr_a_event_summary
+    if year2_sessions_live() and (today >= _HR_START or (_HR_START - today).days <= 56):
         hr_upcoming: list[str] = []
         for i in range(56):
             d = today + timedelta(days=i)
@@ -1063,7 +1288,7 @@ def build_coach_context() -> str:
                 f"  {d.strftime('%a %d %b')} ({d.isoformat()}): {label} ({dur}min) [{stype}]"
             )
         if hr_upcoming:
-            upcoming_lines.append("  --- Haute Route 2027 Plan (next 8 weeks) ---")
+            upcoming_lines.append(f"  --- {hr_a_event_summary()} (next 8 weeks) ---")
             upcoming_lines.extend(hr_upcoming)
 
     recent_acts = load_recent_activities(days=14)
@@ -1503,7 +1728,7 @@ def build_coach_context() -> str:
         if total_p:
             pct = int(total_d / total_p * 100)
             compliance_parts = [
-                "## Plan Compliance (12-week plan + Tenerife camp + event prep, elapsed weeks)",
+                "## Plan Compliance (fitness year, elapsed weeks)",
                 f"  Sessions: {total_d}/{total_p} ({pct}%)  |  "
                 f"Volume: {total_dm//60}h{total_dm%60:02d}m of {total_pm//60}h{total_pm%60:02d}m planned",
             ]
@@ -1578,22 +1803,26 @@ def build_coach_context() -> str:
     except Exception:
         pass
 
-    # Haute Route phase overview
+    # Haute Route phase overview — only when the week-by-week block is live
     hr_phase_parts: list[str] = []
     try:
-        cur_hr_week = (today - HR_PLAN_START).days // 7 + 1 if today >= HR_PLAN_START else None
-        hr_phase_parts = [f"## Haute Route 2027 — Plan Phases (46 weeks, starts {HR_PLAN_START.isoformat()})"]
-        for ph in HR_PHASES:
-            marker = (f"  ← current (wk {cur_hr_week})"
-                      if cur_hr_week and ph["week_start"] <= cur_hr_week <= ph["week_end"] else "")
-            hr_phase_parts.append(f"  {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}{marker}")
-        hr_phase_parts.append(
-            "  Camps: Christmas Tenerife volume (wks 12–13, bike 23–31 Dec 2026); "
-            "May Tenerife race-sim (wk 31)."
-        )
-        hr_phase_parts.append("  Full week-by-week sessions available via the get_hr_plan tool.")
-        hr_phase_parts.append("")
-        hr_phase_parts += hr_2012_lessons_context()
+        from .medical import year2_sessions_live
+        if year2_sessions_live():
+            cur_hr_week = (today - HR_PLAN_START).days // 7 + 1 if today >= HR_PLAN_START else None
+            hr_phase_parts = [f"## Haute Route plan phases (46 weeks, starts {HR_PLAN_START.isoformat()})"]
+            for ph in HR_PHASES:
+                marker = (f"  ← current (wk {cur_hr_week})"
+                          if cur_hr_week and ph["week_start"] <= cur_hr_week <= ph["week_end"] else "")
+                hr_phase_parts.append(f"  {ph['label']}: weeks {ph['week_start']}–{ph['week_end']}{marker}")
+            hr_phase_parts.append("  Full week-by-week sessions available via the get_hr_plan tool.")
+            hr_phase_parts.append("")
+            hr_phase_parts += hr_2012_lessons_context()
+        else:
+            hr_phase_parts = [
+                "## Haute Route week-by-week",
+                "  The 46-week template is not the live plan. "
+                "The live year is general fitness through 3 Oct 2027.",
+            ]
     except Exception:
         pass
 
@@ -1624,6 +1853,7 @@ def build_coach_context() -> str:
     session_rx_parts = _section_today_session_prescriptions(today)
     recent_analysis_parts = _section_recent_analyses(recent_acts)
     ftp_flag_parts = _section_ftp_flags(today)
+    history_rebuild_parts = _section_history_rebuild()
 
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
@@ -1632,6 +1862,7 @@ def build_coach_context() -> str:
         "",
         *([*commitment_parts, ""] if commitment_parts else []),
         *([*session_note_parts, ""] if session_note_parts else []),
+        *([*history_rebuild_parts, ""] if history_rebuild_parts else []),
         *_section_pmc(today_pmc, m),
         *(["", *power_pmc_parts] if power_pmc_parts else []),
         "",

@@ -28,7 +28,12 @@ def test_hr_ctl_projection_unchanged_by_metadata():
 
 
 def test_every_distinct_hr_label_resolves_builder():
-    labels = sorted({s[1] for w in HR_TRAINING_WEEKS for s in w if s[0] not in ("rest", "gym")})
+    from ai_endurance_coach_over50.workouts import _STRENGTH_FE_LABELS
+
+    labels = sorted({
+        s[1] for w in HR_TRAINING_WEEKS for s in w
+        if s[0] not in ("rest", "gym") and s[1] not in _STRENGTH_FE_LABELS
+    })
     missing = [l for l in labels if not _resolve_builder(l)]
     assert missing == [], f"missing builders: {missing}"
 

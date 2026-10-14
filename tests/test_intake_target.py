@@ -90,40 +90,40 @@ def test_camp_window_wins_over_maintenance():
 # ── Base Cut phases (hard / ease) ─────────────────────────────────────────────
 
 def test_cut_phase_edges():
-    assert active_cut_phase(date(2026, 9, 14)) is None
-    assert active_cut_phase(date(2026, 9, 15)) == "hard"
-    assert active_cut_phase(date(2026, 11, 22)) == "hard"
-    assert active_cut_phase(date(2026, 11, 23)) == "ease"
-    assert active_cut_phase(date(2026, 12, 20)) == "ease"
     assert active_cut_phase(date(2026, 12, 21)) is None
+    assert active_cut_phase(date(2027, 1, 3)) is None
+    assert active_cut_phase(date(2027, 1, 4)) == "ease"
+    assert active_cut_phase(date(2027, 3, 31)) == "ease"
+    assert active_cut_phase(date(2027, 4, 1)) is None
 
 
 def test_hard_cut_deficit():
-    # 2400 − 450 = 1950 (above floor)
-    assert intake_target_kcal(2400, "training", ref_date=date(2026, 10, 5)) == 1950
-    assert intake_target_kcal(2400, "rest", ref_date=date(2026, 10, 5)) == 1850
+    # Before the March goal, and outside maintenance: standing training deficit 250.
+    assert intake_target_kcal(2400, "training", ref_date=date(2026, 10, 5)) == 2150
+    assert intake_target_kcal(2400, "rest", ref_date=date(2026, 10, 5)) == 2050
     out = resolve_calorie_target(2400, "training", date(2026, 10, 5))
-    assert out["cut_phase"] == "hard"
-    assert out["planned_deficit"] == 450
-    assert out["cut_target_kg"] == 80.5
+    assert out["cut_phase"] is None
+    assert out["planned_deficit"] == 250
+    assert out["cut_target_kg"] == 80
 
 
 def test_ease_cut_deficit():
-    assert intake_target_kcal(2400, "training", ref_date=date(2026, 12, 1)) == 2150
+    # 1 Dec sits in the kidney-return maintenance window, so the ease-phase
+    # deficit is suspended and intake equals TDEE.
+    assert intake_target_kcal(2400, "training", ref_date=date(2026, 12, 1)) == 2400
     out = resolve_calorie_target(2400, "training", date(2026, 12, 1))
-    assert out["cut_phase"] == "ease"
-    assert out["planned_deficit"] == 250
+    assert out["maintenance"] is True
+    assert out["cut_phase"] is None
+    assert out["planned_deficit"] == 0
 
 
 def test_camp_wins_over_hard_cut():
-    # Christmas camp 23 Dec — after ease ends; camp branch wins over UK cut.
+    # Christmas 23 Dec is maintenance, not the old race-camp surplus.
     out = resolve_calorie_target(2800, "training", date(2026, 12, 23))
-    assert out["camp"] is True
+    assert out["camp"] is False
     assert out["cut_phase"] is None
-    assert out["maintenance"] is False
-    # Not the UK hard-cut training target (2800 − 450 = 2350).
-    assert out["kcal"] != 2350
-    assert out["kcal"] == max(MIN_INTAKE_KCAL, round(2800 * 0.85)) or out["kcal"] >= 3200
+    assert out["maintenance"] is True
+    assert out["kcal"] == 2800
 
 
 def test_calorie_tier_for_session():
@@ -161,10 +161,10 @@ def test_today_targets_maintenance_and_rest(monkeypatch):
 
 def test_today_targets_hard_cut_exposes_phase(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2400)
-    out = np_mod.today_targets(date(2026, 10, 6))  # HR Base Tuesday
-    assert out["cut_phase"] == "hard"
-    assert out["cut_target_kg"] == 80.5
-    assert out["planned_deficit"] in (450, 550, 100)  # training / rest / long
+    out = np_mod.today_targets(date(2026, 10, 6))  # before the March cut, outside maintenance
+    assert out["cut_phase"] is None
+    assert out["cut_target_kg"] == 80
+    assert out["planned_deficit"] in (250, 350, 150, 50)
 
 
 def test_today_targets_tier_fallback_without_tdee(monkeypatch):
@@ -191,12 +191,12 @@ def test_protein_floor_locked_during_cut(monkeypatch):
     monkeypatch.setattr(hist, "set_cached_text", fake_set)
     monkeypatch.setattr(hist, "latest_lean_mass_kg", lambda: 62.0)
 
-    pt1 = np_mod.protein_target_g(date(2026, 10, 1))
+    pt1 = np_mod.protein_target_g(date(2027, 1, 4))
     assert store.get(np_mod._CUT_LEAN_CACHE_KEY) == "62.00"
     assert pt1["lean_kg"] == 62.0
 
     monkeypatch.setattr(hist, "latest_lean_mass_kg", lambda: 60.0)
-    pt2 = np_mod.protein_target_g(date(2026, 10, 15))
+    pt2 = np_mod.protein_target_g(date(2027, 1, 15))
     assert pt2["lean_kg"] == 62.0
     assert pt2["lean_locked"] is True
     assert pt2["low"] == round(62.0 * 2.2)
@@ -303,6 +303,79 @@ def test_on_bike_fuel_scales_with_duration():
     assert on_bike_fuel_kcal(210) == 770
 
 
+def test_meal_day_type_rest_saturday_not_ruck():
+    # Cycle week 3 Saturday normally maps to recovery_saturday
+    assert np_mod.today_day_type(3, 5) == "recovery_saturday"
+    assert np_mod.meal_day_type_for_session("rest", "Rest", 3, 5) == "rest"
+    assert np_mod.meal_day_type_for_session("rest", "Rest", 0, 5) == "rest"
+
+
+def test_meal_day_type_real_ruck_saturday():
+    assert np_mod.meal_day_type_for_session("ruck", "Ruck  8–10 kg", 0, 5) == "ruck"
+    assert np_mod.meal_day_type_for_session(
+        "ruck", "Easy recovery ruck", 3, 5
+    ) == "recovery_saturday"
+
+
+def test_meal_day_type_bike_on_ruck_saturday_slot():
+    assert np_mod.meal_day_type_for_session(
+        "bike", "Z2 Endurance", 0, 5, session_dur=75
+    ) == "bike"
+
+
+def test_build_today_food_rest_saturday_no_post_ruck(monkeypatch):
+    """Wk11/wk12 Sat Rest must not show Post-Ruck / easy recovery ruck copy."""
+    from ai_endurance_coach_over50.plan import PLAN_START
+
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
+    for d in (date(2026, 8, 1), date(2026, 8, 8)):
+        out = np_mod.build_today_food(PLAN_START, d)
+        assert "Rest" in out["session"]
+        slots = [m["type"] for m in out["meals"]]
+        assert "Post-Ruck" not in slots
+        details = " ".join((m.get("detail") or "") for m in out["meals"]).lower()
+        assert "easy recovery ruck" not in details
+        assert out["kcal_target"] == np_mod.today_targets(d)["kcal"]
+        assert out["maintenance"] is True
+        assert "maintenance" in (out.get("why") or "").lower()
+
+
+def test_build_today_food_real_ruck_saturday_keeps_post_ruck(monkeypatch):
+    from ai_endurance_coach_over50.plan import PLAN_START
+
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
+    # Wk2 Sat 30 May 2026 — Ruck 8–10 kg
+    out = np_mod.build_today_food(PLAN_START, date(2026, 5, 30))
+    slots = [m["type"] for m in out["meals"]]
+    assert "Post-Ruck" in slots
+    assert out["kcal_target"] == np_mod.today_targets(date(2026, 5, 30))["kcal"]
+
+
+def test_hard_cut_rest_kcal_below_long(monkeypatch):
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2400)
+    # Hard-cut week: find a rest and a long from HR or charity — use fixed dates.
+    # 15 Sep 2026 Mon is hard cut start (position bridge — may be various sessions).
+    rest = np_mod.resolve_calorie_target(2400, "rest", date(2026, 10, 5))
+    training = np_mod.resolve_calorie_target(2400, "training", date(2026, 10, 5))
+    long = np_mod.resolve_calorie_target(
+        2400, "long", date(2026, 10, 5), session_dur_min=180
+    )
+    assert rest["kcal"] < training["kcal"] < long["kcal"]
+    assert rest["tier_deficit"] == 350
+    assert training["tier_deficit"] == 250
+    assert long["tier_deficit"] == 50
+    assert long["long_fuel_topup"] == 175  # 60 min beyond 2 h
+
+
+def test_today_targets_exposes_why(monkeypatch):
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
+    out = np_mod.today_targets(date(2026, 8, 1))
+    assert out["phase"] == "maintenance"
+    assert out["planned_deficit"] == 0
+    assert "maintenance" in out["why"].lower()
+    assert out["tier_deficit"] == 0
+
+
 def test_build_today_food_scales_on_bike_row(monkeypatch):
     """A 3.5 h planned long ride inflates the On-Bike meal row."""
     from ai_endurance_coach_over50 import plan as plan_mod
@@ -317,5 +390,6 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
     out = np_mod.build_today_food(plan_start, sunday)
     on_bike = next(m for m in out["meals"] if m["type"] == "On-Bike")
     assert on_bike["macros"]["kcal"] == str(on_bike_fuel_kcal(210))
+    assert out["kcal_target"] == np_mod.today_targets(sunday)["kcal"]
     # Target also grows: 2000 − 50 + 175 × 1.5 h
     assert out["kcal_target"] == 2000 - 50 + round(175 * 1.5)

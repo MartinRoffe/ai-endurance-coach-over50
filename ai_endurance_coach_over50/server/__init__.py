@@ -165,6 +165,7 @@ from .context import (  # noqa: F401
     _merge_compound_activities,
     _plan_completion_stats,
     _position_context,
+    _archive_context,
     _shopping_list_context,
     _travel_checklist_context,
     _week_completion,
@@ -1198,35 +1199,32 @@ async def calendar_view(request: Request):
     ctx["btb_pairs"] = btb_pairs
     ctx["btb_log_available"] = btb_log_available
 
-    # Build single unified weeks list (plan → camp → event prep) with phase tags.
-    # Plan weeks are reused after completion tracking, so their day dicts already have
-    # completed/actual_min populated.
+    # Live calendar is the fitness year. The cancelled charity block stays at /training/charity.
+    ctx["preplan_weeks"] = []
+    ctx["archive_plan_href"] = "/training/charity"
     unified: list[dict] = []
-    for w in ctx["weeks"]:
-        unified.append({**w, "phase": "plan", "phase_start": w["week_num"] == 1})
-    for i, w in enumerate(ctx["camp_weeks"]):
-        unified.append({**w, "phase": "camp", "phase_start": i == 0})
-    for i, w in enumerate(ctx["combined_event_weeks"]):
-        unified.append({**w, "phase": "event_prep", "phase_start": i == 0})
-    for i, w in enumerate(ctx.get("bridge_weeks") or []):
-        unified.append({**w, "phase": "bridge", "phase_start": i == 0})
-    for i, w in enumerate(ctx.get("hr_teaser_weeks") or []):
-        unified.append({**w, "phase": "hr_teaser", "phase_start": i == 0})
+    for i, w in enumerate(ctx.get("fitness_weeks") or []):
+        unified.append({**w, "phase": "fitness", "phase_start": i == 0})
     ctx["unified_weeks"] = unified
 
-    # Per-day pacing & fuelling plans for the two charity-ride days (AI, cached).
+    # Per-day pacing & fuelling plans for charity-ride days — skipped when cancelled.
     charity_plans: list[dict] = []
     try:
-        from ..analysis import generate_charity_day_plans
-        from ..plan import CHARITY_DAYS
-        plans = generate_charity_day_plans()
-        for cd in CHARITY_DAYS:
-            plan = plans.get(cd["day"])
-            if plan:
-                charity_plans.append({**cd, "plan": plan})
+        from ..medical import CHARITY_CANCELLED
+        if not CHARITY_CANCELLED:
+            from ..analysis import generate_charity_day_plans
+            from ..plan import CHARITY_DAYS
+            plans = generate_charity_day_plans()
+            for cd in CHARITY_DAYS:
+                plan = plans.get(cd["day"])
+                if plan:
+                    charity_plans.append({**cd, "plan": plan})
     except Exception:
         pass
     ctx["charity_plans"] = charity_plans
+    from ..medical import medical_pause_banner, CHARITY_CANCELLED
+    ctx["medical_banner"] = medical_pause_banner(date.today())
+    ctx["charity_cancelled"] = CHARITY_CANCELLED
 
     ctx["plan_section"] = "calendar"
     ctx["week_summary"] = _week_summary()
@@ -1237,8 +1235,33 @@ async def calendar_view(request: Request):
 
 @app.get("/training", response_class=HTMLResponse)
 async def training_plan(request: Request):
+    from ..fitness_plan import (
+        BUSAR_STANDARDS,
+        HOME_SUNDAY_CAP_MIN,
+        PLAN_END,
+        PLAN_START,
+        gravel_sunday_note,
+        guide_phases,
+    )
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="fitness_guide.html",
+        context={
+            "plan_section": "programme",
+            "plan_start": PLAN_START,
+            "plan_end": PLAN_END,
+            "sunday_cap": f"{HOME_SUNDAY_CAP_MIN // 60} h",
+            "gravel_note": gravel_sunday_note(),
+            "phases": guide_phases(),
+            "busar": BUSAR_STANDARDS,
+        },
+    )
+
+
+@app.get("/training/charity", response_class=HTMLResponse)
+async def charity_programme_archive(request: Request):
     ctx = _plan_completion_stats()
-    ctx["plan_section"] = "programme"
+    ctx["plan_section"] = "charity"
     return TEMPLATES.TemplateResponse(request=request, name="training.html", context=ctx)
 
 
@@ -1522,6 +1545,19 @@ async def position_programme(request: Request, _=Depends(_require_auth)):
     )
 
 
+@app.get("/archive", response_class=HTMLResponse)
+async def archive_history(request: Request, _=Depends(_require_auth)):
+    """2009–2016 Garmin history: consistency, rebuild rate, power proxies."""
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="archive.html",
+        context={
+            "active_tab": "archive",
+            **_archive_context(),
+        },
+    )
+
+
 @app.get("/help", response_class=HTMLResponse)
 @app.get("/help/{page_id}", response_class=HTMLResponse)
 def help_view(request: Request, page_id: Optional[str] = None):
@@ -1552,6 +1588,17 @@ async def tenerife_view(request: Request):
 @app.get("/haute-route", response_class=HTMLResponse)
 def haute_route_view(request: Request):
     today = date.today()
+    from ..medical import (
+        REBUILD_PHASES,
+        XMAS_CAMP_ARRIVE,
+        XMAS_CAMP_HOME,
+        XMAS_CAMP_TENTATIVE,
+        YEAR2_PLAN_ACTIVE,
+        YEAR2_START,
+        hr_a_event_summary,
+        medical_pause_banner,
+    )
+
     history = pmc_history(days=1)
     today_pmc = history[-1] if history else {}
     ctl_now = today_pmc.get("ctl")
@@ -1561,56 +1608,70 @@ def haute_route_view(request: Request):
     hr_start_ctl: Optional[float] = None
     hr_event_ctl: Optional[float] = None
 
-    if ctl_now is not None:
-        if today < _PLAN_EVENT_DATE:
-            # Before charity ride: project through the remaining 12-week plan, then apply rest gap
-            _, event_ctl = _ctl_projection(ctl_now, atl_now or ctl_now)
-            gap_days = (HR_PLAN_START - _PLAN_EVENT_DATE).days  # 22
-            hr_start_ctl = max(0.0, event_ctl + _CTL_REST_DECLINE * gap_days)
-        elif today < HR_PLAN_START:
-            # Between charity ride and HR plan start: apply remaining rest days
-            gap_days = (HR_PLAN_START - today).days
+    # CTL projection only when Year 2 week-by-week is live
+    if YEAR2_PLAN_ACTIVE and ctl_now is not None:
+        if today < YEAR2_START:
+            gap_days = (YEAR2_START - today).days
             hr_start_ctl = max(0.0, ctl_now + _CTL_REST_DECLINE * gap_days)
         else:
             hr_start_ctl = ctl_now
-
         hr_proj_data = _hr_ctl_projection(hr_start_ctl)
         hr_event_ctl = hr_proj_data[-1]["ctl"] if hr_proj_data else None
 
     stage_plans: dict = {}
     peak_decoupling_flags: dict = {}
-    try:
-        from ..analysis import generate_hr_stage_plans, peak_sim_decoupling_flags
-        weeks = build_hr_calendar_weeks()
-        stage_plans = generate_hr_stage_plans()
-        peak_decoupling_flags = peak_sim_decoupling_flags(weeks)
-    except Exception:
-        weeks = build_hr_calendar_weeks()
+    weeks: list = []
+    if YEAR2_PLAN_ACTIVE:
+        try:
+            from ..analysis import generate_hr_stage_plans, peak_sim_decoupling_flags
+            weeks = build_hr_calendar_weeks()
+            stage_plans = generate_hr_stage_plans()
+            peak_decoupling_flags = peak_sim_decoupling_flags(weeks)
+        except Exception:
+            weeks = build_hr_calendar_weeks()
 
     from ..nutrition_plan import CAMP_NUTRITION
 
+    banner = medical_pause_banner(today)
     ctx = {
         "active_tab":    "haute_route",
         "hr_subnav":     "plan",
-        "phases":        HR_PHASES,
+        "phases":        HR_PHASES if YEAR2_PLAN_ACTIVE else [],
+        "rebuild_phases": REBUILD_PHASES,
         "weeks":         weeks,
         "event_weeks":   build_hr_event_weeks(),
         "event_start":   HR_EVENT_START,
         "event_end":     HR_EVENT_END,
+        "event_dates_tbc": True,
         "hr_proj_data":  hr_proj_data,
         "hr_start_ctl":  round(hr_start_ctl, 1) if hr_start_ctl is not None else None,
         "hr_event_ctl":  round(hr_event_ctl, 1) if hr_event_ctl is not None else None,
-        "heat_protocol": HR_HEAT_PROTOCOL,
+        "heat_protocol": HR_HEAT_PROTOCOL if YEAR2_PLAN_ACTIVE else None,
         "lessons_2012":  LESSONS_2012,
         "stage_plans":   stage_plans,
         "peak_decoupling_flags": peak_decoupling_flags,
         "power_meter_active": power_meter_active(),
-        "camp_nutrition_xmas": {"label": "Christmas Tenerife (HR volume camp)", **CAMP_NUTRITION},
-        "camp_nutrition_may": {"label": "May Tenerife (HR race-sim camp)", **CAMP_NUTRITION},
-        "power_familiarization_note": (
-            "Power familiarization bridge (14 Sep – 4 Oct 2026): "
-            "bed in the pedals and learn to pace by watts before the formal Haute Route base block. "
-            "Not part of projected CTL — display only."
+        "camp_nutrition_xmas": {
+            "label": (
+                "Christmas Tenerife (tentative Year-1 camp)"
+                if XMAS_CAMP_TENTATIVE
+                else "Christmas Tenerife (confirmed, easy rides)"
+            ),
+            "tentative": XMAS_CAMP_TENTATIVE,
+            "arrive": XMAS_CAMP_ARRIVE.isoformat(),
+            "home": XMAS_CAMP_HOME.isoformat(),
+            **CAMP_NUTRITION,
+        },
+        "camp_nutrition_may": None,  # May 2027 race-sim dropped from live plan
+        "year2_active": YEAR2_PLAN_ACTIVE,
+        "medical_banner": banner,
+        "a_event_summary": hr_a_event_summary(),
+        "power_familiarization_note": None,  # superseded by medical pause / Year 1
+        "rebuild_note": (
+            "Two-year rebuild toward Haute Route Alpes 2028. "
+            "This year is the general-fitness block (road and hills) through "
+            "3 Oct 2027. The week-by-week race plan is written after that checkpoint. "
+            f"Placeholder start {YEAR2_START.isoformat()} — not live yet."
         ),
     }
     return TEMPLATES.TemplateResponse(request=request, name="hr_calendar.html", context=ctx)

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sleep &amp; HRV vs CTL &amp; ATL — last 12 weeks</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --panel: #171b24;
+      --border: #2a3140;
+      --text: #e8ecf4;
+      --muted: #9aa3b5;
+      --sleep: #3ecf8e;
+      --hrv: #a8b0c0;
+      --ctl: #5b9fd4;
+      --atl: #e6a23c;
+      --warn: #c9893a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 650;
+      margin: 0 0 6px;
+      letter-spacing: -0.02em;
+    }
+    .lede { color: var(--muted); margin: 0 0 4px; font-size: 0.95rem; }
+    .source { color: var(--muted); font-size: 0.8rem; margin: 0 0 22px; opacity: 0.85; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .seg button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .seg button.active {
+      background: #243047;
+      color: var(--text);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat .v { font-size: 1.35rem; font-weight: 650; letter-spacing: -0.02em; }
+    .stat .l { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .stat.danger .v { color: #e07070; }
+    .stat.info .v { color: var(--ctl); }
+    .stat.warning .v { color: var(--atl); }
+    .note {
+      background: #241c12;
+      border: 1px solid #3d2f1a;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 0 0 22px;
+      font-size: 0.9rem;
+      color: #e2c99a;
+    }
+    .note strong { color: #f0d7a8; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 16px 8px;
+      margin-bottom: 16px;
+    }
+    .panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+    .panel .axis-hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin: 0 0 10px;
+    }
+    .chart-wrap { position: relative; height: 320px; }
+    .legend-key {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Sleep &amp; HRV vs CTL &amp; ATL</h1>
+    <p class="lede">Last 12 weeks of overnight recovery against Garmin training load.</p>
+    <p class="source">
+      Source: daily_metrics (history.db) · 2026-05-16 → 2026-08-08 · 85 days ·
+      sleep score (0–100), HRV last night (ms), CTL / ATL (Garmin load units)
+    </p>
+
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Granularity">
+        <button type="button" id="btn-weekly" class="active">Weekly averages</button>
+        <button type="button" id="btn-daily">Daily series</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat danger"><div class="v">51</div><div class="l">Sleep today</div></div>
+      <div class="stat"><div class="v">51 ms</div><div class="l">HRV today</div></div>
+      <div class="stat info"><div class="v">644</div><div class="l">CTL today</div></div>
+      <div class="stat warning"><div class="v">609</div><div class="l">ATL today</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">79.6</div><div class="l">Sleep avg (12 wk)</div></div>
+      <div class="stat"><div class="v">44.0 ms</div><div class="l">HRV avg (12 wk)</div></div>
+      <div class="stat"><div class="v">534</div><div class="l">CTL avg (12 wk)</div></div>
+      <div class="stat"><div class="v">571</div><div class="l">ATL avg (12 wk)</div></div>
+    </div>
+
+    <div class="note">
+      <strong>Peak load week of 7/20.</strong>
+      Weekly ATL averaged 1,082 (daily spike 1,293 on 7/19). Sleep and HRV stayed
+      strong that week (86 sleep / 53 ms HRV) — load rose under good overnight
+      recovery, then ATL dropped sharply the following week (444).
+    </div>
+
+    <div class="panel">
+      <h2>Combined view — dual axis</h2>
+      <p class="axis-hint">
+        Left axis: sleep score &amp; HRV (ms) · Right axis: CTL &amp; ATL (Garmin load) ·
+        <span class="legend-key" style="background:var(--sleep)"></span>Sleep
+        <span class="legend-key" style="background:var(--hrv)"></span>HRV
+        <span class="legend-key" style="background:var(--ctl)"></span>CTL
+        <span class="legend-key" style="background:var(--atl)"></span>ATL
+      </p>
+      <div class="chart-wrap"><canvas id="combined"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Training load — CTL &amp; ATL</h2>
+      <p class="axis-hint">Y-axis: Garmin training load</p>
+      <div class="chart-wrap"><canvas id="load"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Overnight recovery — sleep score &amp; HRV</h2>
+      <p class="axis-hint">Y-axis: sleep score (0–100) and HRV (ms)</p>
+      <div class="chart-wrap"><canvas id="recovery"></canvas></div>
+    </div>
+  </main>
+
+  <script>
+    const WEEKLY = {
+      labels: ["5/18","5/25","6/1","6/8","6/15","6/22","6/29","7/6","7/13","7/20","7/27","8/3"],
+      sleep: [77.0,77.7,79.7,77.1,79.9,86.7,74.1,78.7,83.7,86.3,78.0,76.3],
+      hrv: [40.3,34.9,38.9,40.9,40.4,44.7,44.6,49.1,47.6,52.9,47.7,48.5],
+      ctl: [304.1,413.7,506.4,500.3,463.4,481.6,516.3,589.7,598.0,734.4,719.6,673.2],
+      atl: [388.1,596.0,604.7,367.1,400.6,602.7,628.9,640.1,575.0,1082.0,444.3,592.3],
+    };
+
+    const DAILY = {
+      labels: [
+        "5/16","5/17","5/18","5/19","5/20","5/21","5/22","5/23","5/24","5/25","5/26","5/27","5/28","5/29","5/30","5/31",
+        "6/1","6/2","6/3","6/4","6/5","6/6","6/7","6/8","6/9","6/10","6/11","6/12","6/13","6/14","6/15","6/16","6/17","6/18","6/19","6/20","6/21","6/22","6/23","6/24","6/25","6/26","6/27","6/28","6/29","6/30",
+        "7/1","7/2","7/3","7/4","7/5","7/6","7/7","7/8","7/9","7/10","7/11","7/12","7/13","7/14","7/15","7/16","7/17","7/18","7/19","7/20","7/21","7/22","7/23","7/24","7/25","7/26","7/27","7/28","7/29","7/30","7/31",
+        "8/1","8/2","8/3","8/4","8/5","8/6","8/7","8/8"
+      ],
+      sleep: [72,81,75,90,74,73,78,85,64,50,78,90,87,77,82,80,76,87,74,78,78,84,81,79,85,90,72,81,50,83,85,83,77,86,73,66,89,82,97,91,76,91,94,76,72,91,85,99,49,45,78,76,84,82,80,81,73,75,77,87,85,78,91,86,82,91,95,96,81,88,82,71,80,74,78,48,92,90,84,73,75,79,94,86,51],
+      hrv: [42,38,43,43,36,39,40,39,42,31,36,38,39,32,36,32,34,39,40,33,43,43,40,43,47,50,35,43,28,40,44,50,35,42,37,31,44,38,45,46,45,42,43,54,55,52,50,54,32,28,41,32,55,51,52,52,49,53,43,54,53,37,49,46,51,48,61,58,51,53,53,46,49,47,44,30,50,54,60,45,36,42,61,56,51],
+      ctl: [256,258,256,289,304,301,298,324,357,353,383,408,418,415,446,473,468,483,518,513,505,518,540,527,517,502,493,478,495,490,472,471,452,457,468,449,475,459,476,459,470,516,502,489,476,472,458,540,529,514,625,616,602,589,578,568,592,583,566,561,608,583,557,609,702,688,685,742,729,752,780,765,754,742,740,712,685,660,744,728,698,666,633,670,644],
+      atl: [374,301,247,391,441,375,309,405,549,465,569,648,623,512,632,723,603,600,718,627,505,539,641,529,430,338,311,233,359,370,304,335,273,379,496,423,594,502,592,500,569,810,685,561,452,429,330,807,678,566,1140,975,845,714,583,453,527,384,295,272,527,466,405,767,1293,1126,1026,1278,1084,1083,1085,892,700,507,432,336,240,151,744,691,591,513,435,715,609],
+    };
+
+    const gridColor = "rgba(42,49,64,0.9)";
+    const tickColor = "#9aa3b5";
+
+    const baseOpts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: tickColor, boxWidth: 12, boxHeight: 12, padding: 14 },
+        },
+        tooltip: {
+          backgroundColor: "#1c2230",
+          titleColor: "#e8ecf4",
+          bodyColor: "#e8ecf4",
+          borderColor: "#2a3140",
+          borderWidth: 1,
+        },
+      },
+    };
+
+    function xScale(n) {
+      return {
+        ticks: {
+          color: tickColor,
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: n > 20 ? 12 : 12,
+        },
+        grid: { color: gridColor },
+      };
+    }
+
+    function yScale(title, min) {
+      return {
+        title: { display: true, text: title, color: tickColor, font: { size: 11 } },
+        ticks: { color: tickColor },
+        grid: { color: gridColor },
+        min,
+      };
+    }
+
+    let combinedChart, loadChart, recoveryChart;
+    let view = "weekly";
+
+    function datasets(data) {
+      return {
+        sleep: {
+          label: "Sleep score",
+          data: data.sleep,
+          borderColor: "#3ecf8e",
+          backgroundColor: "rgba(62,207,142,0.12)",
+          tension: 0.25,
+          pointRadius: data.labels.length > 20 ? 0 : 3,
+          borderWidth: 2,
+        },
+        hrv: {
+          label: "HRV last night (ms)",
+          data: data.hrv,
+          borderColor: "#a8b0c0",
+          backgroundColor: "rgba(168,176,192,0.08)",
+          tension: 0.25,
+          pointRadius: data.labels.length > 20 ? 0 : 3,
+          borderWidth: 2,
+        },
+        ctl: {
+          label: "CTL (chronic)",
+          data: data.ctl,
+          borderColor: "#5b9fd4",
+          backgroundColor: "rgba(91,159,212,0.1)",
+          tension: 0.25,
+          pointRadius: data.labels.length > 20 ? 0 : 3,
+          borderWidth: 2,
+        },
+        atl: {
+          label: "ATL (acute)",
+          data: data.atl,
+          borderColor: "#e6a23c",
+          backgroundColor: "rgba(230,162,60,0.1)",
+          tension: 0.25,
+          pointRadius: data.labels.length > 20 ? 0 : 3,
+          borderWidth: 2,
+        },
+      };
+    }
+
+    function render() {
+      const data = view === "weekly" ? WEEKLY : DAILY;
+      const ds = datasets(data);
+
+      if (combinedChart) combinedChart.destroy();
+      if (loadChart) loadChart.destroy();
+      if (recoveryChart) recoveryChart.destroy();
+
+      combinedChart = new Chart(document.getElementById("combined"), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [
+            { ...ds.sleep, yAxisID: "y" },
+            { ...ds.hrv, yAxisID: "y" },
+            { ...ds.ctl, yAxisID: "y1" },
+            { ...ds.atl, yAxisID: "y1" },
+          ],
+        },
+        options: {
+          ...baseOpts,
+          scales: {
+            x: xScale(data.labels.length),
+            y: {
+              ...yScale("Sleep / HRV", 20),
+              position: "left",
+            },
+            y1: {
+              ...yScale("CTL / ATL", 0),
+              position: "right",
+              grid: { drawOnChartArea: false },
+            },
+          },
+        },
+      });
+
+      loadChart = new Chart(document.getElementById("load"), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [ds.ctl, ds.atl],
+        },
+        options: {
+          ...baseOpts,
+          scales: {
+            x: xScale(data.labels.length),
+            y: yScale("Garmin training load", undefined),
+          },
+        },
+      });
+
+      recoveryChart = new Chart(document.getElementById("recovery"), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [ds.sleep, ds.hrv],
+        },
+        options: {
+          ...baseOpts,
+          scales: {
+            x: xScale(data.labels.length),
+            y: yScale("Sleep score / HRV (ms)", 20),
+          },
+        },
+      });
+    }
+
+    const btnWeekly = document.getElementById("btn-weekly");
+    const btnDaily = document.getElementById("btn-daily");
+    btnWeekly.addEventListener("click", () => {
+      view = "weekly";
+      btnWeekly.classList.add("active");
+      btnDaily.classList.remove("active");
+      render();
+    });
+    btnDaily.addEventListener("click", () => {
+      view = "daily";
+      btnDaily.classList.add("active");
+      btnWeekly.classList.remove("active");
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

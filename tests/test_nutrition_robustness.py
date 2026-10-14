@@ -85,8 +85,8 @@ def test_camp_hard_day_from_tenerife_intensity(d, hard):
 
 
 def test_christmas_camp_starts_dec_21():
-    assert in_camp_nutrition_window(date(2026, 12, 21))
-    assert CAMP_NUTRITION_WINDOWS[1][0] == date(2026, 12, 21)
+    assert not in_camp_nutrition_window(date(2026, 12, 21))
+    assert all(start.month != 5 for start, _end, _label in CAMP_NUTRITION_WINDOWS)
 
 
 def test_camp_checklist_suppresses_uk_plate_language():

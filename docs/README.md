@@ -27,7 +27,7 @@ If you just want to install and run the app, start with the
 | **[Plan](tabs/plan.md)** | The **Plan ▾** group: Calendar, Training, and Compliance |
 | **[Health](tabs/health.md)** | The **Health ▾** group: Sleep and Body |
 | **[Nutrition](tabs/nutrition.md)** | Top-level **Nutrition** tab — meal plan, ride fuelling, recipes, shopping |
-| **[Events](tabs/events.md)** | The **Events ▾** group: the Tenerife camp and the Haute Route Alpes 2027 plan |
+| **[Events](tabs/events.md)** | The **Events ▾** group: Tenerife camp reference and the Haute Route Alpes 2028 two-year rebuild |
 | **[Coach](tabs/coach.md)** | The AI coach chat — context, plan-change proposals, Memory, and commitments |
 | **[Email & Automation](email-and-automation.md)** | The daily email, the Monday briefing, scheduling, and the command-line flags |
 | **[FAQ & Troubleshooting](faq.md)** | Missing data, sign-in problems, clearing stale AI text, and protecting the dashboard |

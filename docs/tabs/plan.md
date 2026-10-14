@@ -3,7 +3,7 @@
 **Nav:** the **Plan** tab → sticky subnav **Sessions**, **Guide**, and **Compliance**.
 
 - **Sessions** — interactive calendar (do the work, mark completion)
-- **Guide** — static programme reference (zones, weekly pattern, tables)
+- **Guide** — written version of the live 12-month fitness block
 - **Compliance** — adherence stats across the block
 
 ---
@@ -14,9 +14,10 @@
 
 ### What it's for
 
-A unified calendar of every planned session — the 12-week build plan, the
-Tenerife camp, and the event-prep block — with completion tracking and a few
-smart flags layered on top.
+The live calendar is the general-fitness year, 12 Oct 2026 – 3 Oct 2027
+(procedure week, return, Christmas Tenerife, Keswick, the Lakes, Scotland,
+then maintenance). The cancelled Ghent→Amsterdam block is an archive at
+`/training/charity`.
 
 > 📸 *Screenshot: the Sessions tab showing a training week with completion badges and a compound-session day.*
 
@@ -30,9 +31,8 @@ smart flags layered on top.
 - **Interference flags.** A quality bike session (tempo, sweet-spot, threshold,
   hill repeats, FTP test) gets an amber **⚠️** badge if you logged strength work
   in the previous 24 hours — a heads-up that the two may blunt each other.
-- **Event-day plans.** For the charity ride days, expandable cards show
-  AI-generated pacing and fuelling plans (carbs per hour, fluids, sodium, and
-  framing versus your longest training ride).
+- **Event-day plans.** Charity-ride pacing cards are omitted while the charity
+  ride is cancelled.
 - **A Mersea countdown**, when that build is active.
 - **Haute Route calendar** (separate tab) shows **%FTP watt ranges** on planned
   sessions when measured FTP exists, plus a power familiarization bridge card.
@@ -63,14 +63,18 @@ smart flags layered on top.
 
 ### What it's for
 
-Static programme reference — weekly pattern, zones, and the full 12-week tables.
-Use this when you want the written programme bible; use **Sessions** for day-to-day
-scheduling and completion.
+The written version of the live fitness block (12 Oct 2026 – 3 Oct 2027):
+procedure week, return, Tenerife, the Keswick ruck build, the Lakes weekend,
+Scotland, then maintenance through the October 2027 checkpoint. Use **Sessions**
+for the day you are actually doing.
 
 ### What you'll see
 
-Programme overview, zone guidance, and week-by-week session tables for the
-charity-ride build.
+One card per phase. A phase that repeats shows the week; a phase that changes
+(the camp, the ruck build, Scotland) lists each week. Garmin only receives the
+easy bike days (`Z2 Easy` and `Long Ride (Easy)`).
+
+The cancelled Ghent→Amsterdam 12-week bible is an archive at `/training/charity`.
 
 ---
 
@@ -81,14 +85,13 @@ charity-ride build.
 ### What it's for
 
 A closer look at *which kinds* of training you're keeping up with across the
-entire block through to the charity ride.
+fitness year (12 Oct 2026 – 3 Oct 2027).
 
 ### What you'll see
 
 - **Overall adherence** — sessions and training time done vs planned.
 - **Per-discipline breakdown** — completion rate by bike, strength, and ruck.
-- **18 weeks total** — 12-week plan, then three Tenerife camp weeks, then three
-  event-prep weeks (including charity ride days), with phase dividers on the page.
+- **Phase dividers** for procedure, return, Tenerife, the Keswick build, the Lakes, Scotland, and maintenance.
 - **Cumulative adherence chart** and week-by-week session log with day dots.
 
 > 📸 *Screenshot: the Compliance tab showing per-discipline adherence bars.*

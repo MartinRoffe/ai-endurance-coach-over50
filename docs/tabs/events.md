@@ -2,11 +2,12 @@
 
 **Nav:** the **Events ▾** group → **Tenerife** and **Haute Route**.
 
-These tabs cover the big targets the rest of the plan builds towards: a training
-camp and a multi-day mountain event.
+These tabs cover camp reference and the long-term A-event. The Ghent→Amsterdam
+charity ride (13–14 Sep 2026) is **cancelled** after a medical reset (kidney
+stones / stent). The live A-event is **Haute Route Alpes 2028** (late August,
+dates TBC) on a two-year rebuild.
 
-Camp and event-prep sessions feed **[Compliance](plan.md)** tracking alongside
-the 12-week plan.
+Camp and historical plan sessions still feed **[Compliance](plan.md)** tracking.
 
 ---
 
@@ -16,17 +17,9 @@ the 12-week plan.
 
 ### What it's for
 
-The itinerary for the Tenerife cycling camp.
-
-### What you'll see
-
-A day-by-day camp itinerary — the rides and structure of the training block on
-the island. It's a reference page for what each camp day holds.
-
-> 📸 *Screenshot: the Tenerife tab showing the camp itinerary.*
-
-Camp ride days also appear on the [Calendar](plan.md) and in **Compliance** once
-their dates have passed.
+Christmas 2026 Tenerife (21 Dec–2 Jan) is the live camp: easy riding, with the
+day plan on Sessions. The August 2026 Teide itinerary is on the same page under
+**August 2026 camp (finished)**.
 
 ---
 
@@ -36,32 +29,14 @@ their dates have passed.
 
 ### What it's for
 
-The 46-week plan and event guide for **Haute Route Alpes 2027** — a seven-stage
-mountain event in late August 2027.
+The two-year rebuild hub for **Haute Route Alpes 2028**. The Sep 2026 medical
+pause is finished. Return to training waits on discharge after the 15 Oct 2026
+procedure. Year 1 is the fitness block through 3 Oct 2027; the cycling-specific
+block is written after that.
 
-> 📸 *Screenshot: the Haute Route tab showing the phase calendar and the stage grid.*
-
-### What you'll see
-
-- **A 46-week phased plan** — Base (including a Christmas Tenerife volume
-  camp), Build (with a post-camp absorption week), Specific Build (Tenerife
-  race-simulation camp), Peak (including two three-day simulation blocks), and
-  Taper — laid out as a calendar mirroring the [main calendar](plan.md).
-- **A CTL projection** across the full plan, so you can see your fitness build
-  toward the event.
-- **The seven event stages**, each with its distance, elevation, and key climb.
-- **Per-stage pacing & fuelling plans.** Below the stage grid, expandable cards
-  hold AI-generated pacing and fuelling guidance for each of the seven stages
-  (dual-channel %FTP and kJ grounding when power is active).
-- **A heat-protocol banner** on the taper phase — a set of heat-acclimation
-  sessions for the final ten days before the event.
-- **%FTP prescriptions** on calendar tiles when measured FTP exists — watt ranges
-  for planned quality and endurance sessions.
-- **Planned TSS** on week headers (estimated from typical intensity factors).
-- **Power familiarization bridge** — display card for 14 Sep – 4 Oct 2026.
-- **Peak-simulation decoupling warnings** — banner on weeks 36–43 if recent
-  Pw:HR decoupling exceeds ~8%.
-- **Power meter active badge** when ≥3 power rides in 60 days.
+The former 46-week Oct-2026→Aug-2027 week-by-week calendar is **not live**.
+The general-fitness block runs through 3 Oct 2027. The cycling-specific race
+plan is written after that checkpoint.
 
 ### Power protocol sub-page
 
@@ -72,14 +47,11 @@ from your measured FTP. See **[Power Training](../power-training.md#haute-route-
 
 ### How to use it
 
-Use it to understand the long arc of preparation and, closer to the event, the
-stage-by-stage plans. Like the main calendar, planned-session durations here
-honour any overrides you've applied.
+The procedure week (12–18 Oct 2026) is rest or an optional easy walk or short
+ride only if discharge advice allows it. Structured training starts after that
+advice. Use Sessions for the day you are doing.
 
 ### Good to know
 
-- **The Haute Route plan is separate** from the 12-week build plan. Both feed the
-  same calendar and modulation logic, but they're distinct programmes with their
-  own start dates.
-- **Stage and heat plans need your Anthropic API key**; without it those AI cards
-  stay empty.
+The 2012 post-mortem remains the pacing/fuelling cautionary baseline — finish the
+week, don't chase watts on Day 1.

@@ -152,8 +152,11 @@ def _calendar_weeks() -> list[dict]:
 
 
 def _build_calendar_ctx() -> dict[str, Any]:
+    from ..fitness_plan import build_calendar_weeks as build_fitness_weeks
     from ..hr_plan import build_hr_calendar_weeks
-    hr_weeks = build_hr_calendar_weeks()
+    from ..medical import year2_sessions_live
+
+    hr_weeks = build_hr_calendar_weeks() if year2_sessions_live() else []
     return {
         "weeks": _calendar_weeks(),
         "today": date.today(),
@@ -161,7 +164,8 @@ def _build_calendar_ctx() -> dict[str, Any]:
         "camp_weeks": build_camp_weeks(),
         "combined_event_weeks": build_combined_event_weeks(),
         "bridge_weeks": build_bridge_weeks(),
-        # Continuity teaser — first 4 Haute Route Base weeks (full hub stays at /haute-route)
+        "fitness_weeks": build_fitness_weeks(),
+        # Continuity teaser — first 4 Haute Route Base weeks when Year 2 is live
         "hr_teaser_weeks": hr_weeks[:4],
     }
 
@@ -181,7 +185,8 @@ def _activity_context_blurb(activities: list[dict]) -> str:
 
 _VERDICT_ICONS = {
     "bike": "🚴", "tempo": "🚴", "ftp": "🚴", "long": "🚴",
-    "strength": "🏋️", "ruck": "🎒", "recovery": "🧘", "rest": "😴",
+    "strength": "🏋️", "ruck": "🎒", "hike": "🥾", "scramble": "🧗",
+    "recovery": "🧘", "rest": "😴",
 }
 
 
@@ -199,7 +204,48 @@ def _build_today_verdict(
     ``modulation.resolve_modulation``; this just decides what single card the
     dashboard shows and wires the Apply proposal for the existing
     ``/apply-plan-change`` flow.
+
+    During the medical pause, the status strip is medical (not HRV traffic light)
+    and no Apply-to-Garmin quality swaps are offered.
     """
+    from ..medical import in_medical_pause, medical_pause_banner
+
+    banner = medical_pause_banner(target) if in_medical_pause(target) else None
+
+    if banner:
+        final_session = (
+            {**today_plan, "changed": False, "from_label": None}
+            if today_plan
+            else {
+                "type": "rest", "label": "Medical rest", "dur_fmt": "",
+                "icon": _VERDICT_ICONS.get("rest", "💤"), "compound": None, "note": None,
+                "changed": False, "from_label": None,
+            }
+        )
+        nutrition = None
+        try:
+            tt = nutrition_today_targets(target)
+            nutrition = {
+                "kcal": tt["kcal"],
+                "protein_low": tt["protein_low"],
+                "protein_high": tt["protein_high"],
+                "carbs_g_per_hr": tt["carbs_g_per_hr"],
+                "maintenance": tt["maintenance"],
+            }
+        except Exception:
+            pass
+        return {
+            "status": "medical",
+            "final_session": final_session,
+            "reason": banner["reason"],
+            "apply": None,
+            "hint": (
+                "Use the app for readiness, sleep, body, BP, and hydration — "
+                "not for race-week load. Extend the pause end date after follow-up."
+            ),
+            "nutrition": nutrition,
+        }
+
     status = (traffic_light or {}).get("status") or "unknown"
     if modulation and modulation.get("gate_type") == "illness":
         status = "red"
@@ -462,20 +508,31 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 )
             advice_post = _advice_cache[post_key]
 
-    # Today's planned session
+    # Today's planned session (extended covers event-prep / medical pause / bridge)
     _SESSION_ICONS = {
         "bike": "🚴", "tempo": "🚴", "ftp": "🚴", "long": "🚴",
-        "strength": "🏋️", "ruck": "🎒",
+        "strength": "🏋️", "ruck": "🎒", "hike": "🥾", "scramble": "🧗",
+        "rest": "😴", "recovery": "🧘",
     }
-    _session = session_for_date(target)
+    _session = session_for_date_extended(target) or hr_session_for_date(target)
     if _session and _session[0] != "rest":
         _stype, _slabel, _sdur = _session
         today_plan: Optional[dict] = {
             "type":     _stype,
             "label":    _slabel,
-            "dur_fmt":  _fmt_min(_sdur),
+            "dur_fmt":  _fmt_min(_sdur) if _sdur else "",
             "icon":     _SESSION_ICONS.get(_stype, "📋"),
             "compound": COMPOUND_SESSIONS.get(_slabel),
+            "note":     get_cached_text(f"session_note_{target.isoformat()}"),
+        }
+    elif _session and _session[0] == "rest":
+        _stype, _slabel, _sdur = _session
+        today_plan = {
+            "type":     _stype,
+            "label":    _slabel or "Rest day",
+            "dur_fmt":  "",
+            "icon":     _SESSION_ICONS.get("rest", "😴"),
+            "compound": None,
             "note":     get_cached_text(f"session_note_{target.isoformat()}"),
         }
     else:
@@ -742,119 +799,34 @@ def _charity_day_dur_min(km: int) -> int:
 
 
 def _compliance_weeks_unified() -> list[dict]:
-    """12-week plan + Tenerife camp grid + event-prep/charity weeks for compliance."""
+    """Live fitness year. The cancelled charity block stays at /training/charity."""
+    from ..fitness_plan import build_calendar_weeks as build_fitness_weeks
     unified: list[dict] = []
-    for w in _calendar_weeks():
+    prev_phase = None
+    for w in build_fitness_weeks():
+        name = w["phase_name"]
+        days = [
+            {
+                "date": day["date"],
+                "type": day["type"],
+                "dur_min": day["dur_min"] or 0,
+                "sub_sessions": None,
+            }
+            for day in w["days"]
+        ]
         unified.append({
-            "phase": "plan",
-            "week_num": w["week_num"],
-            "week_label": f"Wk {w['week_num']:02d}",
-            "start": w["start"],
-            "days": w["days"],
-            "phase_start": w["week_num"] == 1,
-        })
-    for i, w in enumerate(build_camp_weeks()):
-        days = []
-        for day in w["days"]:
-            if day.get("is_camp") and day.get("intensity") in ("easy", "medium", "hard"):
-                km = day.get("km", 0) or 0
-                elev = day.get("elev_m", 0) or 0
-                stype = "long" if day["intensity"] == "hard" else "bike"
-                days.append({
-                    "date": day["date"],
-                    "type": stype,
-                    "dur_min": _camp_day_dur_min(km, elev),
-                    "sub_sessions": None,
-                })
-            elif day.get("is_workout"):
-                days.append({
-                    "date": day["date"],
-                    "type": day["type"],
-                    "dur_min": day["dur_min"],
-                    "sub_sessions": None,
-                })
-            else:
-                days.append({
-                    "date": day["date"],
-                    "type": "rest",
-                    "dur_min": 0,
-                    "sub_sessions": None,
-                })
-        unified.append({
-            "phase": "camp",
+            "phase": "fitness",
+            "phase_name": name,
             "week_num": None,
             "week_label": w["week_label"],
             "start": days[0]["date"],
             "days": days,
-            "phase_start": i == 0,
+            "phase_start": name != prev_phase,
         })
-    for i, w in enumerate(build_combined_event_weeks()):
-        days = []
-        for day in w["days"]:
-            if day.get("is_event") and not day.get("is_mersea"):
-                km = day.get("km", 0) or 0
-                days.append({
-                    "date": day["date"],
-                    "type": "long",
-                    "dur_min": _charity_day_dur_min(km),
-                    "sub_sessions": None,
-                })
-            elif day.get("is_event") and day.get("is_mersea"):
-                km = day.get("km", 0) or 0
-                days.append({
-                    "date": day["date"],
-                    "type": "ruck",
-                    "dur_min": max(int(km / 5 * 60), 60),
-                    "sub_sessions": None,
-                })
-            elif day.get("type") not in (None, "rest") and day.get("label"):
-                days.append({
-                    "date": day["date"],
-                    "type": day["type"],
-                    "dur_min": day.get("dur_min", 0),
-                    "sub_sessions": None,
-                })
-            else:
-                days.append({
-                    "date": day["date"],
-                    "type": "rest",
-                    "dur_min": 0,
-                    "sub_sessions": None,
-                })
-        unified.append({
-            "phase": "event_prep",
-            "week_num": None,
-            "week_label": w["week_label"],
-            "start": days[0]["date"],
-            "days": days,
-            "phase_start": i == 0,
-        })
-    for i, w in enumerate(build_bridge_weeks()):
-        days = []
-        for day in w["days"]:
-            if day.get("out_of_bridge") or day.get("type") in (None, "rest") or not day.get("label"):
-                days.append({
-                    "date": day["date"],
-                    "type": "rest",
-                    "dur_min": 0,
-                    "sub_sessions": None,
-                })
-            else:
-                days.append({
-                    "date": day["date"],
-                    "type": day["type"],
-                    "dur_min": day.get("dur_min", 0),
-                    "sub_sessions": None,
-                })
-        unified.append({
-            "phase": "bridge",
-            "week_num": None,
-            "week_label": w["week_label"],
-            "start": days[0]["date"],
-            "days": days,
-            "phase_start": i == 0,
-        })
+        prev_phase = name
     return unified
+
+
 
 
 def _plan_completion_stats() -> dict:
@@ -862,7 +834,8 @@ def _plan_completion_stats() -> dict:
     today = date.today()
     weeks_data = _compliance_weeks_unified()
     block_end = weeks_data[-1]["days"][-1]["date"]
-    acts_by_date = load_activities_by_date(_PLAN_START, min(today, block_end))
+    block_start = weeks_data[0]["start"]
+    acts_by_date = load_activities_by_date(block_start, min(today, block_end))
 
     completion_weeks = []
     total_plan_sessions = total_done_sessions = 0
@@ -930,6 +903,7 @@ def _plan_completion_stats() -> dict:
 
         completion_weeks.append({
             "phase": week["phase"],
+            "phase_name": week.get("phase_name"),
             "phase_start": week["phase_start"],
             "week_num": week["week_num"],
             "week_label": week["week_label"],
@@ -1024,7 +998,7 @@ def _week_summary() -> Optional[dict]:
         is_today = d == today
         is_future = d > today
 
-        session = session_for_date(d)
+        session = session_for_date_extended(d)
         stype = session[0] if session else "rest"
         slabel = session[1] if session else "Rest"
         sdur = session[2] if session else 0
@@ -1081,8 +1055,19 @@ def _week_summary() -> Optional[dict]:
         if any(a["type_key"] in keys for keys in ACTIVITY_MATCH.values())
     )
 
-    days_into = (today - _PLAN_START).days
-    week_num = max(1, days_into // 7 + 1) if today >= _PLAN_START else None
+    from ..fitness_plan import PLAN_END as _FIT_END, PLAN_START as _FIT_START, _phase_name
+    charity_end = _PLAN_START + timedelta(days=83)
+    phase_label = None
+    if _FIT_START <= mon <= _FIT_END or _FIT_START <= today <= _FIT_END:
+        week_num = None
+        anchor = mon if _FIT_START <= mon <= _FIT_END else today
+        phase_label = _phase_name(anchor)
+    elif today > charity_end:
+        week_num = None
+        phase_label = "This week"
+    else:
+        days_into = (today - _PLAN_START).days
+        week_num = max(1, days_into // 7 + 1) if today >= _PLAN_START else None
     pct = int(done_min_total / plan_min_total * 100) if plan_min_total else 0
 
     return {
@@ -1094,6 +1079,7 @@ def _week_summary() -> Optional[dict]:
         "avg_readiness": avg_readiness,
         "last_done_fmt": _fmt_min(last_done_min) if last_done_min else "0m",
         "week_num": week_num,
+        "phase_label": phase_label,
         "week_start": mon,
     }
 
@@ -1103,7 +1089,45 @@ _PLAN_BLOCK_DAYS = 84
 
 
 def build_event_tracker(target: date) -> Optional[dict]:
-    """Charity event countdown for Calendar / plan views."""
+    """Countdown / status card for Calendar — medical pause or HR 2028 A-event."""
+    from ..medical import (
+        HR_A_EVENT_NAME,
+        HR_A_EVENT_START,
+        CHARITY_CANCELLED,
+        in_medical_pause,
+        medical_pause_banner,
+    )
+
+    if in_medical_pause(target) or CHARITY_CANCELLED:
+        banner = medical_pause_banner(target)
+        if banner:
+            return {
+                "mode": "medical",
+                "title": "Medical pause",
+                "subtitle": HR_A_EVENT_NAME,
+                "days_to_event": (HR_A_EVENT_START - target).days,
+                "on_track_label": "Paused",
+                "on_track_colour": "text-sky-400",
+                "week_num": None,
+                "plan_pct": 0,
+                "reason": banner["reason"],
+            }
+        # Charity cancelled but pause ended — still not a charity countdown
+        return {
+            "mode": "rebuild",
+            "title": HR_A_EVENT_NAME,
+            "subtitle": "Two-year rebuild · dates TBC",
+            "days_to_event": (HR_A_EVENT_START - target).days,
+            "on_track_label": "Rebuild",
+            "on_track_colour": "text-sky-400",
+            "week_num": None,
+            "plan_pct": 0,
+            "reason": (
+                "Charity ride cancelled. General fitness through 3 Oct 2027 "
+                "(road and hills). Haute Route week-by-week starts after that checkpoint."
+            ),
+        }
+
     _days_into = (target - _PLAN_START).days
     _ws = _week_summary()
     if target < _PLAN_START or (_EVENT_DATE - target).days <= 0:
@@ -1118,6 +1142,7 @@ def build_event_tracker(target: date) -> Optional[dict]:
     else:
         _on_label, _on_col = "Behind", "text-red-400"
     return {
+        "mode": "charity",
         "week_num": min(12, max(1, _days_into // 7 + 1)),
         "plan_pct": min(100, max(0, int(_days_into / _PLAN_BLOCK_DAYS * 100))),
         "days_to_event": (_EVENT_DATE - target).days,
@@ -1194,27 +1219,29 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
     from ..nutrition_plan import camp_nutrition_window
 
     today = ref or date.today()
-    maint_end = MAINTENANCE_WINDOWS[0][1] if MAINTENANCE_WINDOWS else date(2026, 9, 14)
-    hard_start, hard_end, _ = CUT_PHASES[0]
-    ease_start, ease_end, _ = CUT_PHASES[1]
+    maint_end = date(2027, 1, 3)
+    ease_start, ease_end, _ = CUT_PHASES[0]
     camp = camp_nutrition_window(today)
     phase = active_cut_phase(today)
     maintenance = in_maintenance_window(today)
 
-    # Show page from maintenance window through end of Christmas camp, then a
-    # short tail so progress remains visible after the deadline.
-    window_start = maint_end - timedelta(days=7)  # teaser in final charity week
-    window_end = date(2027, 1, 15)
+    # Visible from the kidney-return maintenance window through a short tail
+    # after the 31 Mar goal.
+    window_start = date(2026, 10, 2)
+    window_end = date(2027, 4, 15)
     show = window_start <= today <= window_end
 
-    if maintenance:
+    kidney_maint = date(2026, 10, 9) <= today <= date(2027, 1, 3) and maintenance
+    if kidney_maint:
+        phase_key, phase_label = "maintenance", "Maintenance (kidney return through camp)"
+    elif maintenance:
         phase_key, phase_label = "maintenance", "Maintenance (to charity)"
     elif camp:
         phase_key, phase_label = "camp", "Camp (no deficit)"
     elif phase == "hard":
         phase_key, phase_label = "hard", "Hard cut"
     elif phase == "ease":
-        phase_key, phase_label = "ease", "Ease into camp"
+        phase_key, phase_label = "ease", "Toward 80 kg by 31 Mar"
     elif today > CUT_TARGET_DEADLINE:
         phase_key, phase_label = "after", "Post-cut hold"
     else:
@@ -1297,7 +1324,9 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         pass
 
     status_bits = [phase_label]
-    if weight is not None:
+    if kidney_maint:
+        status_bits.append("eat at maintenance · no cut target")
+    elif weight is not None:
         status_bits.append(f"{weight:.1f} → {CUT_TARGET_KG:g}")
     if pace == "behind" and kg_behind is not None and kg_behind > 0:
         status_bits.append(f"{kg_behind:.1f} kg behind pace")
@@ -1315,15 +1344,9 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
             "active": phase_key == "maintenance",
         },
         {
-            "key": "hard",
-            "label": "Hard cut",
-            "dates": f"{hard_start.strftime('%-d %b')} – {hard_end.strftime('%-d %b')}",
-            "active": phase_key == "hard",
-        },
-        {
             "key": "ease",
-            "label": "Ease",
-            "dates": f"{ease_start.strftime('%-d %b')} – {ease_end.strftime('%-d %b')}",
+            "label": "Toward 80 kg",
+            "dates": f"{ease_start.strftime('%-d %b %Y')} – {ease_end.strftime('%-d %b %Y')}",
             "active": phase_key == "ease",
         },
         {
@@ -1341,6 +1364,37 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
             "hard": CUT_DEFICIT_BY_PHASE["hard"].get(tier),
             "ease": CUT_DEFICIT_BY_PHASE["ease"].get(tier, INTAKE_DEFICIT_BY_TIER.get(tier)),
         })
+
+    # Weekly budget strip — typical week mix under current phase deficits.
+    weekly_budget = None
+    if phase_key in ("hard", "ease"):
+        defs = (
+            CUT_DEFICIT_BY_PHASE["hard"]
+            if phase_key == "hard"
+            else CUT_DEFICIT_BY_PHASE["ease"]
+        )
+        # 2 rest-like + 3 training + 1 ruck + 1 long (illustrative week shape)
+        avg_daily = round(
+            (
+                2 * defs.get("rest", 350)
+                + 3 * defs.get("training", 250)
+                + defs.get("ruck", 150)
+                + defs.get("long", 50)
+            )
+            / 7
+        )
+        weekly_kcal = avg_daily * 7
+        weekly_budget = {
+            "avg_daily_deficit": avg_daily,
+            "weekly_deficit_kcal": weekly_kcal,
+            "kg_per_week": round(weekly_kcal / KCAL_PER_KG, 2),
+            "note": (
+                "Rest/easy days carry most of the cut; long-ride days stay near "
+                "maintenance. Protein floor stays locked — don’t skip fuel on long days "
+                "to speed the cut. Delaying breakfast on rest days is fine if protein "
+                "is still hit by evening."
+            ),
+        }
 
     # Today's Garmin food log (same daily_metrics row as Nutrition Today).
     logged_kcal = None
@@ -1396,8 +1450,9 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         "today": today.isoformat(),
         "phase_key": phase_key,
         "phase_label": phase_label,
+        "kidney_maint": kidney_maint,
         "cut_target_kg": CUT_TARGET_KG,
-        "cut_band": "80–81",
+        "cut_band": "80",
         "deadline": CUT_TARGET_DEADLINE.isoformat(),
         "deadline_label": CUT_TARGET_DEADLINE.strftime("%-d %b %Y"),
         "days_left": days_left,
@@ -1431,6 +1486,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         },
         "logging_warn": logging_warn and (phase_key in ("hard", "ease", "maintenance") or show),
         "deficit_rows": deficit_rows,
+        "weekly_budget": weekly_budget,
         "kcal_per_kg": int(KCAL_PER_KG),
     }
 
@@ -1761,6 +1817,89 @@ def _position_context() -> dict[str, Any]:
     }
 
 
+def _archive_context() -> dict[str, Any]:
+    """Load archive/findings.json for the History dashboard page."""
+    from ..archive_findings import find_archive_dir, load_archive_findings
+
+    findings = load_archive_findings()
+    root = find_archive_dir()
+    if not findings:
+        return {
+            "archive_ready": False,
+            "archive_dir": str(root) if root else None,
+        }
+
+    narrative_md = (findings.get("ai_narrative") or {}).get("markdown") or ""
+    narrative_html = ""
+    if narrative_md:
+        try:
+            import markdown as md
+            narrative_html = md.markdown(
+                narrative_md,
+                extensions=["tables", "fenced_code", "nl2br"],
+            )
+        except Exception:
+            narrative_html = f"<pre>{narrative_md}</pre>"
+
+    mmp_narr_md = (findings.get("ai_narrative_mmp") or {}).get("markdown") or ""
+    mmp_narrative_html = ""
+    if mmp_narr_md:
+        try:
+            import markdown as md
+            mmp_narrative_html = md.markdown(
+                mmp_narr_md,
+                extensions=["tables", "fenced_code", "nl2br"],
+            )
+        except Exception:
+            mmp_narrative_html = f"<pre>{mmp_narr_md}</pre>"
+
+    # First paragraph-ish for hero
+    hero_blurb = ""
+    for line in narrative_md.splitlines():
+        t = line.strip()
+        if not t or t.startswith("#"):
+            continue
+        hero_blurb = t.lstrip("*").strip()
+        if len(hero_blurb) > 40:
+            break
+
+    rebuild_summary = findings.get("rebuild") or {}
+    rebuild_fit = findings.get("rebuild_fit") or {}
+    mmp = findings.get("mmp")
+    use_fit = bool(rebuild_fit.get("central_estimate_weeks") is not None or (mmp and mmp.get("n_with_power")))
+    display_rebuild = rebuild_fit if use_fit and rebuild_fit else rebuild_summary
+
+    return {
+        "archive_ready": True,
+        "archive_dir": str(root) if root else None,
+        "findings": findings,
+        "rebuild": display_rebuild,
+        "rebuild_summary": rebuild_summary,
+        "rebuild_fit": rebuild_fit,
+        "rebuild_is_fit": bool(use_fit and rebuild_fit),
+        "mmp": mmp,
+        "mmp_ready": bool(mmp and mmp.get("n_with_power", 0) > 0),
+        "mmp_activities": (mmp or {}).get("activities") or [],
+        "gaps": findings.get("gaps") or [],
+        "consistency": findings.get("consistency") or {},
+        "peaks": findings.get("peaks") or {},
+        "power_proxies": findings.get("power_proxies_by_year") or [],
+        "contradictions": findings.get("contradictions_fit") or findings.get("contradictions") or [],
+        "contradictions_summary": findings.get("contradictions") or [],
+        "contradictions_are_fit": bool(findings.get("contradictions_fit")),
+        "shortlist": findings.get("shortlist_preview") or [],
+        "charts": findings.get("charts") or {},
+        "charts_json": findings.get("charts") or {},
+        "data_quality_notes": findings.get("data_quality_notes") or [],
+        "period": findings.get("period") or {},
+        "generated_at": findings.get("generated_at"),
+        "narrative_html": narrative_html,
+        "mmp_narrative_html": mmp_narrative_html,
+        "hero_blurb": hero_blurb,
+        "current_athlete": findings.get("current_athlete") or {},
+    }
+
+
 def _body_context() -> dict[str, Any]:
     body_rows = load_body_metrics(days=180)
     bp_rows = load_blood_pressure(days=90)
@@ -1917,6 +2056,10 @@ def _body_context() -> dict[str, Any]:
             if _tt.get("planned_deficit") is not None:
                 cal_ctx["today_plan_deficit"] = _tt["planned_deficit"]
             cal_ctx["maintenance"] = _tt["maintenance"]
+            if _tt.get("why"):
+                cal_ctx["intake_why"] = _tt["why"]
+            if _tt.get("phase"):
+                cal_ctx["intake_phase"] = _tt["phase"]
     except Exception:
         pass
     # Protein floor (lean-mass based) for the Protein Today tile.

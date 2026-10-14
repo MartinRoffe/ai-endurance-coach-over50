@@ -4,7 +4,7 @@
 {% set type_col = {'bike':'#34d399','tempo':'#fbbf24','ftp':'#fb923c','long':'#f59e0b','strength':'#a78bfa','ruck':'#f472b6','rest':'#3f3f46'} %}
 <div class="card" style="padding:16px 20px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:2px">
   <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted)">{% if ws.week_num %}Week {{ ws.week_num }} of 12{% else %}This Week{% endif %}</p>
+    <p style="font-family:var(--font-m);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted)">{% if ws.phase_label %}{{ ws.phase_label }}{% elif ws.week_num %}Week {{ ws.week_num }} of 12{% else %}This Week{% endif %}</p>
     <span style="font-family:var(--font-m);font-size:11px;{% if ws.pct >= 90 %}color:#a3e635{% elif ws.pct >= 60 %}color:#fb923c{% else %}color:#f87171{% endif %}">{{ ws.pct }}% · {{ ws.done_min_fmt }} / {{ ws.plan_min_fmt }}</span>
   </div>
   {% for day in ws.days %}
