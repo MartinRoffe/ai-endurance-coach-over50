@@ -1,6 +1,10 @@
 """Page context builders for dashboard, calendar, body, nutrition and summaries."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 
 from datetime import date, timedelta
@@ -33,6 +37,7 @@ from ..history import (
     load_ftp_tests,
     load_morning_snapshot,
     load_recent_activities,
+    freshness_warnings,
     metrics_from_snapshot,
     metrics_row_for_date,
     morning_snapshot_premature,
@@ -41,6 +46,7 @@ from ..history import (
     raw_history,
     save,
     save_activities,
+    sync_garmin_metrics,
     seven_day_composite_trend_csv,
     stable_tdee_kcal,
     tdee_calibration,
@@ -233,7 +239,7 @@ def _build_today_verdict(
                 "maintenance": tt["maintenance"],
             }
         except Exception:
-            pass
+            logger.warning("_build_today_verdict failed", exc_info=True)
         return {
             "status": "medical",
             "final_session": final_session,
@@ -323,7 +329,7 @@ def _build_today_verdict(
             "maintenance": tt["maintenance"],
         }
     except Exception:
-        pass
+        logger.warning("_build_today_verdict failed", exc_info=True)
 
     return {
         "status": status,
@@ -345,8 +351,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     if force_fetch:
         if has_garmin:
             api = get_api(email, password)
-            m = fetch_metrics(api, target)
-            save(m)
+            m = sync_garmin_metrics(api, target)
             from ..hr_profile import refresh_hr_profile_if_needed
             refresh_hr_profile_if_needed(api, force=True)
         else:
@@ -358,8 +363,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         ):
             if has_garmin:
                 api = get_api(email, password)
-                m = fetch_metrics(api, target)
-                save(m)
+                m = sync_garmin_metrics(api, target)
                 from ..hr_profile import refresh_hr_profile_if_needed
                 refresh_hr_profile_if_needed(api, force=False)
 
@@ -462,7 +466,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 save_activities(acts_raw)
                 enrich_activities_power(api, acts_raw)
             except Exception:
-                pass
+                logger.warning("_build_context failed", exc_info=True)
 
     timing = build_advice_timing(target)
     post_workout = timing["post_workout"]
@@ -476,7 +480,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         from ..modulation import resolve_modulation
         traffic_light, modulation = resolve_modulation(target, morning_m, morning_comp_z)
     except Exception:
-        pass
+        logger.warning("_build_context failed", exc_info=True)
     if morning_snapshot and morning_snapshot.get("traffic_light_status"):
         traffic_light = {
             "status": morning_snapshot["traffic_light_status"],
@@ -601,7 +605,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         elif due:
             ftp_retest = {**due, "reason": "stale", "slot": _scan_ftp_slot(target)}
     except Exception:
-        pass
+        logger.warning("_build_context failed", exc_info=True)
 
     # FIT threshold-evidence: stale FTP proposal from recent interval analysis
     stale_ftp = None
@@ -628,7 +632,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
                 return None
             stale_ftp["slot"] = _scan_ftp_slot2(target)
     except Exception:
-        pass
+        logger.warning("_build_context failed", exc_info=True)
 
     # HR calibration discrepancies from recent FIT meta
     hr_calibration = None
@@ -636,7 +640,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         from ..history import latest_hr_calibration
         hr_calibration = latest_hr_calibration()
     except Exception:
-        pass
+        logger.warning("_build_context failed", exc_info=True)
 
     # Nutrition pill for Today gate (full tile lives on /nutrition)
     nutrition_pill = None
@@ -677,6 +681,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "swap_suggestion": swap_suggestion,
         "today_verdict": today_verdict,
         "fatigue_alerts": fatigue_alerts,
+        "stale_data_notices": freshness_warnings(),
         "traffic_light": traffic_light,
         "modulation": modulation,
         "ftp_retest": ftp_retest,
@@ -1161,7 +1166,7 @@ def build_nutrition_today(m: DailyMetrics, target: date) -> Optional[dict]:
         if _rows:
             _tdee = _rows[-1].get("tdee")
     except Exception:
-        pass
+        logger.warning("build_nutrition_today failed", exc_info=True)
     nutrition_today = {
         "calories": int(m.calories_consumed),
         "tdee": int(round(_tdee)) if _tdee else None,
@@ -1186,7 +1191,7 @@ def build_nutrition_today(m: DailyMetrics, target: date) -> Optional[dict]:
             nutrition_today["ride_work_kj"] = round(kj_total)
             nutrition_today["ride_work_kcal"] = ride_kcal_from_kj(kj_total)
     except Exception:
-        pass
+        logger.warning("build_nutrition_today failed", exc_info=True)
     return nutrition_today
 
 
@@ -1252,7 +1257,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         from ..history import latest_weight_kg
         weight = latest_weight_kg()
     except Exception:
-        pass
+        logger.warning("_cut_context failed", exc_info=True)
 
     remaining = round(weight - CUT_TARGET_KG, 2) if weight is not None else None
     days_left = (CUT_TARGET_DEADLINE - today).days
@@ -1277,7 +1282,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         if slope_per_day is not None:
             actual_kg_per_week = round(slope_per_day * 7.0, 2)
     except Exception:
-        pass
+        logger.warning("_cut_context failed", exc_info=True)
 
     pace = None
     if required_kg_per_week is not None and actual_kg_per_week is not None and remaining is not None:
@@ -1311,7 +1316,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
     try:
         cal = tdee_calibration()
     except Exception:
-        pass
+        logger.warning("_cut_context failed", exc_info=True)
     conf = (cal or {}).get("confidence") or {}
     coverage = conf.get("intake_coverage_pct")
     conf_level = conf.get("level") or "inactive"
@@ -1321,7 +1326,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
     try:
         stable = stable_tdee_kcal(7)
     except Exception:
-        pass
+        logger.warning("_cut_context failed", exc_info=True)
 
     status_bits = [phase_label]
     if kidney_maint:
@@ -1443,7 +1448,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
                     "fat_pct": round(100 * f_k / logged_kcal),
                 }
     except Exception:
-        pass
+        logger.warning("_cut_context failed", exc_info=True)
 
     return {
         "show": show,
@@ -1564,13 +1569,13 @@ def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict
             from ..report import generate_weekly_briefing
             weekly_briefing = generate_weekly_briefing(week_sessions, _pmc_today, comp_z)
         except Exception:
-            pass
+            logger.warning("build_trends_context failed", exc_info=True)
 
     power_profile = None
     try:
         power_profile = build_power_profile()
     except Exception:
-        pass
+        logger.warning("build_trends_context failed", exc_info=True)
 
     power_snapshot = None
     try:
@@ -1586,6 +1591,7 @@ def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict
                 try:
                     sess = session_for_date_extended(date.fromisoformat(act["date"]))
                 except Exception:
+                    logger.warning("build_trends_context failed", exc_info=True)
                     sess = None
                 label = sess[1] if sess else ""
                 if label not in QUALITY_BIKE_LABELS:
@@ -1599,7 +1605,7 @@ def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict
                 }
                 break
     except Exception:
-        pass
+        logger.warning("build_trends_context failed", exc_info=True)
 
     workouts_stale_ftp = None
     try:
@@ -1607,7 +1613,7 @@ def build_trends_context(target: date, m: Optional[DailyMetrics] = None) -> dict
         if stale:
             workouts_stale_ftp = int(stale)
     except Exception:
-        pass
+        logger.warning("build_trends_context failed", exc_info=True)
 
     moderate_alerts = [
         a for a in check_fatigue_alerts(target) if a.get("severity") != "HIGH"
@@ -1839,6 +1845,7 @@ def _archive_context() -> dict[str, Any]:
                 extensions=["tables", "fenced_code", "nl2br"],
             )
         except Exception:
+            logger.warning("_archive_context failed", exc_info=True)
             narrative_html = f"<pre>{narrative_md}</pre>"
 
     mmp_narr_md = (findings.get("ai_narrative_mmp") or {}).get("markdown") or ""
@@ -1851,6 +1858,7 @@ def _archive_context() -> dict[str, Any]:
                 extensions=["tables", "fenced_code", "nl2br"],
             )
         except Exception:
+            logger.warning("_archive_context failed", exc_info=True)
             mmp_narrative_html = f"<pre>{mmp_narr_md}</pre>"
 
     # First paragraph-ish for hero
@@ -1954,6 +1962,7 @@ def _body_context() -> dict[str, Any]:
                 d = _date.fromisoformat(s)
                 out.append(d.strftime("%-d %b"))
             except Exception:
+                logger.warning("_body_context._short failed", exc_info=True)
                 out.append(s)
         return out
 
@@ -1990,7 +1999,7 @@ def _body_context() -> dict[str, Any]:
             _active_by_date[_di] = _t.get("active_calories")
             _active_est_by_date[_di] = _t.get("active_estimated")
     except Exception:
-        pass
+        logger.warning("_body_context failed", exc_info=True)
 
     def _row_iso(r):
         _d = r["date"]
@@ -2044,7 +2053,7 @@ def _body_context() -> dict[str, Any]:
             if _contrib:
                 cal_ctx["today_activities"] = _contrib
         except Exception:
-            pass
+            logger.warning("_body_context failed", exc_info=True)
     # Intake target from the single resolver (stable TDEE, maintenance/camp aware).
     try:
         _tt = nutrition_today_targets(_today)
@@ -2061,14 +2070,14 @@ def _body_context() -> dict[str, Any]:
             if _tt.get("phase"):
                 cal_ctx["intake_phase"] = _tt["phase"]
     except Exception:
-        pass
+        logger.warning("_body_context failed", exc_info=True)
     # Protein floor (lean-mass based) for the Protein Today tile.
     try:
         _pt = protein_target_g()
         cal_ctx["protein_low"] = _pt["low"]
         cal_ctx["protein_high"] = _pt["high"]
     except Exception:
-        pass
+        logger.warning("_body_context failed", exc_info=True)
     # 14-day macro averages
     carbs_vals   = [r["carbs_consumed"]   for r in recent_metrics if r.get("carbs_consumed")   is not None]
     protein_vals = [r["protein_consumed"] for r in recent_metrics if r.get("protein_consumed") is not None]
@@ -2092,7 +2101,7 @@ def _body_context() -> dict[str, Any]:
             cal_ctx["calibration_confidence"] = "inactive"
             cal_ctx["calibration_reasons"] = ["guardrails not met — using uncorrected model TDEE"]
     except Exception:
-        pass
+        logger.warning("_body_context failed", exc_info=True)
 
     # Calorie chart (last 14 days) — convert date objects to ISO strings for _short()
     _cal_rows   = [r for r in recent_metrics if r.get("calories_consumed") is not None]
@@ -2107,7 +2116,7 @@ def _body_context() -> dict[str, Any]:
         est_wkg = latest_estimated_wkg()
         measured_wkg = latest_measured_wkg()
     except Exception:
-        pass
+        logger.warning("_body_context failed", exc_info=True)
 
     return {
         "latest_body": latest_body,

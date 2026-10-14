@@ -7,10 +7,10 @@ day. This script unschedules all plan-generated calendar entries in a date range
 prefixes are touched), then optionally runs one clean re-sync.
 
 Usage:
-    python cleanup_duplicate_workouts.py                 # dry-run, 2026-06-30..2026-08-09
-    python cleanup_duplicate_workouts.py --apply         # actually unschedule
-    python cleanup_duplicate_workouts.py --apply --resync # unschedule + one clean re-sync
-    python cleanup_duplicate_workouts.py --start 2026-06-30 --end 2026-08-09 --apply
+    python scripts/cleanup_duplicate_workouts.py                 # dry-run, 2026-06-30..2026-08-09
+    python scripts/cleanup_duplicate_workouts.py --apply         # actually unschedule
+    python scripts/cleanup_duplicate_workouts.py --apply --resync # unschedule + one clean re-sync
+    python scripts/cleanup_duplicate_workouts.py --start 2026-06-30 --end 2026-08-09 --apply
 """
 from __future__ import annotations
 
@@ -38,7 +38,8 @@ def _load_env() -> None:
         load_dotenv(env_path)
         return
     load_dotenv()
-    fallback = Path.home() / ".ai_endurance_coach_over50" / ".env"
+    root = Path(os.environ["ENDURANCE_COACH_HOME"]) if os.environ.get("ENDURANCE_COACH_HOME") else Path.home() / ".ai_endurance_coach_over50"
+    fallback = root / ".env"
     if fallback.exists():
         load_dotenv(fallback, override=False)
 

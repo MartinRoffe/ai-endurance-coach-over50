@@ -1,6 +1,10 @@
 """activity_analyses table: schema, save/load, power patching."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import sqlite3
 from typing import Optional
@@ -35,7 +39,7 @@ def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
         try:
             con.execute(f"ALTER TABLE activity_analyses ADD COLUMN {col} {typ}")
         except Exception:
-            pass
+            logger.warning("_ensure_analysis_schema failed", exc_info=True)
 
 def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:
     with _conn() as con:

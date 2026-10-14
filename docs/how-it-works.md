@@ -110,5 +110,5 @@ plan sessions, recipes, and shopping items.
 | Readiness, CTL/ATL/TSB, HRV light | [Key Concepts](concepts.md) |
 | Power meter and dual-channel model | [Power Training](power-training.md) |
 | Each dashboard tab | Readiness → Coach pages in this Help sidebar |
-| Email, launchd, CLI flags | [Email & Automation](email-and-automation.md) |
+| Email, scheduling, CLI flags | [Email & Automation](email-and-automation.md) |
 | Stuck? | [FAQ](faq.md) |

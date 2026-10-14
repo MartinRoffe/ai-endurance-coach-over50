@@ -39,8 +39,11 @@ def test_email_live_send_ignores_past_date(monkeypatch):
     monkeypatch.setenv("GARMIN_EMAIL", "u@example.com")
     monkeypatch.setenv("GARMIN_PASSWORD", "pw")
 
-    sentinel = cli.Path.home() / ".ai_endurance_coach_over50" / f"sent_{today.isoformat()}"
-    sentinel.unlink(missing_ok=True)
+    from ai_endurance_coach_over50.paths import data_dir
+
+    sentinel = data_dir() / f"sent_{today.isoformat()}"
+    assert sentinel.parent == data_dir()
+    assert data_dir() != cli.Path.home() / ".ai_endurance_coach_over50"
 
     with patch.object(cli.sys, "argv", ["endurance-coach", "--email", "--date", past.isoformat()]):
         try:
@@ -50,4 +53,4 @@ def test_email_live_send_ignores_past_date(monkeypatch):
 
     assert sent["called"] is True
     assert sentinel.exists()
-    sentinel.unlink(missing_ok=True)
+    assert sentinel.is_relative_to(data_dir())

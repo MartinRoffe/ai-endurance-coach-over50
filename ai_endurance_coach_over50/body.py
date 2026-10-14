@@ -16,7 +16,7 @@ def fetch_body_composition(api, days: int = 90) -> list[dict]:
             start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
         )
     except Exception as e:
-        logger.debug("Body composition fetch failed: %s", e)
+        logger.warning("Body composition fetch failed: %s", e)
         return []
 
     if not data or not isinstance(data, dict):
@@ -72,7 +72,7 @@ def fetch_blood_pressure(api, days: int = 90) -> list[dict]:
             start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
         )
     except Exception as e:
-        logger.debug("Blood pressure fetch failed: %s", e)
+        logger.warning("Blood pressure fetch failed: %s", e)
         return []
 
     if not data or not isinstance(data, dict):

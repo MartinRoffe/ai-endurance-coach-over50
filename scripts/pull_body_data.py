@@ -4,14 +4,15 @@
 Pulls body composition, VO2max, resting HR, blood pressure and nutrition
 intake from the local history.db. Does NOT modify anything. Just run:
 
-    python3 pull_body_data.py
+    python3 scripts/pull_body_data.py
 
 Then paste the printed summary back to the coach.
 """
 import os, sqlite3, statistics
 from datetime import date, timedelta
 
-DB = os.path.expanduser("~/.ai_endurance_coach_over50/history.db")
+_home = os.environ.get("ENDURANCE_COACH_HOME") or os.path.expanduser("~/.ai_endurance_coach_over50")
+DB = os.path.join(_home, "history.db")
 if not os.path.exists(DB):
     raise SystemExit(f"DB not found at {DB} — adjust the path at top of this script.")
 

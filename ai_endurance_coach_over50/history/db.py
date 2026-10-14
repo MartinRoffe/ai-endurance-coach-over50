@@ -8,12 +8,14 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import fields
-from pathlib import Path
 
 from ..metrics import DailyMetrics, TEXT_FIELDS
+from ..paths import data_dir
 
 
-DB_PATH = Path.home() / ".ai_endurance_coach_over50" / "history.db"
+# Tests patch this attribute; _conn() reads it at call time. The default follows
+# ENDURANCE_COACH_HOME when that variable is set before import.
+DB_PATH = data_dir() / "history.db"
 
 
 NUMERIC_FIELDS = [

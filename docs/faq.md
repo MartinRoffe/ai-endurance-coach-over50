@@ -50,7 +50,7 @@ block the mic).
 
 **Speaking** uses [ElevenLabs](https://elevenlabs.io) when `ELEVENLABS_API_KEY`
 is set in `.env` (and in `~/.ai_endurance_coach_over50/.env` if you use
-launchd). Without it, replies use the browser's built-in voice. Optional:
+launchd or systemd). Without it, replies use the browser's built-in voice. Optional:
 `ELEVENLABS_VOICE_ID` to pick a different voice. Restart the server after
 changing keys. Text chat always works; plan changes still need **Apply**. See
 [Coach](tabs/coach.md).

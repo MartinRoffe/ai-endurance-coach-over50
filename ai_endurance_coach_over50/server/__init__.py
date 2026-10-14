@@ -230,9 +230,11 @@ def dashboard(request: Request, date: Optional[str] = None, msg: Optional[str] =
 
 @app.get("/send-email", response_class=RedirectResponse)
 def send_email_now():
-    from pathlib import Path
+    from ..history import sync_garmin_metrics
+    from ..paths import data_dir
     today = _today()
-    sentinel = Path.home() / ".ai_endurance_coach_over50" / f"sent_{today.isoformat()}"
+    sentinel = data_dir() / f"sent_{today.isoformat()}"
+    sentinel.parent.mkdir(parents=True, exist_ok=True)
     if sentinel.exists():
         return RedirectResponse(url="/?msg=already_sent", status_code=303)
 
@@ -242,12 +244,9 @@ def send_email_now():
     if email_addr and password:
         try:
             api = get_api(email_addr, password)
-            raw = fetch_metrics(api, today)
-            if raw:
-                save(raw)
-                m = raw
+            m = sync_garmin_metrics(api, today)
         except Exception:
-            pass
+            logger.exception("send-email Garmin refresh failed; using cached metrics")
     if m is None:
         m = load(today)
 
@@ -263,7 +262,7 @@ def send_email_now():
         return RedirectResponse(url="/?msg=sent", status_code=303)
     except Exception as e:
         sentinel.unlink(missing_ok=True)
-        logger.error("send-email failed: %s", e)
+        logger.exception("send-email failed")
         return RedirectResponse(url="/?msg=error", status_code=303)
 
 
@@ -318,6 +317,7 @@ def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 
             try:
                 sess = session_for_date_extended(date.fromisoformat(a["date"]))
             except Exception:
+                logger.exception("_enrich_analysis_activities failed")
                 sess = None
             if sess and sess[0] != "rest" and sess[2] >= 75:
                 prefetch_sessions.add((sess[0], sess[2]))
@@ -334,6 +334,7 @@ def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 
             try:
                 sess = session_for_date_extended(date.fromisoformat(a["date"]))
             except Exception:
+                logger.exception("_enrich_analysis_activities failed")
                 sess = None
             if sess and sess[0] != "rest" and sess[2]:
                 ref_min = sess[2]
@@ -344,7 +345,7 @@ def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 
                 a["planned_fuel"] = default_fuelling_plan(ref_min)
             a["fuel_log"] = fuel_logs.get(str(a.get("activity_id")))
     except Exception:
-        pass
+        logger.exception("_enrich_analysis_activities failed")
 
     try:
         from ..history import _weight_kg_on_date, load_body_metrics
@@ -359,7 +360,7 @@ def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 
                 if w:
                     a["ftp_wkg"] = round(ftp_w / w, 2)
     except Exception:
-        pass
+        logger.exception("_enrich_analysis_activities failed")
 
     for a in activities:
         try:
@@ -377,7 +378,7 @@ def _enrich_analysis_activities(activities: list[dict], *, fuel_log_days: int = 
                 a["fit_climbs"] = climbs
                 a["n_climbs"] = len(climbs)
         except Exception:
-            pass
+            logger.exception("_enrich_analysis_activities failed")
 
     return activities
 
@@ -391,7 +392,7 @@ def analysis_view(request: Request):
             api = get_api(email_addr, password)
             sync_power_data(api, days=14)
         except Exception:
-            pass
+            logger.exception("analysis_view failed")
     activities = _enrich_analysis_activities(load_recent_activities(days=14))
     rpe_by_activity = {
         str(r["activity_id"]): r
@@ -403,7 +404,7 @@ def analysis_view(request: Request):
         from ..history import gut_training_summary
         gut_training = gut_training_summary(date.today())
     except Exception:
-        pass
+        logger.exception("analysis_view failed")
     return TEMPLATES.TemplateResponse(
         request=request,
         name="analysis.html",
@@ -554,7 +555,7 @@ async def climbs_pin(body: _PinClimbRequest, _=Depends(_require_auth)):
             meta["climb_essays"] = essays
             save_fit_activity_meta(body.activity_id, meta)
     except Exception:
-        pass
+        logger.exception("climbs_pin failed")
     return JSONResponse({
         "ok": True,
         "named_climb_id": named_id,
@@ -728,7 +729,7 @@ async def accept_ftp_estimate(body: _AcceptFtpRequest, _=Depends(_require_auth))
         try:
             mark_stale_ftp_accepted(int(body.activity_id))
         except Exception:
-            pass
+            logger.exception("accept_ftp_estimate failed")
     return JSONResponse({"ok": True, "ftp_w": body.ftp_w, "date": test_date})
 
 
@@ -776,7 +777,7 @@ async def upload_fit(request: Request, _=Depends(_require_auth)):
                             None,
                         )
                     except Exception:
-                        pass
+                        logger.exception("upload_fit failed")
         if matched is None:
             return JSONResponse({
                 "ok": False,
@@ -799,6 +800,7 @@ async def upload_fit(request: Request, _=Depends(_require_auth)):
             "climbs": result.get("climbs") or [],
         })
     except Exception as exc:
+        logger.exception("upload_fit failed")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
 
@@ -824,7 +826,7 @@ def activate_power(days: int = 30):
         try:
             refresh_power_backfill(api, days=max(7, min(days, 90)))
         except Exception:
-            pass
+            logger.exception("activate_power failed")
     return RedirectResponse(url="/performance", status_code=303)
 
 
@@ -842,15 +844,15 @@ def analysis_refresh():
                 save_activities(acts_raw)
                 enrich_activities_power(api, acts_raw)
             except Exception:
-                pass
+                logger.exception("analysis_refresh failed")
         try:
             sync_power_data(api, days=14)
         except Exception:
-            pass
+            logger.exception("analysis_refresh failed")
         try:
             refresh_analyses(api, days=14)
         except Exception:
-            pass
+            logger.exception("analysis_refresh failed")
     return RedirectResponse(url="/analysis", status_code=303)
 
 
@@ -963,7 +965,7 @@ async def performance_view(request: Request):
         try:
             taper_scenarios = _taper_scenarios(_ctl_now, _atl_now)
         except Exception:
-            pass
+            logger.exception("performance_view failed")
 
     # Intensity distribution by week
     zone_dist_by_week = intensity_distribution_by_week(_PLAN_START, date.today())
@@ -1220,7 +1222,7 @@ async def calendar_view(request: Request):
                 if plan:
                     charity_plans.append({**cd, "plan": plan})
     except Exception:
-        pass
+        logger.exception("calendar_view failed")
     ctx["charity_plans"] = charity_plans
     from ..medical import medical_pause_banner, CHARITY_CANCELLED
     ctx["medical_banner"] = medical_pause_banner(date.today())
@@ -1336,7 +1338,7 @@ async def nutrition_plan(request: Request):
         if _rows:
             _tdee_today = _rows[-1].get("tdee")
     except Exception:
-        pass
+        logger.exception("nutrition_plan failed")
     cycle_week = cycle_week_index(_PLAN_START, today)
     checklist = today_checklist(_PLAN_START, today)
     today_food = build_today_food(_PLAN_START, today)
@@ -1628,6 +1630,7 @@ def haute_route_view(request: Request):
             stage_plans = generate_hr_stage_plans()
             peak_decoupling_flags = peak_sim_decoupling_flags(weeks)
         except Exception:
+            logger.exception("haute_route_view failed")
             weeks = build_hr_calendar_weeks()
 
     from ..nutrition_plan import CAMP_NUTRITION
@@ -1722,7 +1725,7 @@ def body_refresh():
             if bp_readings:
                 save_blood_pressure(bp_readings)
         except Exception:
-            pass
+            logger.exception("body_refresh failed")
     return RedirectResponse(url="/body", status_code=303)
 
 
@@ -1801,8 +1804,10 @@ def nutrition_test():
             try:
                 out[method] = getattr(api, method)(today_str)
             except Exception as exc:
+                logger.exception("nutrition_test failed")
                 out[method] = {"error": str(exc)}
     except Exception as exc:
+        logger.exception("nutrition_test failed")
         out["error"] = f"API init failed: {exc}"
     return JSONResponse(out)
 
@@ -2016,6 +2021,12 @@ async def coach_memory_update():
     return JSONResponse({"memo": memo["memo"] if memo else ""})
 
 
-def run(host: str = "0.0.0.0", port: int = 8743) -> None:
+def run(host: str = "127.0.0.1", port: int = 8743) -> None:
+    """Serve the dashboard. The default bind is localhost only.
+
+    Reach it from another device with Tailscale (``tailscale serve --bg 8743``).
+    Do not bind ``0.0.0.0`` on a network you do not trust, and set
+    ``DASHBOARD_USER`` / ``DASHBOARD_PASSWORD`` if you do.
+    """
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="warning")

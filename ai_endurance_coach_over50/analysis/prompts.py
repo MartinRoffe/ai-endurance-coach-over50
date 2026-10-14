@@ -1,6 +1,10 @@
 """Analysis prompt builders, coach system prompts, and rule-based fallbacks."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date
 from typing import Optional
 
@@ -151,7 +155,7 @@ def _fuelling_context_lines(
             fluid_ok = bool(match.get("fluid_ok"))
             note = match.get("note")
     except Exception:
-        pass
+        logger.warning("_fuelling_context_lines failed", exc_info=True)
 
     if planned is None and act_date:
         try:
@@ -159,6 +163,7 @@ def _fuelling_context_lines(
             d_obj = date.fromisoformat(act_date)
             planned = gut_training_target_g_per_hr(d_obj) if dur_min >= 150 else 55
         except Exception:
+            logger.warning("_fuelling_context_lines failed", exc_info=True)
             planned = 90 if dur_min >= 150 else 55
 
     lines: list[str] = []
@@ -282,7 +287,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
             sess_early = session_for_date_extended(d_obj)
             _is_ftp = bool(sess_early and sess_early[1] in _ftp_labels)
         except Exception:
-            pass
+            logger.warning("_build_analysis_prompt failed", exc_info=True)
     this_test_effort_w = detail.get("ftp_effort_avg_w")
     this_test_ftp = detail.get("ftp_w")
     if this_test_ftp is None and this_test_effort_w:
@@ -342,7 +347,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                         break
             ftp_stale = ftp_retest_due(d_obj or date.today(), plan_start=PLAN_START) is not None
         except Exception:
-            pass
+            logger.warning("_build_analysis_prompt failed", exc_info=True)
 
     # Garmin computes the power time-in-zone buckets against the FTP in the
     # athlete's Garmin *profile*, which this app never sets, reads, or reconciles
@@ -498,7 +503,7 @@ def _build_analysis_prompt(activity: dict, detail: dict, companion: Optional[dic
                         f"final-third {dur_row.get('final_third_hr') or 0:.0f} bpm)"
                     )
         except Exception:
-            pass
+            logger.warning("_build_analysis_prompt failed", exc_info=True)
 
     fuelling_lines = _fuelling_context_lines(activity, fuel_fade=fuel_fade)
 

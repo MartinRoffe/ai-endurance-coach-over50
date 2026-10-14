@@ -1,6 +1,10 @@
 """12-week training plan data and lookup helpers."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import date, timedelta
 
 # Each week: list of 7 sessions Mon–Sun, each (type, label, duration_min)
@@ -550,7 +554,7 @@ def coach_notes_merged() -> dict[str, str]:
         from .history import list_session_notes
         notes.update(list_session_notes())
     except Exception:
-        pass
+        logger.warning("coach_notes_merged failed", exc_info=True)
     return notes
 
 
