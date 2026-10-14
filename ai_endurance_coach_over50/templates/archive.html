@@ -364,13 +364,13 @@ python archive/garmin_mmp.py --force-ai</pre>
     {% if narrative_html %}
     <details {% if not mmp_narrative_html %}open{% endif %}>
       <summary style="cursor:pointer;color:var(--muted);font-size:12px;margin-bottom:12px">Stage 2 write-up (summary proxies)</summary>
-      <div class="narrative">{{ narrative_html | safe }}</div>
+      <div class="narrative">{{ narrative_html }}</div>
     </details>
     {% endif %}
     {% if mmp_narrative_html %}
     <details open style="margin-top:12px">
       <summary style="cursor:pointer;color:var(--muted);font-size:12px;margin-bottom:12px">MMP addendum (FIT streams)</summary>
-      <div class="narrative">{{ mmp_narrative_html | safe }}</div>
+      <div class="narrative">{{ mmp_narrative_html }}</div>
     </details>
     {% elif not narrative_html %}
     <p style="color:var(--muted);font-size:13px">No AI narrative yet — re-run analysis with ANTHROPIC_API_KEY set.</p>

@@ -171,6 +171,8 @@ def render_help_page(page_id: str) -> Optional[HelpPage]:
     converter.reset()
     body = converter.convert(raw)
     body = _rewrite_md_links(body, rel)
+    from ..html_sanitize import sanitize_html
+    body = sanitize_html(body)
     return HelpPage(
         page_id=page_id,
         title=HELP_TITLES.get(page_id, page_id),

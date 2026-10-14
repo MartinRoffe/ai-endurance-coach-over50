@@ -93,6 +93,14 @@
     }
   }
 
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function render(container, proposal, opts) {
     opts = opts || {};
     const accent = opts.accent || '#60a5fa';
@@ -116,16 +124,19 @@
     const newDur = proposal.duration_min;
     let bodyHtml = '';
     if (fromLabel && fromLabel !== newLabel) {
-      bodyHtml = '<p style="margin:0 0 4px"><span style="color:var(--muted)">Was:</span> ' + fromLabel
-        + (fromDur ? ' (' + fromDur + ' min)' : '') + '</p>'
-        + '<p style="margin:0"><span style="color:var(--muted)">→</span> <strong>' + newLabel + '</strong> (' + newDur + ' min)</p>';
+      bodyHtml = '<p style="margin:0 0 4px"><span style="color:var(--muted)">Was:</span> ' + esc(fromLabel)
+        + (fromDur ? ' (' + esc(fromDur) + ' min)' : '') + '</p>'
+        + '<p style="margin:0"><span style="color:var(--muted)">→</span> <strong>' + esc(newLabel) + '</strong> (' + esc(newDur) + ' min)</p>';
     } else if (fromDur && fromDur !== newDur) {
-      bodyHtml = '<p style="margin:0"><strong>' + newLabel + '</strong>: ' + fromDur + ' min → <strong>' + newDur + ' min</strong></p>';
+      bodyHtml = '<p style="margin:0"><strong>' + esc(newLabel) + '</strong>: ' + esc(fromDur) + ' min → <strong>' + esc(newDur) + ' min</strong></p>';
     } else {
-      bodyHtml = '<p style="margin:0"><strong>' + newLabel + '</strong> · ' + newDur + ' min</p>';
+      bodyHtml = '<p style="margin:0"><strong>' + esc(newLabel) + '</strong> · ' + esc(newDur) + ' min</p>';
     }
     if (proposal.reason) {
-      bodyHtml += '<p style="font-size:12px;color:var(--muted);margin-top:6px;margin-bottom:0">' + proposal.reason + '</p>';
+      bodyHtml += '<p style="font-size:12px;color:var(--muted);margin-top:6px;margin-bottom:0">' + esc(proposal.reason) + '</p>';
+    }
+    if (proposal.safety_line && String(proposal.reason || '').indexOf(proposal.safety_line) === -1) {
+      bodyHtml += '<p style="font-size:12px;color:#fbbf24;margin-top:6px;margin-bottom:0">' + esc(proposal.safety_line) + '</p>';
     }
 
     card.innerHTML =

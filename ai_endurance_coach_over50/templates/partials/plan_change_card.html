@@ -1,5 +1,5 @@
 {# Unified plan-change card — server-rendered via macro or client via PlanChange.render() #}
-{% macro plan_change_card(proposal, card_id='', show_dismiss=false, accent='#60a5fa', intro_html='') %}
+{% macro plan_change_card(proposal, card_id='', show_dismiss=false, accent='#60a5fa', intro='') %}
 <div class="plan-change-card card" id="{{ card_id }}"
      style="padding:14px 20px;margin-bottom:12px;border-left:3px solid {{ accent }};background:rgba(96,165,250,0.05)"
      data-date="{{ proposal.date }}"
@@ -13,8 +13,8 @@
   <p class="plan-change-eyebrow" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:{{ accent }};margin-bottom:8px">
     Proposed Plan Change{% if proposal.date_display %} · {{ proposal.date_display }}{% elif proposal.date %} · {{ proposal.date }}{% endif %}
   </p>
-  {% if intro_html %}
-  <div class="plan-change-intro" style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">{{ intro_html | safe }}</div>
+  {% if intro %}
+  <div class="plan-change-intro" style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:10px">{{ intro }}</div>
   {% else %}
   <div class="plan-change-body" style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px">
     {% if proposal.from_label and proposal.from_label != proposal.label %}

@@ -200,7 +200,7 @@
           <td class="meal-type-cell">{{ m.type }}</td>
           <td>
             <div class="meal-name">{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
-            {% if m.detail_html %}<div class="meal-detail">{{ m.detail_html | safe }}</div>
+            {% if m.detail_html %}<div class="meal-detail">{{ m.detail_html }}</div>
             {% elif m.detail %}<div class="meal-detail">{{ m.detail }}</div>{% endif %}
             <div class="meal-macros">
               <span class="macro m-kcal">{{ m.macros.kcal }} kcal</span>

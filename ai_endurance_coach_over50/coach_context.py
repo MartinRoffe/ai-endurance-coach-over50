@@ -512,6 +512,24 @@ def _section_timing(timing: dict[str, Any], target: date) -> list[str]:
     return lines
 
 
+def _section_safety_caps(target: date) -> list[str]:
+    """Hard caps for this week. The plan line above stays; this one wins."""
+    from .safety import prescribed_week
+
+    monday = target - timedelta(days=target.weekday())
+    days = prescribed_week(monday)
+    changed = [d for d in days if d.changed and d.reason]
+    if not changed:
+        return []
+    lines = ["## Safety caps (hard limits — do not prescribe around these)"]
+    for d in changed:
+        lines.append(
+            f"  {d.date.isoformat()}: {d.reason} → {d.session[1]} ({d.session[2]} min); "
+            f"plan was {d.original[1]} ({d.original[2]} min)"
+        )
+    return lines
+
+
 def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None) -> list[str]:
     session = resolve_today_session(target)
     if not session:
@@ -969,6 +987,8 @@ def build_advice_context(target: date, timing: Optional[dict[str, Any]] = None) 
         *_section_alerts(target),
         "",
         *_section_today_session(target, timing),
+        "",
+        *_section_safety_caps(target),
         "",
         *_section_week_ahead(target),
         "",
@@ -1865,6 +1885,8 @@ def build_coach_context() -> str:
     ftp_flag_parts = _section_ftp_flags(today)
     history_rebuild_parts = _section_history_rebuild()
 
+    safety_parts = _section_safety_caps(today)
+
     parts = [
         f"Today: {today.strftime('%A %d %B %Y')}",
         "",
@@ -1884,6 +1906,7 @@ def build_coach_context() -> str:
         *([*weekly_briefing_parts, ""] if weekly_briefing_parts else []),
         *([*session_rx_parts, ""] if session_rx_parts else []),
         *([*ftp_flag_parts, ""] if ftp_flag_parts else []),
+        *([*safety_parts, ""] if safety_parts else []),
         *([*phase_nutrition_parts, ""] if phase_nutrition_parts else []),
         *([*alert_parts, ""] if alert_parts else []),
         *([*interference_parts, ""] if interference_parts else []),

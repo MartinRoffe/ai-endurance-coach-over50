@@ -177,6 +177,9 @@
         </div>
         {% if fs.dur_fmt %}<p style="font-family:var(--font-m);font-size:18px;color:var(--text-dim);margin:0">{{ fs.dur_fmt }}</p>{% endif %}
       </div>
+      {% if tv.safety_line %}
+      <p style="margin:10px 0 0;font-family:var(--font-m);font-size:12px;color:#fbbf24">{{ tv.safety_line }}</p>
+      {% endif %}
       {% if tv.apply and not post_workout %}
       <div style="margin-top:14px">
         {{ plan_change_card(tv.apply, accent=_vc) }}
@@ -216,7 +219,7 @@
   {# FTP retest / power baseline — unified plan change card #}
   {% if ftp_retest and ftp_retest.slot and not post_workout %}
   {% if ftp_retest.reason == 'power_baseline' %}
-  {% set _ftp_intro = '<p style="margin:0">' ~ ftp_retest.message ~ '. Suggested slot: <strong style="color:var(--text)">' ~ ftp_retest.slot.date_str ~ '</strong> (currently ' ~ ftp_retest.slot.current_label ~ ').</p>' %}
+  {% set _ftp_intro = ftp_retest.message ~ '. Suggested slot: ' ~ ftp_retest.slot.date_str ~ ' (currently ' ~ ftp_retest.slot.current_label ~ ').' %}
   {{ plan_change_card({
     'date': ftp_retest.slot.date,
     'duration_min': 45,
@@ -225,9 +228,9 @@
     'reason': 'Power meter active — schedule ramp FTP baseline',
     'from_label': ftp_retest.slot.current_label,
     'date_display': ftp_retest.slot.date_str,
-  }, intro_html=_ftp_intro) }}
+  }, intro=_ftp_intro) }}
   {% else %}
-  {% set _ftp_intro = '<p style="margin:0">' ~ ('Last FTP test was ' ~ ftp_retest.age_days ~ ' days ago (' ~ ftp_retest.last_date ~ ').' if ftp_retest.age_days else 'No FTP test logged yet.') ~ ' Suggested slot: <strong style="color:var(--text)">' ~ ftp_retest.slot.date_str ~ '</strong> (currently ' ~ ftp_retest.slot.current_label ~ ').</p>' %}
+  {% set _ftp_intro = ('Last FTP test was ' ~ ftp_retest.age_days ~ ' days ago (' ~ ftp_retest.last_date ~ ').' if ftp_retest.age_days else 'No FTP test logged yet.') ~ ' Suggested slot: ' ~ ftp_retest.slot.date_str ~ ' (currently ' ~ ftp_retest.slot.current_label ~ ').' %}
   {{ plan_change_card({
     'date': ftp_retest.slot.date,
     'duration_min': 60,
@@ -236,7 +239,7 @@
     'reason': 'Auto-suggested: last test >42 days old',
     'from_label': ftp_retest.slot.current_label,
     'date_display': ftp_retest.slot.date_str,
-  }, intro_html=_ftp_intro) }}
+  }, intro=_ftp_intro) }}
   {% endif %}
   {% elif ftp_retest and not ftp_retest.slot %}
   <div class="card" style="padding:14px 20px;margin-bottom:12px;border-left:3px solid #60a5fa">
@@ -266,7 +269,7 @@
     <p id="accept-ftp-msg" style="font-size:11px;color:var(--muted);margin-top:4px;display:none"></p>
   </div>
   {% if stale_ftp.slot %}
-  {% set _retest_intro = '<p style="margin:0">Or schedule a formal FTP retest on <strong style="color:var(--text)">' ~ stale_ftp.slot.date_str ~ '</strong> (currently ' ~ stale_ftp.slot.current_label ~ ').</p>' %}
+  {% set _retest_intro = 'Or schedule a formal FTP retest on ' ~ stale_ftp.slot.date_str ~ ' (currently ' ~ stale_ftp.slot.current_label ~ ').' %}
   {{ plan_change_card({
     'date': stale_ftp.slot.date,
     'duration_min': 60,
@@ -275,7 +278,7 @@
     'reason': 'Schedule retest after threshold evidence',
     'from_label': stale_ftp.slot.current_label,
     'date_display': stale_ftp.slot.date_str,
-  }, intro_html=_retest_intro, accent='#fbbf24') }}
+  }, intro=_retest_intro, accent='#fbbf24') }}
   {% endif %}
   <script>
   (function(){

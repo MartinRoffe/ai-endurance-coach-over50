@@ -18,6 +18,7 @@ dependencies = [
     "markdown>=3.5",
     "fitdecode>=0.10",
     "python-multipart>=0.0.9",  # FastAPI UploadFile for POST /upload-fit
+    "bleach>=6.1",  # sanitise markdown HTML before it is marked safe
 ]
 
 [project.optional-dependencies]
