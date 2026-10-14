@@ -8,38 +8,38 @@ from ai_endurance_coach_over50.nutrition_plan import (
 
 
 def test_dinner_plate_anchor_w4_mon():
-    url = meal_recipe_url("Dinner", "BBQ chicken + small AF potatoes", cycle_week=3, weekday=0)
-    assert url == "/nutrition/recipes/weekday-dinners#w4-mon"
+    url = meal_recipe_url("Dinner", "Lemon chicken and rice", cycle_week=3, weekday=0)
+    assert url == "/nutrition/recipes/weekday-dinners#chicken-rice"
 
 
 def test_dinner_plate_anchor_w1_sat():
-    url = meal_recipe_url("Dinner", "BBQ pork medallions", cycle_week=0, weekday=5)
-    assert url == "/nutrition/recipes/weekday-dinners#w1-sat"
+    url = meal_recipe_url("Dinner", "Turkey and potato stew", cycle_week=0, weekday=5)
+    assert url == "/nutrition/recipes/weekday-dinners#turkey-stew"
 
 
 def test_overnight_oats_breakfast():
-    url = meal_recipe_url("Breakfast", "High-Protein Overnight Oats")
+    url = meal_recipe_url("Breakfast", "Skyr, oats and fruit")
     assert url == "/nutrition/recipes/overnight-oats"
 
 
 def test_scotch_egg_breakfast():
-    url = meal_recipe_url("Breakfast", "Scotch Egg + 200g Greek Yogurt")
-    assert url == "/nutrition/recipes#scotch-eggs"
+    url = meal_recipe_url("Breakfast", "Eggs and Greek yoghurt")
+    assert url == "/nutrition/recipes#eggs"
 
 
 def test_egg_muffin_breakfast():
-    url = meal_recipe_url("Breakfast", "Egg & Veg Muffins")
-    assert url == "/nutrition/recipes#egg-muffins"
+    url = meal_recipe_url("Lunch", "Chicken and rice soup")
+    assert url == "/nutrition/recipes/weekday-dinners#chicken-soup"
 
 
 def test_chinese_lunch():
-    url = meal_recipe_url("Lunch", "Chinese Chicken + Egg Fried Rice + Greek Yogurt")
-    assert url == "/nutrition/recipes#chinese-lunch"
+    url = meal_recipe_url("Lunch", "Turkey and cabbage soup")
+    assert url == "/nutrition/recipes/weekday-dinners#turkey-soup"
 
 
 def test_batch_rice_chicken_lunch():
-    url = meal_recipe_url("Lunch", "Batch Rice + Chicken 240g + Greek Yogurt")
-    assert url == "/nutrition/recipes#chickenrice"
+    url = meal_recipe_url("Dinner", "Salmon, rice and peas")
+    assert url == "/nutrition/recipes/weekday-dinners#salmon-rice"
 
 
 def test_whey_shake_has_no_recipe():

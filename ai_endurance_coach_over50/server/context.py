@@ -265,18 +265,6 @@ def _build_today_verdict(
                 "changed": False, "from_label": None,
             }
         )
-        nutrition = None
-        try:
-            tt = nutrition_today_targets(target)
-            nutrition = {
-                "kcal": tt["kcal"],
-                "protein_low": tt["protein_low"],
-                "protein_high": tt["protein_high"],
-                "carbs_g_per_hr": tt["carbs_g_per_hr"],
-                "maintenance": tt["maintenance"],
-            }
-        except Exception:
-            logger.warning("_build_today_verdict failed", exc_info=True)
         return {
             "status": "medical",
             "final_session": final_session,
@@ -286,7 +274,7 @@ def _build_today_verdict(
                 "Use the app for readiness, sleep, body, BP, and hydration — "
                 "not for race-week load. Extend the pause end date after follow-up."
             ),
-            "nutrition": nutrition,
+            "nutrition": _verdict_nutrition(target),
         }
 
     status = (traffic_light or {}).get("status") or "unknown"
@@ -354,19 +342,7 @@ def _build_today_verdict(
         else:
             hint = "Readiness is low — consider reducing intensity or cutting this session short."
 
-    # One-line nutrition prescription from the single resolver.
-    nutrition = None
-    try:
-        tt = nutrition_today_targets(target)
-        nutrition = {
-            "kcal": tt["kcal"],
-            "protein_low": tt["protein_low"],
-            "protein_high": tt["protein_high"],
-            "carbs_g_per_hr": tt["carbs_g_per_hr"],
-            "maintenance": tt["maintenance"],
-        }
-    except Exception:
-        logger.warning("_build_today_verdict failed", exc_info=True)
+    nutrition = _verdict_nutrition(target)
 
     return {
         "status": status,
@@ -1043,18 +1019,23 @@ def _travel_checklist_context() -> dict:
 def _shopping_list_context() -> dict:
     """Cycle week for nutrition shopping lists (Fri–Sun → next Monday's week)."""
     today = _today()
+    from ..meal_library import cook_plan, shopping_list
     from ..nutrition_plan import prep_cycle_week_index
     cycle_week = prep_cycle_week_index(_PLAN_START, today)
     labels = [
-        "Week 1 — build",
-        "Week 2 — build",
-        "Week 3 — build",
-        "Week 4 — recovery",
+        "Week 1",
+        "Week 2",
+        "Week 3",
+        "Week 4",
     ]
+    plan = cook_plan(cycle_week)
     return {
         "cycle_week": cycle_week,
         "cycle_week_label": labels[cycle_week],
-        "week_mode": "recovery" if cycle_week == 3 else "build",
+        "week_mode": "batch",
+        "pots": [m["name"] for m in plan["pots"]],
+        "soups": [m["name"] for m in plan["soups"]],
+        "groups": shopping_list(cycle_week),
     }
 
 
@@ -1279,6 +1260,30 @@ def cut_status_line(ref: date | None = None) -> Optional[dict]:
     }
 
 
+def _verdict_nutrition(target: date) -> dict | None:
+    """Four numbers for the readiness verdict. Same source as Nutrition Today."""
+    try:
+        from ..nutrition_plan import today_card
+        card = today_card(target)
+    except Exception:
+        logger.warning("_verdict_nutrition failed", exc_info=True)
+        return None
+    return {
+        "kcal": card["kcal"],
+        "protein_g": card["protein_g"],
+        "protein_line": card["protein_line"],
+        "carbs_g": card["carbs_g"],
+        "carbs_line": card["carbs_line"],
+        "fluids": card["fluids"],
+        "habit": card["habit"],
+        "kind_label": card["kind_label"],
+        "maintenance": card["maintenance"],
+        "protein_low": card["protein_low"],
+        "protein_high": card["protein_high"],
+        "carbs_g_per_hr": card["carbs_g_per_hr"],
+    }
+
+
 def _cut_context(ref: date | None = None) -> dict[str, Any]:
     """Context for the Base Cut page (/nutrition/cut)."""
     from ..energy import (
@@ -1286,7 +1291,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         CUT_PHASES,
         CUT_TARGET_DEADLINE,
         CUT_TARGET_KG,
-        INTAKE_DEFICIT_BY_TIER,
+        DAY_DEFICIT_KCAL,
         KCAL_PER_KG,
         MAINTENANCE_WINDOWS,
         active_cut_phase,
@@ -1434,31 +1439,18 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         },
     ]
 
-    deficit_rows = []
-    for tier in ("rest", "training", "hard", "ruck", "long", "recovery"):
-        deficit_rows.append({
-            "tier": tier,
-            "hard": CUT_DEFICIT_BY_PHASE["hard"].get(tier),
-            "ease": CUT_DEFICIT_BY_PHASE["ease"].get(tier, INTAKE_DEFICIT_BY_TIER.get(tier)),
-        })
+    deficit_rows = [
+        {"tier": "Easy", "kcal": DAY_DEFICIT_KCAL["easy"]},
+        {"tier": "Hard", "kcal": DAY_DEFICIT_KCAL["hard"]},
+        {"tier": "Long", "kcal": DAY_DEFICIT_KCAL["long"]},
+    ]
 
-    # Weekly budget strip — typical week mix under current phase deficits.
+    # Weekly budget: five easy days, one hard day, one long day.
     weekly_budget = None
-    if phase_key in ("hard", "ease"):
-        defs = (
-            CUT_DEFICIT_BY_PHASE["hard"]
-            if phase_key == "hard"
-            else CUT_DEFICIT_BY_PHASE["ease"]
-        )
-        # 2 rest-like + 3 training + 1 ruck + 1 long (illustrative week shape)
+    if phase_key == "ease":
+        defs = CUT_DEFICIT_BY_PHASE["ease"]
         avg_daily = round(
-            (
-                2 * defs.get("rest", 350)
-                + 3 * defs.get("training", 250)
-                + defs.get("ruck", 150)
-                + defs.get("long", 50)
-            )
-            / 7
+            (5 * defs["easy"] + defs["hard"] + defs["long"]) / 7
         )
         weekly_kcal = avg_daily * 7
         weekly_budget = {
@@ -1466,8 +1458,8 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
             "weekly_deficit_kcal": weekly_kcal,
             "kg_per_week": round(weekly_kcal / KCAL_PER_KG, 2),
             "note": (
-                "About 0.5 kg a week. Rest days carry more of the deficit. "
-                "A hard day (threshold or VO2) takes a smaller cut so carbohydrate stays up. "
+                "About 0.5 kg a week from five easy days, one hard day and one long day. "
+                "A hard day takes a smaller cut so carbohydrate stays up. "
                 "Protein stays on the lean-mass floor. Don’t skip fuel on long days to speed the cut."
             ),
         }

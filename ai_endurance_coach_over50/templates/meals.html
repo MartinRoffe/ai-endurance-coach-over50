@@ -270,14 +270,10 @@ function renderDay(day) {
         <td>
           <div class="meal-name">${m.name}</div>
           <div class="meal-detail">${m.detail}</div>
-          <div class="meal-macros">${macroHtml(m.macros)}</div>
         </td>
       </tr>`).join('')}
     </table>
     <div class="protein-bar-row">
-      <span class="pb-label">PRE-DINNER P</span>
-      <div class="pb-track"><div class="pb-fill" style="width:${barPct}%;background:${barColor}"></div></div>
-      <span class="pb-val">${day.preDinP}g</span>
       <span class="${noteClass}">${day.note}</span>
     </div>
   </div>

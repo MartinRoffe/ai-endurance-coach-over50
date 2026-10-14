@@ -41,6 +41,15 @@ COACH_VOICE = (
 )
 
 
+# One line for the Today card and the daily email. The longer form is in the coach prompt.
+STONE_SAFE_LINE = (
+    "Stones: 1,000–1,200 mg calcium a day from dairy, with meals, and never cut it; "
+    "salt under about 6 g a day off the bike; skip spinach, chia, nuts, beetroot and rhubarb "
+    "(or pair a small portion with dairy); lemon or lime in water; spread animal protein "
+    "across the day and top up with dairy rather than extra meat; vitamin C at a standard dose only."
+)
+
+
 # ── Hard programme constraints (never violate) ────────────────────────────────
 ATHLETE_CONSTRAINTS = (
     "Athlete constraints (NEVER violate): no Sweetspot, Tempo, VO2, Pre-Event Long, "
@@ -52,7 +61,9 @@ ATHLETE_CONSTRAINTS = (
     "Gravel sessions stay off until the gravel bike is in use. "
     "NO RUNNING — running causes injury and is excluded entirely. "
     "Never suggest running, jogging, or trail running as training or as a workout modification. "
-    "When modifying a session, swap within the same discipline (e.g. hard bike -> easy bike)."
+    "When modifying a session, swap within the same discipline (e.g. hard bike -> easy bike). "
+    "Calcium-oxalate kidney stones: never cut calcium. "
+    + STONE_SAFE_LINE
 )
 
 

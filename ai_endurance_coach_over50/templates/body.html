@@ -340,7 +340,7 @@
       <div>
         <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Protein Today</p>
         <p style="font-family:var(--font-d);font-size:28px;color:#38bdf8;letter-spacing:0.04em;line-height:1">{{ cal_ctx.today_protein }}</p>
-        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">g{% if cal_ctx.protein_low is defined %} · floor {{ cal_ctx.protein_low }}–{{ cal_ctx.protein_high }}g{% else %} · target 160g+{% endif %}</p>
+        <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:3px">g{% if cal_ctx.protein_low is defined %} · {{ cal_ctx.protein_low }}–{{ cal_ctx.protein_high }} g from lean mass{% endif %}</p>
       </div>
       {% endif %}
 

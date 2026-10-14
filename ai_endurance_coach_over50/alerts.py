@@ -10,12 +10,12 @@ from datetime import date, timedelta
 from typing import Optional
 
 from .energy import (
-    EA_WARN_KCAL_PER_KG_FFM,
+    EA_WINDOW_DAYS,
     MUSCLE_DROP_KG,
     MUSCLE_DROP_MIN_DAYS,
     MUSCLE_DROP_MIN_READINGS,
-    energy_availability,
     fat_free_mass_kg,
+    weekly_energy_availability,
     weight_trend_kg_per_day,
 )
 from .history import (
@@ -51,6 +51,36 @@ def _signal_z(rows: list[dict], field: str) -> Optional[float]:
     if stdev == 0:
         return None
     return (today_val - statistics.mean(baseline)) / stdev
+
+
+def weekly_ea_report(today: date) -> Optional[dict]:
+    """Seven-day energy availability from logged food and session calories.
+
+    Session calories come from activities, not Garmin's all-day active burn.
+    Returns None when food is logged on fewer than five of the seven days,
+    or when lean mass is unknown.
+    """
+    start = today - timedelta(days=EA_WINDOW_DAYS - 1)
+    acts = load_activities_by_date(start, today)
+    days = []
+    for i in range(EA_WINDOW_DAYS):
+        d = start + timedelta(days=i)
+        metrics = load(d)
+        intake = None
+        if metrics is not None and metrics.calories_consumed is not None:
+            intake = metrics.calories_consumed
+        training = 0.0
+        for activity in acts.get(d.isoformat(), []):
+            kcal = activity.get("calories")
+            if kcal:
+                training += float(kcal)
+        days.append({"intake_kcal": intake, "training_kcal": training})
+    readings = load_body_metrics(30)
+    latest = readings[-1] if readings else None
+    ffm = None
+    if latest is not None:
+        ffm = fat_free_mass_kg(latest.get("weight_kg"), latest.get("fat_pct"))
+    return weekly_energy_availability(days, ffm)
 
 
 def check_fatigue_alerts(today: date) -> list[dict]:
@@ -205,28 +235,17 @@ def check_fatigue_alerts(today: date) -> list[dict]:
     except Exception:
         logger.warning("check_fatigue_alerts failed", exc_info=True)
 
-    # 7. LOW_EA: intake minus exercise kcal, per kg of fat-free mass, under 30.
+    # 7. LOW_EA: 7-day intake minus logged session kcal, per kg fat-free mass.
+    # Garmin active calories include NEAT and are not used. Shown only when food
+    # is logged on at least 5 of the 7 days.
     try:
-        metrics = load(today)
-        readings = load_body_metrics(30)
-        latest = readings[-1] if readings else None
-        if metrics is not None and latest is not None:
-            ffm = fat_free_mass_kg(latest.get("weight_kg"), latest.get("fat_pct"))
-            ea = energy_availability(
-                metrics.calories_consumed,
-                metrics.active_calories,
-                ffm,
-            )
-            if ea is not None and ea < EA_WARN_KCAL_PER_KG_FFM:
-                alerts.append({
-                    "type": "LOW_EA",
-                    "severity": "HIGH",
-                    "message": (
-                        f"Energy availability is {ea:.0f} kcal/kg fat-free mass "
-                        f"(below {EA_WARN_KCAL_PER_KG_FFM:.0f}). Eat more today, "
-                        "especially carbohydrate, and do not push the deficit."
-                    ),
-                })
+        report = weekly_ea_report(today)
+        if report is not None and report["low"]:
+            alerts.append({
+                "type": "LOW_EA",
+                "severity": "MODERATE",
+                "message": report["words"],
+            })
     except Exception:
         logger.warning("check_fatigue_alerts failed", exc_info=True)
 

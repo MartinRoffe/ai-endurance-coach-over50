@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping list</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0e0f0c; --surface:#161713; --border:#2a2d25; --accent:#c8f135; --text:#e8ead4; --muted:#7a7d6a; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; }
+  a { color:var(--accent); }
+  .hero { padding:28px 40px 20px; border-bottom:1px solid var(--border); }
+  .eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; }
+  h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(36px,6vw,56px); letter-spacing:0.02em; }
+  .container { max-width:760px; margin:0 auto; padding:24px; }
+  .group { margin-bottom:22px; }
+  .group h2 { font-family:'DM Mono',monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  li { margin:4px 0 4px 18px; }
+  .note { color:var(--muted); font-size:13px; margin-bottom:18px; }
+</style>
+</head>
+<body>
+{% set active_tab = 'nutrition' %}
+{% set nutrition_section = 'overview' %}
+{% include 'nav.html' %}
+{% include 'nutrition_subnav.html' %}
+<div class="hero">
+  <div class="eyebrow">One list · Asda or Lidl · {{ cycle_week_label }}</div>
+  <h1>SHOP</h1>
+</div>
+<div class="container">
+  <p class="note">Batch these one-pots and soups (4 portions, freeze three). Chicken is in the rotation, not every cook. Mild salt. Dairy with the meal.</p>
+  {% if pots or soups %}
+  <p class="note">This week: {{ pots | join(', ') }}{% if soups %} · soups {{ soups | join(', ') }}{% endif %}.</p>
+  {% endif %}
+  {% for group in groups %}
+  <div class="group">
+    <h2>{{ group.group }}</h2>
+    <ul>
+      {% for item in group["items"] %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  <p class="note"><a href="/nutrition/sunday">How to cook them →</a></p>
+</div>
+</body>
+</html>

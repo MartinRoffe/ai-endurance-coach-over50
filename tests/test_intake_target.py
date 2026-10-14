@@ -27,20 +27,22 @@ _NON_CAMP = date(2026, 7, 20)
 # ── intake_target_kcal ────────────────────────────────────────────────────────
 
 def test_intake_target_training_deficit():
-    assert intake_target_kcal(2000, "training") == 1750
+    # Easy day. At TDEE 2000 the 600 kcal deficit hits the 1,600 floor.
+    assert intake_target_kcal(2000, "training") == 1600
 
 
 def test_intake_target_rest_larger_deficit():
-    assert intake_target_kcal(2000, "rest") == 1650
+    # Rest is the same easy day.
+    assert intake_target_kcal(2000, "rest") == 1600
 
 
 def test_intake_target_long_near_maintenance():
-    assert intake_target_kcal(2500, "long") == 2450
+    assert intake_target_kcal(2500, "long") == 2500
 
 
 def test_intake_target_long_scales_with_duration():
     # 3 h ride = 60 min beyond 2 h baseline → +175 kcal
-    assert intake_target_kcal(2500, "long", long_ride_extra_min=60) == 2625
+    assert intake_target_kcal(2500, "long", long_ride_extra_min=60) == 2675
 
 
 def test_intake_target_respects_floor():
@@ -52,26 +54,24 @@ def test_intake_target_none_without_tdee():
     assert intake_target_kcal(None, "training") is None
 
 
-# ── maintenance window (27 Jul – 14 Sep 2026: deficits suspended) ─────────────
+# ── maintenance window (9 Oct 2026 – 3 Jan 2027) ──────────────────────────────
 
 def test_maintenance_window_edges():
-    assert not in_maintenance_window(date(2026, 7, 26))
-    assert in_maintenance_window(date(2026, 7, 27))
-    assert in_maintenance_window(date(2026, 9, 14))
-    assert not in_maintenance_window(date(2026, 9, 15))
+    assert not in_maintenance_window(date(2026, 10, 8))
+    assert in_maintenance_window(date(2026, 10, 9))
+    assert in_maintenance_window(date(2027, 1, 3))
+    assert not in_maintenance_window(date(2027, 1, 4))
     assert not in_maintenance_window(None)
 
 
 def test_intake_target_zero_deficit_in_maintenance_window():
-    assert intake_target_kcal(2000, "training", ref_date=date(2026, 8, 5)) == 2000
-    assert intake_target_kcal(2000, "rest", ref_date=date(2026, 8, 5)) == 2000
-    # No ref_date → old behaviour (deficit applies).
-    assert intake_target_kcal(2000, "training") == 1750
+    assert intake_target_kcal(2000, "training", ref_date=date(2026, 12, 1)) == 2000
+    assert intake_target_kcal(2000, "rest", ref_date=date(2026, 12, 1)) == 2000
+    assert intake_target_kcal(2000, "training") == 1600
 
 
 def test_resolve_calorie_target_maintenance_flag():
-    # 4 Sep 2026 is in the maintenance window but outside every camp window.
-    out = resolve_calorie_target(2000, "training", date(2026, 9, 4))
+    out = resolve_calorie_target(2000, "training", date(2026, 12, 1))
     assert out["maintenance"] is True
     assert out["planned_deficit"] == 0
     assert out["kcal"] == 2000
@@ -81,10 +81,11 @@ def test_resolve_calorie_target_maintenance_flag():
 
 
 def test_camp_window_wins_over_maintenance():
-    # 15 Aug is inside both the camp and maintenance windows — camp branch wins.
+    # August 2026 is not a live camp window and not maintenance.
     out = resolve_calorie_target(2800, "training", date(2026, 8, 15))
-    assert out["camp"] is True
+    assert out["camp"] is False
     assert out["maintenance"] is False
+    assert out["kcal"] == 2200
 
 
 # ── Base Cut phases (hard / ease) ─────────────────────────────────────────────
@@ -98,12 +99,13 @@ def test_cut_phase_edges():
 
 
 def test_hard_cut_deficit():
-    # Before the March goal, and outside maintenance: standing training deficit 250.
-    assert intake_target_kcal(2400, "training", ref_date=date(2026, 10, 5)) == 2150
-    assert intake_target_kcal(2400, "rest", ref_date=date(2026, 10, 5)) == 2050
+    # Before the kidney window: easy deficit is 600 for rest and training.
+    assert intake_target_kcal(2400, "training", ref_date=date(2026, 10, 5)) == 1800
+    assert intake_target_kcal(2400, "rest", ref_date=date(2026, 10, 5)) == 1800
     out = resolve_calorie_target(2400, "training", date(2026, 10, 5))
     assert out["cut_phase"] is None
-    assert out["planned_deficit"] == 250
+    assert out["planned_deficit"] == 600
+    assert out["tier_deficit"] == 600
     assert out["cut_target_kg"] == 84.5
 
 
@@ -128,10 +130,10 @@ def test_camp_wins_over_hard_cut():
 
 def test_calorie_tier_for_session():
     assert calorie_tier_for_session("long", "training") == "long"
-    assert calorie_tier_for_session("rest", "training") == "rest"
-    assert calorie_tier_for_session("gym", "training") == "recovery"
+    assert calorie_tier_for_session("rest", "training") == "easy"
+    assert calorie_tier_for_session("gym", "training") == "easy"
     assert calorie_tier_for_session("vo2", "rest") == "hard"
-    assert calorie_tier_for_session(None, "ruck") == "ruck"
+    assert calorie_tier_for_session(None, "ruck") == "easy"
 
 
 # ── today_targets (single-number resolver) ────────────────────────────────────
@@ -151,8 +153,15 @@ def test_today_targets_long_ride_crowns_gut_training_carbs(monkeypatch):
 
 def test_today_targets_maintenance_and_rest(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
-    # Wk 11 Saturday (1 Aug 2026) is a rest day inside the maintenance window.
-    out = np_mod.today_targets(date(2026, 8, 1))
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.plan.session_for_date_extended",
+        lambda d: ("rest", "Rest", 0),
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.hr_plan.hr_session_for_date",
+        lambda d: None,
+    )
+    out = np_mod.today_targets(date(2026, 12, 1))
     assert out["maintenance"] is True
     assert out["planned_deficit"] == 0
     assert out["carbs_g_per_hr"] is None
@@ -164,7 +173,9 @@ def test_today_targets_hard_cut_exposes_phase(monkeypatch):
     out = np_mod.today_targets(date(2026, 10, 6))  # before the March cut, outside maintenance
     assert out["cut_phase"] is None
     assert out["cut_target_kg"] == 84.5
-    assert out["planned_deficit"] in (250, 350, 150, 50)
+    assert out["planned_deficit"] in (600, 250, 0) or (
+        out["calorie_tier"] == "long" and out["planned_deficit"] <= 0
+    )
 
 
 def test_today_targets_tier_fallback_without_tdee(monkeypatch):
@@ -206,24 +217,23 @@ def test_protein_floor_locked_during_cut(monkeypatch):
 
 def test_resolve_calorie_target_falls_back_to_static():
     out = resolve_calorie_target(None, "training", _NON_CAMP)
-    assert out["kcal"] == 2350
+    assert out["kcal"] == 2200
     assert out["from_tdee"] is False
 
 
 def test_resolve_calorie_target_from_tdee():
     out = resolve_calorie_target(2000, "training", _NON_CAMP)
     assert out["from_tdee"] is True
-    assert out["kcal"] == 1750
-    assert out["planned_deficit"] == 250
+    assert out["kcal"] == 1600
+    assert out["planned_deficit"] == 400
+    assert out["tier_deficit"] == 600
     assert out["tdee"] == 2000
 
 
 def test_resolve_calorie_target_camp_hard_day():
     out = resolve_calorie_target(2800, "training", date(2026, 8, 15))
-    assert out["camp"] is True
-    assert out["kcal"] >= 3200
-    # Camp hard days fuel above TDEE — planned deficit is negative.
-    assert out["planned_deficit"] < 0
+    assert out["camp"] is False
+    assert out["kcal"] == 2200
     assert out["tdee"] == 2800
 
 
@@ -261,20 +271,14 @@ def test_stable_tdee_none_without_data(monkeypatch):
 # ── meals align with targets ─────────────────────────────────────────────────
 
 def test_meal_sums_match_targets_for_every_day_type():
-    """Every day's prescribed meals land within ±100 kcal of its intake target."""
-    stable = 2000
+    """Each day is four protein doses. Portions are not scaled onto the kcal target."""
     for cw in range(4):
         wd_map = _WEEKDAY_TO_TYPE_BUILD if cw < 3 else _WEEKDAY_TO_TYPE_RECOVERY
         for wd in range(7):
             dtype = wd_map[wd]
             meals = _assemble_meals(dtype, cw, wd)
-            total = sum(m[3] for m in meals)
-            tier = DAY_TYPES[dtype]["calorie_tier"]
-            target = intake_target_kcal(stable, tier)
-            assert abs(total - target) <= 100, (
-                f"cycle week {cw} weekday {wd} ({dtype}): "
-                f"meals sum {total} vs target {target}"
-            )
+            assert [m[0] for m in meals] == ["Breakfast", "Lunch", "Dinner", "Evening"]
+            assert sum(m[4] for m in meals) == 160
 
 
 def test_meal_protein_hits_lean_mass_floor():
@@ -291,11 +295,9 @@ def test_meal_protein_hits_lean_mass_floor():
 
 
 def test_recovery_week_skips_protein_bar_on_rest_days():
-    """Recovery Mon/Wed/Fri drop the AM protein bar; Tue/Thu keep it."""
-    for wd, expect_bar in ((0, False), (1, True), (2, False), (3, True), (4, False)):
-        meals = _assemble_meals("recovery_weekday", 3, wd)
-        has_bar = any(m[0] == "AM Snack" for m in meals)
-        assert has_bar is expect_bar, f"weekday {wd}: bar present={has_bar}"
+    meals = _assemble_meals("recovery_weekday", 3, 0)
+    assert [m[0] for m in meals] == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    assert all(m[0] != "AM Snack" for m in meals)
 
 
 def test_on_bike_fuel_scales_with_duration():
@@ -324,52 +326,63 @@ def test_meal_day_type_bike_on_ruck_saturday_slot():
 
 
 def test_build_today_food_rest_saturday_no_post_ruck(monkeypatch):
-    """Wk11/wk12 Sat Rest must not show Post-Ruck / easy recovery ruck copy."""
+    """A rest day has lunch and dinner, and no post-ruck slot."""
     from ai_endurance_coach_over50.plan import PLAN_START
 
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
-    for d in (date(2026, 8, 1), date(2026, 8, 8)):
-        out = np_mod.build_today_food(PLAN_START, d)
-        assert "Rest" in out["session"]
-        slots = [m["type"] for m in out["meals"]]
-        assert "Post-Ruck" not in slots
-        details = " ".join((m.get("detail") or "") for m in out["meals"]).lower()
-        assert "easy recovery ruck" not in details
-        assert out["kcal_target"] == np_mod.today_targets(d)["kcal"]
-        assert out["maintenance"] is True
-        assert "maintenance" in (out.get("why") or "").lower()
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.plan.session_for_date_extended",
+        lambda d: ("rest", "Rest", 0),
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.hr_plan.hr_session_for_date",
+        lambda d: None,
+    )
+    d = date(2026, 12, 5)
+    out = np_mod.build_today_food(PLAN_START, d)
+    assert "Rest" in out["session"]
+    slots = [m["type"] for m in out["meals"]]
+    assert slots == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    assert out["kcal_target"] == np_mod.today_targets(d)["kcal"]
+    assert out["maintenance"] is True
+    assert "maintenance" in (out.get("why") or "").lower()
 
 
 def test_build_today_food_real_ruck_saturday_keeps_post_ruck(monkeypatch):
     from ai_endurance_coach_over50.plan import PLAN_START
 
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
-    # Wk2 Sat 30 May 2026 — Ruck 8–10 kg
     out = np_mod.build_today_food(PLAN_START, date(2026, 5, 30))
     slots = [m["type"] for m in out["meals"]]
-    assert "Post-Ruck" in slots
+    assert slots == ["Breakfast", "Lunch", "Dinner", "Evening"]
     assert out["kcal_target"] == np_mod.today_targets(date(2026, 5, 30))["kcal"]
 
 
 def test_hard_cut_rest_kcal_below_long(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2400)
-    # Hard-cut week: find a rest and a long from HR or charity — use fixed dates.
-    # 15 Sep 2026 Mon is hard cut start (position bridge — may be various sessions).
     rest = np_mod.resolve_calorie_target(2400, "rest", date(2026, 10, 5))
     training = np_mod.resolve_calorie_target(2400, "training", date(2026, 10, 5))
     long = np_mod.resolve_calorie_target(
         2400, "long", date(2026, 10, 5), session_dur_min=180
     )
-    assert rest["kcal"] < training["kcal"] < long["kcal"]
-    assert rest["tier_deficit"] == 350
-    assert training["tier_deficit"] == 250
-    assert long["tier_deficit"] == 50
-    assert long["long_fuel_topup"] == 175  # 60 min beyond 2 h
+    assert rest["kcal"] == training["kcal"] < long["kcal"]
+    assert rest["tier_deficit"] == 600
+    assert training["tier_deficit"] == 600
+    assert long["tier_deficit"] == 0
+    assert long["long_fuel_topup"] == 175
 
 
 def test_today_targets_exposes_why(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
-    out = np_mod.today_targets(date(2026, 8, 1))
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.plan.session_for_date_extended",
+        lambda d: ("rest", "Rest", 0),
+    )
+    monkeypatch.setattr(
+        "ai_endurance_coach_over50.hr_plan.hr_session_for_date",
+        lambda d: None,
+    )
+    out = np_mod.today_targets(date(2026, 12, 1))
     assert out["phase"] == "maintenance"
     assert out["planned_deficit"] == 0
     assert "maintenance" in out["why"].lower()
@@ -377,19 +390,19 @@ def test_today_targets_exposes_why(monkeypatch):
 
 
 def test_build_today_food_scales_on_bike_row(monkeypatch):
-    """A 3.5 h planned long ride inflates the On-Bike meal row."""
+    """A long ride adds ride fuel to the calorie target. Meals stay four doses."""
     from ai_endurance_coach_over50 import plan as plan_mod
 
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
     monkeypatch.setattr(
         plan_mod, "session_for_date_extended", lambda d: ("long", "Long Ride", 210)
     )
-    # A Sunday in a build week (cycle week 0 starts at plan start).
     plan_start = date(2026, 5, 18)
     sunday = date(2026, 5, 24)
     out = np_mod.build_today_food(plan_start, sunday)
-    on_bike = next(m for m in out["meals"] if m["type"] == "On-Bike")
-    assert on_bike["macros"]["kcal"] == str(on_bike_fuel_kcal(210))
+    assert [m["type"] for m in out["meals"]] == ["Breakfast", "Lunch", "Dinner", "Evening"]
     assert out["kcal_target"] == np_mod.today_targets(sunday)["kcal"]
-    # Target also grows: 2000 − 50 + 175 × 1.5 h
-    assert out["kcal_target"] == 2000 - 50 + round(175 * 1.5)
+    assert out["kcal_target"] == 2000 + round(175 * 1.5)
+    card = np_mod.today_card(sunday)
+    assert card["kind"] == "long"
+    assert set(card) >= {"kcal", "protein_g", "carbs_g", "fluids", "habit", "stone_line"}

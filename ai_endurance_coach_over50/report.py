@@ -486,129 +486,81 @@ def _planned_session_html(d: date) -> str:
 
 
 def _fluid_html(d: date) -> str:
-    """Daily fluid target: 2–3 L plus about 500 ml per planned training hour."""
+    """Shortfall only. The drink target already sits in the four-number block."""
     try:
-        from .energy import fluid_shortfall_l, fluid_target_litres
+        from .energy import fluid_shortfall_l
         from .history import get_morning_wellness
         from .safety import prescribed_session
         cap = prescribed_session(d)
         minutes = cap.session[2] if cap.session else 0
-        target = fluid_target_litres(minutes)
         wellness = get_morning_wellness(d.isoformat()) or {}
         logged = wellness.get("fluids_l")
         short = fluid_shortfall_l(logged, minutes)
     except Exception:
         logger.exception("_fluid_html failed")
         return ""
-    low = f"{target['low_l']:.1f}".rstrip("0").rstrip(".")
-    high = f"{target['high_l']:.1f}".rstrip("0").rstrip(".")
-    bits = f"{low}–{high} L"
-    if target["extra_l"]:
-        bits += f" (includes {target['extra_l']:.1f} L for today's training)"
-    flag = ""
-    if short is not None and logged is not None:
-        flag = (
-            f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:12px;color:{_RED};">'
-            f"Short by {short:.1f} L — logged {float(logged):.1f} L, under today's low end.</p>"
-        )
-    elif logged is not None:
-        flag = (
-            f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:12px;color:{_GREEN};">'
-            f"Logged {float(logged):.1f} L, on the day's target.</p>"
-        )
+    if short is None or logged is None:
+        return ""
     return f"""
         <tr>
-          <td style="padding:18px 28px 0;">
-            {_sec_head("Fluids", "today")}
-            <p style="margin:0;font-family:{_SERIF};font-size:14px;color:{_INK};line-height:1.5;">
-              Drink {bits}. The floor is 2–3 L, plus about 500 ml for each training hour.
+          <td style="padding:0 28px 8px;">
+            <p style="margin:0;font-family:{_MONO};font-size:12px;color:{_RED};">
+              Fluids short by {short:.1f} L — logged {float(logged):.1f} L.
             </p>
-            {flag}
           </td>
         </tr>"""
 
 
 def _daily_food_html(d: date) -> str:
-    """'What to eat today' — the day's prescribed meals, readable away from the laptop.
+    """What to eat today: four numbers, one habit, one stone line.
 
-    Numbers come from the single resolver (today_targets) so the email always
-    matches the dashboard and /nutrition; meal rows come from build_today_food.
+    The numbers come from today_card so the email matches Nutrition Today.
     """
     try:
-        from .nutrition_plan import build_today_food, today_targets
+        from .nutrition_plan import build_today_food, today_card
         from .plan import PLAN_START
         food = build_today_food(PLAN_START, d)
-        tt = today_targets(d)
+        card = today_card(d)
     except Exception:
         logger.exception("_daily_food_html failed")
         return ""
-    if not food:
+    if not food and not card:
         return ""
 
-    # Headline numbers — one kcal, one protein range, one carbs g/h.
-    bits = [f"~{tt['kcal']:,} kcal", f"protein {tt['protein_low']}&ndash;{tt['protein_high']} g"]
-    if tt.get("carbs_g_per_hr"):
-        bits.append(f"ride fuel {tt['carbs_g_per_hr']} g/h")
-    if tt.get("maintenance"):
-        bits.append(f'<span style="color:{_GREEN};font-weight:700;">maintenance &mdash; no deficit</span>')
+    rows = [
+        ("Calories", f"{card['kcal']:,} kcal", card["kind_label"]),
+        ("Protein", f"{card['protein_g']} g", card["protein_line"]),
+        ("Carbs", f"{card['carbs_g']} g", card["carbs_line"]),
+        ("Fluids", card["fluids"], card["fluids_note"]),
+    ]
+    cells = "".join(
+        f'<tr>'
+        f'<td style="padding:6px 12px 6px 0;font-family:{_MONO};font-size:10px;'
+        f'letter-spacing:0.12em;text-transform:uppercase;color:{_MUTED};">{label}</td>'
+        f'<td style="padding:6px 0;font-family:{_DISPLAY};font-size:18px;color:{_INK};">{value}</td>'
+        f'<td style="padding:6px 0 6px 12px;font-family:{_SERIF};font-size:12px;color:{_MUTED};">{note}</td>'
+        f'</tr>'
+        for label, value, note in rows
+    )
     summary = (
-        f'<p style="margin:0 0 14px;font-family:{_MONO};font-size:11px;letter-spacing:0.04em;'
-        f'color:{_INK};">{" &nbsp;&middot;&nbsp; ".join(bits)}</p>'
+        f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">{cells}</table>'
+        f'<p style="margin:12px 0 0;font-family:{_SERIF};font-size:14px;color:{_INK};">{card["habit"]}</p>'
+        f'<p style="margin:8px 0 0;font-family:{_SERIF};font-size:13px;color:{_MUTED};line-height:1.5;">'
+        f'{card["stone_line"]}</p>'
     )
 
-    if food.get("camp_mode"):
-        items = "".join(
-            f'<tr><td style="padding:6px 0;border-bottom:1px dotted {_RULE};'
-            f'font-family:{_SERIF};font-size:13px;color:{_INK};line-height:1.55;">{item}</td></tr>'
-            for item in (food.get("checklist") or [])
+    names = []
+    for meal in (food or {}).get("meals") or []:
+        names.append(
+            f'<span style="font-family:{_MONO};font-size:10px;letter-spacing:0.08em;'
+            f'text-transform:uppercase;color:{_RED};">{meal.get("type", "")}</span> '
+            f'{meal.get("name", "")}'
         )
-        body = (
-            f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">{items}</table>'
-            if items else ""
-        )
-    else:
-        rows = []
-        for meal in food.get("meals") or []:
-            mac = meal.get("macros") or {}
-            mac_str = f"{mac.get('kcal', '')} kcal &middot; P {mac.get('p', '')} &middot; C {mac.get('c', '')}"
-            detail = meal.get("detail") or ""
-            rows.append(f"""
-              <tr>
-                <td style="padding:10px 0 2px;" colspan="2">
-                  <span style="font-family:{_MONO};font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:{_RED};">{meal.get('type', '')}</span>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:0 0 2px;vertical-align:baseline;">
-                  <span style="font-family:{_DISPLAY};font-size:16px;font-weight:600;letter-spacing:0.02em;color:{_INK};">{meal.get('name', '')}</span>
-                </td>
-                <td style="padding:0 0 2px 12px;vertical-align:baseline;text-align:right;white-space:nowrap;">
-                  <span style="font-family:{_MONO};font-size:10px;color:{_MUTED};">{mac_str}</span>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2" style="padding:0 0 10px;border-bottom:1px dotted {_RULE};">
-                  <span style="font-family:{_SERIF};font-size:12px;font-style:italic;color:{_MUTED};line-height:1.5;">{detail}</span>
-                </td>
-              </tr>""")
-        if not rows:
-            return ""
-        body = (
-            '<table width="100%" cellpadding="0" cellspacing="0" '
-            'style="border-collapse:collapse;">' + "".join(rows) + "</table>"
-        )
-
-    # Sunday-batch fuel prep reminder for tomorrow's/today's long ride.
-    prep_line = ""
-    fp = tt.get("fuel_prep")
-    if fp and fp.get("prep_note"):
-        prep_line = (
-            f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">'
-            f'<tr><td style="background:{_PAPER_DEEP};border-left:4px solid {_AMBER};padding:9px 12px;">'
-            f'<span style="font-family:{_SERIF};font-size:12px;color:{_INK};line-height:1.55;">'
-            f'<strong style="font-family:{_MONO};font-size:9px;letter-spacing:0.16em;'
-            f'text-transform:uppercase;color:{_AMBER};">Fuel prep&nbsp;&nbsp;</strong>'
-            f'{fp["prep_note"]}</span></td></tr></table>'
+    meals_line = ""
+    if names:
+        meals_line = (
+            f'<p style="margin:12px 0 0;font-family:{_SERIF};font-size:13px;color:{_INK};line-height:1.6;">'
+            + " · ".join(names) + "</p>"
         )
 
     return f"""
@@ -617,8 +569,7 @@ def _daily_food_html(d: date) -> str:
           <td style="padding:26px 28px 4px;">
             {_sec_head("Musette", "what to eat today")}
             {summary}
-            {body}
-            {prep_line}
+            {meals_line}
           </td>
         </tr>"""
 

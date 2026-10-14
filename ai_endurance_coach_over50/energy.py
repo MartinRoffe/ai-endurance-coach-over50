@@ -176,33 +176,26 @@ def planned_session_kj(ftp_w: int, pct_lo: float, pct_hi: float, dur_min: int) -
 
 MIN_INTAKE_KCAL = 1600
 
-# kcal below stable TDEE by nutrition day type (long ≈ maintenance for fuelling).
+# Same three day types outside a named cut phase. Maintenance still zeros them.
 INTAKE_DEFICIT_BY_TIER: dict[str, int] = {
-    "rest": 350,
-    "training": 250,
-    "ruck": 150,
-    "long": 50,
-    "recovery": 350,
-    # Smaller deficit than a normal training day so hard days keep carbohydrate.
-    "hard": 200,
+    "easy": 600,
+    "hard": 250,
+    "long": 0,
 }
 
 # Extra intake per hour of long ride beyond a 2 h baseline (kcal/h).
 LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
 
-# Deficits are suspended (maintenance) in these date windows: the final big
-# training weeks into the charity ride carry too much load for a 50+ athlete
-# to absorb in a deficit. Base Cut (hard) starts in the position bridge (15 Sep).
+# No cut before 3 Jan 2027 (procedure, return, Christmas camp).
+# The July–September 2026 charity window has expired and is not listed.
 MAINTENANCE_WINDOWS: list[tuple[date, date]] = [
-    (date(2026, 7, 27), date(2026, 9, 14)),
-    # Procedure, return, and Christmas camp. No kilogram target in this window.
     (date(2026, 10, 9), date(2027, 1, 3)),
 ]
 
 # About 0.5 kg/week from 4 Jan to 31 Mar 2027, landing near 84–85 kg
 # from a start around 89–92 kg. CUT_TARGET_KG is the midpoint used for
-# pace maths. The illustrative week (2 rest + 3 training + ruck + long)
-# averages about 536 kcal/day under the ease map, ~0.5 kg/week at 7,700 kcal/kg.
+# pace maths. Easy days carry most of the deficit (600 kcal). A week of
+# five easy days, one hard day and one long day averages about 460 kcal/day.
 CUT_TARGET_KG = 84.5
 CUT_TARGET_LOW_KG = 84
 CUT_TARGET_HIGH_KG = 85
@@ -213,35 +206,30 @@ CUT_PHASES: list[tuple[date, date, str]] = [
     (date(2027, 1, 4), date(2027, 3, 31), "ease"),
 ]
 
-# Ease is the live cut. Hard days (threshold / VO2) take a smaller deficit
-# so carbohydrate stays up; protein is not the lever (see nutrition_plan).
-# The old "hard" map is kept for the suspended front-loaded cut and is not
-# scheduled.
-CUT_DEFICIT_BY_PHASE: dict[str, dict[str, int]] = {
-    "hard": {
-        "rest": 550,
-        "training": 450,
-        "ruck": 300,
-        "long": 100,
-        "recovery": 550,
-        "hard": 200,
-    },
-    "ease": {
-        "rest": 650,
-        "training": 550,
-        "ruck": 450,
-        "long": 350,
-        "recovery": 650,
-        "hard": 250,
-    },
+# Three day types once a deficit applies. Easy covers rest, recovery and
+# ordinary training. Hard keeps carbohydrate up. Long is maintenance
+# (the ride-fuel top-up is added separately).
+DAY_DEFICIT_KCAL: dict[str, int] = {
+    "easy": 600,
+    "hard": 250,
+    "long": 0,
 }
+
+# Ease is the only live cut phase. The unused front-loaded "hard" map is gone.
+CUT_DEFICIT_BY_PHASE: dict[str, dict[str, int]] = {
+    "ease": dict(DAY_DEFICIT_KCAL),
+}
+
+# Shown only as a 7-day mean, and only when food is logged often enough.
+EA_WINDOW_DAYS = 7
+EA_MIN_LOGGED_DAYS = 5
 
 # Energy availability = (intake kcal − exercise kcal) / kg fat-free mass.
 # Below 30 kcal/kg FFM is the usual low-EA line (Loucks).
 EA_WARN_KCAL_PER_KG_FFM = 30.0
 
-# Daily fluid: 2–3 L plus about 500 ml per training hour.
-FLUID_BASE_LOW_L = 2.0
+# Daily fluid: 2.5–3 L plus about 500 ml per training hour.
+FLUID_BASE_LOW_L = 2.5
 FLUID_BASE_HIGH_L = 3.0
 FLUID_PER_TRAINING_HOUR_L = 0.5
 
@@ -293,8 +281,73 @@ def energy_availability(
     return (intake - exercise) / ffm
 
 
+def day_kind(tier_key: Optional[str]) -> str:
+    """Collapse legacy tier names onto easy / hard / long."""
+    key = (tier_key or "").lower()
+    if key == "hard":
+        return "hard"
+    if key == "long":
+        return "long"
+    return "easy"
+
+
+def weekly_energy_availability(
+    days: list[dict],
+    ffm_kg: Optional[float],
+) -> Optional[dict]:
+    """Seven-day energy availability from intake and training kilocalories.
+
+    ``training_kcal`` is the sum of logged session calories that day. Garmin
+    ``active_calories`` (NEAT plus exercise) is not an input. Returns None
+    unless food is logged on at least ``EA_MIN_LOGGED_DAYS`` of the rows.
+    """
+    if ffm_kg is None:
+        return None
+    try:
+        ffm = float(ffm_kg)
+    except (TypeError, ValueError):
+        return None
+    if ffm <= 0:
+        return None
+    logged: list[tuple[float, float]] = []
+    for row in days:
+        intake = row.get("intake_kcal")
+        if intake is None:
+            continue
+        try:
+            intake_f = float(intake)
+            train_f = float(row.get("training_kcal") or 0)
+        except (TypeError, ValueError):
+            continue
+        logged.append((intake_f, max(0.0, train_f)))
+    if len(logged) < EA_MIN_LOGGED_DAYS:
+        return None
+    n = len(logged)
+    ea = (sum(i for i, _t in logged) - sum(t for _i, t in logged)) / (n * ffm)
+    low = ea < EA_WARN_KCAL_PER_KG_FFM
+    rounded = f"{ea:.0f}"
+    if low:
+        words = (
+            f"Over the last 7 days, energy availability is about {rounded} kcal "
+            "per kg of lean mass. That is a little low. A slightly bigger plate "
+            "on the next easy day is enough."
+        )
+    else:
+        words = (
+            f"Over the last 7 days, energy availability is about {rounded} kcal "
+            "per kg of lean mass, which looks comfortable."
+        )
+    return {
+        "ea": round(ea, 1),
+        "logged_days": n,
+        "window_days": EA_WINDOW_DAYS,
+        "low": low,
+        "words": words,
+    }
+
+
 def fluid_target_litres(training_min: float) -> dict:
-    """2–3 L plus FLUID_PER_TRAINING_HOUR_L per training hour."""
+    """2.5–3 L plus FLUID_PER_TRAINING_HOUR_L per training hour."""
     hours = max(0.0, float(training_min or 0)) / 60.0
     extra = FLUID_PER_TRAINING_HOUR_L * hours
     return {
@@ -324,10 +377,12 @@ def deficit_for_tier(tier_key: str, ref_date: Optional[date] = None) -> int:
     """
     if in_maintenance_window(ref_date):
         return 0
+    kind = day_kind(tier_key)
     phase = active_cut_phase(ref_date)
-    if phase:
-        return CUT_DEFICIT_BY_PHASE[phase].get(tier_key, 300)
-    return INTAKE_DEFICIT_BY_TIER.get(tier_key, 300)
+    table = CUT_DEFICIT_BY_PHASE.get(phase) if phase else INTAKE_DEFICIT_BY_TIER
+    if not table:
+        table = INTAKE_DEFICIT_BY_TIER
+    return table.get(kind, DAY_DEFICIT_KCAL[kind])
 
 
 def intake_target_kcal(

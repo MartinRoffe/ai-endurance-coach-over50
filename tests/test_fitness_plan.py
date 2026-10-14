@@ -82,7 +82,7 @@ def test_cut_is_maintenance_through_camp_and_off_after():
     assert active_cut_phase(date(2027, 1, 4)) == "ease"
     assert active_cut_phase(date(2027, 4, 1)) is None
     # Standing day-type deficit, not the suspended hard cut (450).
-    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 1850
+    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 1800
 
 
 def test_guide_covers_the_block_in_phase_order():
