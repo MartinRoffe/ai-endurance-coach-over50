@@ -50,9 +50,9 @@ Three distinct numbers appear across Nutrition and Body:
   - **Maintenance** (27 Jul–14 Sep 2026): deficit 0 every day (charity peak).
   - **Maintenance** (9 Oct 2026–3 Jan 2027): deficit 0 through the kidney-stone
     return, Christmas camp, and the post-camp rest day.
-  - **Ease** (4 Jan–31 Mar 2027, `CUT_PHASES` in `energy.py`): toward 80 kg by
-    31 Mar (`CUT_TARGET_KG`). Rest/recovery −350, training −250, ruck −150,
-    long −50. The old hard map (rest/recovery −550, training −450) is not scheduled.
+  - **Ease** (4 Jan–31 Mar 2027, `CUT_PHASES` in `energy.py`): toward 84–85 kg by
+    31 Mar (`CUT_TARGET_KG` 84.5). About 0.5 kg/week. Rest/recovery −650, training −550,
+    ruck −450, long −350, hard (threshold/VO2) −250. Protein stays on the floor.
   - Floor 1,600 kcal. Tenerife **camp** windows suspend the UK deficit.
   - Optional `session_work_kcal` (FTP × % targets) is context only — it does
     **not** change the crowned intake when stable TDEE exists.
@@ -61,11 +61,12 @@ Three distinct numbers appear across Nutrition and Body:
 Primary gauge is **vs plan** (logged vs intake target). “Vs weekly burn” on the
 Cut page compares logged to stable TDEE, not today’s incomplete burn.
 
-**Weight goal:** 80 kg by 31 Mar 2027, on `/nutrition/cut`. There is no kilogram
+**Weight goal:** 84–85 kg by 31 Mar 2027, on `/nutrition/cut`. There is no kilogram
 target before Christmas. Maintenance (no deficit) runs 9 Oct 2026 through
 3 Jan 2027, including Christmas camp. From 4 Jan through 31 Mar the ordinary
-day-type deficits apply (training about −250 kcal). The old 450–550 kcal hard
-cut is not used. Protein lean-mass floor stays locked. The Cut page shows
+day-type deficits apply (about 500 kcal/day, ~0.5 kg/week). Hard days take a
+smaller deficit so carbohydrate stays up. Protein lean-mass floor stays locked.
+Energy availability under 30 kcal/kg fat-free mass raises an alert. The Cut page shows
 today’s prescription + **why**, a weekly deficit budget strip, and Garmin
 logged vs intake target. Full meal plan stays on Nutrition Today. On rest days,
 delaying the first meal (≈12–14 h overnight) is fine if the protein floor is

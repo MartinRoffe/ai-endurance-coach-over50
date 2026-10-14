@@ -53,6 +53,19 @@ def _advice_fingerprint_key(target: date) -> str:
     return _ADVICE_FP_KEY.format(target.isoformat())
 
 
+def _modulation_sentence(m: DailyMetrics, comp_z: Optional[float]) -> str:
+    """The rule-based session call. The email explains this; it does not replace it."""
+    from .modulation import modulation_decision_text, resolve_modulation
+    try:
+        light, mod = resolve_modulation(m.date, m, comp_z)
+    except Exception:
+        logger.exception("modulation decision failed")
+        return (
+            "Rule-based decision: train the planned session unless a red flag is logged."
+        )
+    return modulation_decision_text(light, mod)
+
+
 def _advice_fingerprint(
     m: DailyMetrics,
     stats: dict,
@@ -65,6 +78,7 @@ def _advice_fingerprint(
         str(m.sleep_score),
         str(m.hrv_last_night),
         str(m.body_battery_morning),
+        _modulation_sentence(m, comp_z),
     ])
 
 
@@ -152,12 +166,20 @@ def _build_advice_prompt(
             "just short paragraphs. Address the user as 'you'.",
         ]
     else:
+        decision = _modulation_sentence(m, comp_z)
         lines += [
             "",
-            "Based on these metrics and coaching context, please provide:",
-            "1. A clear one-line recommendation: Train / Rest / Active Recovery",
-            "2. Two or three sentences explaining the key signals driving that recommendation",
-            "3. Comment on whether the planned workout is appropriate given today's readiness, and if not suggest a modification within the same discipline (never running)",
+            "The session for today is already decided by the rules. Explain that decision.",
+            "Do not choose Train, Rest, or Active Recovery yourself.",
+            "Do not propose a different session, duration, or intensity.",
+            "",
+            decision,
+            "",
+            "Based on these metrics and that decision, please provide:",
+            "1. One sentence that restates the rule-based decision in plain language",
+            "2. Two or three sentences explaining the signals behind it "
+            "(ln(rMSSD) versus the 30-day baseline when that is the reason)",
+            "3. How to carry out the decided session. Stay inside the same discipline (never running)",
             "4. One watchout if any metric or load signal is concerning — cite a specific z-score "
             "or ACWR/PMC number. If Baseline status is ESTABLISHED, do NOT warn that baselines "
             "are still building or that the dashboard cannot yet catch a bad morning.",
@@ -278,8 +300,12 @@ def _rule_based_advice(
             "Good work today. Focus on recovery for the rest of the day — fuel, hydrate, "
             "and keep any extra movement easy. Readiness metrics on this page are from this morning."
         )
+    decision = _modulation_sentence(m, comp_z)
     if comp_z is None:
-        return "Still building your baseline — keep logging data for a few more days."
+        return (
+            f"{decision}\n\n"
+            "Still building your baseline — keep logging data for a few more days."
+        )
 
     concerns = []
     if m.acwr is not None and m.acwr > 1.5:
@@ -294,25 +320,21 @@ def _rule_based_advice(
     high_acwr = m.acwr is not None and m.acwr > 1.5
 
     if comp_z <= -1.0 or len(concerns) >= 2:
-        rec = "Rest or Active Recovery"
         detail = f"Several signals are below par today: {', '.join(concerns)}. " if concerns else ""
-        detail += "Keep today easy — a short walk or gentle mobility work is fine."
+        detail += "The rule above already set the session. Do not add a second call."
     elif high_acwr:
-        rec = "Train Easy — High Injury Risk"
         detail = (
             f"Your overall readiness is around average, but ACWR is {m.acwr:.2f} "
             f"({m.acwr_status.replace('_', ' ').lower() if m.acwr_status else 'high'}) "
-            "which sits in the elevated injury risk zone. If you train today, keep intensity low "
-            "and avoid high-impact or max-effort sessions."
+            "which sits in the elevated injury risk zone. Follow the decided session "
+            "and avoid adding intensity."
         )
     elif comp_z >= 0.5:
-        rec = "Train"
-        detail = "Your readiness is above your average. Good day to push it if planned."
+        detail = "Your readiness is above your average. Follow the decided session."
     else:
-        rec = "Train at Moderate Intensity"
-        detail = "Readiness is around your average. Train as planned but don't force extra intensity."
+        detail = "Readiness is around your average. Follow the decided session."
 
-    return f"Recommendation: {rec}\n\n{detail}"
+    return f"{decision}\n\n{detail}"
 
 
 # ── Email design tokens — vintage stage-race roadbook ────────────────────────
@@ -422,10 +444,15 @@ def _planned_session_html(d: date) -> str:
     type_accent = {
         "rest": _MUTED, "strength": "#6b4f8a", "bike": _GREEN, "tempo": _AMBER,
         "ftp": _RED, "ruck": "#8a4f62", "long": "#8a6413",
+        "threshold": _RED, "vo2": _RED, "rower": "#3d5a80",
+        "maxiclimber": "#6b4f8a", "kettlebell": "#6b4f8a",
     }
     accent = type_accent.get(stype, _MUTED)
     type_word = {"rest": "Rest day", "strength": "Strength", "bike": "Ride", "tempo": "Ride · quality",
-                 "ftp": "Test", "ruck": "Ruck", "long": "Long ride"}.get(stype, "Session")
+                 "ftp": "Test", "ruck": "Ruck", "long": "Long ride",
+                 "threshold": "Ride · quality", "vo2": "Ride · quality",
+                 "rower": "Rower", "maxiclimber": "MaxiClimber",
+                 "kettlebell": "Kettlebell"}.get(stype, "Session")
     dur_cell = (
         f'<td style="text-align:right;vertical-align:middle;white-space:nowrap;padding:16px 18px 16px 14px;">'
         f'<span style="font-family:{_MONO};font-size:22px;color:{_PAPER};">{dur_str}</span></td>'
@@ -454,6 +481,49 @@ def _planned_session_html(d: date) -> str:
               </tr>
               {safety_row}
             </table>
+          </td>
+        </tr>"""
+
+
+def _fluid_html(d: date) -> str:
+    """Daily fluid target: 2–3 L plus about 500 ml per planned training hour."""
+    try:
+        from .energy import fluid_shortfall_l, fluid_target_litres
+        from .history import get_morning_wellness
+        from .safety import prescribed_session
+        cap = prescribed_session(d)
+        minutes = cap.session[2] if cap.session else 0
+        target = fluid_target_litres(minutes)
+        wellness = get_morning_wellness(d.isoformat()) or {}
+        logged = wellness.get("fluids_l")
+        short = fluid_shortfall_l(logged, minutes)
+    except Exception:
+        logger.exception("_fluid_html failed")
+        return ""
+    low = f"{target['low_l']:.1f}".rstrip("0").rstrip(".")
+    high = f"{target['high_l']:.1f}".rstrip("0").rstrip(".")
+    bits = f"{low}–{high} L"
+    if target["extra_l"]:
+        bits += f" (includes {target['extra_l']:.1f} L for today's training)"
+    flag = ""
+    if short is not None and logged is not None:
+        flag = (
+            f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:12px;color:{_RED};">'
+            f"Short by {short:.1f} L — logged {float(logged):.1f} L, under today's low end.</p>"
+        )
+    elif logged is not None:
+        flag = (
+            f'<p style="margin:8px 0 0;font-family:{_MONO};font-size:12px;color:{_GREEN};">'
+            f"Logged {float(logged):.1f} L, on the day's target.</p>"
+        )
+    return f"""
+        <tr>
+          <td style="padding:18px 28px 0;">
+            {_sec_head("Fluids", "today")}
+            <p style="margin:0;font-family:{_SERIF};font-size:14px;color:{_INK};line-height:1.5;">
+              Drink {bits}. The floor is 2–3 L, plus about 500 ml for each training hour.
+            </p>
+            {flag}
           </td>
         </tr>"""
 
@@ -789,6 +859,7 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
         </tr>
 
         {_planned_session_html(m.date)}
+        {_fluid_html(m.date)}
         {_daily_food_html(m.date)}
         {_week_completion_html(m.date)}
 

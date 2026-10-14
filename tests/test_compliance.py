@@ -21,7 +21,7 @@ def test_christmas_ceiling_ride_is_a_session():
     days = {day["date"]: day for w in weeks for day in w["days"]}
     ride = days[date(2026, 12, 26)]
     assert ride["type"] == "long"
-    assert ride["dur_min"] == 180
+    assert ride["dur_min"] == 300
 
 
 def test_busar_weekend_is_on_the_fitness_calendar():

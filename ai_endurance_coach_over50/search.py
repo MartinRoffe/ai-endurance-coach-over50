@@ -102,7 +102,7 @@ def _pages() -> list[SearchHit]:
         ("/architecture", "Architecture", "System diagram"),
         ("/help", "Help", "In-app user guide"),
         ("/nutrition", "Nutrition — Today", "Eat today checklist"),
-        ("/nutrition/cut", "Weight goal", "80 kg by 31 Mar 2027"),
+        ("/nutrition/cut", "Weight goal", "84–85 kg by 31 Mar 2027"),
         ("/nutrition/sunday", "Sunday Prep", "Batch cook schedule"),
         ("/nutrition/lidl-shopping-list", "Lidl Shopping List", "Weekly shop"),
         ("/nutrition/shopping-list", "Asda Shopping List", "Click-to-add weekly shop"),
