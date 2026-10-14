@@ -509,6 +509,34 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     post_workout = timing["post_workout"]
     date_key = target.isoformat()
     today_activities = [enrich_activity(a) for a in timing.get("matched_activities") or []]
+    wellness = None
+    fluid_today = None
+    try:
+        from ..energy import fluid_shortfall_l, fluid_target_litres
+        from ..history import get_morning_wellness, load_session_rpe
+        from ..load import activity_load
+        from ..safety import prescribed_session
+        wellness = get_morning_wellness(date_key)
+        rpe_rows = [
+            r for r in load_session_rpe(14)
+            if r.get("date") == date_key and r.get("activity_id") is not None
+        ]
+        rpe_by_id = {str(r["activity_id"]): int(r["rpe"]) for r in rpe_rows if r.get("rpe") is not None}
+        for act in today_activities:
+            rpe = rpe_by_id.get(str(act.get("activity_id")))
+            act["rpe"] = rpe
+            act["session_load"] = round(activity_load(act, rpe)) if act.get("duration_seconds") else None
+        cap = prescribed_session(target)
+        training_min = float(cap.session[2] or 0) if cap.session else 0.0
+        logged_secs = sum(a.get("duration_seconds") or 0 for a in today_activities)
+        if logged_secs:
+            training_min = logged_secs / 60.0
+        fluid_today = fluid_target_litres(training_min)
+        logged_l = (wellness or {}).get("fluids_l")
+        fluid_today["logged_l"] = logged_l
+        fluid_today["shortfall_l"] = fluid_shortfall_l(logged_l, training_min)
+    except Exception:
+        logger.warning("_build_context wellness failed", exc_info=True)
 
     # HRV traffic light + session modulation (morning gate metrics)
     traffic_light = None
@@ -711,6 +739,8 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "morning_snapshot": morning_snapshot,
         "post_workout": post_workout,
         "today_activities": today_activities,
+        "wellness": wellness,
+        "fluid_today": fluid_today,
         "post_fatigue": post_fatigue,
         "advice_pre": advice_pre,
         "advice_post": advice_post,
@@ -1288,7 +1318,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
     elif phase == "hard":
         phase_key, phase_label = "hard", "Hard cut"
     elif phase == "ease":
-        phase_key, phase_label = "ease", "Toward 80 kg by 31 Mar"
+        phase_key, phase_label = "ease", "Toward 84–85 kg by 31 Mar"
     elif today > CUT_TARGET_DEADLINE:
         phase_key, phase_label = "after", "Post-cut hold"
     else:
@@ -1392,7 +1422,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         },
         {
             "key": "ease",
-            "label": "Toward 80 kg",
+            "label": "Toward 84–85 kg",
             "dates": f"{ease_start.strftime('%-d %b %Y')} – {ease_end.strftime('%-d %b %Y')}",
             "active": phase_key == "ease",
         },
@@ -1405,7 +1435,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
     ]
 
     deficit_rows = []
-    for tier in ("rest", "training", "ruck", "long", "recovery"):
+    for tier in ("rest", "training", "hard", "ruck", "long", "recovery"):
         deficit_rows.append({
             "tier": tier,
             "hard": CUT_DEFICIT_BY_PHASE["hard"].get(tier),
@@ -1436,10 +1466,9 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
             "weekly_deficit_kcal": weekly_kcal,
             "kg_per_week": round(weekly_kcal / KCAL_PER_KG, 2),
             "note": (
-                "Rest/easy days carry most of the cut; long-ride days stay near "
-                "maintenance. Protein floor stays locked — don’t skip fuel on long days "
-                "to speed the cut. Delaying breakfast on rest days is fine if protein "
-                "is still hit by evening."
+                "About 0.5 kg a week. Rest days carry more of the deficit. "
+                "A hard day (threshold or VO2) takes a smaller cut so carbohydrate stays up. "
+                "Protein stays on the lean-mass floor. Don’t skip fuel on long days to speed the cut."
             ),
         }
 
@@ -1499,7 +1528,7 @@ def _cut_context(ref: date | None = None) -> dict[str, Any]:
         "phase_label": phase_label,
         "kidney_maint": kidney_maint,
         "cut_target_kg": CUT_TARGET_KG,
-        "cut_band": "80",
+        "cut_band": "84–85",
         "deadline": CUT_TARGET_DEADLINE.isoformat(),
         "deadline_label": CUT_TARGET_DEADLINE.strftime("%-d %b %Y"),
         "days_left": days_left,

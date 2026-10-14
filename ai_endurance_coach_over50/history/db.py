@@ -357,6 +357,26 @@ def _ensure_session_notes_schema(con: sqlite3.Connection) -> None:
     """)
 
 
+def _ensure_wellness_schema(con: sqlite3.Connection) -> None:
+    """30-second morning check. Soreness, mood, and energy are 1–5.
+
+    flank_pain, fever, and blood are 0/1. fluids_l is litres drunk so far today.
+    """
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS morning_wellness (
+            date TEXT PRIMARY KEY,
+            soreness INTEGER,
+            mood INTEGER,
+            energy INTEGER,
+            flank_pain INTEGER NOT NULL DEFAULT 0,
+            fever INTEGER NOT NULL DEFAULT 0,
+            blood INTEGER NOT NULL DEFAULT 0,
+            fluids_l REAL,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+
 def _ensure_fuelling_log_schema(con: sqlite3.Connection) -> None:
     con.execute("""
         CREATE TABLE IF NOT EXISTS fuelling_logs (

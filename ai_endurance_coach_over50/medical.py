@@ -67,8 +67,8 @@ MEDICAL_HISTORY_SUMMARY = (
     "Christmas Tenerife (21 Dec 2026–2 Jan 2027) is confirmed. Stored ride minutes "
     "are a ceiling; shorten the ride when fitness is not there. "
     "Year 2 (~Oct 2027 onward) is the cycling-specific Haute Route block and is not written yet. "
-    "No kilogram target before Christmas. From 4 Jan 2027 the goal is 80 kg by 31 Mar 2027, "
-    "using ordinary day-type deficits, not a hard cut."
+    "No kilogram target before Christmas. From 4 Jan 2027 the goal is 84–85 kg by 31 Mar 2027 "
+    "(about 0.5 kg a week), using ordinary day-type deficits, not a hard cut."
 )
 
 # Thin phase skeleton — not week-by-week sessions

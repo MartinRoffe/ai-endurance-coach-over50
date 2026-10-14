@@ -109,9 +109,10 @@ def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
         )
     else:
         task = (
-            "Right now: give a concise train/rest/modify-today recommendation for the morning "
-            "readiness dashboard. Keep it specific and grounded in the actual numbers from the "
-            "context — warm and motivating, but never vague."
+            "Right now: explain the rule-based modulation decision already in the prompt. "
+            "Do not make your own Train, Rest, or Active Recovery call, and do not swap the "
+            "session. Keep it specific and grounded in the actual numbers from the context — "
+            "warm and motivating, but never vague."
         )
     return (
         COACH_VOICE + "\n\n"
@@ -298,7 +299,7 @@ def _section_today_session_prescriptions(today: date) -> list[str]:
         )
     elif tt.get("cut_phase") == "ease":
         lines.append(
-            f"  TOWARD 80 kg BY 31 MAR: planned deficit {tt.get('planned_deficit')} kcal. "
+            f"  TOWARD 84–85 kg BY 31 MAR: planned deficit {tt.get('planned_deficit')} kcal. "
             "Day-type deficits only. Do not push a harder cut."
         )
     elif tt.get("planned_deficit"):
@@ -929,12 +930,12 @@ def _section_phase_nutrition(today: date) -> list[str]:
                 cp = active_cut_phase(today)
                 if cp == "hard":
                     lines.append(
-                        "  Cut phase is on. Day-type deficits only, toward 80 kg by 31 Mar 2027. "
+                        "  Cut phase is on. Day-type deficits only, toward 84–85 kg by 31 Mar 2027. "
                         "Do not increase the deficit."
                     )
                 elif cp == "ease":
                     lines.append(
-                        "  Toward 80 kg by 31 Mar 2027 — day-type deficit only. "
+                        "  Toward 84–85 kg by 31 Mar 2027 — day-type deficit only. "
                         "Do not increase the deficit."
                     )
                 else:
@@ -1499,7 +1500,7 @@ def build_coach_context() -> str:
     if rpe_rows:
         rpe_parts = ["## Recent RPE Logs (last 7 days)"]
         for r in rpe_rows:
-            rpe_str = f"RPE {r['rpe']}/5"
+            rpe_str = f"RPE {r['rpe']}/10"
             note_str = f" — {r['note']}" if r.get("note") else ""
             rpe_parts.append(f"  {r['date']}: {rpe_str}{note_str}")
 
@@ -1511,7 +1512,7 @@ def build_coach_context() -> str:
         if summaries:
             fit_parts = ["## Recent FIT Interval Execution"]
             fit_parts.append(
-                "Objective vs subjective: supra-threshold power at RPE ≤3/5 can signal stale FTP."
+                "Objective vs subjective: supra-threshold power at RPE ≤4/10 can signal stale FTP."
             )
             rpe_by_aid = {
                 str(r["activity_id"]): r for r in rpe_rows
@@ -1535,9 +1536,9 @@ def build_coach_context() -> str:
                 rpe = rpe_by_aid.get(str(s["activity_id"]))
                 if rpe:
                     supra = any((i.get("pct_ftp") or 0) >= 103 for i in (s.get("intervals") or []))
-                    if supra and rpe.get("rpe") is not None and int(rpe["rpe"]) <= 3:
+                    if supra and rpe.get("rpe") is not None and int(rpe["rpe"]) <= 4:
                         fit_parts.append(
-                            f"    Note: RPE {rpe['rpe']}/5 with supra-threshold power — possible stale FTP"
+                            f"    Note: RPE {rpe['rpe']}/10 with supra-threshold power — possible stale FTP"
                         )
     except Exception:
         logger.warning("build_coach_context failed", exc_info=True)

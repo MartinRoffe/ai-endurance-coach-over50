@@ -1,5 +1,13 @@
 """HRV-guided daily session modulation (green/amber/red traffic light).
 
+HRV uses the natural log of last-night rMSSD. The signal is the 7-day
+rolling mean of ln(rMSSD), compared with the 30-day mean. The smallest
+worthwhile change is half a standard deviation of the daily ln values
+(Plews). Inside that band the change is trivial.
+
+The morning email explains this decision. It does not make a second
+Train/Rest call.
+
 Turns morning readiness data into a concrete, accept/declinable change to
 today's planned session. Green = train as planned; amber = keep duration but
 drop intensity; red = swap to short recovery. Applied via the existing
@@ -11,16 +19,23 @@ before HRV traffic-light modulation.
 """
 from __future__ import annotations
 
+import math
 import statistics
 from datetime import date
 from typing import Optional
 
 from .history import get_plan_override, load_btb_summary, load_durability, load_session_rpe, raw_history
+from .load import RPE_HIGH
 from .hr_plan import hr_session_for_date
 from .metrics import DailyMetrics
 from .plan import PLAN_START, session_for_date_extended
 
-QUALITY_BIKE_TYPES = frozenset({"ftp", "tempo", "sweetspot", "vo2"})
+QUALITY_BIKE_TYPES = frozenset({"ftp", "tempo", "sweetspot", "vo2", "threshold"})
+
+# Smallest worthwhile change = this fraction of the SD of daily ln(rMSSD).
+HRV_SWC_FRACTION = 0.5
+# A 7-day mean more than two SWCs under the baseline is a red day.
+HRV_RED_SWC_MULTIPLE = 2.0
 
 # Map a planned session type to its easier amber-day variant (duration kept).
 EASIER_VARIANT: dict[str, tuple[str, str]] = {
@@ -46,60 +61,127 @@ HR_EASIER_VARIANT: dict[str, tuple[str, str]] = {
 }
 
 
+def assess_hrv_ln(
+    rows: list[dict],
+    today_iso: Optional[str],
+    today_ms: Optional[float],
+) -> Optional[dict]:
+    """7-day mean of ln(rMSSD) against the 30-day baseline and an SWC band.
+
+    ``rows`` may include today. Today's value is ``today_ms`` (the morning
+    metric), not a duplicate row. Returns None until there are 7 baseline
+    nights and a positive reading for today.
+    """
+    baseline_ms = [
+        r["hrv_last_night"] for r in rows
+        if r.get("date") != today_iso and r.get("hrv_last_night") is not None
+        and r["hrv_last_night"] > 0
+    ]
+    if today_ms is None or today_ms <= 0 or len(baseline_ms) < 7:
+        return None
+    baseline_ln = [math.log(v) for v in baseline_ms]
+    mean = statistics.mean(baseline_ln)
+    sd = statistics.pstdev(baseline_ln)
+    swc = HRV_SWC_FRACTION * sd
+    window = baseline_ln[-6:] + [math.log(today_ms)]
+    roll = statistics.mean(window)
+    hrv_z = (roll - mean) / sd if sd > 0 else None
+    return {
+        "ln_7d": roll,
+        "ln_baseline": mean,
+        "swc": swc,
+        "sd": sd,
+        "hrv_z": hrv_z,
+        "ratio": (roll / mean) if mean else None,
+        "below_band": roll < mean - swc,
+        "well_below": roll < mean - HRV_RED_SWC_MULTIPLE * swc,
+        "today_ms": today_ms,
+    }
+
+
+def _hrv_reason(state: dict) -> str:
+    gap = state["ln_baseline"] - state["ln_7d"]
+    return (
+        f"7-day mean ln(rMSSD) is {gap:.3f} below the 30-day baseline "
+        f"(SWC {state['swc']:.3f}; last night {state['today_ms']:.0f} ms)"
+    )
+
+
 def hrv_traffic_light(m: DailyMetrics, comp_z: Optional[float]) -> dict:
     """Classify today's readiness as green / amber / red / unknown.
 
-    Primary signal: last-night HRV vs its own 30-day baseline (z-score),
-    with the 7-day vs 30-day mean ratio as a secondary chronic-suppression
-    signal, and the composite readiness z as a backstop.
+    Primary signal: 7-day rolling mean of ln(rMSSD) versus the 30-day mean
+    of daily ln(rMSSD). The smallest-worthwhile-change band is
+    ± HRV_SWC_FRACTION standard deviations. Composite readiness is a backstop.
     """
-    # Exclude the row for m's own date from the baseline (when present) rather
-    # than blindly dropping the last row — before the watch syncs, the last DB
-    # row is yesterday and must stay in the baseline.
     today_iso = m.date.isoformat() if m.date else None
     rows = raw_history(31)
-    baseline = [r["hrv_last_night"] for r in rows
-                if r.get("date") != today_iso and r["hrv_last_night"] is not None]
-    hrv_today = m.hrv_last_night
+    state = assess_hrv_ln(rows, today_iso, m.hrv_last_night)
+    hrv_z = state["hrv_z"] if state else None
+    ratio = state["ratio"] if state else None
 
-    hrv_z = None
-    ratio = None
-    if hrv_today is not None and len(baseline) >= 7:
-        mean = statistics.mean(baseline)
-        stdev = statistics.pstdev(baseline)
-        if stdev > 0:
-            hrv_z = (hrv_today - mean) / stdev
-        last7 = [v for v in baseline[-7:] if v is not None]
-        if last7 and mean > 0:
-            ratio = statistics.mean(last7) / mean
-
-    if hrv_z is None and comp_z is None:
+    if state is None and comp_z is None:
         return {"status": "unknown", "hrv_z": None, "ratio": None,
-                "reason": "Not enough HRV history yet for a baseline."}
+                "reason": "Not enough HRV history yet for a ln(rMSSD) baseline."}
 
-    def _fmt(reasons: list[str]) -> str:
-        return "; ".join(reasons)
+    def _pack(status: str, reasons: list[str]) -> dict:
+        out = {"status": status, "hrv_z": hrv_z, "ratio": ratio, "reason": "; ".join(reasons)}
+        if state:
+            out.update({
+                "ln_7d": state["ln_7d"],
+                "ln_baseline": state["ln_baseline"],
+                "swc": state["swc"],
+            })
+        return out
 
     red_reasons = []
-    if hrv_z is not None and hrv_z < -1.5:
-        red_reasons.append(f"HRV {hrv_today:.0f} ms is {abs(hrv_z):.1f}σ below your 30-day baseline")
+    if state and state["well_below"]:
+        red_reasons.append(_hrv_reason(state))
     if comp_z is not None and comp_z < -1.2:
         red_reasons.append(f"composite readiness is {comp_z:+.1f}σ")
     if red_reasons:
-        return {"status": "red", "hrv_z": hrv_z, "ratio": ratio, "reason": _fmt(red_reasons)}
+        return _pack("red", red_reasons)
 
     amber_reasons = []
-    if hrv_z is not None and hrv_z < -0.75:
-        amber_reasons.append(f"HRV {hrv_today:.0f} ms is {abs(hrv_z):.1f}σ below baseline")
+    if state and state["below_band"]:
+        amber_reasons.append(_hrv_reason(state))
     if comp_z is not None and comp_z < -0.5:
         amber_reasons.append(f"composite readiness is {comp_z:+.1f}σ")
-    if ratio is not None and ratio < 0.92:
-        amber_reasons.append(f"7-day HRV average is {(1 - ratio) * 100:.0f}% below your 30-day norm")
     if amber_reasons:
-        return {"status": "amber", "hrv_z": hrv_z, "ratio": ratio, "reason": _fmt(amber_reasons)}
+        return _pack("amber", amber_reasons)
 
-    return {"status": "green", "hrv_z": hrv_z, "ratio": ratio,
-            "reason": "HRV and readiness in normal range."}
+    if state is None:
+        return {"status": "unknown", "hrv_z": None, "ratio": None,
+                "reason": "Not enough HRV history yet for a ln(rMSSD) baseline."}
+    return _pack("green", ["7-day ln(rMSSD) is inside the smallest-worthwhile-change band."])
+
+
+def modulation_decision_text(light: Optional[dict], modulation: Optional[dict]) -> str:
+    """One sentence the email must explain, not replace."""
+    light = light or {}
+    if modulation and modulation.get("label"):
+        dur = modulation.get("duration_min")
+        dur_bit = f" ({dur} min)" if dur else ""
+        planned = modulation.get("planned_label")
+        swap = ""
+        if planned and planned != modulation.get("label"):
+            swap = f" instead of {planned}"
+        reason = (modulation.get("reason") or light.get("reason") or "").strip()
+        line = f"Rule-based decision: {modulation['label']}{dur_bit}{swap}."
+        return f"{line} {reason}".strip()
+    status = light.get("status") or "unknown"
+    if status == "green":
+        return (
+            "Rule-based decision: train the planned session. "
+            "The 7-day ln(rMSSD) mean is inside the normal band."
+        )
+    if status == "unknown":
+        return (
+            "Rule-based decision: not enough HRV history to change the plan. "
+            "Train the planned session unless a red flag is logged."
+        )
+    reason = (light.get("reason") or "").strip()
+    return f"Rule-based decision: {status}. {reason}".strip()
 
 
 def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
@@ -169,7 +251,7 @@ def _illness_triggers(today: date) -> tuple[list[str], bool]:
     if not rows31 or rows31[-1].get("date") != today.isoformat():
         return [], False
 
-    hrv_z = _signal_z(rows31, "hrv_last_night")
+    hrv_state = assess_hrv_ln(rows31, today.isoformat(), rows31[-1].get("hrv_last_night"))
     rhr_z = _signal_z(rows31, "resting_hr")
     if rhr_z is None:
         rhr_z = _signal_z(rows31, "rest_stress")
@@ -177,8 +259,8 @@ def _illness_triggers(today: date) -> tuple[list[str], bool]:
 
     triggers = []
     today_row = rows31[-1]
-    if hrv_z is not None and hrv_z < -1.5:
-        triggers.append(f"HRV {today_row['hrv_last_night']:.0f} ms ({hrv_z:+.1f}σ)")
+    if hrv_state and hrv_state["below_band"]:
+        triggers.append(_hrv_reason(hrv_state))
     if rhr_z is not None and rhr_z > 1.5:
         if today_row.get("resting_hr") is not None:
             triggers.append(f"resting HR {today_row['resting_hr']:.0f} bpm ({rhr_z:+.1f}σ)")
@@ -292,14 +374,14 @@ def recovery_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
 
     if light["status"] == "amber":
         rpe_rows = load_session_rpe(7)
-        if any((r.get("rpe") or 0) >= 4 for r in rpe_rows):
+        if any((r.get("rpe") or 0) >= RPE_HIGH for r in rpe_rows):
             swap = _amber_variant(stype, label, dur, hr_day)
             if swap:
                 return {
                     **base,
                     **swap,
                     "headline": "High perceived effort — ease off intensity",
-                    "reason": "Recent session RPE ≥4 with amber HRV — drop intensity today",
+                    "reason": f"Recent session RPE ≥{RPE_HIGH}/10 with amber HRV — drop intensity today",
                     "gate_type": "rpe_amber",
                 }
             shortened = max(15, int(dur * 0.8))
@@ -310,7 +392,7 @@ def recovery_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
                     "label": label,
                     "duration_min": shortened,
                     "headline": "High perceived effort — shorten today",
-                    "reason": "Recent session RPE ≥4 with amber HRV — reduce volume 20%",
+                    "reason": f"Recent session RPE ≥{RPE_HIGH}/10 with amber HRV — reduce volume 20%",
                     "gate_type": "rpe_amber",
                 }
 

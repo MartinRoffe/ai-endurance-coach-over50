@@ -11,6 +11,7 @@ from .db import (
     _ensure_commitments_schema,
     _ensure_rpe_schema,
     _ensure_session_notes_schema,
+    _ensure_wellness_schema,
 )
 
 
@@ -143,7 +144,67 @@ def list_session_notes() -> dict[str, str]:
 
 # ── Coach memory ──────────────────────────────────────────────────────────────
 
+def save_morning_wellness(
+    day: str,
+    *,
+    soreness: Optional[int] = None,
+    mood: Optional[int] = None,
+    energy: Optional[int] = None,
+    flank_pain: bool = False,
+    fever: bool = False,
+    blood: bool = False,
+    fluids_l: Optional[float] = None,
+) -> None:
+    """Replace the morning check for ``day`` (ISO date)."""
+    with _conn() as con:
+        _ensure_wellness_schema(con)
+        con.execute(
+            """
+            INSERT INTO morning_wellness
+                (date, soreness, mood, energy, flank_pain, fever, blood, fluids_l)
+            VALUES (?,?,?,?,?,?,?,?)
+            ON CONFLICT(date) DO UPDATE SET
+                soreness=excluded.soreness,
+                mood=excluded.mood,
+                energy=excluded.energy,
+                flank_pain=excluded.flank_pain,
+                fever=excluded.fever,
+                blood=excluded.blood,
+                fluids_l=excluded.fluids_l
+            """,
+            (
+                day,
+                soreness,
+                mood,
+                energy,
+                1 if flank_pain else 0,
+                1 if fever else 0,
+                1 if blood else 0,
+                fluids_l,
+            ),
+        )
+
+
+def get_morning_wellness(day: str) -> Optional[dict]:
+    with _conn() as con:
+        _ensure_wellness_schema(con)
+        row = con.execute(
+            "SELECT * FROM morning_wellness WHERE date = ?",
+            (day,),
+        ).fetchone()
+    if not row:
+        return None
+    out = dict(row)
+    for key in ("flank_pain", "fever", "blood"):
+        out[key] = bool(out.get(key))
+    return out
+
+
 def save_session_rpe(activity_date: str, activity_id: Optional[int], rpe: int, note: Optional[str] = None) -> None:
+    from ..load import RPE_MAX, RPE_MIN
+    rpe = int(rpe)
+    if rpe < RPE_MIN or rpe > RPE_MAX:
+        raise ValueError(f"RPE must be {RPE_MIN}–{RPE_MAX}")
     with _conn() as con:
         _ensure_rpe_schema(con)
         if activity_id is not None:

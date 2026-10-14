@@ -104,7 +104,7 @@ def test_hard_cut_deficit():
     out = resolve_calorie_target(2400, "training", date(2026, 10, 5))
     assert out["cut_phase"] is None
     assert out["planned_deficit"] == 250
-    assert out["cut_target_kg"] == 80
+    assert out["cut_target_kg"] == 84.5
 
 
 def test_ease_cut_deficit():
@@ -130,7 +130,7 @@ def test_calorie_tier_for_session():
     assert calorie_tier_for_session("long", "training") == "long"
     assert calorie_tier_for_session("rest", "training") == "rest"
     assert calorie_tier_for_session("gym", "training") == "recovery"
-    assert calorie_tier_for_session("vo2", "rest") == "training"
+    assert calorie_tier_for_session("vo2", "rest") == "hard"
     assert calorie_tier_for_session(None, "ruck") == "ruck"
 
 
@@ -163,7 +163,7 @@ def test_today_targets_hard_cut_exposes_phase(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2400)
     out = np_mod.today_targets(date(2026, 10, 6))  # before the March cut, outside maintenance
     assert out["cut_phase"] is None
-    assert out["cut_target_kg"] == 80
+    assert out["cut_target_kg"] == 84.5
     assert out["planned_deficit"] in (250, 350, 150, 50)
 
 

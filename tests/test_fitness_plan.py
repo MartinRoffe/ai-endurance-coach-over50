@@ -27,22 +27,24 @@ def test_procedure_day_is_rest_and_not_pushed():
 
 
 def test_december_sunday_reaches_the_cap():
+    first = session_for_date(date(2026, 11, 29))
+    assert first == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
     mid = session_for_date(date(2026, 12, 13))
-    assert mid == ("long", "Long Ride (Easy)", 165)
+    assert mid == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
     cap = session_for_date(date(2026, 12, 20))
     assert cap == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
     assert HOME_SUNDAY_CAP_MIN == 180
 
 
-def test_camp_day_stays_on_the_cap_and_teide_is_absent():
+def test_camp_day_is_time_based_and_teide_is_optional():
     assert not XMAS_CAMP_TENTATIVE
     camp = session_for_date_extended(date(2026, 12, 26))
-    assert camp == ("long", "Long Ride (Easy)", 180)
-    assert camp[2] <= HOME_SUNDAY_CAP_MIN
-    assert garmin_allowed(date(2026, 12, 26), camp[0], camp[1])
-    assert _workouts_for_date(date(2026, 12, 26)) == [("bike", "Long Ride (Easy)", 180)]
-    # Old grid is not what this date returns.
-    assert "Teide" not in camp[1]
+    assert camp == ("long", "Teide — optional long day", 300)
+    assert not garmin_allowed(date(2026, 12, 26), camp[0], camp[1])
+    assert _workouts_for_date(date(2026, 12, 26)) == []
+    quality = session_for_date_extended(date(2026, 12, 23))
+    assert quality == ("threshold", "Camp quality — threshold", 180)
+    assert not garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
 
 
 def test_busar_weekend_replaces_the_last_keswick_ruck():
@@ -80,7 +82,7 @@ def test_cut_is_maintenance_through_camp_and_off_after():
     assert active_cut_phase(date(2027, 1, 4)) == "ease"
     assert active_cut_phase(date(2027, 4, 1)) is None
     # Standing day-type deficit, not the suspended hard cut (450).
-    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 2150
+    assert intake_target_kcal(2400, "training", ref_date=date(2027, 1, 4)) == 1850
 
 
 def test_guide_covers_the_block_in_phase_order():
@@ -92,10 +94,13 @@ def test_guide_covers_the_block_in_phase_order():
     assert phases[0]["start"] == PLAN_START
     assert phases[-1]["end"] == PLAN_END
     ret = phases[1]
-    assert ret["days"][2]["text"].startswith("Z2 Easy")
-    assert "45m–1h15m" in ret["days"][2]["text"] or "45m–75m" in ret["days"][2]["text"]
+    assert any("Threshold — bike" in w["text"] for w in ret["weeks"])
+    assert any("3h" in w["text"] for w in ret["weeks"])
     assert phases[3]["weeks"]
-    assert any("14 kg" in w["text"] for w in phases[3]["weeks"])
+    joined = " ".join(w["text"] for w in phases[3]["weeks"])
+    assert "20.4 kg" in joined
+    assert "sandbag" in joined
+    assert "trap-bar" not in joined
     assert "BUSAR" in phases[3]["weeks"][-1]["text"]
 
 

@@ -86,6 +86,7 @@ from ..history import (
     save_btb_note,
     save_coach_message,
     save_fuelling_log,
+    save_morning_wellness,
     save_session_rpe,
     set_cached_text,
     set_plan_override,
@@ -635,7 +636,45 @@ async def climbs_essay_regen(body: _ClimbEssayRegen, _=Depends(_require_auth)):
 @app.post("/log-rpe")
 async def log_rpe_endpoint(request: Request, _=Depends(_require_auth)):
     body = await request.json()
-    save_session_rpe(body["date"], body.get("activity_id"), body["rpe"], body.get("note"))
+    try:
+        rpe = int(body["rpe"])
+        date.fromisoformat(body["date"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="rpe must be an integer 1–10 and date YYYY-MM-DD")
+    try:
+        save_session_rpe(body["date"], body.get("activity_id"), rpe, body.get("note"))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse({"ok": True})
+
+
+class _WellnessRequest(BaseModel):
+    date: str
+    soreness: int = Field(..., ge=1, le=5)
+    mood: int = Field(..., ge=1, le=5)
+    energy: int = Field(..., ge=1, le=5)
+    flank_pain: bool = False
+    fever: bool = False
+    blood: bool = False
+    fluids_l: Optional[float] = Field(None, ge=0, le=15)
+
+
+@app.post("/log-wellness")
+async def log_wellness_endpoint(body: _WellnessRequest, _=Depends(_require_auth)):
+    try:
+        date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be YYYY-MM-DD")
+    save_morning_wellness(
+        body.date,
+        soreness=body.soreness,
+        mood=body.mood,
+        energy=body.energy,
+        flank_pain=body.flank_pain,
+        fever=body.fever,
+        blood=body.blood,
+        fluids_l=body.fluids_l,
+    )
     return JSONResponse({"ok": True})
 
 

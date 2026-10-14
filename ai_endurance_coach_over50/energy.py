@@ -183,6 +183,8 @@ INTAKE_DEFICIT_BY_TIER: dict[str, int] = {
     "ruck": 150,
     "long": 50,
     "recovery": 350,
+    # Smaller deficit than a normal training day so hard days keep carbohydrate.
+    "hard": 200,
 }
 
 # Extra intake per hour of long ride beyond a 2 h baseline (kcal/h).
@@ -197,14 +199,24 @@ MAINTENANCE_WINDOWS: list[tuple[date, date]] = [
     (date(2026, 10, 9), date(2027, 1, 3)),
 ]
 
-# 80 kg by end of March 2027. Day-type deficits only, after Christmas.
-CUT_TARGET_KG = 80
+# About 0.5 kg/week from 4 Jan to 31 Mar 2027, landing near 84–85 kg
+# from a start around 89–92 kg. CUT_TARGET_KG is the midpoint used for
+# pace maths. The illustrative week (2 rest + 3 training + ruck + long)
+# averages about 536 kcal/day under the ease map, ~0.5 kg/week at 7,700 kcal/kg.
+CUT_TARGET_KG = 84.5
+CUT_TARGET_LOW_KG = 84
+CUT_TARGET_HIGH_KG = 85
+CUT_RATE_KG_PER_WEEK = 0.5
+CUT_MEAN_DEFICIT_KCAL = 500
 CUT_TARGET_DEADLINE = date(2027, 3, 31)
 CUT_PHASES: list[tuple[date, date, str]] = [
     (date(2027, 1, 4), date(2027, 3, 31), "ease"),
 ]
 
-# Harder deficits during the front-loaded cut; ease ≈ INTAKE_DEFICIT_BY_TIER.
+# Ease is the live cut. Hard days (threshold / VO2) take a smaller deficit
+# so carbohydrate stays up; protein is not the lever (see nutrition_plan).
+# The old "hard" map is kept for the suspended front-loaded cut and is not
+# scheduled.
 CUT_DEFICIT_BY_PHASE: dict[str, dict[str, int]] = {
     "hard": {
         "rest": 550,
@@ -212,9 +224,32 @@ CUT_DEFICIT_BY_PHASE: dict[str, dict[str, int]] = {
         "ruck": 300,
         "long": 100,
         "recovery": 550,
+        "hard": 200,
     },
-    "ease": dict(INTAKE_DEFICIT_BY_TIER),
+    "ease": {
+        "rest": 650,
+        "training": 550,
+        "ruck": 450,
+        "long": 350,
+        "recovery": 650,
+        "hard": 250,
+    },
 }
+
+# Energy availability = (intake kcal − exercise kcal) / kg fat-free mass.
+# Below 30 kcal/kg FFM is the usual low-EA line (Loucks).
+EA_WARN_KCAL_PER_KG_FFM = 30.0
+
+# Daily fluid: 2–3 L plus about 500 ml per training hour.
+FLUID_BASE_LOW_L = 2.0
+FLUID_BASE_HIGH_L = 3.0
+FLUID_PER_TRAINING_HOUR_L = 0.5
+
+# Muscle-mass alert: late readings at least this far under the early ones,
+# across a span of two weeks and at least three scale readings.
+MUSCLE_DROP_KG = 0.4
+MUSCLE_DROP_MIN_DAYS = 14
+MUSCLE_DROP_MIN_READINGS = 3
 
 
 def in_maintenance_window(d: Optional[date]) -> bool:
@@ -232,6 +267,53 @@ def active_cut_phase(d: Optional[date]) -> Optional[str]:
         if start <= d <= end:
             return name
     return None
+
+
+def cut_target_band() -> str:
+    """Athlete-facing weight band for the Jan–Mar cut."""
+    return f"{CUT_TARGET_LOW_KG:g}–{CUT_TARGET_HIGH_KG:g} kg"
+
+
+def energy_availability(
+    intake_kcal: Optional[float],
+    exercise_kcal: Optional[float],
+    ffm_kg: Optional[float],
+) -> Optional[float]:
+    """kcal per kg fat-free mass. None when any input is missing."""
+    if intake_kcal is None or exercise_kcal is None or ffm_kg is None:
+        return None
+    try:
+        intake = float(intake_kcal)
+        exercise = float(exercise_kcal)
+        ffm = float(ffm_kg)
+    except (TypeError, ValueError):
+        return None
+    if ffm <= 0:
+        return None
+    return (intake - exercise) / ffm
+
+
+def fluid_target_litres(training_min: float) -> dict:
+    """2–3 L plus FLUID_PER_TRAINING_HOUR_L per training hour."""
+    hours = max(0.0, float(training_min or 0)) / 60.0
+    extra = FLUID_PER_TRAINING_HOUR_L * hours
+    return {
+        "low_l": round(FLUID_BASE_LOW_L + extra, 2),
+        "high_l": round(FLUID_BASE_HIGH_L + extra, 2),
+        "extra_l": round(extra, 2),
+        "training_hours": round(hours, 2),
+    }
+
+
+def fluid_shortfall_l(logged_l: Optional[float], training_min: float) -> Optional[float]:
+    """Litres under the low end of the target, or None when intake is unknown or enough."""
+    if logged_l is None:
+        return None
+    low = fluid_target_litres(training_min)["low_l"]
+    gap = low - float(logged_l)
+    if gap <= 0.05:
+        return None
+    return round(gap, 2)
 
 
 def deficit_for_tier(tier_key: str, ref_date: Optional[date] = None) -> int:
