@@ -62,7 +62,8 @@ def test_build_advice_context_shows_post_workout_status():
     ctx = build_advice_context(target, timing)
     assert "## Time & Session Status" in ctx
     assert "## Athlete Goals" in ctx
-    assert "Ghent→Amsterdam charity ride" in ctx
+    assert "CANCELLED" in ctx
+    assert "Haute Route Alpes 2028" in ctx
     assert "POST-WORKOUT" in ctx
     assert "COMPLETED today" in ctx
     assert "THIS MORNING before the session" in ctx
@@ -101,13 +102,14 @@ def test_build_advice_prompt_post_workout_instructions():
     assert "debriefing today's completed session" in prompt
     assert "Do NOT say 'yesterday'" in prompt
     assert "morning email" not in prompt
-    assert "Ghent→Amsterdam charity ride" in prompt
+    assert "CANCELLED" in prompt or "Haute Route Alpes 2028" in prompt
     assert "Lap the Map" in prompt  # named as forbidden example
 
 
 def test_coach_persona_brief_uses_official_event_names():
     brief = coach_persona_brief(True)
-    assert "Ghent→Amsterdam charity ride" in brief
+    assert "Haute Route Alpes 2028" in brief
+    assert "cancelled" in brief.lower() or "CANCELLED" in brief or "not treat it as live" in brief
     assert "Never invent alternative names" in brief
 
 

@@ -1,0 +1,8 @@
+year,mmp_20,mmp_60,weight_kg,mmp_20_wkg,mmp_60_wkg,provenance,notes
+2011,210.3,179.0,—,—,—,MEASURED_MMP,MEASURED_MMP shortlist; ratio band FAIL (coverage caveat)
+2012,281.7,267.1,78.0,3.61,3.42,MEASURED_MMP,MEASURED_MMP shortlist; Alps Day4 MMP-60≈253 lore confirmed on stream
+2013,302.3,296.3,—,—,—,MEASURED_MMP,MEASURED_MMP shortlist; ratio band FAIL (coverage caveat)
+2014,273.8,258.6,—,—,—,MEASURED_MMP,MEASURED_MMP shortlist
+2015,303.7,271.5,84.4,3.6,3.22,MEASURED_MMP,MEASURED_MMP shortlist
+2016,213.9,172.5,82.0,2.61,2.1,MEASURED_MMP,MEASURED_MMP shortlist; ratio band FAIL (coverage caveat)
+2026,222.6,186.1,89.9,2.48,2.07,MEASURED_MMP,MEASURED_MMP block bests; FTP test MMP-20=222.6 outdoor; FTP 220=effort×0.95 (not in this table)

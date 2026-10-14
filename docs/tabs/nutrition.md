@@ -19,14 +19,17 @@ Week 4 is the recovery cycle week.
 **Route:** `/nutrition`
 
 Prescribed meal table for the day (from `build_today_food()`), meals-total vs
-intake target, and Garmin logged strip (logged / intake target / vs plan / carbs /
-protein). Short Sunday-fuel callout when a long ride is upcoming.
+intake target, a plain-English **why** line (maintenance / cut phase + deficit),
+and Garmin logged strip (logged / intake target / vs plan / carbs / protein).
+Short Sunday-fuel callout when a long ride is upcoming.
+
+**Meal slots follow the training-plan session** (Rest never gets Post-Ruck copy).
+Breakfast and dinner still rotate on the Mon–Sun food cycle (overnight oats
+Mon/Wed/Fri; scotch egg + yogurt Tue/Thu; egg muffins Tue/Thu in recovery week
+only). Mon–Thu dinners are Sunday batch (Batch A Mon/Tue, Batch B Wed/Thu —
+cycle-week rotation); Fri–Sun are griddle.
 
 Dinner and breakfast methods live on **Sunday Prep**, not a separate recipes hub.
-
-Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
-(egg muffins Tue/Thu in recovery week only). Mon–Thu dinners are Sunday batch
-(Batch A Mon/Tue, Batch B Wed/Thu — cycle-week rotation); Fri–Sun are griddle.
 
 ---
 
@@ -34,27 +37,40 @@ Fixed weekday pattern: overnight oats Mon/Wed/Fri; scotch egg + yogurt Tue/Thu
 
 Three distinct numbers appear across Nutrition and Body:
 
-- **Burn (TDEE)** — today's estimated expenditure: Katch-McArdle BMR + Garmin
-  active calories + optional 28-day weight-trend calibration (applied only when
-  confidence is **high** — typically ≥70% intake coverage). Shown on the Body
-  tab as "TDEE Today". It is *incomplete until end of day*, so mid-day "vs burn"
-  comparisons are informational only.
-- **Intake target** — what you should eat: **stable TDEE** (7-day average of
-  calibrated-or-model daily burn, preferring days with real active-calorie data)
-  minus a session-type deficit. During the **Base Cut** (15 Sep–20 Dec 2026)
-  hard deficits are rest/recovery −550, training −450, ruck −300, long −100;
-  ease phase (23 Nov–20 Dec) uses rest −350 / training −250 / ruck −150 /
-  long −50. Floored at 1,600 kcal; long rides add ~175 kcal per hour beyond 2 h.
-  Computed by `resolve_calorie_target()`; Tenerife camp windows suspend the
-  UK deficit entirely. See **Cut** (`/nutrition/cut`) for pace vs 80–81 kg.
+- **Burn (TDEE today)** — today's estimated expenditure *so far*: Katch-McArdle
+  BMR + Garmin active calories. Optional 28-day weight-trend calibration is
+  **applied only when confidence is high** (≥70% intake coverage typical);
+  limited/inactive confidence means the correction is shown but not applied.
+  Mid-day “vs burn” is informational only — do not eat to this number.
+- **Intake target** — what you should eat in the morning, from `today_targets()`:
+  **stable TDEE** (7-day average burn) **minus a session-type deficit**
+  (`stable_tdee − deficit`), plus long-ride fuel top-up beyond 2 h when needed.
+  This is periodized cut fueling: larger deficit on rest/easy days, near
+  maintenance on long/quality days.
+  - **Maintenance** (27 Jul–14 Sep 2026): deficit 0 every day (charity peak).
+  - **Maintenance** (9 Oct 2026–3 Jan 2027): deficit 0 through the kidney-stone
+    return, Christmas camp, and the post-camp rest day. No replacement cut
+    target after that.
+  - **Base Cut hard** (15 Sep–22 Nov, outside the windows above): rest/recovery −550, training −450,
+    ruck −300, long −100.
+  - **Ease** (23 Nov–20 Dec, outside the windows above): rest −350 / training −250 / ruck −150 / long −50.
+  - Floor 1,600 kcal. Tenerife **camp** windows suspend the UK deficit.
+  - Optional `session_work_kcal` (FTP × % targets) is context only — it does
+    **not** change the crowned intake when stable TDEE exists.
 - **Logged** — what the Garmin food diary says you ate.
 
-**Base Cut (Sep–Dec 2026):** dedicated page at `/nutrition/cut` — target **80.5 kg**
-(band 80–81) by Christmas camp (21 Dec). Hard cut 15 Sep–22 Nov, ease
-23 Nov–20 Dec, then camp fueling. Protein lean-mass floor is locked at cut
-start. The Cut page also shows **today’s Garmin logged kcal vs intake target**
-(gap / room left); the full meal plan stays on Nutrition Today. After changing
-deficit maps, clear stale AI targets:
+Primary gauge is **vs plan** (logged vs intake target). “Vs weekly burn” on the
+Cut page compares logged to stable TDEE, not today’s incomplete burn.
+
+**Weight goal:** 80 kg by 31 Mar 2027, on `/nutrition/cut`. There is no kilogram
+target before Christmas. Maintenance (no deficit) runs 9 Oct 2026 through
+3 Jan 2027, including Christmas camp. From 4 Jan through 31 Mar the ordinary
+day-type deficits apply (training about −250 kcal). The old 450–550 kcal hard
+cut is not used. Protein lean-mass floor stays locked. The Cut page shows
+today’s prescription + **why**, a weekly deficit budget strip, and Garmin
+logged vs intake target. Full meal plan stays on Nutrition Today. On rest days,
+delaying the first meal (≈12–14 h overnight) is fine if the protein floor is
+still hit by evening. After changing deficit maps, clear stale AI targets:
 `DELETE FROM nutrition_targets WHERE session_key LIKE '%_v2_%'`.
 
 Prescribed meals in `nutrition_plan.py` are portioned so each day type's meal
@@ -68,9 +84,9 @@ reflects intake coverage, weigh-ins, body-comp freshness, and whether the
 correction is near the ±25% clamp. Low confidence → model TDEE only (no large
 negative offset), so planned deficits actually bite.
 
-**Camp mode** (Tenerife windows): UK batch meals and weekday "nothing on the bike"
-rules are suspended. Nutrition Today shows camp fuelling from actual ride
-intensity; see `/tenerife` for the hard-day template.
+**Camp mode** applies to the finished August 2026 Tenerife window only.
+Christmas Tenerife stays at maintenance calories with normal easy-ride fuelling.
+The May 2027 race-sim window is not in the live plan.
 
 **Recipe macros:** plated weekday-dinner figures follow
 `nutrition_plan.WEEKDAY_DINNERS` (build **620 kcal**, recovery **560 kcal**,
@@ -86,8 +102,9 @@ figures — those overshot the intake target.
 
 4-week cycle (weeks 1–3 build with distinct dinner batches, week 4 recovery).
 Server-rendered from `nutrition_plan.py` — breakfasts and weekday dinners injected
-via `_assemble_meals()`. **This week** shows training-calendar badges; meal-pattern
-tabs are cycle weeks 1–4.
+via `_assemble_meals()`. **This week** shows training-calendar badges; meal-slot
+skeletons follow the planned session (via `meal_day_type_for_session`); breakfast
+and dinner still rotate on the nutrition cycle (weeks 1–4).
 
 ---
 

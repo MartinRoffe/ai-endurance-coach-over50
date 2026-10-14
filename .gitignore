@@ -15,3 +15,25 @@ docs/user-guide.pdf
 # Office/LibreOffice lock & temp files
 .~lock.*#
 ~$*
+
+# Archive pipeline (keep scripts + final findings; ignore raw API cache & bulky outputs)
+archive/raw/
+archive/checkpoint.json
+archive/activities_*.csv
+archive/shortlist.csv
+archive/charts/
+archive/fits/
+archive/fits_checkpoint.json
+archive/activity_mmp.csv
+archive/streams/
+archive/tcx/
+archive/shortlist_v2.csv
+archive/activity_provenance.csv
+!archive/findings.json
+!archive/analysis_report.md
+!archive/shortlist_diagnosis.md
+!archive/rebuild_failures.md
+!archive/changelog_overturned.md
+!archive/CHANGELOG.md
+!archive/mmp_validation.md
+!archive/reversal_audit.md

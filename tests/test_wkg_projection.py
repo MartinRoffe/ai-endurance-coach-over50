@@ -170,8 +170,8 @@ def test_guard_readiness_abstains_without_enough_samples():
 
 def test_wkg_goal_defaults_on_empty():
     goal = load_wkg_goal()
-    assert goal["target_wkg"] == 4.0
-    assert goal["target_date"] == "2027-08-23"
+    assert goal["target_wkg"] == 3.5
+    assert goal["target_date"] == "2028-08-20"
 
 
 def test_wkg_goal_save_load():
@@ -185,8 +185,8 @@ def test_wkg_goal_corrupted_json_falls_back():
     from ai_endurance_coach_over50.history.text_cache import set_cached_text
     set_cached_text("wkg_goal_v1", "{not valid json")
     goal = load_wkg_goal()
-    assert goal["target_wkg"] == 4.0
-    assert goal["target_date"] == "2027-08-23"
+    assert goal["target_wkg"] == 3.5
+    assert goal["target_date"] == "2028-08-20"
 
 
 def test_ftp_anchor_from_saved_tests():

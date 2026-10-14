@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
-<title>Base Cut — 80–81 kg</title>
+<title>Weight goal — 80 kg by 31 Mar 2027</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -68,8 +68,13 @@
 <div class="hero">
   <div class="container">
     <div class="hero-eyebrow">Base Cut · {{ cut.phase_label }}</div>
+    {% if cut.kidney_maint %}
+    <h1>MAINTENANCE</h1>
+    <p class="hero-sub">9 Oct 2026 – 3 Jan 2027 · eat at maintenance through the procedure, the return, and Christmas camp. The goal is 80 kg by 31 Mar 2027, and the deficit starts on 4 Jan.</p>
+    {% else %}
     <h1>CUT TO <span>{{ cut.cut_band }} kg</span></h1>
-    <p class="hero-sub">15 Sep – 20 Dec 2026 · hold through Christmas Tenerife camp · race weight ~78 kg is later</p>
+    <p class="hero-sub">4 Jan – 31 Mar 2027 · day-type deficits only · no kilogram target before Christmas</p>
+    {% endif %}
   </div>
 </div>
 
@@ -149,6 +154,7 @@
         <div class="lbl">Planned deficit</div>
         <div class="val" style="font-size:28px">
           {% if cut.targets.maintenance or cut.phase_key == 'camp' %}0
+          {% elif cut.targets.tier_deficit is not none %}{{ cut.targets.tier_deficit }}
           {% elif cut.targets.planned_deficit is not none %}{{ cut.targets.planned_deficit }}
           {% else %}—{% endif %}
         </div>
@@ -167,6 +173,28 @@
       Session: <strong style="color:var(--text)">{{ cut.targets.session.label }}</strong>
       ({{ cut.targets.session.type }}, {{ cut.targets.session.dur_min }} min)
     </p>
+    {% endif %}
+    {% if cut.targets.why %}
+    <p style="margin-top:{% if cut.targets.session %}6{% else %}14{% endif %}px;font-size:13px;color:var(--text)">{{ cut.targets.why }}</p>
+    {% endif %}
+
+    {% if cut.weekly_budget %}
+    <div style="margin-top:18px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:4px">
+      <div class="lbl" style="margin-bottom:8px">Weekly cut budget ({{ cut.phase_label }})</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="lbl">Avg daily deficit</div>
+          <div class="val" style="font-size:24px">−{{ cut.weekly_budget.avg_daily_deficit }}</div>
+          <div class="sub">kcal/day (illustrative week mix)</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">≈ Weekly</div>
+          <div class="val" style="font-size:24px">−{{ "{:,}".format(cut.weekly_budget.weekly_deficit_kcal) }}</div>
+          <div class="sub">kcal · ~{{ cut.weekly_budget.kg_per_week }} kg/wk at {{ cut.kcal_per_kg }} kcal/kg</div>
+        </div>
+      </div>
+      <p style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.55">{{ cut.weekly_budget.note }}</p>
+    </div>
     {% endif %}
 
     <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
@@ -191,7 +219,7 @@
           <div class="val" style="font-size:28px{% if cut.vs_target is not none and cut.vs_target < 0 %};color:var(--warn){% elif cut.vs_target is not none and cut.vs_target > 0 %};color:var(--accent){% endif %}">
             {% if cut.vs_target is not none %}{% if cut.vs_target > 0 %}+{% endif %}{{ cut.vs_target }}{% else %}—{% endif %}
           </div>
-          <div class="sub">{% if cut.vs_target is not none and cut.vs_target > 0 %}under target · room left{% elif cut.vs_target is not none and cut.vs_target < 0 %}over target{% elif cut.vs_target == 0 %}on target{% else %}—{% endif %}{% if cut.vs_tdee is not none %} · vs burn {{ "{:+d}".format(cut.vs_tdee) }}{% endif %}</div>
+          <div class="sub">{% if cut.vs_target is not none and cut.vs_target > 0 %}under target · room left{% elif cut.vs_target is not none and cut.vs_target < 0 %}over target{% elif cut.vs_target == 0 %}on target{% else %}—{% endif %}{% if cut.vs_tdee is not none %} · vs weekly burn {{ "{:+d}".format(cut.vs_tdee) }}{% endif %}</div>
         </div>
       </div>
 
@@ -285,9 +313,9 @@
   <div class="section-label">Rules</div>
   <ul class="rules">
     <li><strong>Fuel long days</strong> — near energy balance on long / back-to-back; never under-fuel the key endurance session.</li>
-    <li><strong>Don’t cut through camp</strong> — Christmas Tenerife (21 Dec–2 Jan) is energy availability first.</li>
+    <li><strong>Don’t cut through camp</strong> — Christmas Tenerife (21 Dec–2 Jan) stays at maintenance.</li>
     <li><strong>Protein floor holds</strong> — lean-mass target locked at cut start so it does not drift down with the scale.</li>
-    <li><strong>Race weight ~78 kg is later</strong> — this block lands 80–81; finish toward 78 in 2027 Build after the volume camp.</li>
+    <li><strong>80 kg by 31 Mar 2027</strong> — day-type deficits from 4 Jan. There is no kilogram target before Christmas.</li>
   </ul>
 </section>
 

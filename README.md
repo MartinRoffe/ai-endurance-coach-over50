@@ -60,8 +60,8 @@ or fullscreen at `/architecture` ([docs/architecture.md](docs/architecture.md)).
 - **Body composition tracking** — weight, fat %, muscle mass, blood pressure (Garmin + Withings)
 - **Withings sync** — push Withings body measurements to Garmin Connect
 - **Daily email** with readiness score, measured FTP/W/kg when available, planned workout, and fatigue alerts
-- **Haute Route Alpes 2027 plan** — 46-week plan with %FTP targets, power protocol page, and CTL projection
-- **Tenerife cycling camp** itinerary and Ghent–Amsterdam charity ride on the calendar
+- **Haute Route Alpes 2028 plan** — two-year rebuild hub (medical pause → Year 1 hills → Year 2 cycling); 46-week week-by-week gated until Year 2
+- **Tenerife cycling camp** itinerary (Aug 2026 historical); Christmas 2026 camp tentative; charity ride cancelled
 
 ## Prerequisites
 

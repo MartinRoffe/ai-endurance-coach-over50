@@ -62,7 +62,7 @@ def load_ftp_tests() -> list[dict]:
 # ── W/kg goal (target power-to-weight + date) ────────────────────────────────
 
 _WKG_GOAL_KEY = "wkg_goal_v1"
-_WKG_GOAL_DEFAULTS = {"target_wkg": 4.0, "target_date": "2027-08-23"}
+_WKG_GOAL_DEFAULTS = {"target_wkg": 3.5, "target_date": "2028-08-20"}
 
 
 def load_wkg_goal() -> dict:

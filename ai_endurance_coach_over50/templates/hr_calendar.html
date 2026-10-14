@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔</text></svg>">
-  <title>Haute Route Alpes 2027 · Training Plan</title>
+  <title>Haute Route Alpes 2028 · Two-year rebuild</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
@@ -62,14 +62,53 @@
 
     <!-- ── Page header ──────────────────────────────────────────────────────── -->
     <div style="margin-bottom:28px">
-      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">10-Month Training Plan · Oct 2026 → Aug 2027</p>
-      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,48px);letter-spacing:0.05em;color:#fafafa;line-height:1">Haute Route Alpes 2027</h1>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#c4c4cc;margin-bottom:8px">Two-year rebuild · A-event late Aug 2028 (dates TBC)</p>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,48px);letter-spacing:0.05em;color:#fafafa;line-height:1">Haute Route Alpes 2028</h1>
       <p style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-top:6px">
-        808 km &nbsp;·&nbsp; 19,255 m &nbsp;·&nbsp; 7 stages &nbsp;·&nbsp; 23–29 Aug 2027
+        {{ a_event_summary or 'Haute Route Alpes 2028 (dates TBC)' }}
+        &nbsp;·&nbsp; ~808 km &nbsp;·&nbsp; ~19,000 m &nbsp;·&nbsp; 7 stages (route TBC)
       </p>
     </div>
 
-    <!-- ── Phase overview strip ─────────────────────────────────────────────── -->
+    {% if medical_banner %}
+    <div style="margin-bottom:20px;padding:14px 18px;border:1px solid #0369a1;background:#091525;border-radius:2px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#7dd3fc;margin:0 0 6px">{{ medical_banner.headline }}</p>
+      <p style="font-size:13px;color:#d4d4d8;line-height:1.55;margin:0">{{ medical_banner.reason }}</p>
+    </div>
+    {% endif %}
+
+    {% if rebuild_note %}
+    <div style="margin-bottom:20px;padding:14px 18px;border:1px solid #3f3f46;background:#111114;border-radius:2px">
+      <p style="font-size:13px;color:#d4d4d8;line-height:1.55;margin:0">{{ rebuild_note }}</p>
+    </div>
+    {% endif %}
+
+    {% if rebuild_phases %}
+    <div style="margin-bottom:24px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#c4c4cc;margin-bottom:10px">Rebuild phases</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        {% for p in rebuild_phases %}
+        <div style="padding:10px 14px;border:1px solid #27272a;border-radius:2px;border-left:3px solid {% if p.status == 'active' %}#38bdf8{% elif p.status == 'pending' %}#fbbf24{% else %}#3f3f46{% endif %}">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.05em;color:#fafafa">{{ p.label }}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:#a1a1aa">{{ p.approx }} · {{ p.status }}</span>
+          </div>
+          <p style="font-size:12px;color:#a1a1aa;margin:4px 0 0;line-height:1.5">{{ p.content }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if camp_nutrition_xmas and camp_nutrition_xmas.tentative %}
+    <div style="margin-bottom:20px;padding:12px 16px;border:1px dashed #a78bfa;background:rgba(167,139,250,0.06);border-radius:2px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#a78bfa;margin:0 0 4px">Tentative · Christmas Tenerife {{ camp_nutrition_xmas.arrive }} → {{ camp_nutrition_xmas.home }}</p>
+      <p style="font-size:12px;color:#d4d4d8;margin:0;line-height:1.5">Confirm after post-stent follow-up. Easy volume / walk+bike if medically allowed — not a race-sim overload.</p>
+    </div>
+    {% endif %}
+
+    <!-- ── Phase overview strip (Year 2 only) ───────────────────────────────── -->
+    {% if year2_active and phases %}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px">
       {% for p in phases %}
       <div class="border rounded-sm px-3 py-1.5 phase-badge-{{ p.colour }}" style="border-radius:3px">
@@ -81,10 +120,12 @@
       <div class="border rounded-sm px-3 py-1.5" style="border-radius:3px;background:#091525;border-color:#0369a1;color:#7dd3fc">
         <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;opacity:0.7;margin-bottom:1px">Event</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.06em">Haute Route</div>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6">23–29 Aug 2027</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6">{{ event_start.strftime('%-d') }}–{{ event_end.strftime('%-d %b %Y') }}{% if event_dates_tbc %} (TBC){% endif %}</div>
       </div>
     </div>
+    {% endif %}
 
+    {% if year2_active %}
     <!-- ── Session type legend ──────────────────────────────────────────────── -->
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:28px;align-items:center">
       {% for label, cls in [
@@ -102,18 +143,19 @@
       <span class="text-[11px] border px-2 py-0.5 sess-{{ cls }}" style="border-radius:2px">{{ label }}</span>
       {% endfor %}
     </div>
+    {% endif %}
 
     <!-- ── CTL projection callout ───────────────────────────────────────────── -->
-    {% if hr_event_ctl %}
+    {% if year2_active and hr_event_ctl %}
     <div style="border:1px solid #27272a;border-left:3px solid #60a5fa;border-radius:4px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:#0a0a0d">
       <div>
-        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:2px">Projected CTL · 29 Aug 2027</p>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:2px">Projected CTL · {{ event_end.strftime('%-d %b %Y') }}{% if event_dates_tbc %} (TBC){% endif %}</p>
         <p style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.04em;color:#60a5fa;line-height:1">{{ hr_event_ctl | int }}</p>
       </div>
       <div style="flex:1;min-width:180px">
         <p style="font-family:'DM Mono',monospace;font-size:12px;color:#71717a;line-height:1.7">
-          Starting from projected CTL&nbsp;{{ hr_start_ctl | int }} at plan start (Oct&nbsp;5&nbsp;2026),
-          completing all 46 training weeks. Dashed line on the chart shows the trajectory.
+          Starting from projected CTL&nbsp;{{ hr_start_ctl | int }} at Year 2 plan start,
+          completing all training weeks. Dashed line on the chart shows the trajectory.
         </p>
       </div>
     </div>
@@ -121,7 +163,7 @@
 
     <!-- ── 2027 Build Intel + lessons from 2012 ─────────────────────────────── -->
     <div style="margin-bottom:24px">
-      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:10px">2027 Build Intel</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:10px">Build Intel · why not rush</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:16px">
         <a href="/haute-route/2012-postmortem" style="text-decoration:none;border:1px solid #4c0519;border-left:3px solid #f43f5e;border-radius:4px;padding:14px 18px;background:#0a0a0d;display:block">
           <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#fb7185;margin:0 0 6px 0">2012 Post-Mortem</p>
@@ -158,7 +200,7 @@
         {% endfor %}
       </ul>
 
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#34d399;margin:0 0 6px 0">Carry into 2027</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#34d399;margin:0 0 6px 0">Carry into the next Haute Route build</p>
       <ul style="margin:0;padding-left:18px">
         {% for l in lessons_2012.lessons %}
         <li style="font-size:12px;color:#d4d4d8;line-height:1.6;margin-bottom:5px">{{ l }}</li>
@@ -171,7 +213,7 @@
     <!-- ── CTL chart ─────────────────────────────────────────────────────────── -->
     {% if hr_proj_data %}
     <div style="border:1px solid #27272a;border-radius:4px;padding:20px 24px;margin-bottom:28px;background:#0a0a0d">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:16px">CTL Projection · Oct 2026 → Aug 2027</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin-bottom:16px">CTL Projection · Year 2 → event</p>
       <div style="height:220px;position:relative"><canvas id="hrCtlChart"></canvas></div>
     </div>
     {% endif %}
@@ -291,12 +333,12 @@
     </div>
     {% endfor %}
 
-    <!-- ── Event: Haute Route Alpes 2027 ────────────────────────────────────── -->
+    <!-- ── Event: Haute Route Alpes 2028 ────────────────────────────────────── -->
     <div class="border-t border-slate-800 mt-5 mb-5"></div>
 
     <div style="margin-bottom:14px">
       <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#0ea5e9;margin-bottom:4px">The Event</p>
-      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.05em;color:#7dd3fc">Haute Route Alpes 2027</h2>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.05em;color:#7dd3fc">Haute Route Alpes 2028</h2>
       <p style="font-family:'DM Mono',monospace;font-size:12px;color:#64748b;margin-top:2px">7 stages · 808 km · 19,255 m · Nice → Thonon-les-Bains</p>
     </div>
 

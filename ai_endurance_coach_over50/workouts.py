@@ -938,12 +938,17 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
 
     Covers the 12-week plan, camp-window spins (`CAMP_GRID_WORKOUTS`), August Tenerife
     camp rides (`CAMP_PUSH_WORKOUTS`), event prep, position bridge, and Haute Route
-    bike days through ``HR_WORKOUTS_END``.
+    bike days through ``HR_WORKOUTS_END`` — but skips the medical-pause / cancelled
+    charity window and Year-2 HR sessions while that plan is inactive.
     """
+    from .medical import should_push_garmin_date, year2_sessions_live
+
     schedule: dict[tuple[str, int], list[str]] = defaultdict(list)
     for wk_idx, week in enumerate(TRAINING_WEEKS):
         for day_idx, (stype, label, dur) in enumerate(week):
             d = PLAN_START + timedelta(weeks=wk_idx, days=day_idx)
+            if not should_push_garmin_date(d):
+                continue
             resolved = _resolve_bike_session(d, stype, label, dur)
             if resolved:
                 schedule[(resolved[0], resolved[1])].append(d.isoformat())
@@ -952,22 +957,34 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
     ] + [
         (bd, bw) for bd, bw in POSITION_BRIDGE_DAYS.items()
     ]:
+        if not should_push_garmin_date(d):
+            continue
         resolved = _resolve_bike_session(d, w["type"], w["label"], w["dur_min"])
         if resolved:
             schedule[(resolved[0], resolved[1])].append(d.isoformat())
 
-    from .hr_plan import HR_PLAN_START, hr_session_for_date
-    d = HR_PLAN_START
-    while d <= HR_WORKOUTS_END:
-        sess = hr_session_for_date(d)
-        if sess:
-            stype, label, dur = sess
-            # hr_session_for_date already applies overrides — skip FE strength.
-            if label not in _STRENGTH_FE_LABELS and stype in _BIKE_TYPES:
-                if _resolve_builder(label) is None:
-                    print(f"  [warn] no builder for HR label '{label}' on {d.isoformat()}")
-                else:
-                    schedule[(label, dur)].append(d.isoformat())
+    if year2_sessions_live():
+        from .hr_plan import HR_PLAN_START, hr_session_for_date
+        d = HR_PLAN_START
+        while d <= HR_WORKOUTS_END:
+            if should_push_garmin_date(d):
+                sess = hr_session_for_date(d)
+                if sess:
+                    stype, label, dur = sess
+                    if label not in _STRENGTH_FE_LABELS and stype in _BIKE_TYPES:
+                        if _resolve_builder(label) is None:
+                            print(f"  [warn] no builder for HR label '{label}' on {d.isoformat()}")
+                        else:
+                            schedule[(label, dur)].append(d.isoformat())
+            d += timedelta(days=1)
+
+    from .fitness_plan import PLAN_END as FIT_END, PLAN_START as FIT_START, garmin_allowed, session_for_date as fitness_session
+    d = FIT_START
+    while d <= FIT_END:
+        if should_push_garmin_date(d):
+            sess = fitness_session(d)
+            if sess and garmin_allowed(d, sess[0], sess[1]):
+                schedule[(sess[1], sess[2])].append(d.isoformat())
         d += timedelta(days=1)
     return schedule
 
@@ -1013,10 +1030,12 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
 
     Compound sessions (KB + MaxiClimber, Ruck + KB) are split into two sub-templates
     so each appears as a separate workout on the Garmin calendar (see `_specs_for`).
-    Includes Haute Route KB Position A/B days through ``HR_WORKOUTS_END``.
+    Includes Haute Route KB Position A/B days through ``HR_WORKOUTS_END`` when Year 2 is live.
+    Skips the medical-pause / cancelled charity window.
     """
     from .history import get_plan_override
     from .hr_plan import HR_PLAN_START, hr_session_for_date
+    from .medical import should_push_garmin_date, year2_sessions_live
 
     schedule: dict[tuple[str, int, int], list[str]] = defaultdict(list)
 
@@ -1026,6 +1045,8 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
             if stype not in _STRENGTH_RUCK_TYPES:
                 continue
             d = PLAN_START + timedelta(weeks=wk_idx, days=day_idx)
+            if not should_push_garmin_date(d):
+                continue
             ov = get_plan_override(d.isoformat())
             if ov:
                 o_type = ov.get("session_type") or stype
@@ -1046,6 +1067,8 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
         [(ep["date"], ep) for ep in EVENT_PREP_DAYS if ep["type"] == "strength"]
         + [(bd, bw) for bd, bw in POSITION_BRIDGE_DAYS.items() if bw["type"] == "strength"]
     ):
+        if not should_push_garmin_date(d):
+            continue
         date_str = d.isoformat()
         for kind, sr_label, sr_week, sr_dur in (
             (s[0], s[1], s[2], s[3])
@@ -1054,21 +1077,22 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
         ):
             schedule[(sr_label, sr_week, sr_dur)].append(date_str)
 
-    # Haute Route position strength (KB + Trunk / Gym) through Dec 31
-    d = HR_PLAN_START
-    while d <= HR_WORKOUTS_END:
-        sess = hr_session_for_date(d)
-        if sess:
-            stype, label, dur = sess
-            date_str = d.isoformat()
-            for kind, sr_label, sr_week, sr_dur in (
-                (s[0], s[1], s[2], s[3])
-                for s in _specs_for(stype, label, dur, 0)
-                if s[0] == "sr"
-            ):
-                schedule[(sr_label, sr_week, sr_dur)].append(date_str)
-        d += timedelta(days=1)
-
+    # Haute Route position strength (KB + Trunk / Gym) — only when Year 2 is live
+    if year2_sessions_live():
+        d = HR_PLAN_START
+        while d <= HR_WORKOUTS_END:
+            if should_push_garmin_date(d):
+                sess = hr_session_for_date(d)
+                if sess:
+                    stype, label, dur = sess
+                    if label in _STRENGTH_FE_LABELS:
+                        for kind, sr_label, sr_week, sr_dur in (
+                            (s[0], s[1], s[2], s[3])
+                            for s in _specs_for(stype, label, dur, 0)
+                            if s[0] == "sr"
+                        ):
+                            schedule[(sr_label, sr_week, sr_dur)].append(d.isoformat())
+            d += timedelta(days=1)
     return schedule
 
 
@@ -1078,8 +1102,13 @@ def _workouts_for_date(d: date) -> list[tuple]:
     Mirrors the per-day logic of the two bulk builders: reads the plan session
     (12-week plan tuples directly, so week-keyed KB/MaxiClimber/ruck specs resolve;
     other blocks via the override-aware lookups) and applies any coach plan override.
+    Returns [] during the medical-pause / cancelled-charity window.
     """
     from .history import get_plan_override
+    from .medical import should_push_garmin_date
+
+    if not should_push_garmin_date(d):
+        return []
 
     delta = (d - PLAN_START).days
     if 0 <= delta < len(TRAINING_WEEKS) * 7:
@@ -1100,6 +1129,9 @@ def _workouts_for_date(d: date) -> list[tuple]:
         stype = ov.get("session_type") or stype
         label = ov.get("label") or label
         dur = ov.get("duration_min") or dur
+    from .fitness_plan import garmin_allowed, in_plan
+    if in_plan(d) and not garmin_allowed(d, stype, label):
+        return []
     return _specs_for(stype, label, dur, week_num)
 
 

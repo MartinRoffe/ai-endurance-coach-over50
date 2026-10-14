@@ -193,14 +193,15 @@ LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
 # to absorb in a deficit. Base Cut (hard) starts in the position bridge (15 Sep).
 MAINTENANCE_WINDOWS: list[tuple[date, date]] = [
     (date(2026, 7, 27), date(2026, 9, 14)),
+    # Procedure, return, and Christmas camp. No kilogram target in this window.
+    (date(2026, 10, 9), date(2027, 1, 3)),
 ]
 
-# Sep–Dec Base Cut → 80–81 kg by Christmas Tenerife camp (camp windows suspend).
-CUT_TARGET_KG = 80.5
-CUT_TARGET_DEADLINE = date(2026, 12, 21)  # Christmas camp start
+# 80 kg by end of March 2027. Day-type deficits only, after Christmas.
+CUT_TARGET_KG = 80
+CUT_TARGET_DEADLINE = date(2027, 3, 31)
 CUT_PHASES: list[tuple[date, date, str]] = [
-    (date(2026, 9, 15), date(2026, 11, 22), "hard"),  # bridge + Base wks 1–8
-    (date(2026, 11, 23), date(2026, 12, 20), "ease"),  # Base wks 9–11 soft landing
+    (date(2027, 1, 4), date(2027, 3, 31), "ease"),
 ]
 
 # Harder deficits during the front-loaded cut; ease ≈ INTAKE_DEFICIT_BY_TIER.

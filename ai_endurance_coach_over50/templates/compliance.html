@@ -435,10 +435,12 @@
 
     <div class="weeks-list">
       {% for wk in completion_weeks %}
-      {% if wk.phase_start and wk.phase == 'camp' %}
+      {% if wk.phase_start and wk.phase == 'fitness' %}
+      <div class="phase-divider camp">{{ wk.phase_name }}</div>
+      {% elif wk.phase_start and wk.phase == 'camp' %}
       <div class="phase-divider camp">Tenerife Cycling Camp · Aug 10–30</div>
       {% elif wk.phase_start and wk.phase == 'event_prep' %}
-      <div class="phase-divider event-prep">Ghent→Amsterdam Event Prep · Aug 31–Sep 20</div>
+      <div class="phase-divider event-prep">Event window (charity cancelled) · medical pause / rebuild</div>
       {% endif %}
       {% set row_cls = 'week-row is-current' if wk.status == 'current' else ('week-row is-future' if wk.status == 'future' else 'week-row') %}
       <div class="{{ row_cls }}">

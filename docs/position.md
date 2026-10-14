@@ -8,7 +8,7 @@ Open the full how-to — today's session, this week, the exercise cues, and hold
 
 **[Strength rebuild & road position →](/position)**
 
-Use it from the floor — the countdown dock sits at the bottom of the phone screen. The page reads the strength days **straight from the training plan**, so it always matches the calendar. Strength moves between blocks: Tue+Thu in the charity plan and the position bridge, Thu+Sat through Haute Route Base, one midweek session from Jan 2027, none during the camps.
+Use it from the floor — the countdown dock sits at the bottom of the phone screen. The page reads the strength days **straight from the training plan**, so it always matches the calendar. In the fitness year that is a Tuesday circuit through the return block, then the strength days written on the Sessions calendar (including the Keswick build). The cancelled charity plan’s Tuesday/Thursday pattern is archive only.
 
 ## What to do
 

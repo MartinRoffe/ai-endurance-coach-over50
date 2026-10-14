@@ -460,7 +460,18 @@ def session_for_date(d: date) -> tuple[str, str, int] | None:
 
 def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
     """Like session_for_date but also covers camp buffer days, Tenerife, event prep,
-    charity ride, and the post-charity position bridge through HR Base start."""
+    charity ride, and the post-charity position bridge through HR Base start.
+
+    Medical pause (see ``medical.py``) overrides event-prep / charity / bridge
+    prescriptions so the app does not schedule race-week load while recovering.
+    """
+    from .medical import (
+        CHARITY_CANCELLED,
+        in_event_override_window,
+        in_medical_pause,
+        pause_session_for_date,
+    )
+
     result = session_for_date(d)
     if result is not None:
         return result
@@ -485,6 +496,15 @@ def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
             label = f"{day['label']} — {km}km, {elev}m elev"
             return ("bike", label, 0)
 
+    # Medical pause / cancelled charity — no event-prep quality, charity days, or bridge load
+    if in_event_override_window(d) and (in_medical_pause(d) or CHARITY_CANCELLED):
+        for cr in CHARITY_DAYS:
+            if cr["date"] == d:
+                return ("rest", "Charity ride cancelled (medical)", 0)
+        if in_medical_pause(d):
+            return pause_session_for_date(d)
+        return ("rest", "Medical rebuild — no structured session", 0)
+
     # Event prep days
     for ep in EVENT_PREP_DAYS:
         if ep["date"] == d:
@@ -493,12 +513,19 @@ def session_for_date_extended(d: date) -> tuple[str, str, int] | None:
     # Charity ride days
     for cr in CHARITY_DAYS:
         if cr["date"] == d:
+            if CHARITY_CANCELLED:
+                return ("rest", "Charity ride cancelled (medical)", 0)
             return ("bike", f"{cr['label']} ({cr['km']}km charity ride)", 0)
 
     # Post-charity → Haute Route bridge (absorption + strength rebuild)
     bridge = POSITION_BRIDGE_DAYS.get(d)
     if bridge:
         return (bridge["type"], bridge["label"], bridge["dur_min"])
+
+    from .fitness_plan import session_for_date as fitness_session_for_date
+    fitness = fitness_session_for_date(d)
+    if fitness is not None:
+        return fitness
 
     return None
 
@@ -776,29 +803,40 @@ MERSEA_EVENT_DAYS: list[dict] = [
     },
 ]
 
-# ── Ghent–Amsterdam Charity Ride ──────────────────────────────────────────────
+# ── Ghent–Amsterdam Charity Ride (CANCELLED — medical; retained as history) ───
 CHARITY_EVENT_NAME = "Ghent→Amsterdam charity ride"
 CHARITY_DAYS: list[dict] = [
-    {"day": 1, "date": date(2026, 9, 13), "label": "Ghent → Eindhoven", "km": 190},
-    {"day": 2, "date": date(2026, 9, 14), "label": "Eindhoven → Amsterdam", "km": 120},
+    {
+        "day": 1,
+        "date": date(2026, 9, 13),
+        "label": "Ghent → Eindhoven",
+        "km": 190,
+        "cancelled": True,
+    },
+    {
+        "day": 2,
+        "date": date(2026, 9, 14),
+        "label": "Eindhoven → Amsterdam",
+        "km": 120,
+        "cancelled": True,
+    },
 ]
 
 
 def charity_event_summary() -> str:
-    """Single-line A-event description for coach/advice prompts."""
-    d1, d2 = CHARITY_DAYS
-    return (
-        f"{CHARITY_EVENT_NAME} (13–14 Sep 2026): "
-        f"{d1['label']} (~{d1['km']} km), then {d2['label']} (~{d2['km']} km)"
-    )
+    """Charity ride status for coach/advice prompts (cancelled — not a live A-event)."""
+    from .medical import charity_status_summary
+    return charity_status_summary()
 
 
 def build_combined_event_weeks() -> list[dict]:
-    """Three Mon–Sun rows (Aug 31–Sep 20) merging event-prep sessions, charity ride days, and Mersea goal.
+    """Three Mon–Sun rows (Aug 31–Sep 20) for the former event-prep / charity window.
 
-    Rest cells in the post-charity window (15–20 Sep) are filled from POSITION_BRIDGE_DAYS
-    so Light KB / easy Z2 appear without a duplicate calendar section.
+    When the medical pause / charity cancellation is active, live tiles show rest
+    or optional easy walk instead of Sweetspot / Pre-Event Long / charity days.
     """
+    from .medical import CHARITY_CANCELLED, in_medical_pause, pause_session_for_date
+
     today = date.today()
     prep_by_date = {d["date"]: d for d in EVENT_PREP_DAYS}
     charity_by_date = {d["date"]: d for d in CHARITY_DAYS}
@@ -813,6 +851,33 @@ def build_combined_event_weeks() -> list[dict]:
             charity = charity_by_date.get(d)
             mersea = mersea_by_date.get(d)
             prep = prep_by_date.get(d)
+            # Medical override for Sep 1+ in this window
+            if d >= date(2026, 9, 1) and (in_medical_pause(d) or CHARITY_CANCELLED):
+                if charity:
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "is_event": True, "is_mersea": False, "cancelled": True,
+                        "label": f"{charity['label']} (cancelled)",
+                        "km": charity["km"],
+                        "day_num_ride": charity["day"],
+                        "is_today": d == today, "is_past": d < today,
+                        "type": "rest",
+                        "note": "Charity ride cancelled — medical",
+                    })
+                    continue
+                if in_medical_pause(d):
+                    stype, label, dur = pause_session_for_date(d)
+                    cells.append({
+                        "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                        "is_event": False,
+                        "type": stype, "label": label,
+                        "dur_fmt": _fmt_dur_min(dur) if dur else None,
+                        "dur_min": dur,
+                        "kb_spec": None,
+                        "is_today": d == today, "is_past": d < today,
+                        "medical_pause": True,
+                    })
+                    continue
             if charity:
                 cells.append({
                     "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
@@ -821,6 +886,7 @@ def build_combined_event_weeks() -> list[dict]:
                     "day_num_ride": charity["day"],
                     "is_today": d == today, "is_past": d < today,
                     "type": "charity",
+                    "cancelled": bool(charity.get("cancelled")),
                 })
             elif mersea:
                 cells.append({
@@ -849,7 +915,7 @@ def build_combined_event_weeks() -> list[dict]:
                 })
             else:
                 bridge = POSITION_BRIDGE_DAYS.get(d)
-                if bridge:
+                if bridge and not (CHARITY_CANCELLED and d >= date(2026, 9, 1)):
                     cells.append({
                         "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
                         "is_event": False,
@@ -956,7 +1022,10 @@ def build_bridge_weeks() -> list[dict]:
     """Mon–Sun rows for the bridge after Mersea week (22 Sep – 4 Oct).
 
     15–21 Sep is already shown on the combined event calendar (with bridge fill-ins).
+    When the medical pause / charity cancel is active, show pause sessions instead.
     """
+    from .medical import CHARITY_CANCELLED, in_medical_pause, pause_session_for_date
+
     today = date.today()
     grid_start = date(2026, 9, 21)  # Monday after Mersea week
     n_weeks = ((POSITION_BRIDGE_END - grid_start).days // 7) + 1
@@ -975,6 +1044,22 @@ def build_bridge_weeks() -> list[dict]:
                     "kb_spec": None,
                     "is_today": d == today, "is_past": d < today,
                     "out_of_bridge": True,
+                })
+                continue
+            if CHARITY_CANCELLED or in_medical_pause(d):
+                if in_medical_pause(d):
+                    stype, label, dur = pause_session_for_date(d)
+                else:
+                    stype, label, dur = "rest", "Medical rebuild — no structured session", 0
+                cells.append({
+                    "date": d, "day_num": d.day, "month_abbr": d.strftime("%b"),
+                    "type": stype, "label": label,
+                    "dur_fmt": _fmt_dur_min(dur) if dur else None,
+                    "dur_min": dur,
+                    "kb_spec": None,
+                    "is_today": d == today, "is_past": d < today,
+                    "out_of_bridge": False,
+                    "medical_pause": True,
                 })
                 continue
             bridge = POSITION_BRIDGE_DAYS.get(d)

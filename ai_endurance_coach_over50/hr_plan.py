@@ -1,33 +1,34 @@
-"""Haute Route Alpes 2027 — 10-month training plan (Oct 2026 → Aug 2027).
+"""Haute Route Alpes — training plan module (Year-2 template + 2028 A-event).
 
-Plan start: Mon 5 Oct 2026 (3 weeks post charity ride)
-Event:      Mon 23 Aug – Sun 29 Aug 2027 (7 stages, 808 km, 19,255 m)
+Live A-event: Haute Route Alpes **2028** (late August, dates TBC) — see medical.py.
+The 46-week ``HR_TRAINING_WEEKS`` below are the former 2027-specific template and are
+**not live** until ``medical.YEAR2_PLAN_ACTIVE`` is True (Year 2 starts ~Oct 2027).
 
-Phase structure:
-  Phase 1 — Base          Wks  1–13   Oct  5 → Jan  3  (aerobic engine + gym;
-                                                       Tenerife volume camp wks 12–13)
-  Phase 2 — Build         Wks 14–25   Jan  4 → Mar 28  (wk 14 absorbs camp; then FTP/VO2/TTE)
-  Phase 3 — Specific      Wks 26–35   Mar 29 → Jun  7  (back-to-back + Tenerife race-sim camp wk 31)
-  Phase 4 — Peak          Wks 36–43   Jun  8 → Aug  2  (multi-day simulation)
-  Phase 5 — Taper         Wks 44–46   Aug  3 → Aug 22  (arrive fresh)
-  Event                              Aug 23 – Aug 29
-
-Tenerife camps (bike hire windows):
-  Christmas volume camp — arrive 22 Dec 2026, bike 23–31 Dec, home 2 Jan 2027
-    (August-style overload: hard/easy rhythm, Teide repeats — Base aerobic boost)
-  May race-simulation camp — wk 31 (from 3 May 2027): consecutive stage-sim days
-    rehearsing Haute Route pacing, fuelling, and back-to-back mountain fatigue
+Historical template notes (Oct 2026 → Aug 2027 structure, kept for rewrite):
+  Phase 1 — Base          Wks  1–13
+  Phase 2 — Build         Wks 14–25
+  Phase 3 — Specific      Wks 26–35
+  Phase 4 — Peak          Wks 36–43
+  Phase 5 — Taper         Wks 44–46
 """
 from __future__ import annotations
 
 from datetime import date, timedelta
 
-HR_EVENT_NAME = "Haute Route Alpes 2027"
-HR_PLAN_START = date(2026, 10, 5)
+from .medical import (
+    HR_A_EVENT_END,
+    HR_A_EVENT_NAME,
+    HR_A_EVENT_START,
+    YEAR2_START,
+)
+
+HR_EVENT_NAME = HR_A_EVENT_NAME
+# Year-2 placeholder start — sessions gated off until YEAR2_PLAN_ACTIVE
+HR_PLAN_START = YEAR2_START
 assert HR_PLAN_START.weekday() == 0, "Plan must start on Monday"
 
-HR_EVENT_START = date(2027, 8, 23)
-HR_EVENT_END   = date(2027, 8, 29)
+HR_EVENT_START = HR_A_EVENT_START
+HR_EVENT_END = HR_A_EVENT_END
 
 # Phase metadata — week_start/week_end are 1-indexed, inclusive
 HR_PHASES: list[dict] = [
@@ -591,13 +592,15 @@ HR_TRAINING_WEEKS = _destack_quality(HR_TRAINING_WEEKS)
 
 # ── Event stages ──────────────────────────────────────────────────────────────
 HR_EVENT_STAGES: list[dict] = [
-    {"day": 1, "date": date(2027, 8, 23), "label": "Nice → Cuneo",             "km": 182, "elev_m": 4020, "key_climb": "Col de la Lombarde 2340m"},
-    {"day": 2, "date": date(2027, 8, 24), "label": "Cuneo → Col d'Izoard",     "km": 141, "elev_m": 3610, "key_climb": "Col d'Agnel 2744m"},
-    {"day": 3, "date": date(2027, 8, 25), "label": "Briançon → Alpe d'Huez",  "km": 81,  "elev_m": 2375, "key_climb": "Col du Lautaret 2060m"},
-    {"day": 4, "date": date(2027, 8, 26), "label": "TT — Alpe d'Huez",        "km": 16,  "elev_m": 1125, "key_climb": "Alpe d'Huez — 21 hairpins"},
-    {"day": 5, "date": date(2027, 8, 27), "label": "Alpe d'Huez → Megève",    "km": 169, "elev_m": 3525, "key_climb": "Col du Glandon 1924m"},
-    {"day": 6, "date": date(2027, 8, 28), "label": "Megève → Côte 2000",      "km": 100, "elev_m": 2560, "key_climb": "Col de la Colombière 1609m"},
-    {"day": 7, "date": date(2027, 8, 29), "label": "Megève → Thonon-les-Bains","km": 119, "elev_m": 2040, "key_climb": "Col de Joux-Plane 1712m"},
+    # Placeholder stage shapes from the 2026/2027 Alps route — dates shift with
+    # HR_EVENT_START once 2028 is published. km/elev are indicative only.
+    {"day": 1, "date": HR_EVENT_START + timedelta(days=0), "label": "Nice → Cuneo",             "km": 182, "elev_m": 4020, "key_climb": "Col de la Lombarde 2340m"},
+    {"day": 2, "date": HR_EVENT_START + timedelta(days=1), "label": "Cuneo → Col d'Izoard",     "km": 141, "elev_m": 3610, "key_climb": "Col d'Agnel 2744m"},
+    {"day": 3, "date": HR_EVENT_START + timedelta(days=2), "label": "Briançon → Alpe d'Huez",  "km": 81,  "elev_m": 2375, "key_climb": "Col du Lautaret 2060m"},
+    {"day": 4, "date": HR_EVENT_START + timedelta(days=3), "label": "TT — Alpe d'Huez",        "km": 16,  "elev_m": 1125, "key_climb": "Alpe d'Huez — 21 hairpins"},
+    {"day": 5, "date": HR_EVENT_START + timedelta(days=4), "label": "Alpe d'Huez → Megève",    "km": 169, "elev_m": 3525, "key_climb": "Col du Glandon 1924m"},
+    {"day": 6, "date": HR_EVENT_START + timedelta(days=5), "label": "Megève → Côte 2000",      "km": 100, "elev_m": 2560, "key_climb": "Col de la Colombière 1609m"},
+    {"day": 7, "date": HR_EVENT_START + timedelta(days=6), "label": "Megève → Thonon-les-Bains","km": 119, "elev_m": 2040, "key_climb": "Col de Joux-Plane 1712m"},
 ]
 
 # Heat protocol — sessions are scheduled as "Heat Z2" endurance rides in wks 45–46
@@ -737,7 +740,7 @@ def hr_2012_lessons_context() -> list[str]:
     """Markdown-ish lines injecting the 2012 lessons into the coach chat context."""
     lines = [f"## {LESSONS_2012['title']}", LESSONS_2012["summary"], "  What the data showed:"]
     lines += [f"  - {e}" for e in LESSONS_2012["evidence"]]
-    lines.append("  Carry into 2027:")
+    lines.append("  Carry into the next Haute Route build:")
     lines += [f"  - {l}" for l in LESSONS_2012["lessons"]]
     lines.append("  Build targets:")
     lines += [f"  - {t}" for t in LESSONS_2012.get("build_targets", [])]
@@ -766,7 +769,14 @@ def phase_for_week(week_num: int) -> dict | None:
 
 
 def hr_session_for_date(d: date) -> tuple[str, str, int] | None:
-    """Return (type, label, duration_min) for the given date, or None if outside the plan."""
+    """Return (type, label, duration_min) for the given date, or None if outside the plan.
+
+    Year-2 week-by-week block is gated off until ``YEAR2_PLAN_ACTIVE`` (see medical.py).
+    The stored ``HR_TRAINING_WEEKS`` remain as a template for the future 2028-specific rewrite.
+    """
+    from .medical import year2_sessions_live
+    if not year2_sessions_live():
+        return None
     delta = (d - HR_PLAN_START).days
     if delta < 0 or delta >= _HR_PLAN_DAYS:
         return None

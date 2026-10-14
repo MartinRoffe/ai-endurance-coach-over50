@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+  <title>Training History 2009–2016</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #09090b; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; position: relative; z-index: 1; }
+    .eyebrow {
+      font-family: var(--font-m);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+    .pmc-num {
+      font-family: var(--font-d);
+      font-size: clamp(48px, 9vw, 80px);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+    }
+    table.arch { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.arch th, table.arch td {
+      text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+      font-family: var(--font-m); color: var(--text);
+    }
+    table.arch th { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+    table.arch td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .narrative :is(h1,h2,h3) { font-family: var(--font-d); color: var(--text); margin: 1.2em 0 0.4em; }
+    .narrative p, .narrative li { color: var(--text); font-size: 14px; line-height: 1.55; margin: 0.5em 0; }
+    .narrative strong { color: #fafafa; }
+    .narrative table { width: 100%; margin: 0.8em 0; font-size: 12px; }
+    .jump {
+      display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+      margin-top: 18px; padding-bottom: 2px;
+    }
+    .jump::-webkit-scrollbar { display: none; }
+    .jump a {
+      flex-shrink: 0; padding: 8px 12px; font-family: var(--font-m); font-size: 11px;
+      letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none;
+      color: var(--muted); border: 1px solid var(--border); border-radius: 2px;
+      background: var(--surface);
+    }
+    .jump a:hover { color: var(--text); }
+    #rebuild, #consistency, #peaks, #power, #mmp, #narrative, #shortlist { scroll-margin-top: 72px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+
+{% set active_tab = 'archive' %}
+{% include 'nav.html' %}
+
+<div style="position:fixed;top:-160px;right:-80px;width:640px;height:640px;background:radial-gradient(circle,rgba(96,165,250,0.025) 0%,transparent 65%);pointer-events:none;z-index:0"></div>
+
+<div class="page">
+
+  <div style="margin-bottom:24px">
+    <p class="eyebrow" style="margin-bottom:8px">Personal natural experiments</p>
+    <h1 style="font-family:var(--font-d);font-size:clamp(28px,5vw,42px);letter-spacing:0.05em;color:var(--text);line-height:1">Training History</h1>
+    <p style="font-family:var(--font-m);font-size:12px;color:var(--muted);margin-top:6px">
+      Garmin archive {% if period %}{{ period.start }} → {{ period.end }}{% else %}2009–2016{% endif %}
+      {% if generated_at %} · analysed {{ generated_at[:10] }}{% endif %}
+    </p>
+    {% if archive_ready %}
+    <nav class="jump" aria-label="History sections">
+      <a href="#rebuild">Rebuild</a>
+      <a href="#consistency">Consistency</a>
+      <a href="#peaks">Peaks</a>
+      <a href="#mmp">True MMP</a>
+      <a href="#power">Proxies</a>
+      <a href="#narrative">Coach take</a>
+      <a href="#shortlist">FIT shortlist</a>
+    </nav>
+    {% endif %}
+  </div>
+
+  {% if not archive_ready %}
+  <div class="card" style="padding:28px">
+    <p class="eyebrow" style="margin-bottom:10px">Not ready</p>
+    <h2 style="font-family:var(--font-d);font-size:22px;color:var(--text);margin-bottom:12px">Run the archive pipeline</h2>
+    <p style="color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:16px">
+      No <code>findings.json</code> found (checked
+      <code>~/.ai_endurance_coach_over50/archive/</code> and the repo
+      <code>archive/</code>). Extract Garmin metadata, then analyse:
+    </p>
+    <pre style="background:#111;border:1px solid var(--border);padding:14px;font-size:12px;color:#e4e4e7;overflow:auto">pip install -r archive/requirements.txt
+python archive/garmin_fetch.py
+python archive/garmin_analysis.py</pre>
+    <p style="color:var(--muted);font-size:12px;margin-top:12px">
+      Smoke-test one month first: <code>python archive/garmin_fetch.py --start 2015-06-01 --end 2015-06-30</code>
+    </p>
+  </div>
+
+  {% else %}
+
+  <!-- Hero verdict -->
+  <section id="rebuild" class="card" style="padding:28px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:10px">
+      Rebuild rate
+      {% if rebuild_is_fit %}
+      · <span style="color:#34d399">FIT-grounded (shortlist)</span>
+      {% else %}
+      · summary proxies
+      {% endif %}
+    </p>
+    {% if rebuild.central_estimate_weeks is not none %}
+    <div class="pmc-num" style="color:#60a5fa">{{ rebuild.central_estimate_weeks }}<span style="font-size:0.35em;letter-spacing:0.12em;margin-left:8px;color:var(--muted)">weeks</span></div>
+    <p class="eyebrow" style="margin-top:10px;color:var(--muted)">
+      median to recover prior fitness after a ≥6-week layoff
+      {% if rebuild.iqr %} · IQR {{ rebuild.iqr[0] }}–{{ rebuild.iqr[1] }}{% endif %}
+      · {{ rebuild.n_full_recoveries }} recovered · {{ rebuild.n_plateaued }} plateaued lower
+    </p>
+    {% if rebuild_is_fit and rebuild_summary.central_estimate_weeks is not none
+         and rebuild_summary.central_estimate_weeks != rebuild.central_estimate_weeks %}
+    <p style="margin-top:8px;font-size:12px;color:var(--muted)">
+      Summary-only estimate was {{ rebuild_summary.central_estimate_weeks }} weeks
+      (FIT baselines {{ rebuild_fit.n_layoffs_with_fit_baseline }} /
+      restarts {{ rebuild_fit.n_layoffs_with_fit_restart }}).
+    </p>
+    {% endif %}
+    {% else %}
+    <div class="pmc-num" style="font-size:36px;color:var(--muted)">No full recoveries</div>
+    <p style="color:var(--muted);font-size:13px;margin-top:8px">Insufficient proxy data across major layoffs.</p>
+    {% endif %}
+    {% if hero_blurb %}
+    <p style="margin-top:18px;font-size:15px;line-height:1.55;color:var(--text);max-width:52rem">{{ hero_blurb }}</p>
+    {% endif %}
+    <p style="margin-top:12px;font-size:12px;color:var(--muted)">{{ rebuild.proxy_notes }}</p>
+  </section>
+
+  <section class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:12px">Rebuild trajectories</p>
+    <div style="height:280px"><canvas id="chartRebuild"></canvas></div>
+  </section>
+
+  <section class="card" style="padding:20px;margin-bottom:20px;overflow-x:auto">
+    <p class="eyebrow" style="margin-bottom:12px">Layoffs ≥6 weeks</p>
+    <table class="arch">
+      <thead>
+        <tr>
+          <th>Layoff start</th>
+          <th class="num">Weeks off</th>
+          <th>Restart</th>
+          <th class="num">Weeks to recover</th>
+          <th>Status</th>
+          <th>Proxy</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for L in rebuild.layoffs %}
+        <tr>
+          <td>{{ L.layoff_start }}</td>
+          <td class="num">{{ L.layoff_weeks }}</td>
+          <td>{{ L.restart_date }}</td>
+          <td class="num">{% if L.weeks_to_recover is not none %}{{ L.weeks_to_recover }}{% else %}—{% endif %}</td>
+          <td>{{ L.status }}</td>
+          <td>{{ L.proxy_used }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="color:var(--muted)">No major layoffs found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Consistency -->
+  <section id="consistency" class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:8px">Consistency</p>
+    <p style="font-size:14px;color:var(--text);margin-bottom:12px">
+      Longest streak of weeks with ≥3 rides:
+      <strong>{{ consistency.longest_streak_weeks.weeks if consistency.longest_streak_weeks else '—' }}</strong>
+      {% if consistency.longest_streak_weeks and consistency.longest_streak_weeks.start %}
+      ({{ consistency.longest_streak_weeks.start }} → {{ consistency.longest_streak_weeks.end }})
+      {% endif %}
+      · {{ gaps|length }} cycling gaps ≥21 days
+      · {{ consistency.n_cycling }} bike / {{ consistency.n_activities }} all activities
+    </p>
+    <div style="height:260px;margin-bottom:16px"><canvas id="chartHours"></canvas></div>
+    <table class="arch">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th class="num">Hours (all)</th>
+          <th class="num">Hours (bike)</th>
+          <th class="num">Distance km</th>
+          <th class="num">Elev m*</th>
+          <th class="num">Rides</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in consistency.annual_totals %}
+        <tr>
+          <td>{{ a.year }}</td>
+          <td class="num">{{ a.hours_all }}</td>
+          <td class="num">{{ a.hours_cycling }}</td>
+          <td class="num">{{ a.distance_km }}</td>
+          <td class="num">{{ a.elevation_m }}</td>
+          <td class="num">{{ a.ride_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">* Elevation from older Edge devices is unreliable.</p>
+  </section>
+
+  <!-- Peaks -->
+  <section id="peaks" class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:12px">Top 6-week load blocks</p>
+    <table class="arch">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Window</th>
+          <th class="num">Score</th>
+          <th>Kind</th>
+          <th class="num">Hours</th>
+          <th class="num">Rides</th>
+          <th class="num">/wk</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in peaks.top_blocks %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ b.start }} → {{ b.end }}</td>
+          <td class="num">{{ b.score }}</td>
+          <td>{{ b.score_kind }}</td>
+          <td class="num">{{ b.hours }}</td>
+          <td class="num">{{ b.rides }}</td>
+          <td class="num">{{ b.rides_per_week }}</td>
+          <td>{% if b.accidental_consistency %}<span style="color:#f59e0b">outlier</span>{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="color:var(--muted)">No blocks scored.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- True MMP -->
+  <section id="mmp" class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:8px">Power-duration (true MMP)</p>
+    {% if mmp_ready %}
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Mean-maximal power from FIT streams on the shortlist
+      ({{ mmp.n_with_power }} rides with power · {{ mmp.n_missing_fit or 0 }} FITs missing).
+      Not exhaustive year coverage.
+    </p>
+    <div style="height:280px;margin-bottom:16px"><canvas id="chartMmp"></canvas></div>
+    <table class="arch" style="margin-bottom:16px">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th class="num">5s</th>
+          <th class="num">1 min</th>
+          <th class="num">2 min</th>
+          <th class="num">5 min</th>
+          <th class="num">20 min</th>
+          <th class="num">60 min</th>
+          <th class="num">5:60</th>
+          <th class="num">Rides</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in mmp.by_year %}
+        <tr>
+          <td>{{ b.year }}{% if b.plausibility_fail %} <span style="color:#f87171">!</span>{% endif %}</td>
+          <td class="num">{{ b.mmp_5s or '—' }}</td>
+          <td class="num">{{ b.mmp_1min or '—' }}</td>
+          <td class="num">{{ b.mmp_2min or '—' }}</td>
+          <td class="num">{{ b.mmp_5min or '—' }}</td>
+          <td class="num">{{ b.mmp_20min or '—' }}</td>
+          <td class="num">{{ b.mmp_60min or '—' }}</td>
+          <td class="num">{{ b.ratio_5_60 or '—' }}</td>
+          <td class="num">{{ b.n_rides }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if contradictions_are_fit and contradictions %}
+    <p class="eyebrow" style="margin-bottom:8px">Stated peaks vs MEASURED_MMP (provenance-tagged)</p>
+    <ul style="margin:0 0 12px;padding-left:18px;color:var(--text);font-size:13px;line-height:1.5">
+      {% for c in contradictions %}
+      <li>
+        <strong>{{ c.year }}</strong>:
+        {% if c.archive_best_mmp_w %}{{ c.archive_best_mmp_w }}W {{ c.archive_provenance or 'MEASURED_MMP' }}{% else %}—{% endif %}
+        vs stated {{ c.stated_peak_w or '—' }}W {{ c.stated_provenance or 'lore' }}
+        {% if c.stated_provenance == 'DEVICE_SETTING' %}
+        <span style="color:var(--muted)"> — setting, not a measurement</span>
+        {% elif c.conflicts %}<span style="color:#f87171"> — CONFLICT</span>{% endif %}
+        <div style="color:var(--muted);font-size:12px">{{ c.note }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <details>
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;margin-bottom:8px">Per-activity MMP</summary>
+      <table class="arch">
+        <thead>
+          <tr>
+            <th>ID</th><th>Date</th>
+            <th class="num">5s</th><th class="num">1m</th><th class="num">5m</th>
+            <th class="num">20m</th><th class="num">60m</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in mmp_activities %}
+          <tr>
+            <td><code>{{ a.activity_id }}</code></td>
+            <td>{{ a.date }}</td>
+            <td class="num">{{ a.mmp_5s or '—' }}</td>
+            <td class="num">{{ a.mmp_1min or '—' }}</td>
+            <td class="num">{{ a.mmp_5min or '—' }}</td>
+            <td class="num">{{ a.mmp_20min or '—' }}</td>
+            <td class="num">{{ a.mmp_60min or '—' }}</td>
+            <td style="font-size:11px;color:var(--muted)">{% if a.error %}{{ a.error }}{% elif a.has_power %}ok{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% else %}
+    <p style="color:var(--muted);font-size:13px;margin-bottom:10px">
+      Shortlist is ready, but true MMP has not been computed yet.
+    </p>
+    <pre style="background:#111;border:1px solid var(--border);padding:14px;font-size:12px;color:#e4e4e7;overflow:auto">python archive/garmin_fit_fetch.py
+python archive/garmin_mmp.py --force-ai</pre>
+    {% endif %}
+  </section>
+
+  <!-- Power proxies (Stage 2) -->
+  <section id="power" class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:8px">Summary proxies by year (Stage 2)</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Whole-ride summary fields — demoted once true MMP above is available.
+    </p>
+    <div style="height:260px;margin-bottom:16px"><canvas id="chartPower"></canvas></div>
+    {% if not contradictions_are_fit and contradictions %}
+    <p class="eyebrow" style="margin-bottom:8px">Stated peaks vs summary proxies</p>
+    <ul style="margin:0 0 12px;padding-left:18px;color:var(--text);font-size:13px;line-height:1.5">
+      {% for c in contradictions %}
+      <li>
+        <strong>{{ c.year }}</strong>: archive best {{ c.archive_best_proxy_w or '—' }} W
+        vs stated ~{{ c.stated_peak_w or '—' }} W
+        {% if c.conflicts %}<span style="color:#f87171"> — CONFLICT</span>{% endif %}
+        <div style="color:var(--muted);font-size:12px">{{ c.note }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <!-- Narrative -->
+  <section id="narrative" class="card" style="padding:20px;margin-bottom:20px">
+    <p class="eyebrow" style="margin-bottom:12px">Coach narrative (Claude Opus)</p>
+    {% if narrative_html %}
+    <details {% if not mmp_narrative_html %}open{% endif %}>
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;margin-bottom:12px">Stage 2 write-up (summary proxies)</summary>
+      <div class="narrative">{{ narrative_html | safe }}</div>
+    </details>
+    {% endif %}
+    {% if mmp_narrative_html %}
+    <details open style="margin-top:12px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;margin-bottom:12px">MMP addendum (FIT streams)</summary>
+      <div class="narrative">{{ mmp_narrative_html | safe }}</div>
+    </details>
+    {% elif not narrative_html %}
+    <p style="color:var(--muted);font-size:13px">No AI narrative yet — re-run analysis with ANTHROPIC_API_KEY set.</p>
+    {% endif %}
+  </section>
+
+  <!-- Shortlist -->
+  <section id="shortlist" class="card" style="padding:20px;margin-bottom:20px;overflow-x:auto">
+    <p class="eyebrow" style="margin-bottom:12px">FIT shortlist</p>
+    <table class="arch">
+      <thead>
+        <tr>
+          <th>Activity ID</th>
+          <th>Date</th>
+          <th class="num">Score</th>
+          <th class="num">NP</th>
+          <th class="num">Duration</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shortlist %}
+        <tr>
+          <td><code>{{ s.activity_id }}</code></td>
+          <td>{{ s.date }}</td>
+          <td class="num">{{ s.score }}</td>
+          <td class="num">{{ s.np or '—' }}</td>
+          <td class="num">{% if s.duration_s %}{{ (s.duration_s / 60)|round(0)|int }} min{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--muted)">{{ s.reason }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="color:var(--muted)">Empty shortlist.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if data_quality_notes %}
+  <section style="margin-top:8px">
+    <p class="eyebrow" style="margin-bottom:8px">Data quality</p>
+    <ul style="padding-left:18px;color:var(--muted);font-size:12px;line-height:1.5">
+      {% for n in data_quality_notes %}
+      <li>{{ n }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <script type="application/json" id="archive-charts">{{ charts_json | tojson }}</script>
+  <script>
+  (function () {
+    const raw = document.getElementById('archive-charts');
+    if (!raw || !window.Chart) return;
+    const charts = JSON.parse(raw.textContent || '{}');
+    const grid = 'rgba(63,63,70,0.5)';
+    const tick = '#71717a';
+
+    const hours = charts.weekly_hours || {};
+    if (hours.labels && hours.labels.length) {
+      const gapPlugin = {
+        id: 'gapShade',
+        beforeDraw(chart) {
+          const spans = hours.gap_spans || [];
+          if (!spans.length) return;
+          const {ctx, chartArea, scales} = chart;
+          const x = scales.x;
+          spans.forEach(g => {
+            const i0 = hours.labels.indexOf(g.start);
+            // find nearest label <= start / >= end by date compare
+            let a = 0, b = hours.labels.length - 1;
+            for (let i = 0; i < hours.labels.length; i++) {
+              if (hours.labels[i] <= g.start) a = i;
+              if (hours.labels[i] >= g.end) { b = i; break; }
+            }
+            const x1 = x.getPixelForValue(a);
+            const x2 = x.getPixelForValue(b);
+            ctx.save();
+            ctx.fillStyle = 'rgba(245,158,11,0.12)';
+            ctx.fillRect(x1, chartArea.top, Math.max(2, x2 - x1), chartArea.bottom - chartArea.top);
+            ctx.restore();
+          });
+        }
+      };
+      new Chart(document.getElementById('chartHours'), {
+        type: 'line',
+        data: {
+          labels: hours.labels,
+          datasets: [
+            { label: 'All sports', data: hours.all_sports, borderColor: '#94a3b8', borderWidth: 1, pointRadius: 0, tension: 0.2 },
+            { label: 'Cycling', data: hours.cycling, borderColor: '#60a5fa', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: tick } } },
+          scales: {
+            x: { ticks: { color: tick, maxTicksLimit: 10 }, grid: { color: grid } },
+            y: { ticks: { color: tick }, grid: { color: grid }, title: { display: true, text: 'Hours / week', color: tick } }
+          }
+        },
+        plugins: [gapPlugin]
+      });
+    }
+
+    const trajSrc = (charts.rebuild_trajectories_fit || charts.rebuild_trajectories || {});
+    const traj = trajSrc.series || [];
+    if (traj.length && document.getElementById('chartRebuild')) {
+      const colors = ['#60a5fa','#a78bfa','#34d399','#f472b6','#fbbf24','#fb7185','#22d3ee','#c084fc'];
+      new Chart(document.getElementById('chartRebuild'), {
+        type: 'line',
+        data: {
+          datasets: traj.slice(0, 8).map((s, i) => ({
+            label: (s.label || '').slice(0, 28),
+            data: (s.weeks || []).map((w, j) => ({ x: w, y: (s.index || [])[j] })),
+            borderColor: colors[i % colors.length],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.2,
+          })).concat([{
+            label: '95% recovery',
+            data: [{x:0,y:0.95},{x:26,y:0.95}],
+            borderColor: '#22c55e',
+            borderDash: [6,4],
+            borderWidth: 1,
+            pointRadius: 0,
+          }])
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          parsing: false,
+          plugins: { legend: { labels: { color: tick, font: { size: 10 } } } },
+          scales: {
+            x: { type: 'linear', ticks: { color: tick }, grid: { color: grid }, title: { display: true, text: 'Weeks since restart', color: tick } },
+            y: { ticks: { color: tick }, grid: { color: grid }, title: { display: true, text: 'Fitness index', color: tick } }
+          }
+        }
+      });
+    }
+
+    const pw = charts.power_by_year || {};
+    if ((pw.years || []).length && document.getElementById('chartPower')) {
+      new Chart(document.getElementById('chartPower'), {
+        type: 'line',
+        data: {
+          labels: pw.years,
+          datasets: [
+            { label: 'Best NP ≥60 min', data: pw.best_np_60, borderColor: '#60a5fa', pointRadius: 3 },
+            { label: 'Best NP ≥20 min', data: pw.best_np_20, borderColor: '#a78bfa', pointRadius: 3 },
+            { label: 'maxPowerTwentyMinutes', data: pw.best_20min_field, borderColor: '#34d399', pointRadius: 3 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: tick } } },
+          scales: {
+            x: { ticks: { color: tick }, grid: { color: grid } },
+            y: { ticks: { color: tick }, grid: { color: grid }, title: { display: true, text: 'Watts (proxy)', color: tick } }
+          }
+        }
+      });
+    }
+
+    const mmp = charts.mmp_by_year || {};
+    if ((mmp.years || []).length && document.getElementById('chartMmp')) {
+      new Chart(document.getElementById('chartMmp'), {
+        type: 'line',
+        data: {
+          labels: mmp.years,
+          datasets: [
+            { label: '5s', data: mmp.mmp_5s, borderColor: '#f87171', pointRadius: 3 },
+            { label: '1 min', data: mmp.mmp_1min, borderColor: '#fb923c', pointRadius: 3 },
+            { label: '2 min', data: mmp.mmp_2min, borderColor: '#f59e0b', pointRadius: 3 },
+            { label: '5 min', data: mmp.mmp_5min, borderColor: '#fbbf24', pointRadius: 3 },
+            { label: '20 min', data: mmp.mmp_20min, borderColor: '#60a5fa', pointRadius: 3 },
+            { label: '60 min', data: mmp.mmp_60min, borderColor: '#34d399', pointRadius: 3 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: tick } } },
+          scales: {
+            x: { ticks: { color: tick }, grid: { color: grid } },
+            y: { ticks: { color: tick }, grid: { color: grid }, title: { display: true, text: 'Watts (true MMP)', color: tick } }
+          }
+        }
+      });
+    }
+  })();
+  </script>
+
+  {% endif %}
+</div>
+</body>
+</html>

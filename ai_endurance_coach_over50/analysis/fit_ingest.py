@@ -237,6 +237,33 @@ def fetch_fit_for_activity(api: Any, activity_id: int) -> Optional[bytes]:
         return None
 
 
+def fetch_tcx_for_activity(api: Any, activity_id: int) -> Optional[bytes]:
+    """Download TCX export when ORIGINAL/FIT is unavailable. Soft-fail → None.
+
+    Returns raw TCX XML bytes (or unzipped payload if Garmin wraps it).
+    """
+    try:
+        fmt = api.ActivityDownloadFormat.TCX
+        raw = api.download_activity(str(activity_id), dl_fmt=fmt)
+        if not raw:
+            return None
+        # Some endpoints return zip; prefer nested .tcx / .xml
+        if raw[:2] == b"PK":
+            import zipfile
+            from io import BytesIO
+            with zipfile.ZipFile(BytesIO(raw)) as zf:
+                names = [n for n in zf.namelist() if n.lower().endswith((".tcx", ".xml"))]
+                if not names:
+                    names = zf.namelist()
+                if not names:
+                    return None
+                return zf.read(names[0])
+        return raw
+    except Exception as exc:
+        log.debug("TCX download failed for %s: %s", activity_id, exc)
+        return None
+
+
 def _local_tz():
     """System local timezone (Garmin startTimeLocal is wall-clock local)."""
     try:

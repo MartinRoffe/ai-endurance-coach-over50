@@ -47,17 +47,19 @@ def test_august_and_hr_appear_in_bike_schedule():
     assert "2026-08-14" in dates  # Camp Leg Openers
     assert "2026-08-22" in dates  # Camp Teide
     assert "2026-08-13" not in dates  # travel
-    assert "2026-10-05" in dates or any(
-        d.startswith("2026-10") for d in dates
-    ), "HR Base start week should be scheduled"
-    assert "2026-12-31" in dates or "2026-12-30" in dates or "2026-12-28" in dates
+    # Year-2 HR block gated off — no Teide / sweetspot labels in Oct–Dec.
+    # Fitness-plan easy rides (Z2 Easy, Long Ride Easy) are scheduled.
+    labels = {label for (label, _dur) in sched}
+    assert "Tenerife — Teide West" not in labels
+    assert "Tenerife — Teide Full Loop" not in labels
+    assert "Low Cadence Sweetspot" not in labels
+    assert "2026-10-15" not in dates  # procedure day, not pushed
+    assert "2026-10-21" in dates      # first return-week Z2 Easy
+    assert "2026-12-26" in dates      # camp day at the 3 h cap
+    # Medical pause / cancelled charity — no Sep event-prep quality
+    assert "2026-09-05" not in dates
+    assert "2026-09-06" not in dates
     assert HR_WORKOUTS_END == date(2026, 12, 31)
-    # Christmas Tenerife labelled day
-    assert any(
-        "Tenerife" in label or "Camp Finale" in label or "Teide" in label
-        for (label, _dur), ds in sched.items()
-        if any(d.startswith("2026-12") for d in ds)
-    )
 
 
 def test_kb_trunk_and_gym_are_fe_not_bike():
@@ -82,16 +84,8 @@ def test_kb_trunk_and_gym_are_fe_not_bike():
     assert wb.workoutName == "KB Position B 60m"
 
 
-def test_hr_strength_in_sr_schedule_through_dec():
+def test_hr_strength_not_in_sr_schedule_while_year2_gated():
     sr = _workout_schedule_strength_ruck()
     dates = {d for ds in sr.values() for d in ds}
-    # First KB + Trunk in HR Base is typically a Thursday in week 1 (2026-10-08)
-    assert any(d.startswith("2026-10") for d in dates)
-    assert any(
-        kind.startswith("KB Position")
-        for (kind, _wk, _dur) in sr
-    )
-    # No bike Recovery Spin masquerading: FE kinds only for position templates
-    assert ("KB Position A", 0, 45) in sr or any(
-        k[0] == "KB Position A" for k in sr
-    )
+    assert not any(d.startswith("2026-10") for d in dates)
+    assert not any(d.startswith("2026-12") for d in dates)

@@ -120,6 +120,12 @@ def test_key_dates_section():
     assert "Haute Route" in text
     assert "charity" in text.lower()
 
+    live = "\n".join(_section_key_dates(date(2026, 10, 11)))
+    assert "Fitness year" in live
+    assert "2026-12-21" in live
+    assert "Tenerife camp: 2026-08-13" not in live
+    assert "Haute Route 2027" not in live
+
 
 def test_phase_categorisation():
     from ai_endurance_coach_over50.coach_context import _current_training_phase
@@ -129,9 +135,15 @@ def test_phase_categorisation():
     label, cat = _current_training_phase(date(2026, 8, 15))
     assert cat == "camp"
     label, cat = _current_training_phase(date(2026, 9, 13))
-    assert cat == "taper"
+    assert cat == "medical"
+    label, cat = _current_training_phase(date(2026, 10, 11))
+    assert "procedure week" in label
+    assert cat == "medical"
+    # Year 2 not live — Aug 2027 is fitness maintenance, not HR taper
     label, cat = _current_training_phase(date(2027, 8, 20))
-    assert cat == "taper" and "Haute Route" in label
+    assert "Fitness year" in label
+    assert "Maintenance" in label
+    assert cat == "base"
 
 
 def test_calendar_merges_db_notes():
