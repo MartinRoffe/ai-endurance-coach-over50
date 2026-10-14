@@ -27,6 +27,7 @@ from .db import (  # noqa: F401
     _ensure_named_climbs_schema,
     _ensure_power_durability_schema,
     _ensure_rpe_schema,
+    _ensure_wellness_schema,
     _ensure_schema,
     _ensure_session_notes_schema,
 )
@@ -96,6 +97,7 @@ from .coach_store import (  # noqa: F401
     delete_plan_override,
     delete_session_note,
     get_coach_memory,
+    get_morning_wellness,
     get_plan_override,
     list_coach_commitments,
     list_plan_overrides,
@@ -105,6 +107,7 @@ from .coach_store import (  # noqa: F401
     resolve_coach_commitment,
     save_coach_commitment,
     save_coach_message,
+    save_morning_wellness,
     save_session_rpe,
     set_coach_memory,
     set_plan_override,

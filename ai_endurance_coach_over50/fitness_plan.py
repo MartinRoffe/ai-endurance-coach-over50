@@ -12,9 +12,26 @@ PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
 
 PROCEDURE_START = date(2026, 10, 12)
 PROCEDURE_END = date(2026, 10, 18)
+# Procedure day is Thu 15 Oct. The next 7 days (16–22 Oct) stay easy.
+# The first hard session is Tue 27 Oct, the first Tuesday after that window.
+EASY_RETURN_END = date(2026, 10, 22)
+QUALITY_START = date(2026, 10, 27)
+TWO_QUALITY_FROM = date(2026, 11, 2)
 
-# Home Sunday on 20 Dec 2026. Camp rides do not exceed this.
+# Working numbers for this athlete. Max HR 191 is the measured value the
+# existing zone model already uses — this constant does not move the zones.
+# FTP is the current working estimate, not a tested override of ftp_tests.
+ATHLETE_MAX_HR = 191
+ATHLETE_FTP_W = 220
+ATHLETE_WEIGHT_KG_LOW = 89
+ATHLETE_WEIGHT_KG_HIGH = 92
+
+# Home Sundays reach 3 h on 29 Nov 2026. Camp quality days are 3–4 h, and
+# the optional Teide day is longer. Those camp days are not held to this cap.
 HOME_SUNDAY_CAP_MIN = 180
+
+CAMP_START = date(2026, 12, 21)
+CAMP_END = date(2027, 1, 2)
 
 GRAVEL_BIKE_ACTIVE = False
 
@@ -27,25 +44,30 @@ _RACE_TYPES = frozenset({"sweetspot", "vo2", "tempo", "ftp", "back_to_back"})
 
 BUSAR_STANDARDS = (
     "Pack test: 3 miles flat with 45 lb (20.4 kg) in under 45 minutes.",
-    "Step-overs: 20 lb pack plus a 45 lb kettlebell, up and over a picnic table for 30 minutes.",
-    "Trap-bar deadlift: 225 lb (102 kg), at least 15 reps in one minute. Needs a trap bar or a gym.",
-    "Burpee pull-ups: 20 lb pack, at least 50 in 10 minutes. Needs a pull-up bar and bodyweight pull-ups first.",
+    "Step-overs: 20 lb pack plus a sandbag or the 24 kg kettlebell, up and over a picnic table for 30 minutes.",
+    "Deadlift: train with a sandbag or a barbell, not a kettlebell (heaviest bell is 24 kg). "
+    "The test standard is still 225 lb (102 kg) for at least 15 reps in one minute. "
+    "There is no trap bar yet, so do not pretend a kettlebell is the test load.",
+    "Burpee pull-ups: 20 lb pack, at least 50 in 10 minutes. "
+    "There is no pull-up bar yet and the current max is 0 strict reps. "
+    "Train negatives, then band-assisted, then strict reps. The test still needs a bar.",
 )
 
-# Christmas camp. One day (26 Dec) sits on the 180-minute home-Sunday cap.
-# The old 5–6 h Teide / Masca / finale grid is not in this map.
+# Christmas camp, 21 Dec 2026–2 Jan 2027. Time on the bike, not a kilometre
+# target. Quality days are 3–4 h with an easy day between them. One optional
+# longer Teide day. 3 Jan is the day after travel, still a rest.
 _CAMP: dict[date, tuple[str, str, int]] = {
     date(2026, 12, 21): ("rest", "Tenerife — travel", 0),
-    date(2026, 12, 22): ("rest", "Tenerife — arrive", 0),
-    date(2026, 12, 23): ("bike", "Z2 Easy", 90),
-    date(2026, 12, 24): ("long", "Long Ride (Easy)", 120),
-    date(2026, 12, 25): ("bike", "Z2 Easy", 75),
-    date(2026, 12, 26): ("long", "Long Ride (Easy)", 180),
+    date(2026, 12, 22): ("bike", "Z2 Easy", 75),
+    date(2026, 12, 23): ("threshold", "Camp quality — threshold", 180),
+    date(2026, 12, 24): ("bike", "Z2 Easy", 90),
+    date(2026, 12, 25): ("bike", "Z2 Easy", 60),
+    date(2026, 12, 26): ("long", "Teide — optional long day", 300),
     date(2026, 12, 27): ("rest", "Tenerife — mid-camp rest", 0),
-    date(2026, 12, 28): ("long", "Long Ride (Easy)", 120),
-    date(2026, 12, 29): ("strength", "Strength — easy circuit", 30),
-    date(2026, 12, 30): ("long", "Long Ride (Easy)", 150),
-    date(2026, 12, 31): ("bike", "Z2 Easy", 120),
+    date(2026, 12, 28): ("threshold", "Camp quality — threshold", 240),
+    date(2026, 12, 29): ("bike", "Z2 Easy", 90),
+    date(2026, 12, 30): ("vo2", "Camp quality — VO2", 210),
+    date(2026, 12, 31): ("bike", "Z2 Easy", 90),
     date(2027, 1, 1): ("rest", "New Year rest", 0),
     date(2027, 1, 2): ("rest", "Travel home", 0),
     date(2027, 1, 3): ("rest", "Post-camp rest", 0),
@@ -61,16 +83,10 @@ _PROCEDURE: tuple[tuple[str, str, int], ...] = (
     ("bike", "Optional easy ride", 45),
 )
 
-# (sat_min, sat_kg, sun_min) for the seven Keswick-build weeks starting 4 Jan 2027.
-_KESWICK_BUILD = (
-    (75, 8, 90),
-    (75, 10, 105),
-    (90, 10, 120),
-    (90, 12, 120),
-    (105, 12, 135),
-    (105, 14, 150),
-    (120, 14, 150),
-)
+# Pull-ups three days a week (Tue, Thu, Sat) from the first quality week
+# through the day before the BUSAR test. No bar yet, and 0 strict reps.
+_PULLUP_WEEKDAYS = (1, 3, 5)
+PULLUP_END = date(2027, 2, 19)
 
 
 def in_plan(d: date) -> bool:
@@ -159,6 +175,7 @@ def build_calendar_weeks() -> list[dict]:
                 "label": day["label"] if day["type"] != "rest" else day["label"],
                 "dur_fmt": _fmt_dur(dur) if dur else None,
                 "dur_min": dur,
+                "extra": pullup_for_date(d),
                 "kb_spec": None,
                 "is_today": d == today,
                 "is_past": d < today,
@@ -172,7 +189,7 @@ def build_calendar_weeks() -> list[dict]:
 
 
 _BUSAR_LABEL = (
-    "BUSAR test — pack test, step-overs, trap-bar deadlift, burpee pull-ups"
+    "BUSAR test — pack test, step-overs, sandbag deadlift, burpee pull-ups"
 )
 
 
@@ -202,36 +219,191 @@ def _planned(d: date) -> tuple[str, str, int]:
     return _maintenance_day(wd)
 
 
-def _return_day(mon: date, wd: int) -> tuple[str, str, int]:
-    idx = (mon - date(2026, 10, 19)).days // 7
-    sun = min(HOME_SUNDAY_CAP_MIN, 60 + idx * 15)
-    wed = min(75, 45 + idx * 5)
-    sat = min(90, 45 + idx * 5)
-    days = (
+def _wk(*days: tuple[str, str, int]) -> tuple[tuple[str, str, int], ...]:
+    if len(days) != 7:
+        raise ValueError(f"week needs 7 days, got {len(days)}")
+    return days
+
+
+# Monday → seven sessions. Totals stay inside the +10% weekly cap once the
+# procedure week is no longer the load base. Hard days are Tuesday, then
+# Tuesday and Thursday from 2 Nov, so they are never adjacent.
+_RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
+    date(2026, 10, 19): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — easy circuit", 35),
-        ("bike", "Z2 Easy", wed),
+        ("kettlebell", "Kettlebell — easy circuit", 35),
+        ("bike", "Z2 Easy", 45),
         ("hike", "Easy steps", 30),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", sat),
-        ("long", "Long Ride (Easy)", sun),
-    )
-    return days[wd]
+        ("hike", "Easy hill walk", 45),
+        ("long", "Long Ride (Easy)", 60),
+    ),
+    date(2026, 10, 26): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 40),
+        ("bike", "Z2 Easy", 45),
+        ("hike", "Easy steps", 30),
+        ("rest", "Rest", 0),
+        ("hike", "Easy hill walk", 50),
+        ("long", "Long Ride (Easy)", 70),
+    ),
+    date(2026, 11, 2): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 40),
+        ("bike", "Z2 Easy", 45),
+        ("rower", "VO2 — rower", 35),
+        ("rest", "Rest", 0),
+        ("hike", "Easy hill walk", 50),
+        ("long", "Long Ride (Easy)", 85),
+    ),
+    date(2026, 11, 9): _wk(
+        ("rest", "Rest", 0),
+        ("vo2", "VO2 — bike", 40),
+        ("bike", "Z2 Easy", 50),
+        ("rower", "Threshold — rower", 35),
+        ("rest", "Rest", 0),
+        ("hike", "Easy hill walk", 55),
+        ("long", "Long Ride (Easy)", 100),
+    ),
+    date(2026, 11, 16): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 45),
+        ("bike", "Z2 Easy", 50),
+        ("rower", "VO2 — rower", 40),
+        ("rest", "Rest", 0),
+        ("hike", "Easy hill walk", 55),
+        ("long", "Long Ride (Easy)", 115),
+    ),
+    # First 3-hour Sunday (29 Nov) and a short back-to-back ride on Saturday.
+    date(2026, 11, 23): _wk(
+        ("rest", "Rest", 0),
+        ("vo2", "VO2 — bike", 40),
+        ("hike", "Easy hill walk", 30),
+        ("rower", "Threshold — rower", 35),
+        ("rest", "Rest", 0),
+        ("long", "Long Ride (Easy)", 50),
+        ("long", "Long Ride (Easy)", 180),
+    ),
+    date(2026, 11, 30): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 40),
+        ("hike", "Easy hill walk", 30),
+        ("maxiclimber", "VO2 — MaxiClimber", 35),
+        ("rest", "Rest", 0),
+        ("long", "Long Ride (Easy)", 80),
+        ("long", "Long Ride (Easy)", 180),
+    ),
+    date(2026, 12, 7): _wk(
+        ("rest", "Rest", 0),
+        ("vo2", "VO2 — bike", 40),
+        ("bike", "Z2 Easy", 45),
+        ("rower", "Threshold — rower", 40),
+        ("rest", "Rest", 0),
+        ("hike", "Easy hill walk", 60),
+        ("long", "Long Ride (Easy)", 180),
+    ),
+    date(2026, 12, 14): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 40),
+        ("hike", "Easy hill walk", 40),
+        ("rower", "VO2 — rower", 40),
+        ("rest", "Rest", 0),
+        ("long", "Long Ride (Easy)", 100),
+        ("long", "Long Ride (Easy)", 180),
+    ),
+}
+
+
+# Ruck weight rises to the 20.4 kg pack-test load on Sat 6 Feb.
+# Duration stays put while the kilograms go up. Tuesday is the heavy
+# sandbag/barbell day (one hard session). Thursday is the second.
+_KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
+    date(2027, 1, 4): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (sandbag deadlift)", 50),
+        ("bike", "Z2 Easy", 60),
+        ("rower", "VO2 — rower", 40),
+        ("rest", "Rest", 0),
+        ("ruck", "Hill ruck 10 kg", 70),
+        ("long", "Long Ride (Easy)", 90),
+    ),
+    date(2027, 1, 11): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (sandbag deadlift)", 50),
+        ("kettlebell", "Kettlebell — easy", 40),
+        ("maxiclimber", "VO2 — MaxiClimber", 40),
+        ("rest", "Rest", 0),
+        ("ruck", "Hill ruck 12 kg", 70),
+        ("long", "Long Ride (Easy)", 90),
+    ),
+    date(2027, 1, 18): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (barbell deadlift)", 50),
+        ("bike", "Z2 Easy", 55),
+        ("threshold", "Threshold — bike", 40),
+        ("rest", "Rest", 0),
+        ("ruck", "Hill ruck 15 kg", 70),
+        ("long", "Long Ride (Easy)", 90),
+    ),
+    date(2027, 1, 25): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (sandbag deadlift)", 50),
+        ("bike", "Z2 Easy", 60),
+        ("rower", "Threshold — rower", 40),
+        ("rest", "Rest", 0),
+        ("ruck", "Hill ruck 18 kg", 70),
+        ("long", "Long Ride (Easy)", 90),
+    ),
+    date(2027, 2, 1): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (sandbag deadlift)", 50),
+        ("bike", "Z2 Easy", 60),
+        ("rower", "VO2 — rower", 40),
+        ("rest", "Rest", 0),
+        ("ruck", "Hill ruck 20.4 kg", 70),
+        ("long", "Long Ride (Easy)", 90),
+    ),
+    date(2027, 2, 8): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — heavy (step-overs + burpee pull-ups)", 45),
+        ("bike", "Z2 Easy", 45),
+        ("rower", "Threshold — rower", 35),
+        ("rest", "Rest", 0),
+        ("ruck", "Pack test rehearsal 20.4 kg", 60),
+        ("long", "Long Ride (Easy)", 75),
+    ),
+    # Test weekend is filled in by _planned before this table is read.
+    date(2027, 2, 15): _wk(
+        ("rest", "Rest", 0),
+        ("strength", "Strength — light", 25),
+        ("bike", "Z2 Easy", 45),
+        ("hike", "Easy walk", 30),
+        ("rest", "Rest", 0),
+        ("hike", "BUSAR test — pack test, step-overs, sandbag deadlift, burpee pull-ups", 0),
+        ("hike", "BUSAR test — pack test, step-overs, sandbag deadlift, burpee pull-ups", 0),
+    ),
+}
+
+
+def pullup_for_date(d: date) -> str | None:
+    """Short pull-up add-on, three days a week. Not a separate load block."""
+    if d.weekday() not in _PULLUP_WEEKDAYS:
+        return None
+    if d < QUALITY_START or d > PULLUP_END:
+        return None
+    if d < date(2027, 1, 1):
+        return "Pull-ups — negatives, 3×3–5 (no bar yet)"
+    if d < date(2027, 2, 1):
+        return "Pull-ups — band-assisted, 3×4–6"
+    return "Pull-ups — strict, or stay on the band, 3×3–5"
+
+
+def _return_day(mon: date, wd: int) -> tuple[str, str, int]:
+    return _RETURN_WEEKS[mon][wd]
 
 
 def _keswick_build_day(mon: date, wd: int) -> tuple[str, str, int]:
-    idx = (mon - date(2027, 1, 4)).days // 7
-    sat_min, sat_kg, sun = _KESWICK_BUILD[idx]
-    days = (
-        ("rest", "Rest", 0),
-        ("strength", "Strength — heavy", 50),
-        ("bike", "Z2 Easy", 60),
-        ("hike", "Step-downs + steps", 30),
-        ("rest", "Rest", 0),
-        ("ruck", f"Hill ruck {sat_kg} kg", sat_min),
-        ("long", "Long Ride (Easy)", sun),
-    )
-    return days[wd]
+    return _KESWICK_WEEKS[mon][wd]
 
 
 def _lakes_day(wd: int) -> tuple[str, str, int]:
@@ -344,17 +516,18 @@ _PHASE_NOTES = {
         "Stop for flank pain, fever, or blood in the urine."
     ),
     "Return": (
-        "Tuesday is an easy strength circuit. The Wednesday ride, Saturday hill walk, "
-        "and Sunday ride get longer each week. Sunday stops at 3 hours."
+        "One hard session in the last October week, then two from November "
+        "(threshold or VO2, on the bike, the rower, or the MaxiClimber). "
+        "Weekend rides reach 3 hours on 29 Nov. Some weekends are back-to-back easy rides."
     ),
     "Tenerife": (
-        "Easy rides only. The minutes are a ceiling — shorten the ride when "
-        "fitness is not there. A shorter logged ride still counts. "
-        "The old 5–6 hour Teide / Masca grid is not in this plan."
+        "Time on the bike, not a distance target. Quality days are 3–4 hours "
+        "with an easy day between them. Saturday 26 Dec is the optional longer "
+        "Teide day. Shorten a ride when fitness is not there."
     ),
     "Keswick build": (
-        "Saturday is a hill ruck. The pack gets heavier across the seven weeks. "
-        "Sunday stays an easy ride."
+        "Saturday is a hill ruck. The pack reaches 20.4 kg on 6 Feb. "
+        "Deadlifts are a sandbag or a barbell. Pull-ups are a short add-on three days a week."
     ),
     "Lakes": "The weekend is on foot. The hill names are options, not a fixed route.",
     "Recovery": "Walks and short easy rides. No strength session.",

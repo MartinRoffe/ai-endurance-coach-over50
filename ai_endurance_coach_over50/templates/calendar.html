@@ -17,6 +17,11 @@
     .sess-hike     { background: #0a1a18; border-color: #0f766e; color: #5eead4; }
     .sess-scramble { background: #0c1a1f; border-color: #0e7490; color: #67e8f9; }
     .sess-long     { background: #181000; border-color: #b45309; color: #fde68a; }
+    .sess-threshold { background: #1c1208; border-color: #c2410c; color: #fdba74; }
+    .sess-vo2       { background: #1c0c00; border-color: #ea580c; color: #fdba74; }
+    .sess-rower     { background: #0c1520; border-color: #2563eb; color: #93c5fd; }
+    .sess-maxiclimber { background: #1a1020; border-color: #7c3aed; color: #c4b5fd; }
+    .sess-kettlebell { background: #1a0e28; border-color: #6d28d9; color: #ddd6fe; }
     .sess-camp-hard   { background: #1c0c0c; border-color: #ef4444; color: #fca5a5; }
     .sess-camp-medium { background: #1c1400; border-color: #fbbf24; color: #fde68a; }
     .sess-camp-easy   { background: #091c12; border-color: #34d399; color: #6ee7b7; }
@@ -449,8 +454,10 @@
           {% if day.type != 'rest' and day.label %}
             <p class="text-[11px] font-semibold leading-tight flex-1">{{ day.label }}</p>
             {% if day.dur_fmt %}<p class="text-[12px] opacity-80 mt-auto">{{ day.dur_fmt }}</p>{% endif %}
+            {% if day.extra %}<p class="text-[10px] leading-tight opacity-80 mt-1">{{ day.extra }}</p>{% endif %}
           {% else %}
             <p class="text-[12px] opacity-65 mt-auto">{{ day.label if day.label and day.label != 'Rest' else 'Rest' }}</p>
+            {% if day.extra %}<p class="text-[10px] leading-tight opacity-80 mt-1">{{ day.extra }}</p>{% endif %}
           {% endif %}
         </div>
 

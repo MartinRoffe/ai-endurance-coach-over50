@@ -10,9 +10,14 @@ Defaults
 --------
 MAX_WEEKLY_LOAD_INCREASE = 0.10
     Planned load may rise by at most 10% versus the previous week's prescribed
-    load. Load is the session duration in minutes (the plan's load proxy), or
-    an explicit TSS / training-load figure when the caller passes one. A
-    previous week with no load is not percentage-capped.
+    load. Load is Foster's session RPE (RPE 1–10 × minutes) when a session
+    RPE is logged for that date, otherwise the duration in minutes. Rucks and
+    hikes also take the pack-weight and vertical-gain factors in ``load.py``.
+    A previous week with no load is not percentage-capped. The procedure week
+    is optional walking, not a training base, so the first week back is not
+    held to +10% of it. Tenerife camp weeks (21 Dec 2026–2 Jan 2027) are a
+    planned block and are not trimmed by the percentage cap. The hard-session,
+    rest-day, back-to-back, and red-flag caps still apply there.
 
 MAX_HARD_SESSIONS_PER_WEEK = 2
     At most two hard / intensity sessions Monday–Sunday.
@@ -233,11 +238,28 @@ def in_easy_return(day: date) -> bool:
     return False
 
 
+def _procedure_week(monday: date) -> bool:
+    from .fitness_plan import in_procedure_week
+    return any(in_procedure_week(monday + timedelta(days=i)) for i in range(7)) and (
+        in_procedure_week(monday)
+    )
+
+
+def _camp_week(monday: date) -> bool:
+    """True when this Monday–Sunday overlaps the time-based Tenerife camp."""
+    from .fitness_plan import CAMP_END, CAMP_START
+    sunday = monday + timedelta(days=6)
+    return monday <= CAMP_END and sunday >= CAMP_START
+
+
 def red_flag_reason(day: date) -> Optional[str]:
-    """Illness 2-of-3, or a logged medical stop-symptom on this date."""
-    from .history import list_session_notes
+    """Illness 2-of-3, a morning-check red flag, or a stop-symptom in the note."""
+    from .history import get_morning_wellness, list_session_notes
     from .modulation import _illness_triggers
 
+    wellness = get_morning_wellness(day.isoformat()) or {}
+    if wellness.get("flank_pain") or wellness.get("fever") or wellness.get("blood"):
+        return reason_text("red_flag")
     note = (list_session_notes().get(day.isoformat()) or "").lower()
     if any(phrase in note for phrase in RED_FLAG_PHRASES):
         return reason_text("red_flag")
@@ -405,6 +427,41 @@ def _lookup(day: date) -> Optional[tuple]:
     return session_for_date_extended(day) or hr_session_for_date(day)
 
 
+def _rpe_for_date(cache: dict, day: date) -> Optional[int]:
+    if "_rpe" not in cache:
+        from .history import load_session_rpe
+        found: dict[str, int] = {}
+        for row in load_session_rpe(120):
+            key = row.get("date")
+            if not key or row.get("rpe") is None:
+                continue
+            found[key] = max(found.get(key, 0), int(row["rpe"]))
+        cache["_rpe"] = found
+    return cache["_rpe"].get(day.isoformat())
+
+
+def _day_loads(days: list[tuple[date, Session]], cache: dict) -> Optional[dict[date, float]]:
+    """Foster or pack-adjusted load, or None when every day is plain minutes."""
+    from .load import foster_load, is_terrain, pack_kg_from_label, planned_load
+
+    loads: dict[date, float] = {}
+    custom = False
+    for day, session in days:
+        minutes = 0.0 if is_rest(session) else float(session[2])
+        rpe = _rpe_for_date(cache, day)
+        if rpe is not None and minutes > 0:
+            terrain = is_terrain(session[0], session[1])
+            pack = pack_kg_from_label(session[1]) if terrain else 0.0
+            loads[day] = foster_load(minutes, rpe, pack_kg=pack, terrain=terrain)
+            custom = True
+            continue
+        load = planned_load(session)
+        loads[day] = load
+        if abs(load - minutes) > 1e-6:
+            custom = True
+    return loads if custom else None
+
+
 def _raw_week(monday: date) -> list[tuple[date, Session]]:
     out: list[tuple[date, Session]] = []
     for i in range(7):
@@ -435,7 +492,9 @@ def prescribed_week(
     previous_load: Optional[float] = None
     previous_day: Optional[Session] = None
     prev_monday = monday - timedelta(days=7)
-    if depth < 120 and _week_has_plan(prev_monday):
+    # Procedure week is not a training base. Camp weeks are a planned block.
+    use_percentage = not _camp_week(monday)
+    if depth < 120 and use_percentage and _week_has_plan(prev_monday) and not _procedure_week(prev_monday):
         prev = prescribed_week(prev_monday, cache, symptoms=False, depth=depth + 1)
         previous_load = sum(day.load for day in prev)
         previous_day = prev[-1].session
@@ -448,11 +507,13 @@ def prescribed_week(
             if flag:
                 flags[day] = flag
 
+    raw = _raw_week(monday)
     capped = apply_caps(
-        _raw_week(monday),
+        raw,
         previous_load=previous_load,
         previous_day=previous_day,
         red_flags=flags,
+        loads=_day_loads(raw, cache),
     )
     cache[key] = capped
     return capped

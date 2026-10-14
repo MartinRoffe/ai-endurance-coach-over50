@@ -9,16 +9,28 @@ import statistics
 from datetime import date, timedelta
 from typing import Optional
 
-from .energy import weight_trend_kg_per_day
+from .energy import (
+    EA_WARN_KCAL_PER_KG_FFM,
+    MUSCLE_DROP_KG,
+    MUSCLE_DROP_MIN_DAYS,
+    MUSCLE_DROP_MIN_READINGS,
+    energy_availability,
+    fat_free_mass_kg,
+    weight_trend_kg_per_day,
+)
 from .history import (
     history_for_chart,
+    load,
     load_activities_by_date,
     load_body_metrics,
     load_ftp_tests,
+    load_session_rpe,
     pmc_history,
     raw_history,
     weekly_monotony_strain,
 )
+from .load import activity_load, planned_load
+from .modulation import assess_hrv_ln
 from .plan import session_for_date
 from .wkg_projection import performance_guard
 
@@ -73,30 +85,39 @@ def check_fatigue_alerts(today: date) -> list[dict]:
             ),
         })
 
-    # 3. VOLUME_SPIKE: actual this week >20% over planned
+    # 3. VOLUME_SPIKE: actual this week >20% over planned.
+    # Foster load (RPE × minutes, with pack and climb factors) when an RPE
+    # is logged; otherwise minutes, still with those factors on rucks and hikes.
     mon = today - timedelta(days=today.weekday())
-    planned_min = 0
+    planned_load_sum = 0.0
     for i in range(7):
-        sess = session_for_date(mon + timedelta(days=i))
-        if sess and sess[0] != "rest" and sess[2]:
-            planned_min += sess[2]
+        planned_load_sum += planned_load(session_for_date(mon + timedelta(days=i)))
 
-    if planned_min > 0:
+    if planned_load_sum > 0:
         acts_this_week = load_activities_by_date(mon, today)
-        actual_min = sum(
-            int((a.get("duration_seconds") or 0) / 60)
-            for day_acts in acts_this_week.values()
-            for a in day_acts
-        )
-        if actual_min > planned_min * 1.20:
-            planned_h = planned_min / 60
-            actual_h = actual_min / 60
+        rpe_by_id: dict[str, int] = {}
+        try:
+            for row in load_session_rpe(14):
+                if row.get("activity_id") is not None and row.get("rpe") is not None:
+                    rpe_by_id[str(row["activity_id"])] = int(row["rpe"])
+        except Exception:
+            logger.warning("check_fatigue_alerts RPE lookup failed", exc_info=True)
+        actual_load = 0.0
+        used_rpe = False
+        for day_acts in acts_this_week.values():
+            for act in day_acts:
+                rpe = rpe_by_id.get(str(act.get("activity_id")))
+                if rpe is not None:
+                    used_rpe = True
+                actual_load += activity_load(act, rpe)
+        if actual_load > planned_load_sum * 1.20:
+            unit = "Foster load" if used_rpe else "load"
             alerts.append({
                 "type": "VOLUME_SPIKE",
                 "severity": "MODERATE",
                 "message": (
-                    f"You're tracking {round((actual_min / planned_min - 1) * 100)}% over planned volume this week "
-                    f"({actual_h:.1f}h vs {planned_h:.1f}h planned). Protect the rest of the week."
+                    f"You're tracking {round((actual_load / planned_load_sum - 1) * 100)}% over planned {unit} this week "
+                    f"({actual_load:.0f} vs {planned_load_sum:.0f} planned). Protect the rest of the week."
                 ),
             })
 
@@ -107,7 +128,7 @@ def check_fatigue_alerts(today: date) -> list[dict]:
     # Only evaluate when the latest row really is `today` — before the watch
     # syncs, rows31[-1] is yesterday and we'd report stale values as today's.
     if rows31 and rows31[-1].get("date") == today.isoformat():
-        hrv_z = _signal_z(rows31, "hrv_last_night")
+        hrv_state = assess_hrv_ln(rows31, today.isoformat(), rows31[-1].get("hrv_last_night"))
         rhr_z = _signal_z(rows31, "resting_hr")
         if rhr_z is None:
             rhr_z = _signal_z(rows31, "rest_stress")  # fallback signal
@@ -115,8 +136,9 @@ def check_fatigue_alerts(today: date) -> list[dict]:
 
         triggers = []
         today_row = rows31[-1]
-        if hrv_z is not None and hrv_z < -1.5:
-            triggers.append(f"HRV {today_row['hrv_last_night']:.0f} ms ({hrv_z:+.1f}σ)")
+        if hrv_state and hrv_state["below_band"]:
+            from .modulation import _hrv_reason
+            triggers.append(_hrv_reason(hrv_state))
         if rhr_z is not None and rhr_z > 1.5:
             if today_row.get("resting_hr") is not None:
                 triggers.append(f"resting HR {today_row['resting_hr']:.0f} bpm ({rhr_z:+.1f}σ)")
@@ -180,6 +202,57 @@ def check_fatigue_alerts(today: date) -> list[dict]:
                     "maintenance for 2-3 weeks and re-test."
                 ),
             })
+    except Exception:
+        logger.warning("check_fatigue_alerts failed", exc_info=True)
+
+    # 7. LOW_EA: intake minus exercise kcal, per kg of fat-free mass, under 30.
+    try:
+        metrics = load(today)
+        readings = load_body_metrics(30)
+        latest = readings[-1] if readings else None
+        if metrics is not None and latest is not None:
+            ffm = fat_free_mass_kg(latest.get("weight_kg"), latest.get("fat_pct"))
+            ea = energy_availability(
+                metrics.calories_consumed,
+                metrics.active_calories,
+                ffm,
+            )
+            if ea is not None and ea < EA_WARN_KCAL_PER_KG_FFM:
+                alerts.append({
+                    "type": "LOW_EA",
+                    "severity": "HIGH",
+                    "message": (
+                        f"Energy availability is {ea:.0f} kcal/kg fat-free mass "
+                        f"(below {EA_WARN_KCAL_PER_KG_FFM:.0f}). Eat more today, "
+                        "especially carbohydrate, and do not push the deficit."
+                    ),
+                })
+    except Exception:
+        logger.warning("check_fatigue_alerts failed", exc_info=True)
+
+    # 8. MUSCLE_DOWN: scale muscle mass trending down across the cut.
+    try:
+        points = []
+        for row in load_body_metrics(60):
+            if row.get("muscle_mass_kg") is None:
+                continue
+            points.append((date.fromisoformat(row["date"]), float(row["muscle_mass_kg"])))
+        if len(points) >= MUSCLE_DROP_MIN_READINGS:
+            span = (points[-1][0] - points[0][0]).days
+            early = points[: max(1, len(points) // 2)]
+            late = points[len(points) // 2 :]
+            early_mean = sum(v for _, v in early) / len(early)
+            late_mean = sum(v for _, v in late) / len(late)
+            if span >= MUSCLE_DROP_MIN_DAYS and early_mean - late_mean >= MUSCLE_DROP_KG:
+                alerts.append({
+                    "type": "MUSCLE_DOWN",
+                    "severity": "HIGH",
+                    "message": (
+                        f"Muscle mass is down {early_mean - late_mean:.1f} kg "
+                        f"across {span} days ({early_mean:.1f} → {late_mean:.1f} kg). "
+                        "Hold the protein floor and ease the deficit until it stabilises."
+                    ),
+                })
     except Exception:
         logger.warning("check_fatigue_alerts failed", exc_info=True)
 

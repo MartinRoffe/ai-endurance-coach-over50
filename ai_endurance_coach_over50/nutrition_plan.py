@@ -263,8 +263,9 @@ SIMPLE_RULES = [
     "(glycogen-dependent). Match carbs to session mechanical work when power data is available.",
     "Strength days (KB / MaxiClimber): 20–40 g protein within ~1 h peri-session (whey shake or "
     "yogurt) to hit the leucine threshold for 50+ muscle retention.",
-    "Christmas Tenerife stays at maintenance. From 4 Jan 2027 the goal is 80 kg by 31 Mar, "
-    "using ordinary day-type deficits. The August 2026 camp window is historical.",
+    "Christmas Tenerife stays at maintenance. From 4 Jan 2027 the goal is 84–85 kg by 31 Mar "
+    "(about 0.5 kg a week), using ordinary day-type deficits. Hard days keep carbohydrate up. "
+    "The August 2026 camp window is historical.",
 ]
 
 # ── Principles (detail behind the simple rules) ───────────────────────────────
@@ -272,8 +273,9 @@ PRINCIPLES = [
     "Cost strategy (bulk-staple rebuild): batch-roasted chicken, scotch eggs, a 1 kg Greek yogurt "
     "tub, a 1 kg whey tub, bulk oats and basmati. Target ≈£28–32/week.",
     "Energy strategy: no kilogram target before Christmas (maintenance through 3 Jan 2027). "
-    "From 4 Jan 2027 the goal is 80 kg by 31 Mar, using ordinary day-type deficits. "
-    "Long-ride days stay close to energy balance.",
+    "From 4 Jan 2027 the goal is 84–85 kg by 31 Mar (about 0.5 kg a week, roughly 500 kcal a day), "
+    "using ordinary day-type deficits. Hard days take a smaller deficit so carbohydrate stays high. "
+    "Long-ride days stay closer to energy balance. Protein stays on the lean-mass floor.",
     "Protein target: lean-mass based (≈2.2 g/kg fat-free mass), locked at cut-start lean mass "
     "during the Base Cut so the floor does not ratchet down. Greek yogurt at lunch Mon–Thu; "
     "whey shake Wed/Thu/Fri/Sat/Sun as prescribed.",
@@ -1300,7 +1302,11 @@ def fuel_prep_context(plan_start: date, today: date) -> str:
 
 
 # Session types that count as rides for in-ride fuelling purposes.
-_RIDE_TYPES = {"long", "bike", "tempo", "ftp", "vo2", "sweetspot", "endurance", "back_to_back"}
+_RIDE_TYPES = {
+    "long", "bike", "tempo", "ftp", "vo2", "sweetspot", "endurance",
+    "back_to_back", "threshold",
+}
+_HARD_SESSION_TYPES = {"tempo", "ftp", "vo2", "sweetspot", "threshold"}
 
 # Plan / HR session type → calorie deficit tier.
 _SESSION_CALORIE_TIER: dict[str, str] = {
@@ -1314,17 +1320,26 @@ _SESSION_CALORIE_TIER: dict[str, str] = {
 }
 
 
-def calorie_tier_for_session(stype: str | None, weekday_tier: str) -> str:
+def calorie_tier_for_session(
+    stype: str | None,
+    weekday_tier: str,
+    label: str | None = None,
+) -> str:
     """Map a planned session type to an intake deficit tier.
 
     Falls back to the Mon–Sun food-cycle tier when there is no session.
-    Quality / endurance bike sessions use the training deficit.
+    Threshold and VO2 days use the ``hard`` tier so the deficit is smaller
+    and carbohydrate stays up. Protein is not reduced to make the deficit.
     """
+    if not stype and not label:
+        return weekday_tier
+    low = (label or "").lower()
+    if stype in _HARD_SESSION_TYPES or any(tok in low for tok in ("threshold", "vo2", "tempo")):
+        return "hard"
     if not stype:
         return weekday_tier
     if stype in _SESSION_CALORIE_TIER:
         return _SESSION_CALORIE_TIER[stype]
-    # bike, tempo, vo2, sweetspot, ftp, endurance, …
     return "training"
 
 
@@ -1334,6 +1349,7 @@ _TIER_WHY_LABEL = {
     "training": "Training day",
     "ruck": "Active day",
     "long": "Long ride",
+    "hard": "Hard day",
 }
 
 
@@ -1384,8 +1400,11 @@ def format_intake_why(
                 f"+ {topup} top-up → eat {kcal:,}"
             )
         if phase == "ease":
+            extra = ""
+            if tier == "hard":
+                extra = " Carbohydrate stays high on this hard day; protein stays at the floor."
             return (
-                f"{label} (ease): weekly burn {tdee:,} − {tier_deficit} → eat {kcal:,}"
+                f"{label} (ease): weekly burn {tdee:,} − {tier_deficit} → eat {kcal:,}.{extra}"
             )
         return f"{label}: weekly burn {tdee:,} − {tier_deficit} → eat {kcal:,}"
 
@@ -1484,7 +1503,7 @@ def today_targets(ref_date: date | None = None) -> dict:
     from .plan import PLAN_START
     cycle_week = cycle_week_index(PLAN_START, ref)
     weekday_tier = DAY_TYPES[today_day_type(cycle_week, ref.weekday())]["calorie_tier"]
-    tier = calorie_tier_for_session(stype, weekday_tier)
+    tier = calorie_tier_for_session(stype, weekday_tier, label)
     long_dur = dur if tier == "long" or stype in ("long", "back_to_back") else None
     target = resolve_calorie_target(
         _stable_tdee(), tier, ref,

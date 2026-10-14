@@ -119,6 +119,49 @@
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:12px;padding:14px 20px">
+    <p class="eyebrow" style="margin-bottom:10px">Morning check · 30 seconds</p>
+    <form id="wellness-form" style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end">
+      {% for field, label in [('soreness','Soreness'),('mood','Mood'),('energy','Energy')] %}
+      <label style="font-family:var(--font-m);font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px">
+        {{ label }} 1–5
+        <select name="{{ field }}" style="font-family:var(--font-m);font-size:13px;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:2px">
+          {% for n in range(1, 6) %}
+          <option value="{{ n }}" {% if wellness and wellness[field] == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endfor %}
+      <label style="font-family:var(--font-m);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" name="flank_pain" {% if wellness and wellness.flank_pain %}checked{% endif %}> Flank pain
+      </label>
+      <label style="font-family:var(--font-m);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" name="fever" {% if wellness and wellness.fever %}checked{% endif %}> Fever
+      </label>
+      <label style="font-family:var(--font-m);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" name="blood" {% if wellness and wellness.blood %}checked{% endif %}> Blood
+      </label>
+      <label style="font-family:var(--font-m);font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px">
+        Fluids (L)
+        <input type="number" name="fluids_l" min="0" max="15" step="0.1"
+               value="{{ wellness.fluids_l if wellness and wellness.fluids_l is not none else '' }}"
+               style="width:80px;font-family:var(--font-m);font-size:13px;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:2px">
+      </label>
+      <button type="submit" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;padding:8px 12px;border:1px solid var(--border2);color:var(--text);background:var(--surface);border-radius:2px">Save</button>
+      <span id="wellness-note" style="font-family:var(--font-m);font-size:11px;color:var(--muted);align-self:center"></span>
+    </form>
+    {% if fluid_today %}
+    <p style="margin:10px 0 0;font-family:var(--font-m);font-size:12px;color:var(--text-dim)">
+      Fluid target {{ "%.1f"|format(fluid_today.low_l) }}–{{ "%.1f"|format(fluid_today.high_l) }} L
+      (2–3 L plus about 500 ml per training hour).
+      {% if fluid_today.shortfall_l %}
+      <span style="color:#f87171">Short by {{ "%.1f"|format(fluid_today.shortfall_l) }} L.</span>
+      {% endif %}
+    </p>
+    {% endif %}
+    <p style="margin:6px 0 0;font-family:var(--font-m);font-size:11px;color:var(--muted)">Flank pain, fever, or blood forces rest.</p>
+  </div>
+
   {% if stale_data_notices %}
   {% for note in stale_data_notices %}
   <div style="background:rgba(250,204,21,0.10);border-left:3px solid #facc15;padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px">
@@ -382,13 +425,23 @@
     {% if today_activities %}
     <div style="margin-bottom:16px">
       {% for act in today_activities %}
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
         <span style="font-size:18px">{{ act.icon if act.icon else '🚴' }}</span>
         <div style="flex:1">
           <p style="font-size:14px;font-weight:500;color:var(--text);margin:0">{{ act.name or act.type_label }}</p>
           <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-top:2px">
             {{ act.duration_fmt or '' }}{% if act.avg_hr %} · {{ act.avg_hr|int }} bpm{% endif %}{% if act.norm_power_w or act.avg_power_w %} · {{ act.norm_power_w or act.avg_power_w|int }} W{% endif %}
+            {% if act.session_load %} · load {{ act.session_load }}{% endif %}
           </p>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px" data-rpe-container="{{ act.activity_id }}">
+            {% for rpe_val in range(1, 11) %}
+            <button type="button"
+              onclick="logDashRpe({{ act.activity_id }}, '{{ act.date }}', {{ rpe_val }})"
+              data-rpe="{{ rpe_val }}"
+              style="font-family:var(--font-m);font-size:12px;min-width:28px;padding:4px 6px;border-radius:2px;border:1px solid {% if act.rpe == rpe_val %}var(--accent){% else %}var(--border){% endif %};background:{% if act.rpe == rpe_val %}rgba(163,230,53,0.12){% else %}var(--surface2){% endif %};color:var(--text);cursor:pointer">{{ rpe_val }}</button>
+            {% endfor %}
+            <span class="rpe-saved-note" style="font-family:var(--font-m);font-size:11px;color:var(--muted);align-self:center;margin-left:4px">{% if act.rpe %}RPE {{ act.rpe }}/10{% endif %}</span>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -471,6 +524,53 @@
     p.innerHTML = p.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:500">$1</strong>');
   });
   if (window.PlanChange) PlanChange.initAll();
+
+  const wellnessForm = document.getElementById('wellness-form');
+  if (wellnessForm) {
+    wellnessForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const data = new FormData(wellnessForm);
+      const fluids = data.get('fluids_l');
+      const body = {
+        date: '{{ date }}',
+        soreness: parseInt(data.get('soreness'), 10),
+        mood: parseInt(data.get('mood'), 10),
+        energy: parseInt(data.get('energy'), 10),
+        flank_pain: data.get('flank_pain') === 'on',
+        fever: data.get('fever') === 'on',
+        blood: data.get('blood') === 'on',
+        fluids_l: fluids === '' || fluids === null ? null : parseFloat(fluids),
+      };
+      fetch('/log-wellness', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      }).then(r => {
+        const note = document.getElementById('wellness-note');
+        if (!note) return;
+        note.textContent = r.ok ? 'Saved' : 'Could not save';
+        if (r.ok) setTimeout(() => location.reload(), 400);
+      });
+    });
+  }
+
+  function logDashRpe(activityId, actDate, rpeVal) {
+    const container = document.querySelector('[data-rpe-container="' + activityId + '"]');
+    fetch('/log-rpe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date: actDate, activity_id: activityId, rpe: rpeVal})
+    }).then(r => {
+      if (!r.ok || !container) return;
+      container.querySelectorAll('button[data-rpe]').forEach(btn => {
+        const v = parseInt(btn.getAttribute('data-rpe'), 10);
+        btn.style.border = v === rpeVal ? '1px solid var(--accent)' : '1px solid var(--border)';
+        btn.style.background = v === rpeVal ? 'rgba(163,230,53,0.12)' : 'var(--surface2)';
+      });
+      const note = container.querySelector('.rpe-saved-note');
+      if (note) note.textContent = 'RPE ' + rpeVal + '/10';
+    });
+  }
 
   const startTime = Date.now();
   const updEl = document.getElementById('last-updated');

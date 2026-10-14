@@ -53,13 +53,20 @@ def patched_history(monkeypatch):
 # ── hrv_traffic_light ────────────────────────────────────────────────────────
 
 def test_red_when_hrv_far_below_baseline():
-    light = hrv_traffic_light(_metrics(40.0), comp_z=None)  # z = -10
+    light = hrv_traffic_light(_metrics(40.0), comp_z=None)
     assert light["status"] == "red"
+    assert "ln(rMSSD)" in light["reason"]
 
 
 def test_amber_when_hrv_moderately_below():
-    light = hrv_traffic_light(_metrics(58.0), comp_z=None)  # z = -1.0
+    light = hrv_traffic_light(_metrics(50.0), comp_z=None)
     assert light["status"] == "amber"
+
+
+def test_single_night_inside_swc_stays_green():
+    # 58 ms is one of the baseline values. The 7-day mean stays inside the SWC band.
+    light = hrv_traffic_light(_metrics(58.0), comp_z=None)
+    assert light["status"] == "green"
 
 
 def test_green_when_hrv_normal():
@@ -78,7 +85,7 @@ def test_baseline_excludes_todays_own_row(monkeypatch):
                         lambda days=31: _baseline_rows(include_today=True))
     light = hrv_traffic_light(_metrics(40.0), comp_z=None)
     assert light["status"] == "red"
-    assert light["hrv_z"] == pytest.approx(-10.0)
+    assert light["hrv_z"] < -1.0
 
 
 def test_composite_backstop_turns_amber():
@@ -250,7 +257,7 @@ def test_hrv_trend_drops_quality_session(monkeypatch):
 
 
 def test_rpe_amber_eases_intensity(monkeypatch):
-    monkeypatch.setattr(modulation, "load_session_rpe", lambda days=7: [{"rpe": 5}])
+    monkeypatch.setattr(modulation, "load_session_rpe", lambda days=7: [{"rpe": 7}])
     monkeypatch.setattr(modulation, "session_for_date_extended",
                         lambda d: ("tempo", "Tempo Intervals", 75))
     gate = recovery_gate(TODAY, _metrics(58.0), None, light=_light("amber"))
