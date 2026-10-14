@@ -1129,6 +1129,11 @@ def _workouts_for_date(d: date) -> list[tuple]:
         stype = ov.get("session_type") or stype
         label = ov.get("label") or label
         dur = ov.get("duration_min") or dur
+        # Overrides are suggestions. Caps run after them so Garmin cannot
+        # schedule a session the safety module would reject.
+        from .safety import cap_suggested_session
+        capped = cap_suggested_session(d, (stype, label, dur))
+        stype, label, dur = capped.session
     from .fitness_plan import garmin_allowed, in_plan
     if in_plan(d) and not garmin_allowed(d, stype, label):
         return []

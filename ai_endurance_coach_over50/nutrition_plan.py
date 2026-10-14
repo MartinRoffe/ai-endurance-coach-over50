@@ -1935,7 +1935,8 @@ def _linkify_meal_detail(detail: str, recipe_url: str | None = None) -> str:
             parts.append(html.escape(trail))
         last = match.end()
     parts.append(html.escape(detail[last:]))
-    return "".join(parts)
+    from .html_sanitize import sanitize_html
+    return sanitize_html("".join(parts))
 
 
 def _meal_dict(meal: tuple, recipe_url: str | None = None) -> dict:

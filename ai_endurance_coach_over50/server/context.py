@@ -196,6 +196,43 @@ _VERDICT_ICONS = {
 }
 
 
+def _capped_today_plan(
+    target: date,
+    today_plan: Optional[dict],
+    modulation: Optional[dict],
+    icons: dict,
+) -> tuple[Optional[dict], Optional[str]]:
+    """Apply training-load caps to the session the dashboard will show.
+
+    A modulation swap already replaces the session, so the cap line is kept
+    only for a red-flag rest. Otherwise the capped session is what the card shows.
+    """
+    from ..safety import prescribed_session
+
+    cap = prescribed_session(target)
+    if not cap.changed or not cap.reason:
+        return today_plan, None
+    mod_replaces = bool(modulation and modulation.get("label"))
+    if mod_replaces and "red-flag" not in cap.reason:
+        return today_plan, None
+    if mod_replaces:
+        return today_plan, cap.reason
+    stype, label, dur = cap.session
+    plan = dict(today_plan or {})
+    plan.update({
+        "type": stype,
+        "label": label,
+        "dur_fmt": _fmt_min(dur) if dur else "",
+        "icon": icons.get(stype, plan.get("icon") or "📋"),
+        "compound": None,
+        "changed": False,
+        "from_label": None,
+    })
+    if "note" not in plan:
+        plan["note"] = None
+    return plan, cap.reason
+
+
 def _build_today_verdict(
     target: date,
     today_plan: Optional[dict],
@@ -542,6 +579,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     else:
         today_plan = None
 
+    today_plan, safety_line = _capped_today_plan(
+        target, today_plan, modulation, _SESSION_ICONS,
+    )
+
     # Readiness-adjusted swap suggestion
     swap_suggestion = None
     if (today_plan and today_plan["type"] in _HARD_SESSION_TYPES
@@ -572,6 +613,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     today_verdict = _build_today_verdict(
         target, today_plan, traffic_light, modulation, post_workout, swap_suggestion
     )
+    today_verdict["safety_line"] = safety_line
 
     # Fatigue alerts
     fatigue_alerts = check_fatigue_alerts(target)
@@ -1835,31 +1877,13 @@ def _archive_context() -> dict[str, Any]:
             "archive_dir": str(root) if root else None,
         }
 
+    from ..html_sanitize import markdown_to_safe_html
+
     narrative_md = (findings.get("ai_narrative") or {}).get("markdown") or ""
-    narrative_html = ""
-    if narrative_md:
-        try:
-            import markdown as md
-            narrative_html = md.markdown(
-                narrative_md,
-                extensions=["tables", "fenced_code", "nl2br"],
-            )
-        except Exception:
-            logger.warning("_archive_context failed", exc_info=True)
-            narrative_html = f"<pre>{narrative_md}</pre>"
+    narrative_html = markdown_to_safe_html(narrative_md) if narrative_md else ""
 
     mmp_narr_md = (findings.get("ai_narrative_mmp") or {}).get("markdown") or ""
-    mmp_narrative_html = ""
-    if mmp_narr_md:
-        try:
-            import markdown as md
-            mmp_narrative_html = md.markdown(
-                mmp_narr_md,
-                extensions=["tables", "fenced_code", "nl2br"],
-            )
-        except Exception:
-            logger.warning("_archive_context failed", exc_info=True)
-            mmp_narrative_html = f"<pre>{mmp_narr_md}</pre>"
+    mmp_narrative_html = markdown_to_safe_html(mmp_narr_md) if mmp_narr_md else ""
 
     # First paragraph-ish for hero
     hero_blurb = ""

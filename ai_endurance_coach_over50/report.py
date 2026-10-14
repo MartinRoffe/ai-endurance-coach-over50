@@ -407,10 +407,13 @@ def _workouts_html(activities: list[dict]) -> str:
 
 
 def _planned_session_html(d: date) -> str:
-    session = session_for_date_extended(d)
+    from .safety import prescribed_session
+    cap = prescribed_session(d)
+    session = cap.session if cap.session else session_for_date_extended(d)
     if not session:
         return ""
     stype, label, dur = session
+    label = _html.escape(label)
     dur_str = ""
     if dur:
         dur_str = f"{dur}m" if dur < 60 else (f"{dur // 60}h{dur % 60:02d}m" if dur % 60 else f"{dur // 60}h")
@@ -428,6 +431,13 @@ def _planned_session_html(d: date) -> str:
         f'<span style="font-family:{_MONO};font-size:22px;color:{_PAPER};">{dur_str}</span></td>'
         if dur_str else ""
     )
+    safety_row = ""
+    if cap.changed and cap.reason:
+        safety_row = (
+            f'<tr><td colspan="2" style="padding:0 18px 14px;">'
+            f'<p style="margin:0;font-family:{_MONO};font-size:12px;color:{_AMBER};">'
+            f'{_html.escape(cap.reason)}</p></td></tr>'
+        )
 
     return f"""
         <!-- Today's Workout -->
@@ -442,6 +452,7 @@ def _planned_session_html(d: date) -> str:
                 </td>
                 {dur_cell}
               </tr>
+              {safety_row}
             </table>
           </td>
         </tr>"""

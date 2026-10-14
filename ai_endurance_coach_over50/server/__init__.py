@@ -736,14 +736,28 @@ async def accept_ftp_estimate(body: _AcceptFtpRequest, _=Depends(_require_auth))
 @app.post("/upload-fit")
 async def upload_fit(request: Request, _=Depends(_require_auth)):
     """Parse an uploaded FIT file, match to an activity, persist interval metrics."""
-    from fastapi import UploadFile, File
+    from ..fit_upload import (
+        FitUploadRejected,
+        fit_extension_ok,
+        max_fit_upload_bytes,
+        read_fit_bytes,
+        safe_fit_filename,
+    )
     form = await request.form()
     upload = form.get("file") or form.get("fit")
-    if upload is None:
+    if upload is None or not hasattr(upload, "read"):
         return JSONResponse({"ok": False, "error": "no file"}, status_code=422)
-    raw = await upload.read()
-    if not raw:
-        return JSONResponse({"ok": False, "error": "empty file"}, status_code=422)
+    filename = getattr(upload, "filename", None) or ""
+    if not fit_extension_ok(filename):
+        return JSONResponse(
+            {"ok": False, "error": "Upload must be a .fit file"},
+            status_code=422,
+        )
+    try:
+        raw = await read_fit_bytes(upload, max_fit_upload_bytes())
+    except FitUploadRejected as exc:
+        return JSONResponse({"ok": False, "error": exc.message}, status_code=exc.status_code)
+    stored_name = safe_fit_filename()
     try:
         from ..analysis.fit_ingest import (
             activity_id_from_filename,
@@ -783,6 +797,7 @@ async def upload_fit(request: Request, _=Depends(_require_auth)):
                 "ok": False,
                 "error": "no matching activity within ±2 min of FIT start (local time) or filename id",
                 "fit_start": fit.start_time.isoformat() if fit.start_time else None,
+                "stored_name": stored_name,
             }, status_code=404)
         result = process_fit_session(fit, matched)
         matched_climbs = result.get("matched_climbs") or []
@@ -798,10 +813,14 @@ async def upload_fit(request: Request, _=Depends(_require_auth)):
             "hr_calibration": (result.get("meta") or {}).get("hr_calibration"),
             "intervals": result.get("intervals") or [],
             "climbs": result.get("climbs") or [],
+            "stored_name": stored_name,
         })
     except Exception as exc:
         logger.exception("upload_fit failed")
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+        return JSONResponse(
+            {"ok": False, "error": str(exc), "stored_name": stored_name},
+            status_code=400,
+        )
 
 
 @app.post("/log-btb")
@@ -1951,7 +1970,13 @@ async def apply_plan_change(body: _ApplyChangeRequest):
 
     stype = body.session_type or sess[0]
     label = body.label or sess[1]
-    set_plan_override(body.date, stype, label, body.duration_min, body.reason)
+    from ..safety import cap_suggested_session
+    capped = cap_suggested_session(d, (stype, label, body.duration_min))
+    stype, label, dur = capped.session
+    note = body.reason
+    if capped.changed and capped.reason:
+        note = f"{body.reason} {capped.reason}".strip()
+    set_plan_override(body.date, stype, label, dur, note)
 
     # Surgically reflect this single date on the Garmin calendar: unschedule the
     # old plan workout(s) for that day and schedule the new one. The local override
@@ -1973,8 +1998,15 @@ async def apply_plan_change(body: _ApplyChangeRequest):
             logger.error("apply-plan-change Garmin push failed: %s", e)
             garmin = {"pushed": False, "error": str(e)}
 
-    return JSONResponse({"ok": True, "date": body.date, "label": label,
-                         "duration_min": body.duration_min, "garmin": garmin})
+    return JSONResponse({
+        "ok": True,
+        "date": body.date,
+        "label": label,
+        "session_type": stype,
+        "duration_min": dur,
+        "safety_line": capped.reason if capped.changed else None,
+        "garmin": garmin,
+    })
 
 
 @app.post("/regenerate-advice")

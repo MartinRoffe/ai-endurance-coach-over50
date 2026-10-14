@@ -110,7 +110,7 @@
 
   <script>
     // Route data injected from server
-    const ROUTES = {{ routes_json | safe }};
+    const ROUTES = {{ routes_json | default([]) | tojson }};
 
     let chart = null;
     let activeIdx = 0;

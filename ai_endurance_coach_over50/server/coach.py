@@ -82,6 +82,11 @@ def _coach_system() -> str:
         "gains into a precise long-range point estimate. If a Historical Rebuild Rate section is "
         "present in context, prefer those personal layoff-rebuild weeks over generic "
         "3–5%/year FTP rules when advising time-to-target or return-from-layoff.\n\n"
+        "Safety caps: the Safety caps section is a hard limit applied after the plan and after "
+        "any session you suggest. Do not propose a week that raises load more than about 10%, "
+        "more than two hard sessions, hard days back to back, or a week with no full rest day. "
+        "After a procedure or medical pause the return is easy-only. Red-flag symptoms mean rest. "
+        "If a cap line is present, that prescription wins.\n\n"
         "When you recommend modifying a planned session, call propose_plan_change once per date — "
         "each call renders its own confirmation card. For multi-day swaps (e.g. defer quality to tomorrow), "
         "call the tool separately for every date that changes. After the tool call(s), briefly explain "
@@ -568,7 +573,8 @@ def _call_coach(messages: list[dict], api_key: str) -> tuple[str, list[dict]]:
                 text_parts.append(block.text)
             elif block.type == "tool_use":
                 if block.name == "propose_plan_change":
-                    proposals.append(_enrich_plan_proposal(dict(block.input)))
+                    from ..safety import cap_proposal
+                    proposals.append(cap_proposal(_enrich_plan_proposal(dict(block.input))))
                     content = "Proposal ready for athlete confirmation."
                 elif block.name in _ACTION_TOOL_NAMES:
                     content = _dispatch_action_tool(block.name, dict(block.input))
@@ -720,7 +726,8 @@ def _stream_coach_sse(messages: list[dict], user_message: str, api_key: str):
                 if block.type != "tool_use":
                     continue
                 if block.name == "propose_plan_change":
-                    enriched = _enrich_plan_proposal(dict(block.input))
+                    from ..safety import cap_proposal
+                    enriched = cap_proposal(_enrich_plan_proposal(dict(block.input)))
                     proposals.append(enriched)
                     yield f"data: {json.dumps({'type': 'proposal', 'data': enriched})}\n\n"
                     content = "Proposal ready for athlete confirmation."
