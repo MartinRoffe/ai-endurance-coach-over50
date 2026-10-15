@@ -131,22 +131,23 @@ absolute TSB numbers to TrainingPeaks.
 
 ## Garmin workouts didn't update after my FTP test
 
-FTP changes set a **stale workouts** flag. Re-sync manually:
+**Accept estimate** on the Readiness card re-syncs Garmin %FTP workouts when
+credentials are set. Other FTP saves set a **stale workouts** flag — re-sync:
 
 ```bash
 endurance-coach --workouts
 ```
 
-Or **Sync workouts** from the Performance tab. The app does not auto-push
-template changes.
+Or **Sync workouts** / **Sync to Watch** from the dashboard. A failed Accept
+sync leaves the stale banner so you can retry.
 
 ## I applied a plan change but Garmin didn't update
 
 **Apply** always saves the local override (Calendar and email will show it). The
 Garmin push for that date is **best-effort** — if the API fails or the session
-couldn't be built, the confirmation may report a Garmin error while the local
-plan still changed. Retry later, or run a full **Sync workouts** /
-`endurance-coach --workouts` to rebuild the schedule. See
+couldn't be built, the confirmation shows **Retry Garmin sync** with the error
+while the local plan still changed. Retry from the card, or run a full
+**Sync to Watch** / `endurance-coach --workouts` to rebuild the schedule. See
 [How the app works](how-it-works.md#how-a-plan-change-works).
 
 ## Measured vs estimated W/kg?

@@ -45,7 +45,7 @@ _FE_SPORT     = {"sportTypeId": getattr(SportType, "FITNESS_EQUIPMENT", 6), "spo
 _HIKE_SPORT   = {"sportTypeId": getattr(SportType, "HIKING", 7),           "sportTypeKey": "hiking",             "displayOrder": 7}
 _CARDIO_SPORT = {"sportTypeId": 11,                          "sportTypeKey": "cardio",             "displayOrder": 11}
 
-_BIKE_TYPES         = {"bike", "tempo", "ftp", "long", "endurance", "sweetspot", "vo2", "recovery", "back_to_back"}
+_BIKE_TYPES         = {"bike", "tempo", "ftp", "long", "endurance", "sweetspot", "vo2", "threshold", "recovery", "back_to_back"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
 
 # Position-programme strength pushed as FE kettlebell (not Recovery Spin).
@@ -506,6 +506,57 @@ def _threshold_ride(dur_min: int) -> CyclingWorkout:
     return _make(f"Threshold Ride {dur_min}m", steps, dur_min)
 
 
+def _fitness_threshold_bike(dur_min: int) -> CyclingWorkout:
+    """Fitness-year threshold: short sessions scale down; long camp days pad with Z2."""
+    if int(dur_min) >= 90:
+        return _threshold_ride(dur_min)
+    ftp_w = _latest_ftp_w()
+    # 10m WU + 2×(8–12m) @ 95–100% FTP + recoveries + CD, fit into dur_min.
+    work_s = min(720, max(480, (int(dur_min) - 22) * 30))
+    rest_s = 180
+    wu_s = 600
+    cd_s = 300
+    used = (wu_s + 2 * work_s + rest_s + cd_s) // 60
+    z2_extra = max(0, int(dur_min) - used)
+    steps: list = [
+        create_warmup_step(float(wu_s), step_order=1),
+        _quality_interval(2, work_s, ftp_w, 0.95, 1.00, 4, 4),
+        _recovery(3, rest_s, _hr_zone_target(), 1, 2),
+        _quality_interval(4, work_s, ftp_w, 0.95, 1.00, 4, 4),
+    ]
+    o = 5
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(float(cd_s), step_order=o))
+    return _make(f"Threshold Ride {dur_min}m", steps, dur_min)
+
+
+def _fitness_vo2_bike(dur_min: int, *, camp: bool = False) -> CyclingWorkout:
+    """Fitness-year VO2 on the bike; camp days use 5×4 then Z2 float to duration."""
+    ftp_w = _latest_ftp_w()
+    if camp:
+        reps, work_min, rest_min, name = 5, 4, 4, "Camp VO2"
+    else:
+        reps, work_min, rest_min, name = 4, 3, 3, "VO2 Bike"
+    wu_s = 900.0
+    cd_s = 600.0
+    steps: list = [create_warmup_step(wu_s, step_order=1)]
+    o = 2
+    for _ in range(reps):
+        steps.append(_quality_interval(o, work_min * 60, ftp_w, 1.06, 1.20, 5, 5))
+        o += 1
+        steps.append(_recovery(o, rest_min * 60, _hr_zone_target(), 1, 1))
+        o += 1
+    used_min = int((wu_s + cd_s) / 60) + reps * (work_min + rest_min)
+    z2_extra = max(0, int(dur_min) - used_min)
+    if z2_extra > 0:
+        steps.append(_endurance_interval(o, z2_extra * 60, ftp_w))
+        o += 1
+    steps.append(create_cooldown_step(cd_s, step_order=o))
+    return _make(f"{name} {dur_min}m", steps, dur_min)
+
+
 def _hill_repeats(dur_min: int) -> CyclingWorkout:
     # 15m warmup + 5×(3m Z4-5 effort + 3m Z1 recovery) + 15m cooldown = 60m
     ftp_w = _latest_ftp_w()
@@ -666,6 +717,11 @@ _BUILDERS: dict[str, Any] = {
     "Sweetspot Ride":   lambda d: _sweetspot_ride(d),
     "Over-Unders":      lambda d: _over_unders(d),
     "Threshold Ride":   lambda d: _threshold_ride(d),
+    # Fitness-year labels (Year 1 general fitness / Christmas camp)
+    "Threshold — bike": lambda d: _fitness_threshold_bike(d),
+    "VO2 — bike":       lambda d: _fitness_vo2_bike(d),
+    "Camp quality — threshold": lambda d: _fitness_threshold_bike(d),
+    "Camp quality — VO2": lambda d: _fitness_vo2_bike(d, camp=True),
     "Hill Repeats":     lambda d: _hill_repeats(d),
     # Event-prep block labels (Aug 31 – Sep 11)
     "Sweetspot Intervals": lambda d: _sweetspot_ride(d),
@@ -741,7 +797,7 @@ _NAME_PREFIXES: tuple[str, ...] = (
     "Long Ride Easy ", "Long Ride Moderate ", "Easy Ride ", "Z2 Ride ", "Low Cadence Ride ",
     "Sweetspot Ride ", "Short Sweetspot ", "Over-Unders ", "Under-Overs ",
     "Threshold Ride ", "Hill Repeats ", "Pre-Event Long Ride ", "Tempo Sharpener ",
-    "VO2 Intervals ", "Back-to-Back Day ", "Simulation Day ",
+    "VO2 Intervals ", "VO2 Bike ", "Camp VO2 ", "Back-to-Back Day ", "Simulation Day ",
     "Camp ", "Tenerife Tamaimo", "Tenerife Teide", "Tenerife Masca", "Tenerife Camp",
     "Camp Mountain Stage ", "Camp Summit Day ", "Camp BTB Day ", "Camp Stage Sim ",
     # Strength & ruck
@@ -1321,6 +1377,7 @@ def upload_and_schedule(
     # bridge, and Haute Route through HR_WORKOUTS_END; only plan-prefixed titles
     # are touched, so athlete-created workouts in that window survive.
     start = from_date or date.today()
+    from .fitness_plan import PLAN_END as FIT_END
     sync_end = max(
         PLAN_START + timedelta(weeks=len(TRAINING_WEEKS)) - timedelta(days=1),
         *CAMP_GRID_WORKOUTS,
@@ -1328,6 +1385,7 @@ def upload_and_schedule(
         POSITION_BRIDGE_END,
         *(ep["date"] for ep in EVENT_PREP_DAYS),
         HR_WORKOUTS_END,
+        FIT_END,
     )
     print(f"Re-sync window: {start.isoformat()} .. {sync_end.isoformat()}")
     unsched = unschedule_plan_workouts_in_range(api, start, sync_end, dry_run=dry_run)
@@ -1519,14 +1577,25 @@ def apply_override_to_garmin(api: Any, date_str: str, dry_run: bool = False) -> 
     then uploads/schedules the new session. A swap to rest/non-cycling unschedules
     and adds nothing. Best-effort: returns a status dict and never raises.
 
-    Returns {ok, unscheduled, scheduled, label, error}.
+    ``ok`` is True only when the intended schedule outcome succeeded: every
+    expected workout was uploaded/scheduled (or dry-run counted), and the
+    scheduled-workout fetch did not fail. A rest-day / non-pushed day is ok
+    when the fetch succeeded (unschedule-only). Push/upload failures set
+    ``ok`` False even if the fetch worked.
+
+    Returns {ok, unscheduled, scheduled, expected, label, error}.
     """
-    result: dict = {"ok": False, "unscheduled": 0, "scheduled": 0, "label": None, "error": None}
+    result: dict = {
+        "ok": False, "unscheduled": 0, "scheduled": 0, "expected": 0,
+        "label": None, "error": None,
+    }
     try:
         d = date.fromisoformat(date_str)
     except ValueError as exc:
         result["error"] = f"bad date: {exc}"
         return result
+
+    push_errors: list[str] = []
 
     # 1. Unschedule the existing plan workout(s) on this date.
     try:
@@ -1547,22 +1616,28 @@ def apply_override_to_garmin(api: Any, date_str: str, dry_run: bool = False) -> 
             print(f"  unscheduled '{name}' (sid={sid}) on {date_str}")
         except Exception as exc:
             print(f"  [warn] unschedule {sid} failed: {exc}")
+            push_errors.append(f"unschedule '{name}' failed: {exc}")
 
     # 2. Build, upload and schedule the new session for this date.
     labels: list[str] = []
     for spec in _workouts_for_date(d):
+        result["expected"] += 1
         if spec[0] == "bike":
             _, label, dur = spec
             builder = _resolve_builder(label)
             if not builder:
-                print(f"  [skip] no builder for '{label}' {dur}m")
+                msg = f"no builder for '{label}' {dur}m"
+                print(f"  [skip] {msg}")
+                push_errors.append(msg)
                 continue
             workout = builder(dur)
         else:  # ("sr", kind, week_num, dur)
             _, kind, week_num, dur = spec
             workout = _build_strength_ruck_workout(kind, week_num, dur)
             if not workout:
-                print(f"  [skip] no builder for '{kind}' wk{week_num} {dur}m")
+                msg = f"no builder for '{kind}' wk{week_num} {dur}m"
+                print(f"  [skip] {msg}")
+                push_errors.append(msg)
                 continue
         labels.append(workout.workoutName)
         if dry_run:
@@ -1571,7 +1646,20 @@ def apply_override_to_garmin(api: Any, date_str: str, dry_run: bool = False) -> 
             continue
         if _push_one_workout(api, workout, spec[0], date_str):
             result["scheduled"] += 1
+        else:
+            push_errors.append(f"upload/schedule failed for '{workout.workoutName}'")
 
     result["label"] = ", ".join(labels) if labels else None
-    result["ok"] = result["error"] is None
+    if push_errors:
+        detail = "; ".join(push_errors)
+        result["error"] = (
+            f"{result['error']}; {detail}" if result["error"] else detail
+        )
+    if result["expected"] > 0:
+        result["ok"] = (
+            result["scheduled"] == result["expected"] and result["error"] is None
+        )
+    else:
+        # Unschedule-only / nothing to push: ok when the calendar fetch worked.
+        result["ok"] = result["error"] is None
     return result

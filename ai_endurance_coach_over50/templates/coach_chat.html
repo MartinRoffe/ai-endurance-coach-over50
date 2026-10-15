@@ -892,7 +892,8 @@
         const g = data.garmin || {};
         const sync = g.pushed
           ? ' Pushed to Garmin Connect.'
-          : ' Saved locally — Garmin sync failed.';
+          : (' Saved locally — Garmin sync failed'
+             + (g.error ? (': ' + g.error) : '') + '.');
         const durText = data.duration_min ? `**${data.duration_min} min**` : '**rest day**';
         renderMessage('assistant', `✓ Applied: **${data.label}** on ${data.date} updated to ${durText}.${sync}`);
         // Drop the synced card so any remaining proposal stays reachable

@@ -984,12 +984,46 @@ def _fill_hike(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["rpe_target"] = "4–5"
         return
     if "scotland" in low:
+        # Exact munros stay open (athlete picks from conditions that week).
+        # Structure and pack come from Mountain & Road Build + fitness plan.
         detail["blocks"] = [
-            _block("Warm-up", "Start unhurried. The day is long enough."),
-            _block("Main set", label),
-            _block("Cool-down", "Stop while you still have the walk out."),
+            _block(
+                "Warm-up",
+                "Easy walking until warm. Check Weatherline / avalanche forecast "
+                "and pick a day inside your current winter skills — fitness is not "
+                "winter skill after a long break.",
+            ),
+            _block(
+                "Main set",
+                f"{label}. Hours are a ceiling, not a target. Choose a broad, "
+                "simple ridge or valley round that matches the forecast; turn back "
+                "early if wind, ice, or navigation gets beyond what you want that day. "
+                "Day-trip pack lighter; overnight kit is about 22 kg when you camp.",
+            ),
+            _block(
+                "Cool-down",
+                "Finish with daylight in hand. Controlled short steps on the descent; "
+                "poles if you have them.",
+            ),
         ]
-        detail["purpose"] = "Scotland week is still a placeholder. The hours are a ceiling, and the hills are not chosen yet."
+        detail["ruck_pack"] = (
+            "Day pack as needed for the route. Overnight winter pack about 22 kg "
+            "when the trip includes a night out."
+        )
+        detail["ruck_route"] = (
+            "Pick from the week's conditions report — same rule as Keswick: "
+            "high option only if the tops are in play; otherwise a lower round. "
+            "Exact hills are chosen that week, not locked in the calendar."
+        )
+        detail["ruck_elevation"] = (
+            "Treat the session hours as the ceiling. Vertical follows the route "
+            "you pick, not a fixed metre target."
+        )
+        detail["purpose"] = (
+            "Scotland winter hill week (ready from Mon 22 Mar 2027). "
+            "Day trips and optional multi-day; hills chosen from conditions. "
+            "Not pushed to Garmin."
+        )
         detail["rpe_target"] = "4–5"
         return
     if "step" in low:

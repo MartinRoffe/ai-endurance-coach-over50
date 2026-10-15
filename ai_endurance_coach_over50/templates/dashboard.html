@@ -162,6 +162,13 @@
     <p style="margin:6px 0 0;font-family:var(--font-m);font-size:11px;color:var(--muted)">Flank pain, fever, or blood forces rest.</p>
   </div>
 
+  {% if morning_ready is defined and not morning_ready %}
+  <div style="background:rgba(250,204,21,0.12);border-left:3px solid #facc15;padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <span style="font-family:var(--font-m);font-size:13px;color:var(--text)">Watch has not synced overnight sleep / body battery yet. Readiness below is incomplete until Sync ↺ after the watch uploads.</span>
+    <a href="/refresh" style="font-family:var(--font-m);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border:1px solid #facc15;color:#facc15;background:transparent;border-radius:2px;white-space:nowrap">Sync ↺</a>
+  </div>
+  {% endif %}
+
   {% if stale_data_notices %}
   {% for note in stale_data_notices %}
   <div style="background:rgba(250,204,21,0.10);border-left:3px solid #facc15;padding:12px 18px;border-radius:0 4px 4px 0;margin-bottom:8px">
@@ -341,10 +348,22 @@
       }).then(function(r){ return r.json(); }).then(function(d){
         var msg = document.getElementById('accept-ftp-msg');
         msg.style.display = 'block';
-        msg.textContent = d.ok
-          ? ('FTP saved at ' + d.ftp_w + ' W. Sync workouts to refresh %FTP targets.')
-          : (d.error || 'Failed');
-        if (d.ok) btn.textContent = 'Accepted';
+        if (!d.ok) {
+          msg.textContent = d.error || 'Failed';
+          btn.disabled = false;
+          return;
+        }
+        var g = d.garmin || {};
+        if (g.synced) {
+          msg.textContent = 'FTP saved at ' + d.ftp_w + ' W. Garmin %FTP workouts re-synced.';
+          btn.textContent = 'Accepted & synced';
+        } else {
+          msg.textContent = 'FTP saved at ' + d.ftp_w + ' W. Garmin sync failed'
+            + (g.error ? (': ' + g.error) : '')
+            + ' — use Sync to Watch.';
+          btn.textContent = 'Accepted';
+          btn.disabled = false;
+        }
       }).catch(function(){ btn.disabled = false; });
     });
   })();
@@ -388,7 +407,10 @@
     <div style="padding:18px 20px 8px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
       <div style="flex:1;min-width:180px">
         <p class="eyebrow" style="margin-bottom:14px">Composite Score</p>
-        {% if comp_z is not none %}
+        {% if morning_ready is defined and not morning_ready %}
+        <div class="score-num" style="color:var(--muted)">—</div>
+        <p class="score-label" style="color:var(--muted)">waiting for watch sync</p>
+        {% elif comp_z is not none %}
         <div class="score-num {{ comp_colour }}">{% if comp_z >= 0 %}+{% endif %}{{ "%.2f"|format(comp_z) }}<span class="score-sigma">σ</span></div>
         <p class="score-label {{ comp_colour }}">{{ comp_label }}</p>
         {% else %}
