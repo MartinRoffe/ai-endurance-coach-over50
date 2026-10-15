@@ -689,10 +689,11 @@ def _section_key_dates(today: date) -> list[str]:
             f"  Fitness year (live plan): {FIT_START.isoformat()} → {FIT_END.isoformat()} "
             f"(starts {_until(FIT_START)})"
         )
-        proc = date(2026, 10, 15)
+        clinic = date(2026, 10, 15)
         lines.append(
-            f"  Procedure: {proc.isoformat()} ({_until(proc)}). "
-            "Structured training only after discharge advice."
+            f"  Clinic: {clinic.isoformat()} ({_until(clinic)}). "
+            "ESWL not performed (fragments already passed). Confirmation CT pending. "
+            "Until then: stop for flank pain, fever or blood."
         )
         xmas_start = date(2026, 12, 21)
         lines.append(
@@ -866,11 +867,11 @@ def _current_training_phase(today: date) -> tuple[str, str]:
         cat = "base" if wk <= 4 else "build"
         return (f"12-week charity plan, week {wk}/12 ({cat})", cat)
     if today == FIT_START - timedelta(days=1):
-        return ("Fitness year — procedure week starts 12 Oct 2026", "medical")
+        return ("Fitness year — clearance week starts 12 Oct 2026", "medical")
     if in_plan(today):
         mon = today - timedelta(days=today.weekday())
         name = _phase_name(mon)
-        if name == "Procedure" or in_procedure_week(today):
+        if name == "Clearance" or in_procedure_week(today):
             return (f"Fitness year — {name}", "medical")
         if name == "Tenerife":
             return (f"Fitness year — {name}", "camp")

@@ -134,26 +134,32 @@ def test_a_week_with_no_rest_gains_sunday():
     assert all(day.reason is None for day in capped if day.date != rests[0].date)
 
 
-def test_procedure_day_suggestion_becomes_rest():
+def test_clinic_day_does_not_open_a_medical_return_window():
+    from ai_endurance_coach_over50.safety import in_easy_return, _procedure_dates
+
     day = date(2026, 10, 15)
-    capped = cap_suggested_session(day, ("bike", "Optional easy ride", 40))
-    assert capped.session[0] == "rest"
-    assert capped.session[2] == 0
-    assert capped.reason == "Capped: rest on procedure day"
+    assert day not in _procedure_dates()
+    assert not in_easy_return(day)
+    assert not in_easy_return(date(2026, 10, 16))
+    assert not in_easy_return(date(2026, 10, 20))
+    # A hard suggestion on the first quality Tuesday is not rewritten to easy-only.
+    capped = cap_suggested_session(date(2026, 10, 20), ("threshold", "Threshold — bike", 40))
+    assert capped.session[0] == "threshold"
+    assert capped.reason != "Capped: easy-only return after procedure"
 
 
-def test_planned_procedure_day_stays_labelled_when_it_is_already_rest():
+def test_planned_clinic_day_stays_labelled_when_it_is_already_rest():
     capped = prescribed_session(date(2026, 10, 15))
-    assert capped.session[1] == "Procedure day"
+    assert capped.session[1] == "Attended — no treatment"
     assert capped.changed is False
     assert capped.reason is None
 
 
-def test_procedure_week_tempo_becomes_easy_only():
+def test_clearance_week_tempo_is_not_medical_return():
+    # 15 Oct is not a procedure date, so the week after it is not easy-only.
     capped = cap_suggested_session(date(2026, 10, 16), ("tempo", "Hill Repeats", 60))
-    assert capped.session[0] != "tempo"
-    assert capped.session[2] <= EASY_ONLY_MAX_MIN
-    assert capped.reason == "Capped: easy-only return after procedure"
+    assert capped.reason != "Capped: easy-only return after procedure"
+    assert capped.reason != "Capped: rest on procedure day"
 
 
 def test_return_window_after_stent_removal_is_easy_only():

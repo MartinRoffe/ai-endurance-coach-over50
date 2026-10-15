@@ -30,9 +30,9 @@ day plan on Sessions. The August 2026 Teide itinerary is on the same page under
 ### What it's for
 
 The two-year rebuild hub for **Haute Route Alpes 2028**. The Sep 2026 medical
-pause is finished. Return to training waits on discharge after the 15 Oct 2026
-procedure. Year 1 is the fitness block through 3 Oct 2027; the cycling-specific
-block is written after that.
+pause is finished. Clinic on 15 Oct 2026 found the fragments had already passed,
+so ESWL was not performed; a confirmation CT remains. Year 1 is the fitness
+block through 3 Oct 2027; the cycling-specific block is written after that.
 
 The former 46-week Oct-2026→Aug-2027 week-by-week calendar is **not live**.
 The general-fitness block runs through 3 Oct 2027. The cycling-specific race
@@ -47,9 +47,9 @@ from your measured FTP. See **[Power Training](../power-training.md#haute-route-
 
 ### How to use it
 
-The procedure week (12–18 Oct 2026) is rest or an optional easy walk or short
-ride only if discharge advice allows it. Structured training starts after that
-advice. Use Sessions for the day you are doing.
+The clearance week (12–18 Oct 2026) ends with a normal easy hill walk and a
+one-hour easy ride. Hard sessions start Tue 20 Oct. Until the confirmation CT:
+stop for flank pain, fever or blood. Use Sessions for the day you are doing.
 
 ### Good to know
 

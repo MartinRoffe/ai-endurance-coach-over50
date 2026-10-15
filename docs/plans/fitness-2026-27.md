@@ -6,43 +6,44 @@ Athlete: over 50, measured max HR **191** (zones unchanged), working FTP about *
 
 ## Rules
 
-- Procedure about **Thu 15 Oct 2026**. The week of 12 Oct is easy walking plus an optional flat or turbo ride of 30–45 minutes, only if discharge advice allows exertion and you are pain-free. No pack, no hills under load, no hard strength.
-- The next **7 days** (16–22 Oct) stay easy. The first hard session is **Tue 27 Oct**. From the week of **2 Nov** there are two hard sessions (Tuesday and Thursday), never back to back.
-- A hard session is threshold or VO2, on the bike, the rower, or the MaxiClimber. Caps still apply: at most two hard days a week, at least one rest day, and no more than about 10% more weekly load than the previous prescribed week. The procedure week is not the load base. Camp weeks are not trimmed by that percentage.
-- Stop a session for flank pain, fever, or blood in the urine. Keep drinking: **2–3 L** a day, plus about **500 ml** per training hour.
+- Clinic **Thu 15 Oct 2026**: ESWL was not performed — the fragments had already passed. Only a confirmation CT remains. That day is attended with no treatment. Fri 16 Oct is rest. Sat 17 is a **45-minute hill walk with a light pack**. Sun 18 is a **1-hour easy ride**. These weekend sessions are normal plan days, not optional.
+- There is **no** 7-day post-procedure easy-only window after 15 Oct. `MEDICAL_RETURN_EASY_DAYS` still exists for stent removal and any future logged procedure; 15 Oct is not a procedure date in `safety._procedure_dates`.
+- The first hard session is **Tue 20 Oct** (threshold on the bike). From the week of **26 Oct** there are two hard sessions (Tuesday and Thursday), never back to back.
+- A hard session is threshold or VO2, on the bike, the rower, or the MaxiClimber. Caps still apply: at most two hard days a week, at least one rest day, and no more than about 10% more weekly load than the previous prescribed week. The clearance week of 12 Oct is not the load base. Camp weeks are not trimmed by that percentage.
+- Until the confirmation CT: stop for flank pain, fever or blood. Keep drinking: **2–3 L** a day, plus about **500 ml** per training hour.
 - Morning check: soreness, mood, energy, flank pain, fever, blood, fluids. Flank pain, fever, or blood forces rest.
 - On foot every week. The bike does not train descents or a pack.
 - Pull-ups, three days a week (Tue, Thu, Sat) from 27 Oct through 19 Feb: negatives, then band-assisted, then strict reps. The bar is in use from 27 Oct. Strict reps are still 0, so the first phase is negatives.
-- Strength is twice a week from 19 Oct through 8 Feb: a lighter endurance session (Wednesday, because Thursday is hard) and a load session (Saturday, after Friday's rest). From January the load work is a sandbag after Tuesday's hard ride, and Saturday is the hill ruck. Every 4th week the bells and the sets get lighter. The week of 15 Feb is a taper. Labels do not use the word "heavy", because that word counts as a hard session.
+- Strength is twice a week from **21 Oct** through 8 Feb: a lighter endurance session (Wednesday, because Thursday is hard) and a load session (Saturday, after Friday's rest). From January the load work is a sandbag after Tuesday's hard ride, and Saturday is the hill ruck. Every 4th week the bells and the sets get lighter. The week of 15 Feb is a taper. Labels do not use the word "heavy", because that word counts as a hard session.
 
 ## Tenerife · time, not distance
 
 Quality days are **3–4 hours**, with an easy day between them. **Sat 26 Dec** is one optional longer Teide day (about 5 hours). There is no 580 km or 14,000 m target. Shorten a ride when fitness is not there.
 
-Home Sundays reach **3 hours on Sun 29 Nov 2026**. Some weekends are back-to-back easy rides (a shorter Saturday plus the Sunday).
+Home Sundays reach **3 hours on Sun 22 Nov 2026**.
 
 ## Weeks through Scotland
 
-### Procedure
+### Clearance
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 12 Oct 2026 | Rest | Optional easy walk · 30m | Optional easy ride · 40m | Procedure day | Rest | Optional easy walk · 30m | Optional easy ride · 45m |
+| 12 Oct 2026 | Rest | Easy walk · 30m | Z2 Easy · 40m | Attended — no treatment | Rest | Easy hill walk — light pack · 45m | Long Ride (Easy) · 1h |
 
 ### Return
 
-One hard day in the last October week. Two from November. Wednesday is the lighter strength day. Saturday is the load day, lighter every 4th week (9 Nov, 7 Dec). Sunday reaches 3 hours on 29 Nov.
+One hard day in the week of 19 Oct. Two from the week of 26 Oct. Wednesday is the lighter strength day from 21 Oct. Saturday is the load day, lighter every 4th week (9 Nov, 7 Dec). Sunday reaches 3 hours on 22 Nov.
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 19 Oct 2026 | Rest | Kettlebell — easy circuit · 35m | Z2 Easy · 45m | Easy steps · 30m | Rest | Strength — load · 45m | Long Ride (Easy) · 1h |
-| 26 Oct 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | Easy steps · 30m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h10 |
-| 2 Nov 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | VO2 — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h25 |
-| 9 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 50m | Threshold — rower · 35m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h40 |
-| 16 Nov 2026 | Rest | Threshold — bike · 45m | Strength — endurance · 50m | VO2 — rower · 40m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h55 |
-| 23 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 30m | Threshold — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 3h |
-| 30 Nov 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 30m | VO2 — MaxiClimber · 35m | Rest | Strength — load · 1h20 | Long Ride (Easy) · 3h |
-| 7 Dec 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 45m | Threshold — rower · 40m | Rest | Strength — load · 1h | Long Ride (Easy) · 3h |
+| 19 Oct 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | Easy steps · 30m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h10 |
+| 26 Oct 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | VO2 — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h25 |
+| 2 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 50m | Threshold — rower · 35m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h40 |
+| 9 Nov 2026 | Rest | Threshold — bike · 45m | Strength — endurance · 50m | VO2 — rower · 40m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h55 |
+| 16 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 30m | Threshold — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 3h |
+| 23 Nov 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 30m | VO2 — MaxiClimber · 35m | Rest | Strength — load · 1h20 | Long Ride (Easy) · 3h |
+| 30 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 45m | Threshold — rower · 40m | Rest | Strength — load · 1h | Long Ride (Easy) · 3h |
+| 7 Dec 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 40m | VO2 — rower · 40m | Rest | Strength — load · 1h40 | Long Ride (Easy) · 3h |
 | 14 Dec 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 40m | VO2 — rower · 40m | Rest | Strength — load · 1h40 | Long Ride (Easy) · 3h |
 
 ### Tenerife · 21 Dec 2026 – 3 Jan 2027
@@ -93,7 +94,7 @@ From **Mon 29 Mar** through **Sun 3 Oct** the same week repeats. October is a ch
 
 ## Session library
 
-**Threshold / VO2.** One hard session from 27 Oct, two from 2 Nov. Bike, rower, or MaxiClimber. Not pushed to Garmin.
+**Threshold / VO2.** One hard session from 20 Oct, two from 26 Oct. Bike, rower, or MaxiClimber. Not pushed to Garmin.
 
 **Kettlebell.** Swings, goblet squats, presses, rows, carries, get-ups, and step-ups. Bells are 8, 12, 14, 16, 20 and 24 kg. The heaviest bell is not the deadlift.
 

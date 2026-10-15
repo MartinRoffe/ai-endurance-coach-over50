@@ -182,14 +182,23 @@ def test_ruck_detail_carries_the_pack_and_the_flat_rehearsal():
 
 
 def test_easy_rides_are_the_ones_pushed_to_garmin():
-    easy = day_detail(date(2026, 10, 21))
+    easy = day_detail(date(2026, 10, 18))
     assert easy["garmin"] is True
     assert easy["garmin_text"] == "Pushed to Garmin"
     assert easy["power_target"]
     assert "220" in easy["power_target"] or "FTP" in easy["power_target"]
-    hard = day_detail(date(2026, 10, 27))
+    hard = day_detail(date(2026, 10, 20))
     assert hard["garmin"] is False
     assert "Threshold" in hard["title"] or hard["type"] == "threshold"
+
+
+def test_clinic_day_detail_names_no_treatment_and_the_ct_rule():
+    detail = day_detail(date(2026, 10, 15))
+    assert "no treatment" in detail["title"].lower() or "attended" in detail["title"].lower()
+    assert "confirmation CT" in detail["purpose"]
+    sat = day_detail(date(2026, 10, 17))
+    assert sat["ruck_pack"]
+    assert "optional" not in sat["title"].lower()
 
 
 def test_logged_activity_brief_is_plain_data():
@@ -214,11 +223,11 @@ def test_day_detail_template_escapes_and_does_not_mark_safe():
     assert "| safe" not in partial
     assert "|safe" not in partial
     assert "day-dialog" in calendar
-    detail = day_detail(date(2026, 10, 20))
+    detail = day_detail(date(2026, 10, 21))
     detail["title"] = "<img src=x onerror=alert(1)>"
     detail["purpose"] = "<script>alert(1)</script>"
     html = TEMPLATES.env.get_template("partials/day_detail.html").render(day={
-        "date": date(2026, 10, 20),
+        "date": date(2026, 10, 21),
         "show_logged": True,
         "logged": [{
             "name": "<script>alert(1)</script>",

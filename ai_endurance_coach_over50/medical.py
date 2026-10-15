@@ -58,10 +58,10 @@ MEDICAL_HISTORY_SUMMARY = (
     "Emergency surgery for a stent, then lasertripsy and a second stent. "
     "Stent removed 8 Sep 2026. "
     "The charity ride (Ghent→Amsterdam 13–14 Sep 2026) is cancelled. "
-    "A further procedure is on 15 Oct 2026. Structured training starts only after "
-    "discharge advice from that procedure. Until discharge: rest, or an optional "
-    "easy walk or a short flat or turbo ride only if that advice allows it and he "
-    "is pain-free. Stop for flank pain, fever, or blood in the urine. "
+    "Clinic on 15 Oct 2026: ESWL was not performed because the fragments had "
+    "already passed. Only a confirmation CT remains. Structured training is "
+    "live from the week of 19 Oct. Until the confirmation CT: stop for flank "
+    "pain, fever or blood. "
     "A-event is Haute Route Alpes 2028 (late August, dates TBC). "
     "The live year is general fitness for road and hills through 3 Oct 2027. "
     "Christmas Tenerife (21 Dec 2026–2 Jan 2027) is confirmed. Stored ride minutes "
@@ -83,24 +83,24 @@ REBUILD_PHASES: list[dict] = [
     {
         "id": "return_to_training",
         "label": "Return to training",
-        "approx": "Procedure 15 Oct 2026, then discharge",
+        "approx": "15 Oct 2026 clinic (no ESWL); confirmation CT pending",
         "content": (
-            "Second procedure 15 Oct 2026. Structured training starts only after "
-            "discharge advice. Until then: rest, or an optional easy walk or short "
-            "flat ride if that advice allows it and you are pain-free."
+            "Clinic 15 Oct 2026: fragments had already passed, so ESWL was not "
+            "performed. Only a confirmation CT remains. Structured training is "
+            "live. Until the confirmation CT: stop for flank pain, fever or blood."
         ),
-        "status": "active",
+        "status": "done",
     },
     {
         "id": "year1",
         "label": "Year 1 — aerobic + hills",
-        "approx": "Clearance → ~Sep 2027",
+        "approx": "19 Oct 2026 → ~Sep 2027",
         "content": (
-            "Easy cycling when discharge allows; autumn/winter hill-walk blocks; "
-            "strength as medically allowed. Christmas Tenerife 2026 is confirmed; "
+            "Hard sessions from Tue 20 Oct; autumn/winter hill-walk blocks; "
+            "strength twice a week. Christmas Tenerife 2026 is confirmed; "
             "stored ride minutes are a ceiling."
         ),
-        "status": "upcoming",
+        "status": "active",
     },
     {
         "id": "year1_checkpoint",
@@ -167,9 +167,6 @@ def should_push_garmin_date(d: date) -> bool:
     if in_event_override_window(d) and CHARITY_CANCELLED and d >= MEDICAL_PAUSE_START:
         # Cancelled race weekend + remaining prep/bridge: do not re-push bike quality
         return False
-    from .fitness_plan import in_procedure_week
-    if in_procedure_week(d):
-        return False
     return True
 
 
@@ -226,10 +223,11 @@ def medical_context_lines() -> list[str]:
         f"  Primary A-event: {hr_a_event_summary()}.",
         "  Do NOT prescribe Sweetspot, Tempo, VO2, Pre-Event Long, charity fuelling, "
         "or Haute Route race weeks. The 46-week Haute Route template is not the live plan. "
-        "Structured training waits on discharge after the 15 Oct 2026 procedure.",
-        "  Hiking and scrambling are allowed only after medical clearance "
-        "(not during the pause beyond optional easy walking).",
-        "  No running (unchanged athlete constraint).",
+        "Clinic 15 Oct 2026: ESWL not performed (fragments already passed). "
+        "Confirmation CT still pending. Structured training is live from 19 Oct.",
+        "  Until the confirmation CT: stop for flank pain, fever or blood.",
+        "  Hiking and scrambling are allowed outside the paused window. "
+        "No running (unchanged athlete constraint).",
     ]
     if XMAS_CAMP_TENTATIVE:
         lines.append(
@@ -246,9 +244,8 @@ def medical_context_lines() -> list[str]:
     if not MAY_2027_RACE_SIM_ACTIVE:
         lines.append("  May 2027 Tenerife race-sim camp: not part of the live plan.")
     lines.append(
-        "  Second procedure about 15 Oct 2026. That week is easy walking and an optional "
-        "30–45 min flat or turbo ride only if discharge advice allows it and he is pain-free. "
-        "Stop a session for flank pain, fever, or blood in the urine."
+        "  First hard session is Tue 20 Oct 2026. Two non-adjacent hard sessions "
+        "a week from the week of 26 Oct. Strength starts Wed 21 Oct."
     )
     from .fitness_plan import BUSAR_STANDARDS, GRAVEL_BIKE_ACTIVE, gravel_sunday_note
     lines.append(f"  {gravel_sunday_note()}")

@@ -19,15 +19,24 @@ from ai_endurance_coach_over50.plan import session_for_date_extended
 from ai_endurance_coach_over50.workouts import _workouts_for_date
 
 
-def test_procedure_day_is_rest_and_not_pushed():
+def test_clinic_day_is_rest_and_weekend_is_a_normal_easy():
     sess = session_for_date_extended(date(2026, 10, 15))
-    assert sess == ("rest", "Procedure day", 0)
-    assert not should_push_garmin_date(date(2026, 10, 15))
+    assert sess == ("rest", "Attended — no treatment", 0)
     assert _workouts_for_date(date(2026, 10, 15)) == []
+    assert session_for_date(date(2026, 10, 16)) == ("rest", "Rest", 0)
+    sat = session_for_date(date(2026, 10, 17))
+    assert sat[0] == "hike"
+    assert "light pack" in sat[1].lower()
+    assert sat[2] == 45
+    assert "optional" not in sat[1].lower()
+    sun = session_for_date(date(2026, 10, 18))
+    assert sun == ("long", "Long Ride (Easy)", 60)
+    assert garmin_allowed(date(2026, 10, 18), sun[0], sun[1])
+    assert should_push_garmin_date(date(2026, 10, 18))
 
 
 def test_december_sunday_reaches_the_cap():
-    first = session_for_date(date(2026, 11, 29))
+    first = session_for_date(date(2026, 11, 22))
     assert first == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
     mid = session_for_date(date(2026, 12, 13))
     assert mid == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
@@ -88,7 +97,7 @@ def test_cut_is_maintenance_through_camp_and_off_after():
 def test_guide_covers_the_block_in_phase_order():
     phases = guide_phases()
     assert [p["name"] for p in phases] == [
-        "Procedure", "Return", "Tenerife", "Keswick build",
+        "Clearance", "Return", "Tenerife", "Keswick build",
         "Lakes", "Recovery", "Scotland", "Maintenance",
     ]
     assert phases[0]["start"] == PLAN_START
