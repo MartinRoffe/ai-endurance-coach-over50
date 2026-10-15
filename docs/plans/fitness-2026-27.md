@@ -12,7 +12,8 @@ Athlete: over 50, measured max HR **191** (zones unchanged), working FTP about *
 - Stop a session for flank pain, fever, or blood in the urine. Keep drinking: **2–3 L** a day, plus about **500 ml** per training hour.
 - Morning check: soreness, mood, energy, flank pain, fever, blood, fluids. Flank pain, fever, or blood forces rest.
 - On foot every week. The bike does not train descents or a pack.
-- Pull-ups, three days a week (Tue, Thu, Sat) from 27 Oct through 19 Feb: negatives, then band-assisted, then strict reps. There is no bar yet, and the current max is 0.
+- Pull-ups, three days a week (Tue, Thu, Sat) from 27 Oct through 19 Feb: negatives, then band-assisted, then strict reps. The bar is in use from 27 Oct. Strict reps are still 0, so the first phase is negatives.
+- Strength is twice a week from 19 Oct through 8 Feb: a lighter endurance session (Wednesday, because Thursday is hard) and a load session (Saturday, after Friday's rest). From January the load work is a sandbag after Tuesday's hard ride, and Saturday is the hill ruck. Every 4th week the bells and the sets get lighter. The week of 15 Feb is a taper. Labels do not use the word "heavy", because that word counts as a hard session.
 
 ## Tenerife · time, not distance
 
@@ -30,19 +31,19 @@ Home Sundays reach **3 hours on Sun 29 Nov 2026**. Some weekends are back-to-bac
 
 ### Return
 
-One hard day in the last October week. Two from November. Weekend rides reach 3 hours on 29 Nov.
+One hard day in the last October week. Two from November. Wednesday is the lighter strength day. Saturday is the load day, lighter every 4th week (9 Nov, 7 Dec). Sunday reaches 3 hours on 29 Nov.
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 19 Oct 2026 | Rest | Kettlebell — easy circuit · 35m | Z2 Easy · 45m | Easy steps · 30m | Rest | Easy hill walk · 45m | Long Ride (Easy) · 1h |
-| 26 Oct 2026 | Rest | Threshold — bike · 40m | Z2 Easy · 45m | Easy steps · 30m | Rest | Easy hill walk · 50m | Long Ride (Easy) · 1h10 |
-| 2 Nov 2026 | Rest | Threshold — bike · 40m | Z2 Easy · 45m | VO2 — rower · 35m | Rest | Easy hill walk · 50m | Long Ride (Easy) · 1h25 |
-| 9 Nov 2026 | Rest | VO2 — bike · 40m | Z2 Easy · 50m | Threshold — rower · 35m | Rest | Easy hill walk · 55m | Long Ride (Easy) · 1h40 |
-| 16 Nov 2026 | Rest | Threshold — bike · 45m | Z2 Easy · 50m | VO2 — rower · 40m | Rest | Easy hill walk · 55m | Long Ride (Easy) · 1h55 |
-| 23 Nov 2026 | Rest | VO2 — bike · 40m | Easy hill walk · 30m | Threshold — rower · 35m | Rest | Long Ride (Easy) · 50m | Long Ride (Easy) · 3h |
-| 30 Nov 2026 | Rest | Threshold — bike · 40m | Easy hill walk · 30m | VO2 — MaxiClimber · 35m | Rest | Long Ride (Easy) · 1h20 | Long Ride (Easy) · 3h |
-| 7 Dec 2026 | Rest | VO2 — bike · 40m | Z2 Easy · 45m | Threshold — rower · 40m | Rest | Easy hill walk · 1h | Long Ride (Easy) · 3h |
-| 14 Dec 2026 | Rest | Threshold — bike · 40m | Easy hill walk · 40m | VO2 — rower · 40m | Rest | Long Ride (Easy) · 1h40 | Long Ride (Easy) · 3h |
+| 19 Oct 2026 | Rest | Kettlebell — easy circuit · 35m | Z2 Easy · 45m | Easy steps · 30m | Rest | Strength — load · 45m | Long Ride (Easy) · 1h |
+| 26 Oct 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | Easy steps · 30m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h10 |
+| 2 Nov 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 45m | VO2 — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 1h25 |
+| 9 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 50m | Threshold — rower · 35m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h40 |
+| 16 Nov 2026 | Rest | Threshold — bike · 45m | Strength — endurance · 50m | VO2 — rower · 40m | Rest | Strength — load · 55m | Long Ride (Easy) · 1h55 |
+| 23 Nov 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 30m | Threshold — rower · 35m | Rest | Strength — load · 50m | Long Ride (Easy) · 3h |
+| 30 Nov 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 30m | VO2 — MaxiClimber · 35m | Rest | Strength — load · 1h20 | Long Ride (Easy) · 3h |
+| 7 Dec 2026 | Rest | VO2 — bike · 40m | Strength — endurance · 45m | Threshold — rower · 40m | Rest | Strength — load · 1h | Long Ride (Easy) · 3h |
+| 14 Dec 2026 | Rest | Threshold — bike · 40m | Strength — endurance · 40m | VO2 — rower · 40m | Rest | Strength — load · 1h40 | Long Ride (Easy) · 3h |
 
 ### Tenerife · 21 Dec 2026 – 3 Jan 2027
 
@@ -53,16 +54,16 @@ One hard day in the last October week. Two from November. Weekend rides reach 3 
 
 ### Keswick build · 4 Jan – 21 Feb 2027
 
-Tuesday is a sandbag or barbell deadlift (not a kettlebell — the heaviest bell is 24 kg). Thursday is the second hard session. The Saturday pack reaches **20.4 kg** on 6 Feb. Sat 13 Feb is a timed 3-mile pack-test rehearsal. The week of 8 Feb adds step-overs and burpee pull-ups. Sat 20 and Sun 21 Feb are the test.
+Tuesday is a hard ride, then sandbag deadlift sets (not a kettlebell — the heaviest bell is 24 kg, and there is no trap bar). Wednesday is the lighter strength day. Thursday is the second hard session. The week of 25 Jan keeps the shape and cuts the sets. The Saturday pack reaches **20.4 kg** on 6 Feb. Sat 13 Feb is a timed 3-mile pack-test rehearsal. The week of 8 Feb is step-overs and burpee pull-ups, with only Thursday as a hard cardio day. The week of 15 Feb is the taper. Sat 20 and Sun 21 Feb are the test.
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 Jan 2027 | Rest | Strength — heavy (sandbag deadlift) · 50m | Z2 Easy · 1h | VO2 — rower · 40m | Rest | Hill ruck 10 kg · 1h10 | Long Ride (Easy) · 1h30 |
-| 11 Jan 2027 | Rest | Strength — heavy (sandbag deadlift) · 50m | Kettlebell — easy · 40m | VO2 — MaxiClimber · 40m | Rest | Hill ruck 12 kg · 1h10 | Long Ride (Easy) · 1h30 |
-| 18 Jan 2027 | Rest | Strength — heavy (barbell deadlift) · 50m | Z2 Easy · 55m | Threshold — bike · 40m | Rest | Hill ruck 15 kg · 1h10 | Long Ride (Easy) · 1h30 |
-| 25 Jan 2027 | Rest | Strength — heavy (sandbag deadlift) · 50m | Z2 Easy · 1h | Threshold — rower · 40m | Rest | Hill ruck 18 kg · 1h10 | Long Ride (Easy) · 1h30 |
-| 1 Feb 2027 | Rest | Strength — heavy (sandbag deadlift) · 50m | Z2 Easy · 1h | VO2 — rower · 40m | Rest | Hill ruck 20.4 kg · 1h10 | Long Ride (Easy) · 1h30 |
-| 8 Feb 2027 | Rest | Strength — heavy (step-overs + burpee pull-ups) · 45m | Z2 Easy · 45m | Threshold — rower · 35m | Rest | Pack test rehearsal 20.4 kg · 1h | Long Ride (Easy) · 1h15 |
+| 4 Jan 2027 | Rest | Threshold — bike, then sandbag · 50m | Strength — endurance · 1h | VO2 — rower · 40m | Rest | Hill ruck 10 kg · 1h10 | Long Ride (Easy) · 1h30 |
+| 11 Jan 2027 | Rest | Threshold — bike, then sandbag · 50m | Strength — endurance · 40m | VO2 — MaxiClimber · 40m | Rest | Hill ruck 12 kg · 1h10 | Long Ride (Easy) · 1h30 |
+| 18 Jan 2027 | Rest | Threshold — bike, then sandbag · 50m | Strength — endurance · 55m | Threshold — bike · 40m | Rest | Hill ruck 15 kg · 1h10 | Long Ride (Easy) · 1h30 |
+| 25 Jan 2027 | Rest | Threshold — bike, then sandbag · 50m | Strength — endurance · 1h | Threshold — rower · 40m | Rest | Hill ruck 18 kg · 1h10 | Long Ride (Easy) · 1h30 |
+| 1 Feb 2027 | Rest | Threshold — bike, then sandbag · 50m | Strength — endurance · 1h | VO2 — rower · 40m | Rest | Hill ruck 20.4 kg · 1h10 | Long Ride (Easy) · 1h30 |
+| 8 Feb 2027 | Rest | Strength — step-overs + burpee pull-ups · 45m | Strength — endurance · 45m | Threshold — rower · 35m | Rest | Pack test rehearsal 20.4 kg · 1h | Long Ride (Easy) · 1h15 |
 | 15 Feb 2027 | Rest | Strength — light · 25m | Z2 Easy · 45m | Easy walk · 30m | Rest | BUSAR test | BUSAR test |
 
 ### Lakes · 27–28 Feb 2027, Keswick
@@ -94,11 +95,11 @@ From **Mon 29 Mar** through **Sun 3 Oct** the same week repeats. October is a ch
 
 **Threshold / VO2.** One hard session from 27 Oct, two from 2 Nov. Bike, rower, or MaxiClimber. Not pushed to Garmin.
 
-**Kettlebell.** Easy circuits only. The heaviest bell is 24 kg, so it is not the deadlift.
+**Kettlebell.** Swings, goblet squats, presses, rows, carries, get-ups, and step-ups. Bells are 8, 12, 14, 16, 20 and 24 kg. The heaviest bell is not the deadlift.
 
-**Pull-ups.** Extra line on Tue, Thu, and Sat. Negatives 3×3–5 through December (no bar). Band-assisted 3×4–6 in January. Strict, or stay on the band, 3×3–5 in February.
+**Pull-ups.** Extra line on Tue, Thu, and Sat. Negatives 3×3–5 from 27 Oct (the bar is in, strict reps are still 0). Band-assisted 3×4–6 in January. Strict, or stay on the band, 3×3–5 in February.
 
-**Strength — heavy.** Sandbag or barbell deadlift from 4 Jan. The test standard is still 102 kg × 15 in one minute. There is no trap bar yet.
+**Sandbag.** After Tuesday's hard ride from 4 Jan. Sets leave 2 reps in reserve. A barbell is fine if you have one. There is no trap bar. The test standard is still 102 kg × 15 in one minute, which is not the January load.
 
 **Hill ruck.** 10 kg on 9 Jan, then 12, 15, 18, and **20.4 kg** on 6 Feb. Duration stays about 70 minutes while the kilograms rise. 13 Feb is the timed 3-mile rehearsal at 20.4 kg.
 
@@ -123,4 +124,4 @@ Both days are the test. The week of 15 Feb is light. Not pushed to Garmin.
 | Pack test | 3 miles flat with 45 lb (20.4 kg) in under 45 minutes |
 | Step-overs | 20 lb pack plus a sandbag or the 24 kg kettlebell, up and over a picnic table for 30 minutes |
 | Deadlift | Train with a sandbag or a barbell. Test standard remains 225 lb (102 kg), at least 15 reps in one minute. No trap bar yet. |
-| Burpee pull-ups | 20 lb pack, at least 50 in 10 minutes. Current strict pull-ups: 0. No bar yet. |
+| Burpee pull-ups | 20 lb pack, at least 50 in 10 minutes. Current strict pull-ups: 0. Bar from 27 Oct. Negatives, then a band, then strict reps. |

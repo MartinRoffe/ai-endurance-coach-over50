@@ -1,0 +1,91 @@
+<div class="day-detail">
+  <button type="button" class="dialog-close" onclick="document.getElementById('day-dialog').close()">Close</button>
+  <p class="day-kicker">{{ day.detail.type_label }} · {{ day.date.strftime('%A %-d %b %Y') }}</p>
+  <h2>{{ day.detail.title }}</h2>
+  {% if day.detail.duration_fmt %}
+  <p class="day-meta">{{ day.detail.duration_fmt }}</p>
+  {% endif %}
+  {% if day.detail.intensity %}
+  <p class="day-meta">{{ day.detail.intensity }}</p>
+  {% endif %}
+  {% if day.detail.hr_target %}
+  <p class="day-meta">Heart rate: {{ day.detail.hr_target }}</p>
+  {% endif %}
+  {% if day.detail.power_target %}
+  <p class="day-meta">Power: {{ day.detail.power_target }}</p>
+  {% endif %}
+  {% if day.detail.rpe_target %}
+  <p class="day-meta">RPE target (1–10): {{ day.detail.rpe_target }}</p>
+  {% endif %}
+  <p class="day-meta">{{ day.detail.garmin_text }}</p>
+
+  {% if day.detail.cap_note %}
+  <p class="day-note">{{ day.detail.cap_note }}{% if day.detail.instead %} Do this instead: {{ day.detail.instead }}.{% endif %}</p>
+  {% endif %}
+  {% if day.detail.modulation_note %}
+  <p class="day-note">{{ day.detail.modulation_note }}</p>
+  {% endif %}
+
+  {% if day.detail.purpose %}
+  <p class="day-purpose">{{ day.detail.purpose }}</p>
+  {% endif %}
+
+  {% if day.detail.blocks %}
+  <div class="day-section">
+    <h3>Structure</h3>
+    {% for block in day.detail.blocks %}
+    <p class="day-block"><strong>{{ block.name }}.</strong> {{ block.detail }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if day.detail.exercises %}
+  <div class="day-section">
+    <h3>Exercises</h3>
+    <ul class="day-ex">
+      {% for ex in day.detail.exercises %}
+      <li>
+        <p class="ex-name">{{ ex.name }}</p>
+        <p>{{ ex.sets_reps }} · {{ ex.load }} · tempo {{ ex.tempo }} · rest {{ ex.rest }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if day.detail.addon %}
+  <div class="day-section">
+    <h3>Add-on</h3>
+    <p class="day-block">{{ day.detail.addon }}</p>
+  </div>
+  {% endif %}
+
+  {% if day.detail.ruck_pack or day.detail.ruck_route or day.detail.ruck_elevation %}
+  <div class="day-section">
+    <h3>Pack and route</h3>
+    {% if day.detail.ruck_pack %}<p class="day-block"><strong>Pack.</strong> {{ day.detail.ruck_pack }}</p>{% endif %}
+    {% if day.detail.ruck_route %}<p class="day-block"><strong>Route.</strong> {{ day.detail.ruck_route }}</p>{% endif %}
+    {% if day.detail.ruck_elevation %}<p class="day-block"><strong>Elevation.</strong> {{ day.detail.ruck_elevation }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if day.show_logged %}
+  <div class="day-section">
+    <h3>Completed</h3>
+    {% if day.logged %}
+      {% for act in day.logged %}
+      <p class="day-logged">
+        {{ act.name }}
+        {% if act.minutes %} · {{ act.minutes }} min{% endif %}
+        {% if act.distance_km %} · {{ act.distance_km }} km{% endif %}
+        {% if act.elevation_m %} · {{ act.elevation_m }} m{% endif %}
+        {% if act.avg_hr %} · avg HR {{ act.avg_hr }}{% endif %}
+        {% if act.avg_power_w %} · {{ act.avg_power_w }} W{% endif %}
+      </p>
+      {% endfor %}
+    {% else %}
+      <p class="day-logged">No activity logged for this day.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

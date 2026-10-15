@@ -35,6 +35,124 @@
     .day-header    { color: #c4c4cc; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
     .clickable-session { cursor: pointer; }
     .clickable-session:hover { filter: brightness(1.18); }
+    button.day-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      width: 100%;
+      cursor: pointer;
+      margin: 0;
+    }
+    button.day-btn:hover { filter: brightness(1.18); }
+    button.day-btn:focus-visible {
+      outline: 2px solid #a3e635;
+      outline-offset: 2px;
+    }
+    .wd-label { display: none; }
+    #day-dialog {
+      width: min(560px, calc(100vw - 24px));
+      max-height: min(88dvh, 860px);
+      margin: auto;
+      padding: 0;
+      border: 1px solid #27272a;
+      border-radius: 2px;
+      background: #111114;
+      color: #fafafa;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    }
+    #day-dialog::backdrop { background: rgba(0,0,0,0.75); }
+    .day-detail { padding: 18px 18px 28px; }
+    .day-detail h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      margin: 4px 0 0;
+    }
+    .day-kicker {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #a1a1aa;
+    }
+    .day-meta, .day-purpose, .day-note, .day-block, .day-ex, .day-logged {
+      font-size: 14px;
+      line-height: 1.45;
+      color: #d4d4d8;
+    }
+    .day-meta { margin: 10px 0 0; }
+    .day-purpose { margin: 12px 0 0; }
+    .day-section {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #27272a;
+    }
+    .day-section h3 {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #5eead4;
+      margin: 0 0 8px;
+    }
+    .day-block { margin: 0 0 8px; }
+    .day-block strong { color: #fafafa; }
+    .day-ex {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .day-ex li {
+      padding: 8px 0;
+      border-top: 1px solid #1f1f23;
+    }
+    .day-ex li:first-child { border-top: 0; }
+    .day-ex .ex-name { color: #fafafa; font-weight: 600; }
+    .day-note {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      color: #fde68a;
+    }
+    .day-logged { margin: 0 0 8px; }
+    .dialog-close {
+      appearance: none;
+      float: right;
+      min-width: 44px;
+      min-height: 44px;
+      margin: -6px -6px 0 8px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #fafafa;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    @media (max-width: 720px) {
+      .cal-dow { display: none; }
+      .fitness-week { grid-template-columns: 1fr !important; }
+      .fitness-week .week-side {
+        align-items: flex-start !important;
+        flex-direction: row;
+        gap: 8px;
+        padding: 8px 2px 0;
+      }
+      .wd-label { display: inline; margin-right: 6px; font-weight: 600; }
+      button.day-btn { min-height: 52px; }
+      #day-dialog {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        margin: 0;
+        border: 0;
+      }
+      .day-detail { padding: 16px 16px 32px; }
+    }
   </style>
 </head>
 <body>
@@ -81,7 +199,7 @@
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-hike" style="border-radius:2px">Hike</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-long" style="border-radius:2px">Long Ride</span>
       <span class="text-[11px] border rounded-sm px-2 py-0.5 sess-rest" style="border-radius:2px">Rest</span>
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-left:6px">· click any cycling session for details</span>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:#c4c4cc;margin-left:6px">· select a day for the workout</span>
     </div>
 
     <!-- ── Pre-plan history ──────────────────────────────────────────────── -->
@@ -89,8 +207,8 @@
     <div class="mb-6">
       <p class="text-[12px] text-slate-300 uppercase tracking-widest mb-2">Pre-plan history</p>
 
-      <div class="grid grid-cols-8 gap-1 mb-1">
-        <div class="text-[12px] text-slate-400 uppercase tracking-wider text-right pr-2 pt-1">Wk</div>
+    <div class="grid grid-cols-8 gap-1 mb-1 cal-dow">
+      <div class="text-[12px] text-slate-400 uppercase tracking-wider text-right pr-2 pt-1">Wk</div>
         {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
           <div class="day-header text-center">{{ d }}</div>
         {% endfor %}
@@ -133,7 +251,7 @@
     <div class="border-t border-slate-800 mb-5 mt-1"></div>
     {% else %}
     <!-- Day-of-week header (only shown when there is no pre-plan history) -->
-    <div class="grid grid-cols-8 gap-1 mb-1">
+    <div class="grid grid-cols-8 gap-1 mb-1 cal-dow">
       <div class="text-[10px] text-slate-600 uppercase tracking-wider text-right pr-2 pt-1">Wk</div>
       {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
         <div class="day-header text-center">{{ d }}</div>
@@ -176,10 +294,10 @@
     </div>
     {% endif %}
 
-    <div class="grid grid-cols-8 gap-1 mb-1" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% elif week.phase == 'bridge' %}background:rgba(19,78,74,0.18);border-radius:4px;{% elif week.phase == 'fitness' %}background:rgba(15,60,55,0.2);border-radius:4px;{% elif week.phase == 'hr_teaser' %}background:rgba(76,29,149,0.14);border-radius:4px;{% endif %}">
+    <div class="grid grid-cols-8 gap-1 mb-1 {% if week.phase == 'fitness' %}fitness-week{% endif %}" style="{% if week.phase == 'camp' %}background:rgba(120,53,15,0.12);border-radius:4px;{% elif week.phase == 'event_prep' %}background:rgba(7,89,133,0.12);border-radius:4px;{% elif week.phase == 'bridge' %}background:rgba(19,78,74,0.18);border-radius:4px;{% elif week.phase == 'fitness' %}background:rgba(15,60,55,0.2);border-radius:4px;{% elif week.phase == 'hr_teaser' %}background:rgba(76,29,149,0.14);border-radius:4px;{% endif %}">
 
       <!-- Week sidebar -->
-      <div class="flex flex-col items-end justify-center pr-2">
+      <div class="week-side flex flex-col items-end justify-center pr-2">
         {% if week.phase == 'plan' %}
           <span class="text-[13px] font-bold text-slate-200">W{{ "%02d"|format(week.week_num) }}</span>
           <span class="text-[12px] text-slate-400">{{ week.start.strftime("%-d %b") }}</span>
@@ -443,12 +561,17 @@
         </div>
 
       {% elif week.phase == 'fitness' %}
-        <div class="rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type if day.type else 'rest' }}
+        <button type="button"
+                class="day-btn rounded border p-1.5 min-h-[64px] flex flex-col sess-{{ day.type if day.type else 'rest' }}
                     {% if day.is_today %}today-ring{% endif %}
                     {% if day.is_past %}is-past{% endif %}"
-             data-cal-date="{{ day.date.isoformat() }}">
+                data-cal-date="{{ day.date.isoformat() }}"
+                data-day-detail="{{ day.date.isoformat() }}"
+                aria-haspopup="dialog"
+                aria-controls="day-dialog"
+                aria-label="{{ day.date.strftime('%A %-d %B') }}, {{ day.label }}">
           <div class="flex items-start justify-between mb-0.5">
-            <span class="text-[12px] opacity-80">{{ day.month_abbr }} {{ day.day_num }}</span>
+            <span class="text-[12px] opacity-80"><span class="wd-label">{{ day.weekday_short }}</span>{{ day.month_abbr }} {{ day.day_num }}</span>
             {% if day.is_today %}<span class="text-[9px] text-sky-400 font-semibold">TODAY</span>{% endif %}
           </div>
           {% if day.type != 'rest' and day.label %}
@@ -459,7 +582,7 @@
             <p class="text-[12px] opacity-65 mt-auto">{{ day.label if day.label and day.label != 'Rest' else 'Rest' }}</p>
             {% if day.extra %}<p class="text-[10px] leading-tight opacity-80 mt-1">{{ day.extra }}</p>{% endif %}
           {% endif %}
-        </div>
+        </button>
 
       {% elif week.phase == 'hr_teaser' %}
         {% set hr_cls = 'sess-rest' if day.type == 'rest'
@@ -489,6 +612,20 @@
     </div>{# end week row grid #}
 
     {% endfor %}{# end unified_weeks loop #}
+
+    <div id="day-detail-store">
+      {% for week in unified_weeks %}
+        {% if week.phase == 'fitness' %}
+          {% for day in week.days %}
+            {% if day.detail %}
+            <template id="detail-{{ day.date.isoformat() }}">
+              {% include 'partials/day_detail.html' %}
+            </template>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </div>
 
   <!-- ── Charity-ride event-day pacing & fuelling plans ───────────────────────── -->
   {% if charity_plans %}
@@ -575,6 +712,41 @@
   {% endif %}
 
   </div>
+
+  <dialog id="day-dialog" aria-labelledby="day-dialog-title">
+    <div id="day-dialog-body"></div>
+  </dialog>
+  <script>
+    (function () {
+      const dialog = document.getElementById('day-dialog');
+      if (!dialog) return;
+      let opener = null;
+      document.querySelectorAll('[data-day-detail]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const tpl = document.getElementById('detail-' + btn.getAttribute('data-day-detail'));
+          const body = document.getElementById('day-dialog-body');
+          if (!tpl || !body) return;
+          body.replaceChildren();
+          body.appendChild(tpl.content.cloneNode(true));
+          const title = body.querySelector('h2');
+          if (title) {
+            title.id = 'day-dialog-title';
+            dialog.setAttribute('aria-labelledby', 'day-dialog-title');
+          }
+          opener = btn;
+          if (typeof dialog.showModal === 'function') dialog.showModal();
+        });
+      });
+      dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener('close', function () {
+        const back = opener;
+        opener = null;
+        if (back) back.focus();
+      });
+    })();
+  </script>
 
   <!-- ── Modal overlay ──────────────────────────────────────────────────────── -->
   <div id="modal-overlay"

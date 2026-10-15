@@ -84,7 +84,8 @@ _PROCEDURE: tuple[tuple[str, str, int], ...] = (
 )
 
 # Pull-ups three days a week (Tue, Thu, Sat) from the first quality week
-# through the day before the BUSAR test. No bar yet, and 0 strict reps.
+# through the day before the BUSAR test. The bar arrives 27 Oct. Strict reps
+# are still 0, so the add-on starts with negatives.
 _PULLUP_WEEKDAYS = (1, 3, 5)
 PULLUP_END = date(2027, 2, 19)
 
@@ -171,6 +172,7 @@ def build_calendar_weeks() -> list[dict]:
                 "date": d,
                 "day_num": d.day,
                 "month_abbr": d.strftime("%b"),
+                "weekday_short": d.strftime("%a"),
                 "type": day["type"],
                 "label": day["label"] if day["type"] != "rest" else day["label"],
                 "dur_fmt": _fmt_dur(dur) if dur else None,
@@ -228,6 +230,10 @@ def _wk(*days: tuple[str, str, int]) -> tuple[tuple[str, str, int], ...]:
 # Monday → seven sessions. Totals stay inside the +10% weekly cap once the
 # procedure week is no longer the load base. Hard days are Tuesday, then
 # Tuesday and Thursday from 2 Nov, so they are never adjacent.
+# Strength is two days: Wednesday is the lighter endurance session (it sits
+# the day before Thursday's hard work), Saturday is the load session (Friday
+# is rest, Sunday is an easy ride). Labels avoid the word "heavy" because
+# safety.py counts that word as a hard session.
 _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     date(2026, 10, 19): _wk(
         ("rest", "Rest", 0),
@@ -235,93 +241,98 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("bike", "Z2 Easy", 45),
         ("hike", "Easy steps", 30),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 45),
+        ("strength", "Strength — load", 45),
         ("long", "Long Ride (Easy)", 60),
     ),
     date(2026, 10, 26): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
-        ("bike", "Z2 Easy", 45),
+        ("strength", "Strength — endurance", 45),
         ("hike", "Easy steps", 30),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 50),
+        ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 70),
     ),
     date(2026, 11, 2): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
-        ("bike", "Z2 Easy", 45),
+        ("strength", "Strength — endurance", 45),
         ("rower", "VO2 — rower", 35),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 50),
+        ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 85),
     ),
+    # Fourth strength week: same minutes, lighter bells.
     date(2026, 11, 9): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
-        ("bike", "Z2 Easy", 50),
+        ("strength", "Strength — endurance", 50),
         ("rower", "Threshold — rower", 35),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 55),
+        ("strength", "Strength — load", 55),
         ("long", "Long Ride (Easy)", 100),
     ),
     date(2026, 11, 16): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 45),
-        ("bike", "Z2 Easy", 50),
+        ("strength", "Strength — endurance", 50),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 55),
+        ("strength", "Strength — load", 55),
         ("long", "Long Ride (Easy)", 115),
     ),
-    # First 3-hour Sunday (29 Nov) and a short back-to-back ride on Saturday.
+    # First 3-hour Sunday (29 Nov). Saturday is the load session, kept short
+    # of failure so the long ride stays easy.
     date(2026, 11, 23): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
-        ("hike", "Easy hill walk", 30),
+        ("strength", "Strength — endurance", 30),
         ("rower", "Threshold — rower", 35),
         ("rest", "Rest", 0),
-        ("long", "Long Ride (Easy)", 50),
+        ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 11, 30): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
-        ("hike", "Easy hill walk", 30),
+        ("strength", "Strength — endurance", 30),
         ("maxiclimber", "VO2 — MaxiClimber", 35),
         ("rest", "Rest", 0),
-        ("long", "Long Ride (Easy)", 80),
+        ("strength", "Strength — load", 80),
         ("long", "Long Ride (Easy)", 180),
     ),
+    # Eighth strength week: lighter bells again.
     date(2026, 12, 7): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
-        ("bike", "Z2 Easy", 45),
+        ("strength", "Strength — endurance", 45),
         ("rower", "Threshold — rower", 40),
         ("rest", "Rest", 0),
-        ("hike", "Easy hill walk", 60),
+        ("strength", "Strength — load", 60),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 12, 14): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
-        ("hike", "Easy hill walk", 40),
+        ("strength", "Strength — endurance", 40),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("long", "Long Ride (Easy)", 100),
+        ("strength", "Strength — load", 100),
         ("long", "Long Ride (Easy)", 180),
     ),
 }
 
 
 # Ruck weight rises to the 20.4 kg pack-test load on Sat 6 Feb.
-# Duration stays put while the kilograms go up. Tuesday is the heavy
-# sandbag/barbell day (one hard session). Thursday is the second.
+# Duration stays put while the kilograms rise. Tuesday is a hard ride with
+# the sandbag sets after it (one hard session, not a third). Wednesday is
+# the lighter strength day, before Thursday's second hard session.
+# The word "heavy" is not used: safety.py would count it as another hard day.
 _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     date(2027, 1, 4): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (sandbag deadlift)", 50),
-        ("bike", "Z2 Easy", 60),
+        ("threshold", "Threshold — bike, then sandbag", 50),
+        ("strength", "Strength — endurance", 60),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
         ("ruck", "Hill ruck 10 kg", 70),
@@ -329,8 +340,8 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     ),
     date(2027, 1, 11): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (sandbag deadlift)", 50),
-        ("kettlebell", "Kettlebell — easy", 40),
+        ("threshold", "Threshold — bike, then sandbag", 50),
+        ("strength", "Strength — endurance", 40),
         ("maxiclimber", "VO2 — MaxiClimber", 40),
         ("rest", "Rest", 0),
         ("ruck", "Hill ruck 12 kg", 70),
@@ -338,17 +349,18 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     ),
     date(2027, 1, 18): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (barbell deadlift)", 50),
-        ("bike", "Z2 Easy", 55),
+        ("threshold", "Threshold — bike, then sandbag", 50),
+        ("strength", "Strength — endurance", 55),
         ("threshold", "Threshold — bike", 40),
         ("rest", "Rest", 0),
         ("ruck", "Hill ruck 15 kg", 70),
         ("long", "Long Ride (Easy)", 90),
     ),
+    # Fourth week of this block: same shape, fewer sandbag and kettlebell sets.
     date(2027, 1, 25): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (sandbag deadlift)", 50),
-        ("bike", "Z2 Easy", 60),
+        ("threshold", "Threshold — bike, then sandbag", 50),
+        ("strength", "Strength — endurance", 60),
         ("rower", "Threshold — rower", 40),
         ("rest", "Rest", 0),
         ("ruck", "Hill ruck 18 kg", 70),
@@ -356,8 +368,8 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     ),
     date(2027, 2, 1): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (sandbag deadlift)", 50),
-        ("bike", "Z2 Easy", 60),
+        ("threshold", "Threshold — bike, then sandbag", 50),
+        ("strength", "Strength — endurance", 60),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
         ("ruck", "Hill ruck 20.4 kg", 70),
@@ -365,8 +377,8 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     ),
     date(2027, 2, 8): _wk(
         ("rest", "Rest", 0),
-        ("strength", "Strength — heavy (step-overs + burpee pull-ups)", 45),
-        ("bike", "Z2 Easy", 45),
+        ("strength", "Strength — step-overs + burpee pull-ups", 45),
+        ("strength", "Strength — endurance", 45),
         ("rower", "Threshold — rower", 35),
         ("rest", "Rest", 0),
         ("ruck", "Pack test rehearsal 20.4 kg", 60),
@@ -391,8 +403,10 @@ def pullup_for_date(d: date) -> str | None:
         return None
     if d < QUALITY_START or d > PULLUP_END:
         return None
+    # The bar is in the house from 27 Oct. Strict reps are still 0, so the
+    # first phase stays negatives rather than jumping at the bar.
     if d < date(2027, 1, 1):
-        return "Pull-ups — negatives, 3×3–5 (no bar yet)"
+        return "Pull-ups — negatives, 3×3–5 (bar from 27 Oct)"
     if d < date(2027, 2, 1):
         return "Pull-ups — band-assisted, 3×4–6"
     return "Pull-ups — strict, or stay on the band, 3×3–5"
@@ -518,7 +532,9 @@ _PHASE_NOTES = {
     "Return": (
         "One hard session in the last October week, then two from November "
         "(threshold or VO2, on the bike, the rower, or the MaxiClimber). "
-        "Weekend rides reach 3 hours on 29 Nov. Some weekends are back-to-back easy rides."
+        "Strength is twice a week: a lighter endurance session on Wednesday "
+        "and a load session on Saturday. Every 4th week the bells get lighter, "
+        "not the long ride. Sunday reaches 3 hours on 29 Nov."
     ),
     "Tenerife": (
         "Time on the bike, not a distance target. Quality days are 3–4 hours "
@@ -527,7 +543,11 @@ _PHASE_NOTES = {
     ),
     "Keswick build": (
         "Saturday is a hill ruck. The pack reaches 20.4 kg on 6 Feb. "
-        "Deadlifts are a sandbag or a barbell. Pull-ups are a short add-on three days a week."
+        "Tuesday is the hard ride, then sandbag deadlift sets. Wednesday is "
+        "the lighter strength session, before Thursday. The week of 25 Jan "
+        "is a load deload. The week of 8 Feb practises step-overs and "
+        "burpee pull-ups. The week of 15 Feb is the taper. "
+        "Pull-ups stay a short add-on three days a week."
     ),
     "Lakes": "The weekend is on foot. The hill names are options, not a fixed route.",
     "Recovery": "Walks and short easy rides. No strength session.",
