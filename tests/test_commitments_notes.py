@@ -137,7 +137,7 @@ def test_phase_categorisation():
     label, cat = _current_training_phase(date(2026, 9, 13))
     assert cat == "medical"
     label, cat = _current_training_phase(date(2026, 10, 11))
-    assert "procedure week" in label
+    assert "clearance week" in label
     assert cat == "medical"
     # Year 2 not live — Aug 2027 is fitness maintenance, not HR taper
     label, cat = _current_training_phase(date(2027, 8, 20))

@@ -30,16 +30,19 @@ def _hards(monday: date) -> list[date]:
     ]
 
 
-def test_quality_returns_after_the_easy_week_then_two():
-    assert _hards(date(2026, 10, 19)) == []
-    assert _hards(date(2026, 10, 26)) == [date(2026, 10, 27)]
-    later = _hards(date(2026, 11, 2))
-    assert later == [date(2026, 11, 3), date(2026, 11, 5)]
+def test_quality_starts_20_oct_then_two_from_26_oct():
+    assert _hards(date(2026, 10, 12)) == []
+    assert _hards(date(2026, 10, 19)) == [date(2026, 10, 20)]
+    later = _hards(date(2026, 10, 26))
+    assert later == [date(2026, 10, 27), date(2026, 10, 29)]
     assert later[1] - later[0] >= timedelta(days=2)
+    nov = _hards(date(2026, 11, 2))
+    assert nov == [date(2026, 11, 3), date(2026, 11, 5)]
+    assert nov[1] - nov[0] >= timedelta(days=2)
 
 
 def test_three_hour_sunday_survives_the_weekly_cap():
-    day = date(2026, 11, 29)
+    day = date(2026, 11, 22)
     assert session_for_date(day)[2] == 180
     assert prescribed_session(day).session[2] == 180
 
@@ -51,9 +54,9 @@ def test_camp_week_is_not_trimmed_to_the_home_cap():
     assert long_quality.session[2] == 240
 
 
-def test_procedure_week_does_not_cap_the_return():
+def test_clearance_week_does_not_cap_the_return():
     ride = prescribed_session(date(2026, 10, 25))
-    assert ride.session == ("long", "Long Ride (Easy)", 60)
+    assert ride.session == ("long", "Long Ride (Easy)", 70)
 
 
 def test_pullups_three_days_a_week_change_phase():
@@ -77,9 +80,10 @@ def test_ruck_reaches_pack_test_load_without_a_kettlebell_deadlift():
     skills = session_for_date(date(2027, 2, 9))
     assert "step-overs" in skills[1]
     assert "burpee" in skills[1]
-    assert session_for_date(date(2026, 11, 5))[0] == "rower"
-    assert session_for_date(date(2026, 12, 3))[0] == "maxiclimber"
-    assert session_for_date(date(2026, 10, 20))[0] == "kettlebell"
+    assert session_for_date(date(2026, 10, 29))[0] == "rower"
+    assert session_for_date(date(2026, 11, 26))[0] == "maxiclimber"
+    assert session_for_date(date(2026, 10, 20))[0] == "threshold"
+    assert session_for_date(date(2026, 10, 21))[0] == "strength"
 
 
 def test_foster_load_prefers_rpe_and_terrains_a_ruck():
