@@ -1262,8 +1262,16 @@ async def calendar_view(request: Request):
     # Live calendar is the fitness year. The cancelled charity block stays at /training/charity.
     ctx["preplan_weeks"] = []
     ctx["archive_plan_href"] = "/training/charity"
+    from ..session_detail import attach_calendar_details, attach_logged_activities
+    fitness_weeks = ctx.get("fitness_weeks") or []
+    attach_calendar_details(fitness_weeks, today=today)
+    if fitness_weeks and fitness_weeks[0].get("days") and fitness_weeks[-1].get("days"):
+        fit_start = fitness_weeks[0]["days"][0]["date"]
+        fit_end = fitness_weeks[-1]["days"][-1]["date"]
+        fit_acts = load_activities_by_date(fit_start, min(fit_end, today))
+        attach_logged_activities(fitness_weeks, fit_acts, today=today)
     unified: list[dict] = []
-    for i, w in enumerate(ctx.get("fitness_weeks") or []):
+    for i, w in enumerate(fitness_weeks):
         unified.append({**w, "phase": "fitness", "phase_start": i == 0})
     ctx["unified_weeks"] = unified
 
