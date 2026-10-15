@@ -8,16 +8,20 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-PLAN_START = date(2026, 10, 12)  # Monday of the procedure week
+PLAN_START = date(2026, 10, 12)  # Monday of the clearance week
 PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
 
+# Week of 12 Oct: clinic on Thu 15 Oct found the fragments had already passed.
+# ESWL was not performed. Only a confirmation CT remains. This week is still
+# a light base (not used for the +10% load rule), and it does not open a
+# MEDICAL_RETURN_EASY_DAYS window — see safety._procedure_dates.
 PROCEDURE_START = date(2026, 10, 12)
 PROCEDURE_END = date(2026, 10, 18)
-# Procedure day is Thu 15 Oct. The next 7 days (16–22 Oct) stay easy.
-# The first hard session is Tue 27 Oct, the first Tuesday after that window.
-EASY_RETURN_END = date(2026, 10, 22)
-QUALITY_START = date(2026, 10, 27)
-TWO_QUALITY_FROM = date(2026, 11, 2)
+QUALITY_START = date(2026, 10, 20)   # first hard session (threshold bike)
+TWO_QUALITY_FROM = date(2026, 10, 26)
+PULLUP_START = date(2026, 10, 27)    # bar in the house; negatives start here
+# Kept for older imports / docs that still name the easy-return end.
+EASY_RETURN_END = date(2026, 10, 18)
 
 # Working numbers for this athlete. Max HR 191 is the measured value the
 # existing zone model already uses — this constant does not move the zones.
@@ -85,17 +89,17 @@ _CAMP: dict[date, tuple[str, str, int]] = {
 
 _PROCEDURE: tuple[tuple[str, str, int], ...] = (
     ("rest", "Rest", 0),
-    ("hike", "Optional easy walk", 30),
-    ("bike", "Optional easy ride", 40),
-    ("rest", "Procedure day", 0),
+    ("hike", "Easy walk", 30),
+    ("bike", "Z2 Easy", 40),
+    ("rest", "Attended — no treatment", 0),
     ("rest", "Rest", 0),
-    ("hike", "Optional easy walk", 30),
-    ("bike", "Optional easy ride", 45),
+    ("hike", "Easy hill walk — light pack", 45),
+    ("long", "Long Ride (Easy)", 60),
 )
 
-# Pull-ups three days a week (Tue, Thu, Sat) from the first quality week
-# through the day before the BUSAR test. The bar arrives 27 Oct. Strict reps
-# are still 0, so the add-on starts with negatives.
+# Pull-ups three days a week (Tue, Thu, Sat) from the bar's arrival through
+# the day before the BUSAR test. Strict reps are still 0, so the add-on
+# starts with negatives.
 _PULLUP_WEEKDAYS = (1, 3, 5)
 PULLUP_END = date(2027, 2, 19)
 
@@ -121,11 +125,10 @@ def garmin_allowed(d: date, stype: str, label: str) -> bool:
     """True for fitness-year bike days that should be scheduled on Garmin.
 
     Easy Z2 / long rides plus bike threshold and bike VO2 (including camp
-    quality days). Teide, Masca, sweetspot/tempo race labels, and non-bike
-    sessions stay off the watch.
+    quality days and clearance-week easy bikes). Teide, Masca, sweetspot/tempo
+    race labels, and non-bike sessions stay off the watch. Clinic day is rest
+    so it never pushes; clearance-week easy bikes are allowed.
     """
-    if in_procedure_week(d):
-        return False
     if stype in _BLOCKED_PUSH_TYPES:
         return False
     lowered = label.lower()
@@ -243,23 +246,15 @@ def _wk(*days: tuple[str, str, int]) -> tuple[tuple[str, str, int], ...]:
 
 
 # Monday → seven sessions. Totals stay inside the +10% weekly cap once the
-# procedure week is no longer the load base. Hard days are Tuesday, then
-# Tuesday and Thursday from 2 Nov, so they are never adjacent.
-# Strength is two days: Wednesday is the lighter endurance session (it sits
-# the day before Thursday's hard work), Saturday is the load session (Friday
-# is rest, Sunday is an easy ride). Labels avoid the word "heavy" because
-# safety.py counts that word as a hard session.
+# clearance week is no longer the load base. Hard days are Tuesday from
+# 20 Oct, then Tuesday and Thursday from 26 Oct, so they are never adjacent.
+# Strength is two days from 21 Oct: Wednesday is the lighter endurance
+# session (it sits the day before Thursday's hard work), Saturday is the
+# load session (Friday is rest, Sunday is an easy ride). Labels avoid the
+# word "heavy" because safety.py counts that word as a hard session.
 _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
+    # One hard day (Tue). Strength starts Wed 21 Oct.
     date(2026, 10, 19): _wk(
-        ("rest", "Rest", 0),
-        ("kettlebell", "Kettlebell — easy circuit", 35),
-        ("bike", "Z2 Easy", 45),
-        ("hike", "Easy steps", 30),
-        ("rest", "Rest", 0),
-        ("strength", "Strength — load", 45),
-        ("long", "Long Ride (Easy)", 60),
-    ),
-    date(2026, 10, 26): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
         ("strength", "Strength — endurance", 45),
@@ -268,7 +263,8 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 70),
     ),
-    date(2026, 11, 2): _wk(
+    # Two hard days from here.
+    date(2026, 10, 26): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
         ("strength", "Strength — endurance", 45),
@@ -277,8 +273,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 85),
     ),
-    # Fourth strength week: same minutes, lighter bells.
-    date(2026, 11, 9): _wk(
+    date(2026, 11, 2): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
         ("strength", "Strength — endurance", 50),
@@ -287,7 +282,8 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 55),
         ("long", "Long Ride (Easy)", 100),
     ),
-    date(2026, 11, 16): _wk(
+    # Fourth strength week: same minutes, lighter bells.
+    date(2026, 11, 9): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 45),
         ("strength", "Strength — endurance", 50),
@@ -296,9 +292,9 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 55),
         ("long", "Long Ride (Easy)", 115),
     ),
-    # First 3-hour Sunday (29 Nov). Saturday is the load session, kept short
+    # First 3-hour Sunday (22 Nov). Saturday is the load session, kept short
     # of failure so the long ride stays easy.
-    date(2026, 11, 23): _wk(
+    date(2026, 11, 16): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
         ("strength", "Strength — endurance", 30),
@@ -307,7 +303,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 50),
         ("long", "Long Ride (Easy)", 180),
     ),
-    date(2026, 11, 30): _wk(
+    date(2026, 11, 23): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
         ("strength", "Strength — endurance", 30),
@@ -316,14 +312,23 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — load", 80),
         ("long", "Long Ride (Easy)", 180),
     ),
-    # Eighth strength week: lighter bells again.
-    date(2026, 12, 7): _wk(
+    date(2026, 11, 30): _wk(
         ("rest", "Rest", 0),
         ("vo2", "VO2 — bike", 40),
         ("strength", "Strength — endurance", 45),
         ("rower", "Threshold — rower", 40),
         ("rest", "Rest", 0),
         ("strength", "Strength — load", 60),
+        ("long", "Long Ride (Easy)", 180),
+    ),
+    # Eighth strength week: lighter bells again.
+    date(2026, 12, 7): _wk(
+        ("rest", "Rest", 0),
+        ("threshold", "Threshold — bike", 40),
+        ("strength", "Strength — endurance", 40),
+        ("rower", "VO2 — rower", 40),
+        ("rest", "Rest", 0),
+        ("strength", "Strength — load", 100),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 12, 14): _wk(
@@ -416,7 +421,7 @@ def pullup_for_date(d: date) -> str | None:
     """Short pull-up add-on, three days a week. Not a separate load block."""
     if d.weekday() not in _PULLUP_WEEKDAYS:
         return None
-    if d < QUALITY_START or d > PULLUP_END:
+    if d < PULLUP_START or d > PULLUP_END:
         return None
     # The bar is in the house from 27 Oct. Strict reps are still 0, so the
     # first phase stays negatives rather than jumping at the bar.
@@ -516,7 +521,7 @@ def _maintenance_day(wd: int) -> tuple[str, str, int]:
 
 def _phase_name(mon: date) -> str:
     if mon == PROCEDURE_START or date(2026, 10, 19) <= mon <= date(2026, 12, 14):
-        return "Return" if mon != PROCEDURE_START else "Procedure"
+        return "Return" if mon != PROCEDURE_START else "Clearance"
     if date(2026, 12, 21) <= mon <= date(2026, 12, 28):
         return "Tenerife"
     if date(2027, 1, 4) <= mon <= date(2027, 2, 15):
@@ -539,17 +544,18 @@ def _fmt_dur(dur: int) -> str:
 
 
 _PHASE_NOTES = {
-    "Procedure": (
-        "Second procedure around 15 Oct. Walk, or a short flat or turbo ride, "
-        "only if discharge advice allows it and you are pain-free. "
-        "Stop for flank pain, fever, or blood in the urine."
+    "Clearance": (
+        "ESWL on 15 Oct was not performed — the fragments had already passed. "
+        "Only a confirmation CT remains. Weekend is a normal easy hill walk "
+        "with a light pack and a one-hour easy ride. "
+        "Until the confirmation CT: stop for flank pain, fever or blood."
     ),
     "Return": (
-        "One hard session in the last October week, then two from November "
+        "First hard session Tue 20 Oct, then two from the week of 26 Oct "
         "(threshold or VO2, on the bike, the rower, or the MaxiClimber). "
-        "Strength is twice a week: a lighter endurance session on Wednesday "
-        "and a load session on Saturday. Every 4th week the bells get lighter, "
-        "not the long ride. Sunday reaches 3 hours on 29 Nov."
+        "Strength is twice a week from 21 Oct: a lighter endurance session "
+        "on Wednesday and a load session on Saturday. Every 4th week the "
+        "bells get lighter, not the long ride. Sunday reaches 3 hours on 22 Nov."
     ),
     "Tenerife": (
         "Time on the bike, not a distance target. Quality days are 3–4 hours "

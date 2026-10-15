@@ -9,7 +9,7 @@ def test_compliance_weeks_are_the_fitness_year():
     assert weeks
     assert all(w["phase"] == "fitness" for w in weeks)
     assert weeks[0]["start"] == date(2026, 10, 12)
-    assert weeks[0]["phase_name"] == "Procedure"
+    assert weeks[0]["phase_name"] == "Clearance"
     names = [w["phase_name"] for w in weeks if w["phase_start"]]
     assert "Tenerife" in names
     assert "Keswick build" in names

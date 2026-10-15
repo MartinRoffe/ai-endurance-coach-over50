@@ -13,11 +13,12 @@ MAX_WEEKLY_LOAD_INCREASE = 0.10
     load. Load is Foster's session RPE (RPE 1–10 × minutes) when a session
     RPE is logged for that date, otherwise the duration in minutes. Rucks and
     hikes also take the pack-weight and vertical-gain factors in ``load.py``.
-    A previous week with no load is not percentage-capped. The procedure week
-    is optional walking, not a training base, so the first week back is not
-    held to +10% of it. Tenerife camp weeks (21 Dec 2026–2 Jan 2027) are a
-    planned block and are not trimmed by the percentage cap. The hard-session,
-    rest-day, back-to-back, and red-flag caps still apply there.
+    A previous week with no load is not percentage-capped. The clearance week
+    of 12 Oct 2026 (clinic visit, no ESWL) is a light base, not a training
+    base, so the first hard week is not held to +10% of it. Tenerife camp
+    weeks (21 Dec 2026–2 Jan 2027) are a planned block and are not trimmed
+    by the percentage cap. The hard-session, rest-day, back-to-back, and
+    red-flag caps still apply there.
 
 MAX_HARD_SESSIONS_PER_WEEK = 2
     At most two hard / intensity sessions Monday–Sunday.
@@ -26,14 +27,16 @@ MIN_REST_DAYS_PER_WEEK = 1
     Every week keeps at least one full rest day.
 
 MEDICAL_RETURN_EASY_DAYS = 7
-    After a logged procedure (stent removal, the 15 Oct 2026 procedure) or the
-    end of the medical pause, and for the whole procedure week, sessions are
-    easy-only. Easy means not a hard type/label and not longer than
-    EASY_ONLY_MAX_MIN (75).
+    After a logged procedure (stent removal, and any future procedure dates
+    listed in ``_procedure_dates``) or the end of the medical pause, sessions
+    are easy-only. Easy means not a hard type/label and not longer than
+    EASY_ONLY_MAX_MIN (75). The 15 Oct 2026 clinic day is not a procedure
+    date: ESWL was not performed, so it does not open this window.
 
 Red-flag symptoms the app already models (illness 2-of-3 from HRV, resting
 HR, and sleep, plus flank pain / fever / blood in the urine recorded on the
 day's session note) replace the session with rest. That override wins.
+Until the confirmation CT, the same stop rule applies in the plan copy.
 """
 from __future__ import annotations
 
@@ -216,19 +219,20 @@ class _Slot:
 
 
 def _procedure_dates() -> tuple[date, ...]:
-    from .fitness_plan import PROCEDURE_START
+    """Logged procedure days that open a MEDICAL_RETURN_EASY_DAYS window.
+
+    Stent removal is one. The 15 Oct 2026 clinic day is not: ESWL was not
+    performed (fragments had already passed), so it is omitted on purpose.
+    Add future procedure dates here when they are logged.
+    """
     from .medical import STENT_REMOVAL_DATE
-    # Thursday of the procedure week is the logged procedure day.
-    return (STENT_REMOVAL_DATE, PROCEDURE_START + timedelta(days=3))
+    return (STENT_REMOVAL_DATE,)
 
 
 def in_easy_return(day: date) -> bool:
-    """Procedure week, plus MEDICAL_RETURN_EASY_DAYS after each procedure and the pause."""
-    from .fitness_plan import in_procedure_week
+    """MEDICAL_RETURN_EASY_DAYS after each logged procedure and the pause."""
     from .medical import MEDICAL_PAUSE_END
 
-    if in_procedure_week(day):
-        return True
     anchors = list(_procedure_dates()) + [MEDICAL_PAUSE_END]
     for anchor in anchors:
         start = anchor + timedelta(days=1)
@@ -239,6 +243,7 @@ def in_easy_return(day: date) -> bool:
 
 
 def _procedure_week(monday: date) -> bool:
+    """True for the light clearance week of 12 Oct (not a +10% load base)."""
     from .fitness_plan import in_procedure_week
     return any(in_procedure_week(monday + timedelta(days=i)) for i in range(7)) and (
         in_procedure_week(monday)
@@ -492,7 +497,7 @@ def prescribed_week(
     previous_load: Optional[float] = None
     previous_day: Optional[Session] = None
     prev_monday = monday - timedelta(days=7)
-    # Procedure week is not a training base. Camp weeks are a planned block.
+    # Clearance week of 12 Oct is not a training base. Camp weeks are a planned block.
     use_percentage = not _camp_week(monday)
     if depth < 120 and use_percentage and _week_has_plan(prev_monday) and not _procedure_week(prev_monday):
         prev = prescribed_week(prev_monday, cache, symptoms=False, depth=depth + 1)

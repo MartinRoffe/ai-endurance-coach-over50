@@ -53,9 +53,10 @@ def test_august_and_hr_appear_in_bike_schedule():
     assert "Tenerife — Teide West" not in labels
     assert "Tenerife — Teide Full Loop" not in labels
     assert "Low Cadence Sweetspot" not in labels
-    assert "2026-10-15" not in dates  # procedure day, not pushed
-    assert "2026-10-21" in dates      # first return-week Z2 Easy
-    assert "2026-10-27" in dates      # Threshold — bike is now pushed
+    assert "2026-10-15" not in dates  # clinic day (no treatment), not pushed
+    assert "2026-10-18" in dates      # clearance-week Long Ride (Easy)
+    assert "2026-10-20" in dates      # Threshold — bike is now pushed
+    assert "2026-10-25" in dates      # first return-week Long Ride (Easy)
     assert "2026-12-23" in dates      # Camp quality — threshold
     assert "2026-12-24" in dates      # camp easy day, still pushed
     assert "2026-12-26" not in dates  # optional Teide day is not pushed

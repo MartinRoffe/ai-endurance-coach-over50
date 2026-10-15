@@ -240,7 +240,10 @@ def _fill(detail: dict[str, Any], d: date, stype: str, label: str, dur: int, boo
     if stype in ("bike", "long", "endurance") or "z2" in low or "long ride" in low:
         _fill_easy_bike(detail, label, dur, book)
         return
-    detail["purpose"] = "Do the session as written. Stop for flank pain, fever, or blood in the urine."
+    detail["purpose"] = (
+        "Do the session as written. Until the confirmation CT: stop for flank pain, "
+        "fever or blood."
+    )
     detail["rpe_target"] = "Easy"
     detail["blocks"] = [
         _block("Warm-up", "5–10 min easy."),
@@ -254,10 +257,16 @@ def _fill_rest(detail: dict[str, Any], label: str) -> None:
     detail["rpe_target"] = "—"
     detail["intensity"] = "Rest"
     low = label.lower()
-    if "procedure" in low:
+    if "attended" in low or "no treatment" in low:
         detail["purpose"] = (
-            "Procedure day. No training. Walk only if discharge advice allows it "
-            "and you are pain-free. Stop for flank pain, fever, or blood in the urine."
+            "Clinic day. ESWL was not performed — the fragments had already passed. "
+            "No training today. Until the confirmation CT: stop for flank pain, "
+            "fever or blood."
+        )
+    elif "procedure" in low:
+        detail["purpose"] = (
+            "Procedure day. No training. Until the confirmation CT: stop for "
+            "flank pain, fever or blood."
         )
     elif "travel" in low:
         detail["purpose"] = "Travel day. Walk through the airport. No session to make up later."
@@ -398,9 +407,9 @@ def _easy_circuit(detail: dict[str, Any]) -> None:
     detail["rpe_target"] = "4"
     detail["deload"] = False
     detail["purpose"] = (
-        "First strength day back, and still inside the easy week after the procedure. "
-        "Reintroduce the squat, the hinge, the row, and the press. Stop while it feels easy. "
-        + _KIT
+        "Easy kettlebell circuit. Reintroduce the squat, the hinge, the row, and "
+        "the press. Stop while it feels easy. Until the confirmation CT: stop for "
+        "flank pain, fever or blood. " + _KIT
     )
     detail["blocks"] = [
         _block("Warm-up", "5 min easy march, or an easy row."),
@@ -452,19 +461,19 @@ def _load(detail: dict[str, Any], d: date, dur: int) -> None:
             _ex("Suitcase carry", "2×30 m", "16 kg", "Walk tall", "90 s"),
         ],
         date(2026, 11, 21): [
-            _ex("Goblet squat", "4×4", "24 kg", "3-1-1", "2 min"),
-            _ex("Kettlebell deadlift (hinge, not the test lift)", "4×5", "24 kg", "3-1-1", "2 min"),
-            _ex("One-arm row", "4×5 / side", "24 kg", "2-1-2", "2 min"),
-            _ex("Strict press", "4×4 / side", "14 kg", "2-1-2", "90 s"),
-            _ex("Turkish get-up", "3×3 / side", "12 kg", "Slow, about 30 s a rep", "90 s"),
-            _ex("Suitcase carry", "3×40 m", "24 kg", "Walk tall", "90 s"),
-        ],
-        date(2026, 11, 28): [
             _ex("Goblet squat", "3×5", "24 kg", "3-1-1", "2 min"),
             _ex("Kettlebell deadlift (hinge, not the test lift)", "3×5", "24 kg", "3-1-1", "2 min"),
             _ex("One-arm row", "3×5 / side", "20 kg", "2-1-2", "90 s"),
             _ex("Strict press", "3×5 / side", "14 kg", "2-1-2", "90 s"),
             _ex("Suitcase carry", "2×40 m", "20 kg", "Walk tall", "90 s"),
+        ],
+        date(2026, 11, 28): [
+            _ex("Goblet squat", "4×5", "24 kg", "3-1-1", "2 min"),
+            _ex("One-arm row", "4×5 / side", "24 kg", "2-1-2", "2 min"),
+            _ex("Strict press", "3×5 / side", "14 kg", "2-1-2", "90 s"),
+            _ex("Turkish get-up", "3×3 / side", "12 kg", "Slow, about 30 s a rep", "90 s"),
+            _ex("Step-up", "3×8 / leg", "16 kg in the rack", "2 s up, 3 s down", "60 s"),
+            _ex("Suitcase carry", "3×40 m", "24 kg", "Walk tall", "90 s"),
         ],
         date(2026, 12, 5): [
             _ex("Goblet squat", "4×5", "24 kg", "3-1-1", "2 min"),
@@ -505,7 +514,7 @@ def _load(detail: dict[str, Any], d: date, dur: int) -> None:
             "Deload. Same movements, fewer sets, one bell lighter. The Sunday ride does not shrink "
             "this week — the lifting does. " + _KIT
         )
-    elif d == date(2026, 11, 28):
+    elif d == date(2026, 11, 21):
         detail["purpose"] = (
             "Load day before the first 3-hour Sunday. Leave 2 or 3 reps in reserve. "
             "Sunday stays in zone 2 even if the legs feel dull. " + _KIT
@@ -529,22 +538,29 @@ def _endurance(detail: dict[str, Any], d: date, dur: int) -> None:
     detail["role"] = "endurance"
     detail["rpe_target"] = "5" if detail["deload"] else "6"
     rounds = "2 rounds" if detail["deload"] or dur <= 30 else "3 rounds"
-    if d in (date(2026, 11, 18),):
+    if d in (date(2026, 11, 4),):
         rounds = "4 rounds"
     catalog = {
-        date(2026, 10, 28): [
+        date(2026, 10, 21): [
             _ex("Two-hand swing", "3×10", "16 kg", "Hike and float", "45 s"),
             _ex("Goblet squat", "3×8", "16 kg", "3-1-1", "45 s"),
             _ex("Step-up", "3×8 / leg", "8 kg, or bodyweight", "2 s up, 3 s down", "45 s"),
             _ex("One-arm row", "3×8 / side", "12 kg", "2-1-2", "45 s"),
             _ex("Suitcase carry", "3×20 m", "16 kg", "Walk tall", "90 s between rounds"),
         ],
-        date(2026, 11, 4): [
+        date(2026, 10, 28): [
             _ex("Two-hand swing", "3×12", "20 kg", "Hike and float", "45 s"),
             _ex("Goblet squat", "3×8", "20 kg", "3-1-1", "45 s"),
             _ex("Step-up", "3×8 / leg", "12 kg", "2 s up, 3 s down", "45 s"),
             _ex("One-arm row", "3×8 / side", "16 kg", "2-1-2", "45 s"),
             _ex("Suitcase carry", "3×20 m", "20 kg", "Walk tall", "90 s between rounds"),
+        ],
+        date(2026, 11, 4): [
+            _ex("Two-hand swing", "4×12", "20 kg", "Hike and float", "45 s"),
+            _ex("Goblet squat", "4×8", "20 kg", "3-1-1", "45 s"),
+            _ex("Step-up", "4×8 / leg", "12 kg", "2 s up, 3 s down", "45 s"),
+            _ex("One-arm row", "4×8 / side", "16 kg", "2-1-2", "45 s"),
+            _ex("Suitcase carry", "4×30 m", "20 kg", "Walk tall", "90 s between rounds"),
         ],
         date(2026, 11, 11): [
             _ex("Two-hand swing", "2×8", "16 kg", "Hike and float", "60 s"),
@@ -554,11 +570,11 @@ def _endurance(detail: dict[str, Any], d: date, dur: int) -> None:
             _ex("Suitcase carry", "2×20 m", "12 kg", "Walk tall", "90 s between rounds"),
         ],
         date(2026, 11, 18): [
-            _ex("Two-hand swing", "4×12", "20 kg", "Hike and float", "45 s"),
-            _ex("Goblet squat", "4×8", "20 kg", "3-1-1", "45 s"),
-            _ex("Step-up", "4×8 / leg", "12 kg", "2 s up, 3 s down", "45 s"),
-            _ex("One-arm row", "4×8 / side", "16 kg", "2-1-2", "45 s"),
-            _ex("Suitcase carry", "4×30 m", "20 kg", "Walk tall", "90 s between rounds"),
+            _ex("Two-hand swing", "2×10", "20 kg", "Hike and float", "45 s"),
+            _ex("Goblet squat", "2×6", "16 kg", "3-1-1", "45 s"),
+            _ex("Step-up", "2×6 / leg", "12 kg", "2 s up, 3 s down", "45 s"),
+            _ex("One-arm row", "2×6 / side", "16 kg", "2-1-2", "45 s"),
+            _ex("Suitcase carry", "2×20 m", "16 kg", "Walk tall", "90 s between rounds"),
         ],
         date(2026, 11, 25): [
             _ex("Two-hand swing", "2×10", "20 kg", "Hike and float", "45 s"),
@@ -1032,14 +1048,38 @@ def _fill_hike(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
             _block("Main set", "Stairs or a single step. Change the lead leg every minute. Three seconds down. No pack."),
             _block("Cool-down", "5 min flat walking."),
         ]
-        detail["purpose"] = "Easy steps. Time on your feet, and the pattern the step-overs will use later. No pack this soon after the procedure block."
+        detail["purpose"] = (
+            "Easy steps. Time on your feet, and the pattern the step-overs will use later. "
+            "Until the confirmation CT: stop for flank pain, fever or blood."
+        )
+        return
+    if "light pack" in low or "hill walk" in low:
+        detail["blocks"] = [
+            _block("Warm-up", "10 min easy on the flat."),
+            _block(
+                "Main set",
+                f"Hill walk for the rest of the {_fmt_dur(dur) or 'session'}. "
+                "Light pack (about 5–8 kg). Conversation pace. Short steps on the way down.",
+            ),
+            _block("Cool-down", "The last 5–10 min flatter and easier."),
+        ]
+        detail["ruck_pack"] = "About 5–8 kg. Light enough that the walk stays easy."
+        detail["ruck_route"] = "Local hill. Hadleigh from Leigh-on-Sea is the default repeatable climb."
+        detail["ruck_elevation"] = "Whatever that hill already gives you. This is not a loaded ruck yet."
+        detail["purpose"] = (
+            "Normal easy weekend walk with a light pack. ESWL was not performed. "
+            "Until the confirmation CT: stop for flank pain, fever or blood."
+        )
         return
     detail["blocks"] = [
         _block("Warm-up", "10 min easy, on the flat if you can."),
         _block("Main set", f"Walk for the rest of the {_fmt_dur(dur) or 'session'}. Conversation pace. Short steps on the way down."),
         _block("Cool-down", "The last 5–10 min flatter and easier."),
     ]
-    detail["purpose"] = "Easy time on foot. The bike does not train descents."
+    detail["purpose"] = (
+        "Easy time on foot. The bike does not train descents. "
+        "Until the confirmation CT: stop for flank pain, fever or blood."
+    )
 
 
 def brief_activity(activity: dict) -> dict[str, Any]:
