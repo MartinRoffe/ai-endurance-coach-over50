@@ -55,9 +55,12 @@ def test_august_and_hr_appear_in_bike_schedule():
     assert "Low Cadence Sweetspot" not in labels
     assert "2026-10-15" not in dates  # clinic day (no treatment), not pushed
     assert "2026-10-18" in dates      # clearance-week Long Ride (Easy)
+    assert "2026-10-20" in dates      # Threshold — bike is now pushed
     assert "2026-10-25" in dates      # first return-week Long Ride (Easy)
+    assert "2026-12-23" in dates      # Camp quality — threshold
     assert "2026-12-24" in dates      # camp easy day, still pushed
     assert "2026-12-26" not in dates  # optional Teide day is not pushed
+    assert "2026-12-30" in dates      # Camp quality — VO2
     # Medical pause / cancelled charity — no Sep event-prep quality
     assert "2026-09-05" not in dates
     assert "2026-09-06" not in dates

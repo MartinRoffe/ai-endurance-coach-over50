@@ -78,6 +78,8 @@ The week of 22 Feb stays light. Default routes: Saturday high is Skiddaw by Jenk
 
 ### Scotland prep · ready from Mon 22 Mar 2027
 
+Hours are ceilings. Exact hills are chosen that week from the conditions report (same pattern as Keswick). Overnight winter pack is about 22 kg when a night out is planned. Fitness is not winter skill — ice axe, crampons, and navigation need a skills refresh before relying on them.
+
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 8 Mar 2027 | Rest | Strength — heavy · 45m | Z2 Easy · 1h | Step-downs + steps · 30m | Rest | Long hill walk · 3h | Back-to-back hill walk · 2h |
@@ -94,7 +96,7 @@ From **Mon 29 Mar** through **Sun 3 Oct** the same week repeats. October is a ch
 
 ## Session library
 
-**Threshold / VO2.** One hard session from 20 Oct, two from 26 Oct. Bike, rower, or MaxiClimber. Not pushed to Garmin.
+**Threshold / VO2.** One hard session from 20 Oct, two from 26 Oct. Bike, rower, or MaxiClimber. Bike and camp quality days are pushed to Garmin; rower and MaxiClimber stay calendar-only.
 
 **Kettlebell.** Swings, goblet squats, presses, rows, carries, get-ups, and step-ups. Bells are 8, 12, 14, 16, 20 and 24 kg. The heaviest bell is not the deadlift.
 
@@ -104,14 +106,14 @@ From **Mon 29 Mar** through **Sun 3 Oct** the same week repeats. October is a ch
 
 **Hill ruck.** 10 kg on 9 Jan, then 12, 15, 18, and **20.4 kg** on 6 Feb. Duration stays about 70 minutes while the kilograms rise. 13 Feb is the timed 3-mile rehearsal at 20.4 kg.
 
-**Z2 Easy / Long Ride (Easy).** The only sessions Garmin receives.
+**Z2 Easy / Long Ride (Easy) / bike threshold / bike VO2 / camp quality bike.** Pushed to Garmin.
 
 **Teide — optional long day.** About 5 hours on 26 Dec. Not pushed.
 
 ## What the app does with this
 
 - The dashboard and calendar read these weeks from `fitness_plan.py`.
-- Garmin receives **Z2 Easy** and **Long Ride (Easy)** only. Quality, rower, MaxiClimber, kettlebell, hikes, rucks, strength, and Teide are not pushed.
+- Garmin receives **Z2 Easy**, **Long Ride (Easy)**, **Threshold — bike**, **VO2 — bike**, and camp quality bike days. Rower, MaxiClimber, kettlebell, hikes, rucks, strength, and Teide are not pushed.
 - Intake is at maintenance from **9 Oct 2026 through 3 Jan 2027**. From **4 Jan through 31 Mar 2027** the ease deficit applies: rest and recovery −650 kcal, training −550, ruck −450, long −350, hard −250. The target is **84–85 kg** by **31 Mar 2027** (`CUT_TARGET_KG` 84.5), about 0.5 kg a week. Hard days keep carbohydrate up. Protein stays on the lean-mass floor.
 - Gravel bike flag is off.
 - Haute Route Alpes 2028 stays the named goal. The week-by-week race block stays off until after the **3 Oct 2027** checkpoint.

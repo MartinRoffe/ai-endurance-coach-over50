@@ -56,10 +56,12 @@ TSB numbers to TrainingPeaks or other tools.
 4. **Establish FTP** — complete a ramp or 20-minute FTP test session from your
    plan (see [FTP lifecycle](#ftp-lifecycle) below). The Readiness tab shows a
    **power baseline** card if the meter is active but no watts FTP exists yet.
-5. **Re-sync Garmin workouts** — after a new FTP value is saved, a **stale
-   workouts** banner appears on Performance. Hit **Sync workouts** (or
+5. **Re-sync Garmin workouts** — **Accept estimate** on the Readiness stale-FTP
+   card re-syncs Garmin %FTP workouts immediately when credentials are set.
+   Other FTP saves (CLI `--set-ftp`, analysis auto-save) still set a **stale
+   workouts** banner on Performance — hit **Sync workouts** (or
    `endurance-coach --workouts`) so scheduled sessions pick up updated %FTP
-   targets. The app does not auto-push workout template changes.
+   targets. CLI `--workouts` clears the stale flag when it finishes.
 
 Hardware setup and ramp-test protocol for Haute Route prep:
 **Haute Route → Power protocol** (`/haute-route/power-protocol`).
@@ -220,8 +222,9 @@ Garmin PMC for "how recovered am I" alongside HRV and readiness. Coggan TSS/PMC
 for "how hard was that ride" and interval pacing. They use different scales.
 
 **Why weren't my Garmin workouts updated automatically after FTP changed?**
-Template re-sync is manual (`/sync-workouts`) so you control when watch workouts
-change. The stale-workouts banner reminds you.
+Accepting an FTP estimate from the dashboard re-syncs templates automatically.
+Other FTP updates leave a stale-workouts banner until `/sync-workouts` or
+`endurance-coach --workouts`.
 
 **Measured vs estimated W/kg?**
 **Measured** — from FTP test watts ÷ weight on test dates (primary when power

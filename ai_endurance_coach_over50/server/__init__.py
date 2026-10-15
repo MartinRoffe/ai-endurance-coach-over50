@@ -750,7 +750,7 @@ class _AcceptFtpRequest(BaseModel):
 
 @app.post("/accept-ftp-estimate")
 async def accept_ftp_estimate(body: _AcceptFtpRequest, _=Depends(_require_auth)):
-    """Persist proposed FTP from threshold evidence; mark workouts stale."""
+    """Persist proposed FTP, then re-sync Garmin %FTP workouts when credentials exist."""
     from ..analysis.power import _mark_workouts_stale
     if body.ftp_w <= 0:
         return JSONResponse({"ok": False, "error": "invalid ftp_w"}, status_code=422)
@@ -769,7 +769,33 @@ async def accept_ftp_estimate(body: _AcceptFtpRequest, _=Depends(_require_auth))
             mark_stale_ftp_accepted(int(body.activity_id))
         except Exception:
             logger.exception("accept_ftp_estimate failed")
-    return JSONResponse({"ok": True, "ftp_w": body.ftp_w, "date": test_date})
+
+    garmin: dict = {"synced": False}
+    email_addr = os.getenv("GARMIN_EMAIL", "")
+    password = os.getenv("GARMIN_PASSWORD", "")
+    if email_addr and password:
+        from fastapi.concurrency import run_in_threadpool
+        try:
+            from ..workouts import upload_and_schedule
+            api = get_api(email_addr, password)
+            summary = await run_in_threadpool(
+                upload_and_schedule, api, False, date.today()
+            )
+            set_cached_text("workouts_stale_ftp", "")
+            garmin = {
+                "synced": True,
+                "scheduled": summary.get("scheduled", 0),
+                "errors": summary.get("errors", 0),
+            }
+        except Exception as e:
+            logger.error("accept-ftp-estimate Garmin sync failed: %s", e)
+            garmin = {"synced": False, "error": str(e)}
+    else:
+        garmin = {"synced": False, "error": "Garmin credentials not set"}
+
+    return JSONResponse({
+        "ok": True, "ftp_w": body.ftp_w, "date": test_date, "garmin": garmin,
+    })
 
 
 @app.post("/upload-fit")

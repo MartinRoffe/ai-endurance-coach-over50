@@ -45,13 +45,21 @@
       try { data = await res.json(); } catch (e) {}
       if (res.ok && data.ok) {
         const g = data.garmin || {};
-        const msg = g.pushed
-          ? '✓ Synced to Garmin Connect.'
-          : '✓ Saved locally — Garmin sync failed.';
-        if (applyBtn) {
-          applyBtn.textContent = g.pushed ? '✓ Synced' : '✓ Saved';
+        if (g.pushed) {
+          if (applyBtn) applyBtn.textContent = '✓ Synced';
+          setStatus(card, '✓ Synced to Garmin Connect.', '#4ade80');
+        } else {
+          const detail = g.error ? (' — ' + g.error) : '';
+          if (applyBtn) {
+            applyBtn.textContent = 'Retry Garmin sync';
+            applyBtn.disabled = false;
+          }
+          setStatus(
+            card,
+            '✓ Saved locally — Garmin sync failed' + detail + '. Retry or use Sync to Watch.',
+            '#fbbf24'
+          );
         }
-        setStatus(card, msg, g.pushed ? '#4ade80' : '#fbbf24');
         card.dispatchEvent(new CustomEvent('planchange:applied', {detail: {proposal, data}}));
         return {ok: true, data};
       }

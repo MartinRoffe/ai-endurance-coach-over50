@@ -370,6 +370,8 @@ def main() -> None:
         else:
             api = get_api(email_addr, password_val)
             upload_and_schedule(api, dry_run=False, from_date=from_d)
+            from .history import set_cached_text
+            set_cached_text("workouts_stale_ftp", "")
         return
 
     email = os.getenv("GARMIN_EMAIL")
@@ -458,8 +460,14 @@ def main() -> None:
             console.print("[dim]No new Withings data to sync.[/dim]")
 
     # Fetch / load today's metrics
+    from .client import GarminAuthError
     needs_api = args.fetch or load(target) is None
-    api = get_api(email, password) if needs_api else None
+    try:
+        api = get_api(email, password) if needs_api else None
+    except GarminAuthError as e:
+        logger.error("garmin auth blocked (non-interactive MFA): %s", e)
+        console.print(f"[red]Garmin login needs MFA in a terminal:[/red] {e}")
+        sys.exit(3)
 
     with console.status("Fetching metrics…") if needs_api else _null_ctx():
         m = _load_or_fetch(target, api=api, force=args.fetch)
@@ -517,6 +525,12 @@ def main() -> None:
         try:
             with console.status("Generating advice…"):
                 run_report(m, dry_run=args.dry_run)
+        except GarminAuthError as e:
+            logger.error("daily email blocked by Garmin MFA: %s", e)
+            if not args.dry_run:
+                sentinel.unlink(missing_ok=True)
+            console.print(f"[red]Garmin MFA required — email not sent:[/red] {e}")
+            sys.exit(3)
         except Exception:
             logger.exception("daily email send failed")
             if not args.dry_run:

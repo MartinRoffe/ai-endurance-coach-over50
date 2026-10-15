@@ -61,7 +61,9 @@ Two further bugs made it worse:
   Only exit code 2 (watch not synced yet) was retried. Garmin, SMTP, and
   missing-environment failures exited immediately, and many of those errors
   were swallowed or logged at DEBUG. The scheduled process only shows WARNING
-  and above, so `daily.log` often had no traceback.
+  and above, so `daily.log` often had no traceback. Non-interactive Garmin MFA
+  now fails with exit code 3 and a clear message (refresh tokens once in a
+  terminal) instead of hanging on `input()`.
 
 `--setup-schedule` now installs a 07:00 job with catch-up, and the email
 command logs failures. A `sent_YYYY-MM-DD` file plus an exclusive lock means

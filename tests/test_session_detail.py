@@ -188,8 +188,25 @@ def test_easy_rides_are_the_ones_pushed_to_garmin():
     assert easy["power_target"]
     assert "220" in easy["power_target"] or "FTP" in easy["power_target"]
     hard = day_detail(date(2026, 10, 20))
-    assert hard["garmin"] is False
+    assert hard["garmin"] is True
     assert "Threshold" in hard["title"] or hard["type"] == "threshold"
+    assert hard["garmin_text"] == "Pushed to Garmin"
+    # Non-bike hard sessions stay calendar-only.
+    rower = day_detail(date(2026, 11, 5))
+    assert "rower" in (rower["title"] or "").lower()
+    assert rower["garmin"] is False
+
+
+def test_scotland_day_has_conditions_structure_not_placeholder():
+    detail = day_detail(date(2027, 3, 22))
+    assert "Scotland" in detail["title"]
+    assert detail["garmin"] is False
+    assert "22 kg" in (detail.get("ruck_pack") or "")
+    assert "conditions" in (detail.get("purpose") or "").lower() or "conditions" in (
+        detail.get("ruck_route") or ""
+    ).lower()
+    assert "placeholder" not in (detail.get("purpose") or "").lower()
+    assert detail["blocks"]
 
 
 def test_clinic_day_detail_names_no_treatment_and_the_ct_rule():

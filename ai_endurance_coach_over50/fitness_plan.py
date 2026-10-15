@@ -1,7 +1,8 @@
 """12-month general fitness block: 12 Oct 2026 → 3 Oct 2027.
 
-Source of truth for the dashboard, calendar, and Garmin easy-bike push.
-Haute Route week-by-week stays gated. Gravel stays off until the bike is in use.
+Source of truth for the dashboard, calendar, and Garmin bike push (easy Z2 / long
+plus bike threshold and bike VO2). Haute Route week-by-week stays gated. Gravel
+stays off until the bike is in use.
 """
 from __future__ import annotations
 
@@ -39,12 +40,21 @@ CAMP_END = date(2027, 1, 2)
 
 GRAVEL_BIKE_ACTIVE = False
 
-# Easy bike labels that already have Garmin builders. Race-quality labels are refused.
-_EASY_BIKE_LABELS = frozenset({
+# Bike labels pushed to Garmin. Easy endurance plus fitness-year hard bike
+# sessions (threshold / VO2 on the bike or turbo). Rower, MaxiClimber, Teide,
+# hikes, strength, and race-sim labels stay calendar-only.
+_GARMIN_BIKE_LABELS = frozenset({
     "Z2 Easy",
     "Long Ride (Easy)",
+    "Threshold — bike",
+    "VO2 — bike",
+    "Camp quality — threshold",
+    "Camp quality — VO2",
 })
-_RACE_TYPES = frozenset({"sweetspot", "vo2", "tempo", "ftp", "back_to_back"})
+# Kept as an alias for callers/tests that still import the old name.
+_EASY_BIKE_LABELS = _GARMIN_BIKE_LABELS
+# Race-sim / HR-vocabulary types that must never be auto-pushed from fitness.
+_BLOCKED_PUSH_TYPES = frozenset({"sweetspot", "tempo", "ftp", "back_to_back"})
 
 BUSAR_STANDARDS = (
     "Pack test: 3 miles flat with 45 lb (20.4 kg) in under 45 minutes.",
@@ -112,15 +122,21 @@ def gravel_sunday_note() -> str:
 
 
 def garmin_allowed(d: date, stype: str, label: str) -> bool:
-    """True only for an easy bike day that should be scheduled on Garmin."""
-    if stype in _RACE_TYPES:
+    """True for fitness-year bike days that should be scheduled on Garmin.
+
+    Easy Z2 / long rides plus bike threshold and bike VO2 (including camp
+    quality days and clearance-week easy bikes). Teide, Masca, sweetspot/tempo
+    race labels, and non-bike sessions stay off the watch. Clinic day is rest
+    so it never pushes; clearance-week easy bikes are allowed.
+    """
+    if stype in _BLOCKED_PUSH_TYPES:
         return False
     lowered = label.lower()
-    if any(tok in lowered for tok in ("teide", "sweetspot", "vo2", "tempo", "masca")):
+    if any(tok in lowered for tok in ("teide", "sweetspot", "tempo", "masca")):
         return False
-    if stype not in ("bike", "long", "endurance", "recovery"):
+    if stype not in ("bike", "long", "endurance", "recovery", "threshold", "vo2"):
         return False
-    return label in _EASY_BIKE_LABELS
+    return label in _GARMIN_BIKE_LABELS
 
 
 def session_for_date(d: date) -> tuple[str, str, int] | None:
@@ -477,7 +493,7 @@ def _scotland_prep_last(wd: int) -> tuple[str, str, int]:
 
 
 def _scotland_placeholder(wd: int) -> tuple[str, str, int]:
-    """Indicative hill week from Mon 22 Mar. Dates and hills are still open."""
+    """Hill week from Mon 22 Mar. Hours are ceilings; hills chosen from conditions."""
     days = (
         ("hike", "Scotland — day on foot", 240),
         ("hike", "Scotland — day on foot", 180),
@@ -557,7 +573,9 @@ _PHASE_NOTES = {
     "Lakes": "The weekend is on foot. The hill names are options, not a fixed route.",
     "Recovery": "Walks and short easy rides. No strength session.",
     "Scotland": (
-        "Two prep weekends, then a hill week. Dates and hills for that week are still open."
+        "Two prep weekends, then a hill week from Mon 22 Mar. Hours are ceilings. "
+        "Pick hills that week from the conditions report (Keswick pattern). "
+        "Overnight pack about 22 kg when you night out."
     ),
     "Maintenance": (
         "This shape holds through the 3 Oct 2027 checkpoint. "

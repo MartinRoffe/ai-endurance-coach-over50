@@ -699,6 +699,19 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "training_load_acute": m.training_load_acute,
     }
 
+    morning_ready = True
+    if target == local_today():
+        morning_ready = morning_metrics_ready(m)
+        if not morning_ready and today_verdict.get("status") == "unknown":
+            today_verdict = {
+                **today_verdict,
+                "reason": (
+                    "Watch has not synced overnight sleep / body battery yet — "
+                    "sync the watch, then hit Sync ↺. Session below is the plan "
+                    "only until morning metrics arrive."
+                ),
+            }
+
     return {
         "date": date_key,
         "date_long": target.strftime("%A, %-d %B %Y"),
@@ -713,6 +726,7 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         "morning_comp_colour": morning_comp_colour,
         "morning_captured_at": morning_captured_at,
         "morning_snapshot": morning_snapshot,
+        "morning_ready": morning_ready,
         "post_workout": post_workout,
         "today_activities": today_activities,
         "wellness": wellness,
