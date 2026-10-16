@@ -181,6 +181,27 @@ def test_ruck_detail_carries_the_pack_and_the_flat_rehearsal():
     assert not garmin_allowed(date(2027, 2, 13), "ruck", rehearsal["title"])
 
 
+def _hard_dates(monday: date) -> list[date]:
+    found = []
+    for offset in range(7):
+        day = monday + timedelta(days=offset)
+        session = session_for_date(day)
+        if session is not None and is_hard(session):
+            found.append(day)
+    return found
+
+
+def _assert_push_text_matches_flag(detail: dict) -> None:
+    """Garmin push is stated once, on garmin_text, and matches the flag."""
+    purpose = detail["purpose"].lower()
+    assert "pushed to garmin" not in purpose
+    assert "not pushed" not in purpose
+    if detail["garmin"]:
+        assert detail["garmin_text"] == "Pushed to Garmin"
+    else:
+        assert detail["garmin_text"] == "Not pushed to Garmin"
+
+
 def test_easy_rides_are_the_ones_pushed_to_garmin():
     easy = day_detail(date(2026, 10, 18))
     assert easy["garmin"] is True
@@ -195,6 +216,45 @@ def test_easy_rides_are_the_ones_pushed_to_garmin():
     rower = day_detail(date(2026, 11, 5))
     assert "rower" in (rower["title"] or "").lower()
     assert rower["garmin"] is False
+    _assert_push_text_matches_flag(rower)
+
+
+def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
+    """Tue 20 Oct is the only hard session that week, and it is pushed."""
+    assert _hard_dates(date(2026, 10, 19)) == [date(2026, 10, 20)]
+    detail = day_detail(date(2026, 10, 20))
+    assert detail["type"] == "threshold"
+    assert detail["duration_min"] == 40
+    assert "the only hard day this week" in detail["purpose"].lower()
+    assert "two hard" not in detail["purpose"].lower()
+    assert detail["garmin"] is True
+    _assert_push_text_matches_flag(detail)
+
+
+def test_week_from_26_oct_has_two_hard_days_and_push_text_agrees():
+    """Two hard days from the week of 26 Oct. Bike is pushed; the rower is not."""
+    hard = _hard_dates(date(2026, 10, 26))
+    assert hard == [date(2026, 10, 27), date(2026, 10, 29)]
+    bike = day_detail(date(2026, 10, 27))
+    assert "one of the two hard days this week" in bike["purpose"].lower()
+    assert "only hard day" not in bike["purpose"].lower()
+    assert bike["garmin"] is True
+    _assert_push_text_matches_flag(bike)
+    rower = day_detail(date(2026, 10, 29))
+    assert rower["garmin"] is False
+    _assert_push_text_matches_flag(rower)
+    # VO2 bike in a later two-hard week uses the same count.
+    vo2 = day_detail(date(2026, 11, 3))
+    assert vo2["type"] == "vo2"
+    assert len(_hard_dates(date(2026, 11, 2))) == 2
+    assert "one of the two hard days this week" in vo2["purpose"].lower()
+    assert vo2["garmin"] is True
+    _assert_push_text_matches_flag(vo2)
+
+
+def test_purpose_never_restates_garmin_push_status():
+    for day in _days(date(2026, 10, 12), date(2027, 3, 22)):
+        _assert_push_text_matches_flag(day_detail(day))
 
 
 def test_scotland_day_has_conditions_structure_not_placeholder():
@@ -232,6 +292,31 @@ def test_logged_activity_brief_is_plain_data():
     assert brief["distance_km"] == 18.0
     assert brief["avg_hr"] == 128
     assert brief["avg_power_w"] == 150
+
+
+def test_day_detail_template_shows_one_push_status_and_the_week_count():
+    """The dialog for 20 Oct must not contradict itself, and 27 Oct names two."""
+    env = TEMPLATES.env
+
+    def render(day: date) -> str:
+        detail = day_detail(day)
+        return env.get_template("partials/day_detail.html").render(day={
+            "date": day,
+            "show_logged": False,
+            "logged": [],
+            "detail": detail,
+        })
+
+    only = render(date(2026, 10, 20))
+    assert "Pushed to Garmin" in only
+    assert "Not pushed to Garmin" not in only
+    assert "only hard day this week" in only.lower()
+    assert "two hard" not in only.lower()
+
+    two = render(date(2026, 10, 27))
+    assert "Pushed to Garmin" in two
+    assert "Not pushed to Garmin" not in two
+    assert "one of the two hard days this week" in two.lower()
 
 
 def test_day_detail_template_escapes_and_does_not_mark_safe():
