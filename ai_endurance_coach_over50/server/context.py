@@ -1042,14 +1042,15 @@ def _shopping_list_context() -> dict:
         "Week 3",
         "Week 4",
     ]
-    plan = cook_plan(cycle_week)
+    day_targets = prep_week_day_targets(_PLAN_START, today)
+    plan = cook_plan(cycle_week, day_targets)
     return {
         "cycle_week": cycle_week,
         "cycle_week_label": labels[cycle_week],
         "week_mode": "batch",
         "pots": [m["name"] for m in plan["pots"]],
         "soups": [m["name"] for m in plan["soups"]],
-        "groups": shopping_list(cycle_week, prep_week_day_targets(_PLAN_START, today)),
+        "groups": shopping_list(cycle_week, day_targets),
     }
 
 

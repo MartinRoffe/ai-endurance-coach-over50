@@ -1525,7 +1525,8 @@ async def nutrition_sunday(request: Request):
     from ..meal_library import cook_plan, shopping_list
     from ..nutrition_plan import prep_cycle_week_index, prep_week_day_targets
     cycle_week = prep_cycle_week_index(_PLAN_START, today)
-    plan = cook_plan(cycle_week)
+    day_targets = prep_week_day_targets(_PLAN_START, today)
+    plan = cook_plan(cycle_week, day_targets)
     return TEMPLATES.TemplateResponse(
         request=request,
         name="sunday_prep.html",
@@ -1534,7 +1535,7 @@ async def nutrition_sunday(request: Request):
             "pots": plan["pots"],
             "soups": plan["soups"],
             "days": plan["days"],
-            "groups": shopping_list(cycle_week, prep_week_day_targets(_PLAN_START, today)),
+            "groups": shopping_list(cycle_week, day_targets),
         },
     )
 

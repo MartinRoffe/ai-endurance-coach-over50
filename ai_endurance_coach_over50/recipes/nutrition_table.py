@@ -50,6 +50,7 @@ FOODS: dict[str, Food] = {
         _F("passata", "Passata", "Store cupboard", 29, 1.4, 4.2, 0.2, 13, "CoFID tomatoes, canned, plain (passata equivalent)"),
         _F("baked_beans", "Baked beans in tomato sauce", "Store cupboard", 81, 4.8, 12.5, 0.6, 45, "CoFID beans, baked, canned in tomato sauce"),
         _F("honey", "Honey", "Store cupboard", 304, 0.4, 76.4, 0.0, 5, "CoFID honey"),
+        _F("maltodextrin", "Maltodextrin", "Store cupboard", 400, 0.0, 100.0, 0.0, 0, "Typical maltodextrin powder, 4 kcal per gram"),
         _F("olive_oil", "Olive oil", "Store cupboard", 884, 0.0, 0.0, 100.0, 0, "CoFID oil, olive", True),
         _F("rice_cake", "Plain rice cakes", "Store cupboard", 387, 8.0, 81.0, 2.8, 10, "CoFID rice cakes, plain"),
         _F("salt", "Salt", "Store cupboard", 0, 0.0, 0.0, 0.0, 0, "Salt has no energy; use a pinch only"),

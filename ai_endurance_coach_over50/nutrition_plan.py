@@ -234,7 +234,8 @@ SIMPLE_RULES = [
     "before and after); long about 6–7 g/kg plus 60–90 g/h on the bike.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
     "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
-    "one soup. Eat the portions you cook; freeze the spare tubs. Chicken at most twice a week.",
+        "one soup. Cook the portions the week eats, so the shop list matches the plates. "
+        "Chicken at most twice a week.",
 ]
 
 HABIT_LINE = "Veg or fruit at every meal, plus creatine 3–5 g."
@@ -544,6 +545,7 @@ def _resolve_day_meals(
         protein_high=tt["protein_high"],
         kind=kind,
         dur_min=dur,
+        ref_date=ref_date,
     )
     meals = day["tuples"]
     target = {
@@ -582,6 +584,7 @@ def _plan_scaled_day(
     protein_high: int,
     kind: str,
     dur_min: int = 0,
+    ref_date: date | None = None,
 ) -> dict:
     from .recipes.menu import meals_as_tuples, plan_day
 
@@ -593,6 +596,7 @@ def _plan_scaled_day(
         protein_high=int(protein_high),
         kind=kind,
         dur_min=int(dur_min or 0),
+        ref_date=ref_date,
     )
     day = dict(day)
     day["tuples"] = meals_as_tuples(day)
@@ -744,6 +748,7 @@ def prep_week_day_targets(plan_start: date, today: date) -> list[dict]:
             "protein_high": int(tt["protein_high"]),
             "kind": kind,
             "dur_min": dur,
+            "date": ref,
         })
     return out
 
@@ -1350,7 +1355,7 @@ _DELOAD_PLAN_WEEKS = frozenset({4, 8})
 _WEEK_BANNERS = {
     i: (
         "<strong>Sunday batch.</strong> Two one-pots and one soup cover Monday to Friday "
-        "lunches and dinners. Spare tubs are frozen. Saturday and Sunday are cooked fresh. "
+        "lunches and dinners. The batch is sized to those plates. Saturday and Sunday are cooked fresh. "
         "<a href=\"/nutrition/sunday\">Batch cook</a>."
     )
     for i in range(4)
@@ -1667,15 +1672,18 @@ def build_today_food(plan_start: date, today: date) -> dict:
         badge_text = day_data["label"]
         badge = _BADGE_BY_TYPE.get(ctx["dtype"], "badge-rest")
 
-    meal_dicts = [
-        _meal_dict(
-            m,
+    meal_dicts = []
+    for meal, row in zip(meals, ctx["meal_rows"]):
+        item = _meal_dict(
+            meal,
             recipe_url=meal_recipe_url(
-                m[0], m[1], cycle_week=cycle_week, weekday=weekday,
+                meal[0], meal[1], cycle_week=cycle_week, weekday=weekday,
             ),
         )
-        for m in meals
-    ]
+        item["multiplier"] = row.get("multiplier")
+        item["side_multiplier"] = row.get("side_multiplier")
+        item["grams_by_food"] = row.get("grams_by_food") or {}
+        meal_dicts.append(item)
 
     return {
         "camp_mode": False,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date
 from functools import lru_cache
 
 from .catalog import (
@@ -15,7 +16,7 @@ from .catalog import (
     recipe_by_id,
 )
 from .fit import build_meals, published_totals, solve
-from .model import batch_grams_by_food, numbered_method, portion_macros, shop_line
+from .model import numbered_method, portion_macros, shop_line
 from .nutrition_table import AISLE_ORDER, food
 
 _WEEKDAY_NAMES = (
@@ -57,6 +58,7 @@ def plan_day(
     protein_high: int,
     kind: str = "easy",
     dur_min: int = 0,
+    ref_date: date | None = None,
 ) -> dict:
     """One day's meals, scaled so kcal and protein land on the targets."""
     breakfast = breakfast_for(cycle_week, weekday)
@@ -72,8 +74,11 @@ def plan_day(
         protein_high=int(protein_high),
         kind=kind,
         dur_min=int(dur_min or 0),
+        ref_date=ref_date,
     )
-    meals = build_meals(flex, breakfast, lunch, dinner, kind=kind)
+    meals = build_meals(
+        flex, breakfast, lunch, dinner, kind=kind, target_kcal=int(target_kcal),
+    )
     totals = published_totals(meals)
     base = (
         portion_macros(breakfast, 1)["kcal"]
@@ -99,34 +104,100 @@ def meals_as_tuples(day: dict) -> list[tuple]:
     ]
 
 
-def portion_ledger(cycle_week: int) -> dict[str, dict]:
-    """Cooked portions, portions eaten Mon–Fri, and the freezer remainder."""
+def _fmt_portions(value: float) -> str:
+    rounded = round(float(value), 2)
+    if abs(rounded - round(rounded)) < 0.001:
+        return str(int(round(rounded)))
+    text = f"{rounded:.2f}".rstrip("0").rstrip(".")
+    return text
+
+
+def _as_date(value) -> date | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
+
+
+def _week_plans(cycle_week: int, day_targets: list[dict] | None) -> list[dict]:
+    targets = day_targets or default_week_targets()
+    plans = []
+    for weekday, spec in enumerate(targets):
+        plans.append(plan_day(
+            cycle_week,
+            weekday,
+            target_kcal=int(spec["kcal"]),
+            protein_low=int(spec["protein_low"]),
+            protein_high=int(spec["protein_high"]),
+            kind=spec.get("kind") or "easy",
+            dur_min=int(spec.get("dur_min") or 0),
+            ref_date=_as_date(spec.get("date")),
+        ))
+    return plans
+
+
+def portion_ledger(cycle_week: int, day_targets: list[dict] | None = None) -> dict[str, dict]:
+    """Monday–Friday batch portions, summed from the plates actually eaten.
+
+    ``cooked`` is the sum of portion multipliers (a 1.25 plate counts as 1.25).
+    ``eaten`` is still the number of plates, which is what the chicken and fish
+    limits use. Nothing is frozen: the pot is cooked to that sum.
+    """
     week = WEEKS[cycle_week % 4]
+    plans = _week_plans(cycle_week, day_targets)
     out: dict[str, dict] = {}
-    for key, cooked in COOKED_SERVINGS.items():
+    for key in COOKED_SERVINGS:
         recipe = recipe_by_id(week[key])
-        eaten = sum(1 for pair in WEEKDAY_PLATE for slot in pair if slot == key)
-        frozen = cooked - eaten
+        portion_sum = 0.0
+        side_sum = 0.0
+        plates = 0
+        grams: dict[str, float] = defaultdict(float)
+        for weekday in range(5):
+            lunch_key, dinner_key = WEEKDAY_PLATE[weekday]
+            for meal in plans[weekday]["meals"]:
+                if meal.get("recipe_id") != recipe.id:
+                    continue
+                slot_key = lunch_key if meal["slot"] == "Lunch" else dinner_key
+                if meal["slot"] not in ("Lunch", "Dinner") or slot_key != key:
+                    continue
+                portion_sum += float(meal["multiplier"])
+                side_sum += float(meal.get("side_multiplier") or 0.0)
+                plates += 1
+                for food_id, amount in meal["grams_by_food"].items():
+                    grams[food_id] += amount
         out[recipe.id] = {
             "id": recipe.id,
             "name": recipe.name,
             "key": key,
-            "cooked": cooked,
-            "eaten": eaten,
-            "frozen": frozen,
+            "cooked": portion_sum,
+            "portion_sum": portion_sum,
+            "side_sum": side_sum,
+            "eaten": plates,
+            "frozen": 0,
             "servings_on_recipe": recipe.servings,
+            "grams": dict(grams),
         }
     return out
 
 
 def _freezer_line(recipe_id: str, info: dict) -> str:
     recipe = recipe_by_id(recipe_id)
-    frozen = info["frozen"]
-    if frozen <= 0:
-        return "Eat every portion this week. " + recipe.freezer
+    base = recipe.servings
+    factor = (info["portion_sum"] / base) if base else 1.0
+    side_factor = (info["side_sum"] / base) if base else 1.0
+    side_note = ""
+    if abs(info["side_sum"] - info["portion_sum"]) > 0.05:
+        side_note = (
+            f" Weigh the rice, pasta, potato, or bread at {_fmt_portions(info['side_sum'])} portions "
+            f"(×{_fmt_portions(side_factor)} the method)."
+        )
     return (
-        f"Cook {info['cooked']} portions. Eat {info['eaten']} this week. "
-        f"Freeze {frozen}. " + recipe.freezer
+        f"Cook {_fmt_portions(info['portion_sum'])} portions of the meat and vegetables "
+        f"(×{_fmt_portions(factor)} the method, which is written for {base})."
+        f"{side_note} "
+        f"That is the {info['eaten']} Monday-to-Friday plates added up. Freeze nothing. "
+        "The shop weights are this week's totals."
     )
 
 
@@ -134,11 +205,10 @@ def _card(recipe_id: str, info: dict) -> dict:
     recipe = recipe_by_id(recipe_id)
     macros = portion_macros(recipe, 1)
     shop = []
-    for food_id, grams in batch_grams_by_food(recipe).items():
+    for food_id, grams in sorted(info["grams"].items(), key=lambda pair: food(pair[0]).name):
+        if grams < 1:
+            continue
         shop.append(shop_line(food_id, grams))
-    if recipe.serve_with and info["eaten"]:
-        for item in recipe.serve_with:
-            shop.append(shop_line(item.food_id, item.grams * info["eaten"]) + " (with the bowls you eat)")
     return {
         "id": recipe.id,
         "name": recipe.name,
@@ -152,7 +222,7 @@ def _card(recipe_id: str, info: dict) -> dict:
         "fridge": recipe.fridge,
         "freezer": _freezer_line(recipe.id, info),
         "summary": recipe.summary,
-        "servings": info["cooked"],
+        "servings": _fmt_portions(info["cooked"]),
         "eaten": info["eaten"],
         "frozen": info["frozen"],
         "per_portion": {
@@ -166,10 +236,10 @@ def _card(recipe_id: str, info: dict) -> dict:
     }
 
 
-def cook_plan(cycle_week: int) -> dict:
+def cook_plan(cycle_week: int, day_targets: list[dict] | None = None) -> dict:
     """Two one-pots and one soup for this cycle week, plus how the week eats them."""
     week = WEEKS[cycle_week % 4]
-    ledger = portion_ledger(cycle_week)
+    ledger = portion_ledger(cycle_week, day_targets)
     days = []
     for weekday, name in enumerate(_WEEKDAY_NAMES):
         if weekday <= 4:
@@ -234,39 +304,10 @@ def default_week_targets() -> list[dict]:
 
 
 def shopping_list(cycle_week: int, day_targets: list[dict] | None = None) -> list[dict]:
-    """Aisle groups for one cycle week. Grams are what you buy, not a guess at brands."""
-    targets = day_targets or default_week_targets()
-    week = WEEKS[cycle_week % 4]
+    """Aisle groups for one cycle week. Grams are the portions actually eaten."""
     grams: dict[str, float] = defaultdict(float)
-
-    ledger = portion_ledger(cycle_week)
-    for key in ("soup", "pot_a", "pot_b"):
-        recipe = recipe_by_id(week[key])
-        for food_id, amount in batch_grams_by_food(recipe).items():
-            grams[food_id] += amount
-        # Bread on the side is per eaten bowl, added from the planned plates below
-        # only when the plate is not skipped. Add it here at the written weight
-        # times bowls eaten, and do not add it again from the plate.
-        _ = ledger
-
-    for weekday in range(7):
-        spec = targets[weekday]
-        day = plan_day(
-            cycle_week,
-            weekday,
-            target_kcal=spec["kcal"],
-            protein_low=spec["protein_low"],
-            protein_high=spec["protein_high"],
-            kind=spec.get("kind") or "easy",
-            dur_min=spec.get("dur_min") or 0,
-        )
+    for day in _week_plans(cycle_week, day_targets):
         for meal in day["meals"]:
-            recipe_id = meal["recipe_id"]
-            if recipe_id and recipe_id in BATCHES:
-                recipe = BATCHES[recipe_id]
-                for item in recipe.serve_with:
-                    grams[item.food_id] += item.grams * meal["multiplier"]
-                continue
             for food_id, amount in meal["grams_by_food"].items():
                 grams[food_id] += amount
 

@@ -5,6 +5,9 @@ from dataclasses import dataclass
 
 from .nutrition_table import add_macros, empty_macros, food, macros_for
 
+# Carbohydrate weighed on its own, so a plate can grow or shrink without a second starch.
+STARCH_IDS = frozenset({"rice", "pasta", "couscous", "potato", "bread"})
+
 
 @dataclass(frozen=True)
 class Ingredient:
@@ -51,23 +54,58 @@ def _sum_items(items: tuple[Ingredient, ...], scale: float) -> dict[str, float]:
     return total
 
 
-def portion_macros(recipe: Recipe, multiplier: float = 1.0) -> dict[str, float]:
-    """Nutrients in one eaten portion at ``multiplier`` (1 = the written portion)."""
+def portion_macros(
+    recipe: Recipe,
+    multiplier: float = 1.0,
+    *,
+    side_multiplier: float | None = None,
+    extra_bread_g: float = 0.0,
+) -> dict[str, float]:
+    """Nutrients in one eaten portion.
+
+    ``multiplier`` scales meat, vegetables, and sauce. ``side_multiplier`` scales
+    rice, pasta, potato, couscous, and bread, including a slice served beside a soup.
+    Extra bread is only for plates with no starch of their own.
+    """
     if multiplier <= 0:
         raise ValueError("multiplier must be positive")
-    batch = _sum_items(recipe.ingredients, multiplier / recipe.servings)
-    side = _sum_items(recipe.serve_with, multiplier)
-    return add_macros(batch, side)
+    if side_multiplier is None:
+        side_multiplier = multiplier
+    if side_multiplier < 0:
+        raise ValueError("side_multiplier cannot be negative")
+    total = empty_macros()
+    for item in recipe.ingredients:
+        scale = side_multiplier if item.food_id in STARCH_IDS else multiplier
+        add_macros(total, macros_for(item.food_id, item.grams * scale / recipe.servings))
+    add_macros(total, _sum_items(recipe.serve_with, side_multiplier))
+    if extra_bread_g > 0:
+        add_macros(total, macros_for("bread", extra_bread_g))
+    return total
 
 
-def portion_grams_by_food(recipe: Recipe, multiplier: float = 1.0) -> dict[str, float]:
+def portion_grams_by_food(
+    recipe: Recipe,
+    multiplier: float = 1.0,
+    *,
+    side_multiplier: float | None = None,
+    extra_bread_g: float = 0.0,
+) -> dict[str, float]:
+    if side_multiplier is None:
+        side_multiplier = multiplier
     out: dict[str, float] = {}
     for item in recipe.ingredients:
-        grams = item.grams * multiplier / recipe.servings
+        scale = side_multiplier if item.food_id in STARCH_IDS else multiplier
+        grams = item.grams * scale / recipe.servings
+        if grams <= 0:
+            continue
         out[item.food_id] = out.get(item.food_id, 0.0) + grams
     for item in recipe.serve_with:
-        grams = item.grams * multiplier
+        grams = item.grams * side_multiplier
+        if grams <= 0:
+            continue
         out[item.food_id] = out.get(item.food_id, 0.0) + grams
+    if extra_bread_g > 0:
+        out["bread"] = out.get("bread", 0.0) + extra_bread_g
     return out
 
 
