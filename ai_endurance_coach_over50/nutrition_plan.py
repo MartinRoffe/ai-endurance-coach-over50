@@ -297,14 +297,6 @@ _BREAKFAST_LABEL = (
     "or cereal. Saturday is a full English."
 )
 
-_WEEKDAY_SHORT = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
-
-
-def dinner_anchor(cycle_week: int, weekday: int) -> str:
-    """HTML id for an evening plate card, e.g. w1-mon."""
-    return f"w{cycle_week + 1}-{_WEEKDAY_SHORT[weekday]}"
-
-
 def evening_dinner(cycle_week: int, weekday: int, kind: str = "easy") -> tuple:
     """Dinner plate for this cycle slot, at the written portion."""
     _ = kind
@@ -1358,7 +1350,7 @@ _WEEK_BANNERS = {
         "<strong>Sunday batch.</strong> Two one-pots and one soup cover the weekday lunches "
         "and Monday to Thursday dinners. Friday dinner is a quick griddle plate. "
         "The batch is sized to those plates. Saturday and Sunday are cooked fresh. "
-        "<a href=\"/nutrition/sunday\">Batch cook</a>."
+        "<a href=\"/nutrition#batch\">Batch cook</a>."
     )
     for i in range(4)
 }
@@ -1395,14 +1387,16 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
         banner = (
             f"<strong>This week — plan week {week_num} ({phase}).</strong> "
             "Workout badges match the <a href=\"/calendar\">training calendar</a> "
-            "(including overrides). Weekday lunch and dinner come from Sunday's batch. "
-            "<a href=\"/nutrition/sunday\">Batch cook</a>."
+            "(including overrides). Weekday lunches and Monday to Thursday dinners come from "
+            "Sunday's batch. Friday dinner is a quick griddle plate. "
+            "<a href=\"/nutrition#batch\">Batch cook</a>."
         )
     else:
         banner = (
             "<strong>This week.</strong> Workout badges match the training calendar where a "
-            "session is planned. Weekday lunch and dinner come from Sunday's batch. "
-            "<a href=\"/nutrition/sunday\">Batch cook</a>."
+            "session is planned. Weekday lunches and Monday to Thursday dinners come from "
+            "Sunday's batch. Friday dinner is a quick griddle plate. "
+            "<a href=\"/nutrition#batch\">Batch cook</a>."
         )
 
     days_out = []
@@ -1510,57 +1504,10 @@ def meal_recipe_url(
     cycle_week: int | None = None,
     weekday: int | None = None,
 ) -> str | None:
-    """Best recipe/method URL for a prescribed meal row, or None if none exists."""
+    """Recipe index anchor for a prescribed meal, or None if the library has no dish."""
+    del cycle_week, weekday
     from .meal_library import recipe_url
-    found = recipe_url(slot, name)
-    if found:
-        return found
-    slot_l = (slot or "").lower()
-    name_l = (name or "").lower()
-
-    if slot_l == "dinner" and cycle_week is not None and weekday is not None:
-        if 0 <= weekday <= 6 and 0 <= cycle_week <= 3:
-            return f"/nutrition/recipes/weekday-dinners#{dinner_anchor(cycle_week, weekday)}"
-
-    if slot_l == "breakfast":
-        if "overnight" in name_l or "oat" in name_l:
-            return "/nutrition/recipes/overnight-oats"
-        if "muffin" in name_l:
-            return "/nutrition/recipes#egg-muffins"
-        if "scotch" in name_l:
-            return "/nutrition/recipes#scotch-eggs"
-
-    if slot_l == "lunch":
-        if "chinese" in name_l or "fried rice" in name_l:
-            return "/nutrition/recipes#chinese-lunch"
-        if "paella" in name_l:
-            return "/nutrition/recipes#paella"
-        if "salad" in name_l and "chicken" in name_l:
-            return "/nutrition/recipes#chicken"
-        if "batch rice" in name_l or ("chicken" in name_l and "rice" in name_l):
-            return "/nutrition/recipes#chickenrice"
-        if "chicken" in name_l:
-            return "/nutrition/recipes#chicken"
-
-    if slot_l in ("on-bike", "on bike") or "rice cake" in name_l:
-        return "/nutrition/recipes/weekend-fuel#standard"
-
-    if slot_l == "recovery" or "chocolate milk" in name_l or (
-        "overnight oats" in name_l and "recovery" in name_l
-    ):
-        return "/nutrition/recipes#recovery"
-    if "protein overnight oats" in name_l:
-        return "/nutrition/recipes#recovery"
-
-    if slot_l in ("post-ruck", "post ruck") or (
-        "porridge" in name_l and slot_l != "breakfast"
-    ):
-        return "/nutrition/recipes#porridge"
-
-    if "protein bar" in name_l or "oat bar" in name_l:
-        return "/nutrition/recipes#oatbars"
-
-    return None
+    return recipe_url(slot, name)
 
 
 _NUTRITION_PATH_RE = re.compile(r"/nutrition/[^\s.<]+")
@@ -1685,6 +1632,7 @@ def build_today_food(plan_start: date, today: date) -> dict:
         item["multiplier"] = row.get("multiplier")
         item["side_multiplier"] = row.get("side_multiplier")
         item["grams_by_food"] = row.get("grams_by_food") or {}
+        item["recipe_id"] = row.get("recipe_id")
         meal_dicts.append(item)
 
     return {

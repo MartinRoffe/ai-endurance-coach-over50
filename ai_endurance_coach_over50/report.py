@@ -518,6 +518,7 @@ def _daily_food_html(d: date) -> str:
     """
     try:
         from .nutrition_plan import build_today_food, today_card
+        from .nutrition_view import meal_share_line
         from .plan import PLAN_START
         food = build_today_food(PLAN_START, d)
         card = today_card(d)
@@ -549,21 +550,19 @@ def _daily_food_html(d: date) -> str:
         f'{card["stone_line"]}</p>'
     )
 
-    names = []
+    import html as _html
+    meal_bits = []
     for meal in (food or {}).get("meals") or []:
-        names.append(
-            f'<span style="font-family:{_MONO};font-size:10px;letter-spacing:0.08em;'
-            f'text-transform:uppercase;color:{_RED};">{meal.get("type", "")}</span> '
-            f'{meal.get("name", "")} '
-            f'({(meal.get("macros") or {}).get("kcal", "")} kcal, '
-            f'P {(meal.get("macros") or {}).get("p", "")} g)'
+        line = meal_share_line(meal)
+        meal_bits.append(
+            f'<p style="margin:6px 0 0;font-family:{_SERIF};font-size:13px;color:{_INK};line-height:1.5;">'
+            f'{_html.escape(line)}</p>'
         )
-    meals_line = ""
-    if names:
-        meals_line = (
-            f'<p style="margin:12px 0 0;font-family:{_SERIF};font-size:13px;color:{_INK};line-height:1.6;">'
-            + " · ".join(names) + "</p>"
-        )
+    meals_line = "".join(meal_bits)
+    meals_line += (
+        f'<p style="margin:12px 0 0;font-family:{_SERIF};font-size:13px;">'
+        f'<a href="/nutrition" style="color:{_RED};">Open nutrition</a></p>'
+    )
 
     return f"""
         <!-- What to eat today -->

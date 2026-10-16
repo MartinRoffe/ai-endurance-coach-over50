@@ -101,18 +101,11 @@ def _pages() -> list[SearchHit]:
         ("/haute-route/power-protocol", "Power Protocol", "FTP test & power meter setup"),
         ("/architecture", "Architecture", "System diagram"),
         ("/help", "Help", "In-app user guide"),
-        ("/nutrition", "Nutrition — Today", "Eat today checklist"),
+        ("/nutrition", "Nutrition — Today and this week", "Eat today meals shop"),
+        ("/nutrition#shop", "Shopping list", "Lidl Asda grams aisle"),
         ("/nutrition/cut", "Weight goal", "84–85 kg by 31 Mar 2027"),
-        ("/nutrition/sunday", "Sunday Prep", "Batch cook schedule"),
-        ("/nutrition/lidl-shopping-list", "Lidl Shopping List", "Weekly shop"),
-        ("/nutrition/shopping-list", "Asda Shopping List", "Click-to-add weekly shop"),
-        ("/nutrition/fuelling", "Ride Fuelling", "Rice cakes, carbs/h, electrolytes"),
-        ("/nutrition/meals", "This Week Menus", "Daily meal menus"),
-        ("/nutrition/recipes", "Cook Once · Week", "Batch recipes hub"),
-        ("/nutrition/recipes/overnight-oats", "Overnight Oats", "High-protein jars"),
-        ("/nutrition/recipes/weekend-fuel", "Weekend Ride Fuel", "Rice cakes & on-bike fuel"),
-        ("/nutrition/recipes/griddle", "Blackstone Griddle", "Fri–Sun griddle recipes"),
-        ("/nutrition/recipes/weekday-dinners", "Weekday Batch Dinners", "Sunday A/B dinners"),
+        ("/nutrition/fuelling", "Ride fuel", "Rice cakes banana milk carbs/h"),
+        ("/nutrition/recipes", "Recipe index", "Full methods and grams"),
         ("/nutrition/recipes/travel", "Weekend Away", "Travel food checklist"),
     ]
     return [
@@ -298,73 +291,17 @@ def _plan() -> list[SearchHit]:
     return out
 
 
-_RECIPE_ANCHORS: list[tuple[str, str, str, str]] = [
-    # url, anchor, title, subtitle
-    ("/nutrition/recipes", "chicken", "Batch-Roasted Chicken Thighs", "Cook once"),
-    ("/nutrition/recipes", "chinese-chicken", "Soy-Glazed Chinese Thighs", "Wednesday lunch"),
-    ("/nutrition/recipes", "rice", "Big-Batch Basmati", "Cook once"),
-    ("/nutrition/recipes", "oatbars", "Protein Oat Bars / Flapjacks", "Cook once"),
-    ("/nutrition/recipes", "yogurt", "Greek-Yogurt Pots", "Cook once"),
-    ("/nutrition/recipes", "overnight-oats", "High-Protein Overnight Oats", "Cook once"),
-    ("/nutrition/recipes", "egg-muffins", "Egg & Veg Muffins", "Recovery breakfast"),
-    ("/nutrition/recipes", "scotch-eggs", "Baked Scotch Eggs", "Tue/Thu breakfast"),
-    ("/nutrition/recipes", "porridge", "Hot Porridge", "Post-ruck"),
-    ("/nutrition/recipes", "recovery", "Big Recovery Porridge", "Post-ride"),
-    ("/nutrition/recipes", "chickenrice", "Chicken & Rice Bowl", "Lunch"),
-    ("/nutrition/recipes", "chinese-lunch", "Chinese Chicken + Egg Fried Rice", "Wednesday lunch"),
-    ("/nutrition/recipes", "tunapasta", "Tuna Pasta", "Optional lunch"),
-    ("/nutrition/recipes", "paella", "Friday Paella Pouch + Prawns", "Friday lunch"),
-    ("/nutrition/recipes", "sunday-prep", "Sunday Breakfast Prep", "Prep"),
-    ("/nutrition/recipes", "storage", "Fridge Life & Storage", "Prep"),
-    ("/nutrition/recipes/overnight-oats", "base", "Overnight Oats — Shared Protein Base", "Oats"),
-    ("/nutrition/recipes/overnight-oats", "weekday", "Three Jars, Three Flavours", "Oats rotation"),
-    ("/nutrition/recipes/overnight-oats", "efpro", "EF Pro Cycling Athlete Oats", "Oats flavour"),
-    ("/nutrition/recipes/overnight-oats", "strawberries", "Strawberries 'n' Cream Oats", "Oats flavour"),
-    ("/nutrition/recipes/overnight-oats", "classic", "Cycling Labs Classic Oats", "Oats flavour"),
-    ("/nutrition/recipes/overnight-oats", "banoffee-quick", "Quick Banoffee Oats", "Oats flavour"),
-    ("/nutrition/recipes/overnight-oats", "banoffee-gcn", "GCN Banoffee Pie Overnight Oats", "Oats flavour"),
-    ("/nutrition/recipes/overnight-oats", "berry-default", "Mixed Berry Pot (Default)", "Oats flavour"),
-    ("/nutrition/recipes/weekend-fuel", "standard", "Bacon & Egg Rice Cakes", "Weekend fuel"),
-    ("/nutrition/recipes/weekend-fuel", "rice-cakes", "Rice Cake Variations", "Weekend fuel"),
-    ("/nutrition/recipes/weekend-fuel", "flapjack", "Classic Ride Flapjack", "Weekend fuel"),
-    ("/nutrition/recipes/weekend-fuel", "fuel", "On-Bike & During-Exercise Fuel", "Drinks & solids"),
-    ("/nutrition/recipes/griddle", "griddle-primer", "Griddle Primer", "Blackstone"),
-    ("/nutrition/recipes/griddle", "r1", "Griddle Full English", "Blackstone"),
-    ("/nutrition/recipes/griddle", "r2", "American Pancakes & Crispy Bacon", "Blackstone"),
-    ("/nutrition/recipes/griddle", "r3", "Double Smash Burgers", "Blackstone"),
-    ("/nutrition/recipes/griddle", "r4", "Chicken & Pepper Fajitas", "Friday griddle"),
-    ("/nutrition/recipes/griddle", "r5", "Chicken & Chorizo Paella", "Saturday pre-ride"),
-    ("/nutrition/recipes/griddle", "r6", "Chinese-Style Beef Stir Fry", "Sunday recovery"),
-    ("/nutrition/recipes/weekday-dinners", "batch-primer", "Batch Logic", "Weekday dinners"),
-    ("/nutrition/recipes/weekday-dinners", "boosters", "Easy Protein Boosters", "Weekday dinners"),
-    ("/nutrition/recipes/weekday-dinners", "safety", "Reheat & Food Safety", "Weekday dinners"),
-    ("/nutrition/fuelling", "calculator", "How many rice cakes?", "Fuelling"),
-    ("/nutrition/fuelling", "targets", "Fuelling core targets", "60–90 g/h"),
-    ("/nutrition/fuelling", "homemade", "Drinks & solid fuel", "Electrolytes"),
-    ("/nutrition/fuelling", "postride", "Immediate post-ride", "Recovery"),
-    ("/nutrition/fuelling", "weekend", "Weekend long rides", "Fuelling"),
-    ("/nutrition/sunday", "cook-list", "Sunday cook list", "Sunday Prep"),
-    ("/nutrition/sunday", "schedule", "Sunday schedule", "Sunday Prep"),
-    ("/nutrition/sunday", "components", "Sunday components", "Batch chicken, basmati, oats"),
-    ("/nutrition/sunday", "dinners", "Dinner methods", "Sunday Prep"),
+_FUEL_ANCHORS: list[tuple[str, str, str]] = [
+    ("/nutrition/fuelling#how", "Banana, rice cakes, milk", "Ride fuel"),
+    ("/nutrition/fuelling#targets", "Carb target by ride length", "60–90 g/h"),
+    ("/nutrition#batch", "Sunday batch", "Two pots and a soup"),
+    ("/nutrition#shop", "Shopping list", "Lidl Asda grams"),
 ]
-
-_WEEKDAY_DINNER_ANCHORS = {
-    # (cycle_week, weekday) -> HTML id
-    **{(cw, wd): f"w{cw + 1}-{day}"
-       for cw in range(4)
-       for wd, day in enumerate(("mon", "tue", "wed", "thu", "fri", "sat", "sun"))}
-}
 
 
 def _nutrition() -> list[SearchHit]:
-    from .meal_library import ONE_POTS, SOUPS
-    from .nutrition_plan import (
-        BREAKFASTS,
-        CAMP_NUTRITION_WINDOWS,
-        DAY_TYPES,
-        SUPPLEMENTS,
-    )
+    from .nutrition_plan import CAMP_NUTRITION_WINDOWS, SUPPLEMENTS
+    from .recipes.catalog import all_recipes
 
     out: list[SearchHit] = []
 
@@ -384,88 +321,26 @@ def _nutrition() -> list[SearchHit]:
             )
         )
 
-    for dtype, data in DAY_TYPES.items():
+    for recipe in all_recipes():
         out.append(
             _entry(
-                id=f"daytype-{dtype}",
+                id=f"recipe-{recipe.id}",
                 type="nutrition",
-                title=data["label"],
-                subtitle="Daily menu archetype",
-                url="/nutrition/meals",
-                extra=data.get("protein_note", ""),
-            )
-        )
-        for meal in data.get("meals") or []:
-            slot, name, detail = meal[0], meal[1], meal[2]
-            out.append(
-                _entry(
-                    id=f"meal-{dtype}-{_norm(name)[:40]}",
-                    type="nutrition",
-                    title=name,
-                    subtitle=f"{data['label']} · {slot}",
-                    url="/nutrition/meals",
-                    extra=detail,
-                )
-            )
-
-    _bf_urls = {
-        "overnight-oats": "/nutrition/recipes/overnight-oats",
-        "porridge": "/nutrition/sunday#porridge",
-        "full-english": "/nutrition/sunday#full-english",
-    }
-    for key, (name, detail, *_rest) in BREAKFASTS.items():
-        out.append(
-            _entry(
-                id=f"bf-{key}",
-                type="nutrition",
-                title=name,
-                subtitle="Breakfast",
-                url=_bf_urls.get(key, "/nutrition/recipes"),
-                extra=detail,
+                title=recipe.name,
+                subtitle="Recipe",
+                url=f"/nutrition/recipes#{recipe.id}",
+                extra=recipe.summary,
             )
         )
 
-    for meal in ONE_POTS + SOUPS:
+    for url, title, sub in _FUEL_ANCHORS:
         out.append(
             _entry(
-                id=f"dinner-{meal['id']}",
-                type="nutrition",
-                title=meal["name"],
-                subtitle="One-pot" if meal["kind"] == "dinner" else "Soup",
-                url=f"/nutrition/recipes/weekday-dinners#{meal['id']}",
-                extra=meal.get("steps", ""),
-            )
-        )
-        out.append(
-            _entry(
-                id=f"sunday-{meal['id']}",
-                type="nutrition",
-                title=f"{meal['name']} (batch cook)",
-                subtitle="Batch cook",
-                url=f"/nutrition/sunday#{meal['id']}",
-                extra=meal.get("steps", ""),
-            )
-        )
-
-    out.append(
-        _entry(
-            id="nutrition-protein-dessert",
-            type="nutrition",
-            title="Protein dessert (skyr / 0% Greek yogurt)",
-            subtitle="Evening plate closer",
-            url="/nutrition/recipes/weekday-dinners#boosters",
-            extra="150 g skyr protein dessert boosters",
-        )
-    )
-
-    for url, anchor, title, sub in _RECIPE_ANCHORS:
-        out.append(
-            _entry(
-                id=f"recipe-{anchor}-{url.count('/')}",
+                id=f"fuel-{_norm(title)[:40]}",
                 type="nutrition",
                 title=title,
                 subtitle=sub,
-                url=f"{url}#{anchor}",
+                url=url,
             )
         )
 
@@ -521,10 +396,8 @@ def _nutrition() -> list[SearchHit]:
         ("Gut training 60 g/h", "/nutrition/fuelling#targets"),
         ("Gut training 75 g/h", "/nutrition/fuelling#targets"),
         ("Gut training 90 g/h", "/nutrition/fuelling#targets"),
-        ("Electrolyte bottle E1", "/nutrition/fuelling#homemade"),
-        ("Electrolyte bottle E2", "/nutrition/fuelling#homemade"),
-        ("Maltodextrin fructose carb drink", "/nutrition/recipes/weekend-fuel#fuel"),
-        ("Recovery chocolate milk", "/nutrition/fuelling#postride"),
+        ("Maltodextrin carb drink", "/nutrition/fuelling#how"),
+        ("Recovery milk", "/nutrition/fuelling#how"),
     ):
         out.append(
             _entry(
@@ -533,37 +406,6 @@ def _nutrition() -> list[SearchHit]:
                 title=label,
                 subtitle="Nutrition",
                 url=url,
-            )
-        )
-
-    # Shopping categories
-    for cat, label in (
-        ("breakfast", "Shopping · Breakfast"),
-        ("lunch", "Shopping · Lunch"),
-        ("dinner", "Shopping · Weekday dinners"),
-        ("ride", "Shopping · Weekend ride"),
-        ("griddle", "Shopping · Griddle"),
-        ("staples", "Shopping · Shared staples"),
-    ):
-        out.append(
-            _entry(
-                id=f"shop-cat-{cat}",
-                type="shopping",
-                title=label,
-                subtitle="Filter",
-                url=f"/nutrition/lidl-shopping-list?cat={cat}",
-                extra=cat,
-            )
-        )
-
-    for cw in range(4):
-        out.append(
-            _entry(
-                id=f"shop-week-{cw}",
-                type="shopping",
-                title=f"Shopping · Cycle week {cw + 1}",
-                subtitle="Week filter",
-                url=f"/nutrition/lidl-shopping-list?week={cw}",
             )
         )
 
@@ -589,7 +431,7 @@ def _shopping_items() -> list[SearchHit]:
                         type="shopping",
                         title=name,
                         subtitle="Shopping list item",
-                        url="/nutrition/lidl-shopping-list",
+                        url="/nutrition#shop",
                         extra="asda lidl groceries",
                     )
                 )
@@ -619,10 +461,9 @@ def _aliases() -> list[SearchHit]:
         ("TDEE", "Total daily energy expenditure", "/nutrition", "calorie target"),
         ("protein floor", "Daily protein target", "/nutrition", "macros"),
         ("creatine", "Creatine supplement", "/nutrition", "supplements"),
-        ("Lidl", "Lidl shopping list", "/nutrition/lidl-shopping-list", ""),
-        ("Asda", "Asda shopping list", "/nutrition/shopping-list", ""),
-        ("Blackstone", "Griddle recipes", "/nutrition/recipes/griddle", ""),
-        ("rice cakes", "Bacon & egg rice cakes", "/nutrition/recipes/weekend-fuel#standard", ""),
+        ("Lidl", "Lidl shopping list", "/nutrition#shop", "lidl asda"),
+        ("Asda", "Asda shopping list", "/nutrition#shop", "lidl asda"),
+        ("rice cakes", "Plain rice cakes", "/nutrition/fuelling", "ride fuel"),
         ("Haute Route", "Haute Route Alpes plan", "/haute-route", ""),
         ("Tenerife", "Tenerife camp", "/tenerife", ""),
         ("architecture", "System architecture", "/help/architecture", ""),

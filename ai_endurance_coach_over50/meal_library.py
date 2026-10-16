@@ -59,15 +59,11 @@ _BY_NAME = {recipe.name.lower(): recipe for recipe in all_recipes()}
 
 
 def recipe_url(slot: str, name: str) -> str | None:
-    """Page anchor for a meal name, when the library has that dish."""
+    """Recipe index anchor for a meal name, when the library has that dish."""
     recipe = _BY_NAME.get((name or "").strip().lower())
     if recipe is None:
         return None
-    if recipe.id == "overnight-oats":
-        return "/nutrition/recipes/overnight-oats"
-    if recipe.batch:
-        return f"/nutrition/recipes/weekday-dinners#{recipe.id}"
-    return f"/nutrition/sunday#{recipe.id}"
+    return f"/nutrition/recipes#{recipe.id}"
 
 
 def banned_foods_in_library() -> list[str]:

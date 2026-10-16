@@ -82,11 +82,9 @@
 </head>
 <body>
 {% set active_tab = 'nutrition' %}
-{% set nutrition_section = 'recipes' %}
-{% set recipes_section = 'recipes_travel' %}
+{% set nutrition_section = 'travel' %}
 {% include 'nav.html' %}
 {% include 'nutrition_subnav.html' %}
-{% include 'recipes_subnav.html' %}
 
 <header>
   <div class="wrap">
@@ -130,7 +128,7 @@
 <div class="wrap" id="list">
 
   <div class="banner blue"><b>This weekend:</b> {{ sat_label }}{% if sat_dur_min %} (~{{ sat_dur_min }} min){% endif %} · Sunday {{ sun_label }}{% if sunday_ride_min %} (~{{ sunday_ride_min }} min){% endif %}. No Blackstone — buy or self-cater carb-rich Sat dinner.</div>
-  <div class="banner"><b>Rice cakes</b> need ≥24 h in the fridge after making — bake Thursday/Friday for a Sunday ride. <a href="/nutrition/recipes/weekend-fuel#standard-rice-cake">Recipe →</a></div>
+  <div class="banner"><b>Rice cakes</b> are plain cakes from the ride-fuel guide. <a href="/nutrition/fuelling">Ride fuel →</a></div>
   <div class="banner"><b>Saturday post-ruck:</b> big porridge stack + eggs + <em>Greek yogurt</em> — the yogurt is non-negotiable for protein. <b>Sunday:</b> chocolate milk first, then recovery oats jar — not before the ride.</div>
 
   <div class="cat" data-section="prep"><h2>Before you leave</h2><span class="sub">Wed–Fri at home</span></div>
@@ -157,7 +155,7 @@
 </div>
 
 <footer>
-  Weekend away checklist · companion to <a href="/nutrition/recipes">Cook Once</a> &amp; <a href="/nutrition/fuelling">Ride Fuelling</a>
+  Weekend away checklist · <a href="/nutrition">Today</a> &amp; <a href="/nutrition/fuelling">Ride fuel</a>
   <div class="print-pill">Print or Save as PDF — File ▸ Print</div>
 </footer>
 

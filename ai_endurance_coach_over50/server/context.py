@@ -1030,30 +1030,6 @@ def _travel_checklist_context() -> dict:
     }
 
 
-def _shopping_list_context() -> dict:
-    """Cycle week for nutrition shopping lists (Fri–Sun → next Monday's week)."""
-    today = _today()
-    from ..meal_library import cook_plan, shopping_list
-    from ..nutrition_plan import prep_cycle_week_index, prep_week_day_targets
-    cycle_week = prep_cycle_week_index(_PLAN_START, today)
-    labels = [
-        "Week 1",
-        "Week 2",
-        "Week 3",
-        "Week 4",
-    ]
-    day_targets = prep_week_day_targets(_PLAN_START, today)
-    plan = cook_plan(cycle_week, day_targets)
-    return {
-        "cycle_week": cycle_week,
-        "cycle_week_label": labels[cycle_week],
-        "week_mode": "batch",
-        "pots": [m["name"] for m in plan["pots"]],
-        "soups": [m["name"] for m in plan["soups"]],
-        "groups": shopping_list(cycle_week, day_targets),
-    }
-
-
 def _week_summary() -> Optional[dict]:
     """Per-day training breakdown for the current Mon–Sun week."""
     today = date.today()

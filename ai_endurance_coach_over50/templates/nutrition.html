@@ -4,287 +4,334 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
-<title>Nutrition — Eat Today</title>
+<title>Nutrition — Today and this week</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0e0f0c;
-    --surface: #161713;
-    --surface2: #1d1f1a;
-    --border: #2a2d25;
-    --accent: #c8f135;
-    --accent2: #f1a035;
-    --accent3: #35c8f1;
-    --text: #e8ead4;
-    --muted: #7a7d6a;
-    --protein: #35c8f1;
-    --carbs: #c8f135;
+    --bg: #0e0f0c; --surface: #161713; --surface2: #1d1f1a; --border: #2a2d25;
+    --accent: #c8f135; --accent2: #f1a035; --accent3: #35c8f1; --text: #e8ead4;
+    --muted: #7a7d6a; --protein: #35c8f1; --carbs: #c8f135;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
+  details:not([open]) > :not(summary) { display: none; }
   body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; line-height:1.6; min-height:100vh; }
   a { color:var(--accent); }
-
-  .hero { position:relative; padding:28px 40px 20px; overflow:hidden; border-bottom:1px solid var(--border); }
-  .hero::before { content:''; position:absolute; top:-60px; right:-80px; width:400px; height:400px; background:radial-gradient(circle,rgba(200,241,53,0.06) 0%,transparent 70%); pointer-events:none; }
-  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
-  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(32px,5vw,48px); line-height:0.95; letter-spacing:0.02em; color:var(--text); margin-bottom:8px; }
+  .hero { padding:28px 40px 18px; border-bottom:1px solid var(--border); }
+  .hero-eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--accent); text-transform:uppercase; margin-bottom:8px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(32px,5vw,48px); line-height:0.95; letter-spacing:0.02em; }
   .hero h1 span { color:var(--accent); }
-  .hero-sub { font-size:13px; color:var(--muted); max-width:560px; line-height:1.6; }
-  .hero-meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
-  .hero-kcal { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent2); letter-spacing:0.06em; }
-
-  .container { max-width:980px; margin:0 auto; padding:0 24px; }
-  section { padding:28px 0; border-bottom:1px solid var(--border); }
+  .hero-sub { font-size:13px; color:var(--muted); margin-top:8px; }
+  .container { max-width:980px; margin:0 auto; padding:0 24px 48px; }
+  section { padding:28px 0; border-bottom:1px solid var(--border); scroll-margin-top:96px; }
   section:last-child { border-bottom:none; }
   .section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
-
-  .today-food { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
-  .today-food-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px; background:var(--surface2); border-bottom:1px solid var(--border); }
-  .today-food-title { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.03em; }
-
-  .meal-table { width:100%; border-collapse:collapse; }
-  .meal-table tr { border-bottom:1px solid var(--border); }
-  .meal-table tr:last-child { border-bottom:none; }
-  .meal-table td { padding:12px 18px; font-size:13px; vertical-align:top; }
-  .meal-type-cell { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; width:80px; padding-top:14px; white-space:nowrap; }
-  .meal-name { font-weight:500; color:var(--text); margin-bottom:2px; font-size:14px; }
-  .meal-link { color:var(--accent); text-decoration:none; }
-  .meal-link:hover { text-decoration:underline; }
-  .meal-detail { color:var(--muted); font-size:12px; line-height:1.55; }
-  .meal-detail a { color:var(--accent); text-decoration:none; }
-  .meal-detail a:hover { text-decoration:underline; }
-  .meal-macros { display:flex; gap:8px; margin-top:5px; flex-wrap:wrap; }
-  .macro { font-family:'DM Mono',monospace; font-size:10px; padding:2px 6px; border-radius:2px; letter-spacing:0.05em; }
-  .m-kcal { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
-  .m-p { background:rgba(53,200,241,0.1); color:var(--protein); border:1px solid rgba(53,200,241,0.2); }
-  .m-c { background:rgba(200,241,53,0.1); color:var(--carbs); border:1px solid rgba(200,241,53,0.2); }
-  .m-f { background:rgba(122,125,106,0.1); color:var(--muted); border:1px solid rgba(122,125,106,0.15); }
-
-  .protein-bar-row { padding:10px 18px 14px; background:rgba(0,0,0,0.15); border-top:1px solid var(--border); display:flex; align-items:center; gap:12px; }
-  .pb-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; white-space:nowrap; }
-  .pb-track { flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
-  .pb-fill { height:100%; border-radius:3px; background:var(--protein); }
-  .pb-val { font-family:'DM Mono',monospace; font-size:11px; color:var(--protein); white-space:nowrap; min-width:36px; text-align:right; }
-  .pb-note { font-size:11px; color:var(--muted); font-style:italic; flex:2; }
-
-  .badge { font-family:'DM Mono',monospace; font-size:9px; padding:2px 7px; border-radius:2px; letter-spacing:0.08em; text-transform:uppercase; }
-  .badge-rest { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
-  .badge-train { background:rgba(200,241,53,0.12); color:var(--accent); border:1px solid rgba(200,241,53,0.2); }
-  .badge-ride { background:rgba(241,160,53,0.12); color:var(--accent2); border:1px solid rgba(241,160,53,0.2); }
-  .badge-ruck { background:rgba(155,89,182,0.12); color:#c39bd3; border:1px solid rgba(155,89,182,0.2); }
-  .badge-long { background:rgba(241,74,53,0.12); color:#f14a35; border:1px solid rgba(241,74,53,0.2); }
-  .badge-recovery { background:rgba(53,200,241,0.12); color:var(--accent3); border:1px solid rgba(53,200,241,0.2); }
-
-  .cal-strip { background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--accent3); padding:12px 18px; border-radius:0 4px 4px 0; display:flex; gap:32px; flex-wrap:wrap; }
-  .cal-strip .lbl { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
-  .cal-strip .val { font-family:'Bebas Neue',sans-serif; font-size:24px; }
-
-  .rules-line { font-size:13px; color:#b0b39a; line-height:1.7; margin-top:8px; }
-  .quiet-links { margin-top:20px; padding:16px 0 40px; font-size:13px; color:var(--muted); }
-  .quiet-links a { margin-right:14px; }
-
-  .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .shop-card {
-    display:flex; flex-direction:column; gap:8px;
-    background:var(--surface); border:1px solid var(--border); border-radius:6px;
-    padding:18px 18px 16px; text-decoration:none; color:inherit;
-    transition:border-color 0.15s, background 0.15s;
-  }
-  .shop-card:hover { border-color:var(--accent); background:var(--surface2); }
-  .shop-card .store {
-    font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:0.03em; line-height:1;
-    color:var(--text);
-  }
-  .shop-card.lidl .store { color:var(--accent); }
-  .shop-card.asda .store { color:var(--accent3); }
-  .shop-card .blurb { font-size:13px; color:var(--muted); line-height:1.55; flex:1; }
-  .shop-card .go {
-    font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--accent); margin-top:4px;
-  }
-  .shop-card.asda .go { color:var(--accent3); }
-
-  @media(max-width:640px){
-    .hero{padding:24px 20px 16px;}
-    .container{padding:0 14px;}
-    .protein-bar-row{flex-wrap:wrap;}
-    .pb-note{flex-basis:100%;}
-    .shop-grid{grid-template-columns:1fr;}
-  }
-  .num-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:8px; }
+  .num-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
   .num-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 16px 14px; }
   .num-card .lbl { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
   .num-card .val { font-family:'Bebas Neue',sans-serif; font-size:40px; line-height:1; letter-spacing:0.02em; margin:6px 0 4px; }
   .num-card .note { font-size:12px; color:var(--muted); line-height:1.45; }
   .habit-line { margin-top:16px; font-size:15px; }
   .stone-line { margin-top:8px; font-size:13px; color:var(--muted); line-height:1.55; max-width:720px; }
-  .meal-line { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; }
-  .meal-line .slot { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent2); width:108px; flex-shrink:0; padding-top:3px; }
-  details.advanced { margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:12px 16px; }
+  .meal-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:10px; overflow:hidden; }
+  .meal-card summary { cursor:pointer; list-style:none; padding:14px 16px; }
+  .meal-card summary::-webkit-details-marker { display:none; }
+  .meal-card .sum { display:flex; gap:12px; align-items:flex-start; }
+  .meal-card summary:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+  .slot { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent2); width:92px; flex-shrink:0; padding-top:4px; }
+  .meal-name { font-weight:500; font-size:15px; }
+  .share { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); margin-top:4px; }
+  .macros { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .macro { font-family:'DM Mono',monospace; font-size:10px; padding:2px 6px; border-radius:2px; letter-spacing:0.04em; }
+  .m-kcal { background:rgba(122,125,106,0.15); color:var(--muted); border:1px solid rgba(122,125,106,0.2); }
+  .m-p { background:rgba(53,200,241,0.1); color:var(--protein); border:1px solid rgba(53,200,241,0.2); }
+  .m-c { background:rgba(200,241,53,0.1); color:var(--carbs); border:1px solid rgba(200,241,53,0.2); }
+  .recipe { padding:0 16px 16px 120px; }
+  .recipe h3 { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin:8px 0; }
+  .recipe ul, .recipe ol { margin:0 0 8px 18px; font-size:13px; color:#cdd0bb; }
+  .recipe li { margin:4px 0; }
+  .recipe a { font-size:12px; }
+  .log-row { display:flex; flex-wrap:wrap; gap:18px 28px; background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--accent3); border-radius:0 4px 4px 0; padding:12px 16px; }
+  .log-row .lbl { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+  .log-row .val { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; margin-top:2px; }
+  .log-row .sub { font-size:12px; color:var(--muted); }
+  .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+  .day-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:10px; min-width:0; }
+  .day-card.today { border-color:var(--accent); }
+  .day-card .dn { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent2); }
+  .day-card.today .dn { color:var(--accent); }
+  .day-card .dk { font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; margin:4px 0; }
+  .day-card .dm { font-size:12px; color:#cdd0bb; margin-top:6px; }
+  .day-card .dm b { display:block; font-weight:500; color:var(--muted); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; }
+  .batch { background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:10px; }
+  .batch summary { cursor:pointer; padding:14px 16px; font-weight:500; }
+  .batch .body { padding:0 16px 16px; font-size:13px; color:#cdd0bb; }
+  .batch ol, .batch ul { margin:8px 0 8px 18px; }
+  .shop-group { break-inside:avoid; margin-bottom:16px; }
+  .shop-group h3 { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .shop-group li { list-style:none; padding:6px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  details.advanced { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:12px 16px; }
   details.advanced summary { cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
   details.advanced .adv { margin-top:12px; font-size:13px; color:var(--muted); line-height:1.6; }
-  @media(max-width:720px){ .num-grid{grid-template-columns:1fr 1fr;} }
+  .quiet { margin-top:18px; font-size:13px; }
+  .quiet a { margin-right:14px; }
+  .ride-box { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent2); border-radius:0 4px 4px 0; padding:12px 16px; margin-bottom:12px; }
+  @media (max-width:720px) {
+    .hero { padding:24px 20px 16px; }
+    .container { padding:0 14px 40px; }
+    .num-grid { grid-template-columns:1fr 1fr; }
+    .week-grid { grid-template-columns:1fr; }
+    .recipe { padding-left:16px; }
+    .slot { width:72px; }
+  }
+  @media print {
+    nav, .nut-subnav, .hero, #today, #logged, #week, #ride-fuel, #advanced, .quiet, .cut-link { display:none !important; }
+    body { background:#fff; color:#111; }
+    .shop-group li { border-color:#ccc; }
+    a { color:#111; }
+  }
 </style>
 </head>
 <body>
-
 {% set active_tab = 'nutrition' %}
 {% set nutrition_section = 'overview' %}
 {% include 'nav.html' %}
 {% include 'nutrition_subnav.html' %}
 
 <div class="hero">
-  <div class="container">
+  <div class="container" style="padding-bottom:0">
     <div class="hero-eyebrow">Nutrition{% if card %} · {{ card.kind_label }} day{% endif %}</div>
-    <h1>EAT <span>TODAY</span></h1>
-    {% if today_food %}
-    <p class="hero-sub">{{ today_food.day_name }}{% if today_food.session %} · {{ today_food.session }}{% endif %}</p>
-    {% endif %}
+    <h1>TODAY <span>AND THE WEEK</span></h1>
+    <p class="hero-sub">{{ day_name }}{% if session %} · {{ session }}{% endif %}</p>
   </div>
 </div>
 
 <div class="container">
 
 {% if cut_line %}
-  <section style="padding-top:20px;padding-bottom:0;border-bottom:none">
-    <a href="/nutrition/cut" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2,#f1a035);border-radius:0 4px 4px 0;padding:12px 16px">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2,#f1a035);margin-bottom:4px">Base Cut</div>
-      <div style="font-size:14px;color:var(--text)">{{ cut_line.text }} <span style="color:var(--accent);font-size:12px">→ full page</span></div>
-      {% if cut_line.logging_warn %}
-      <div style="font-size:12px;color:#f0b0a8;margin-top:6px">Log food daily — TDEE using uncalibrated burn until coverage is high.</div>
-      {% endif %}
+  <section class="cut-link" style="padding-top:20px;padding-bottom:0;border-bottom:none">
+    <a href="/nutrition/cut" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:0 4px 4px 0;padding:12px 16px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:4px">Weight goal</div>
+      <div style="font-size:14px;color:var(--text)">{{ cut_line.text }} <span style="color:var(--accent);font-size:12px">→ cut page</span></div>
     </a>
   </section>
 {% endif %}
 
 {% if card %}
-  <section style="padding-top:24px">
-    <div class="num-grid">
-      <div class="num-card">
-        <div class="lbl">Calories · {{ card.kind_label }}</div>
-        <div class="val">{{ "{:,}".format(card.kcal) }}</div>
-        <div class="note">kcal</div>
-      </div>
-      <div class="num-card">
-        <div class="lbl">Protein</div>
-        <div class="val">{{ card.protein_g }}</div>
-        <div class="note">{{ card.protein_line }}</div>
-      </div>
-      <div class="num-card">
-        <div class="lbl">Carbs</div>
-        <div class="val">{{ card.carbs_g }}</div>
-        <div class="note">{{ card.carbs_line }}</div>
-      </div>
-      <div class="num-card">
-        <div class="lbl">Fluids</div>
-        <div class="val" style="font-size:32px">{{ card.fluids }}</div>
-        <div class="note">{{ card.fluids_note }}</div>
-      </div>
+<section id="today">
+  <div class="num-grid">
+    <div class="num-card">
+      <div class="lbl">Calories · {{ card.kind_label }}</div>
+      <div class="val">{{ "{:,}".format(card.kcal) }}</div>
+      <div class="note">kcal</div>
     </div>
-    <p class="habit-line">{{ card.habit }}</p>
-    <p class="stone-line">{{ card.stone_line }}</p>
-  </section>
-{% endif %}
-
-{% if today_food and today_food.meals %}
-  <section style="padding-top:8px">
-    <div class="section-label">Today’s meals</div>
-    {% for m in today_food.meals %}
-    <div class="meal-line">
-      <div class="slot">{{ m.type }}</div>
-      <div>
-        <div>{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
-        <div class="meal-macros"><span class="macro m-kcal">{{ m.macros.kcal }} kcal</span><span class="macro m-p">P {{ m.macros.p }} g</span><span class="macro m-c">C {{ m.macros.c }} g</span></div>
-      </div>
+    <div class="num-card">
+      <div class="lbl">Protein</div>
+      <div class="val">{{ card.protein_g }}</div>
+      <div class="note">{{ card.protein_line }}</div>
     </div>
-    {% endfor %}
-    <p style="margin-top:12px;font-size:13px;color:var(--muted)">Planned {{ "{:,}".format(today_food.meals_kcal_total) }} kcal · protein {{ today_food.meals_protein_total }} g{% if today_food.dairy_calcium_mg %} · dairy calcium {{ "{:,}".format(today_food.dairy_calcium_mg) }} mg{% endif %}.</p>
-    <p style="margin-top:10px"><a href="/nutrition/meals">This week →</a></p>
-  </section>
-{% endif %}
-
-{% if cal_today or protein_today %}
-  <section>
-    <div class="section-label">Logged vs target</div>
-    <div class="cal-strip">
-      {% if cal_today and card %}
-      <div>
-        <div class="lbl">Calories</div>
-        <div class="val" style="color:var(--accent3)">{{ "{:,}".format(cal_today) }}</div>
-        <div class="note" style="font-size:12px;color:var(--muted)">of {{ "{:,}".format(card.kcal) }} kcal</div>
-      </div>
-      {% elif cal_today %}
-      <div>
-        <div class="lbl">Calories logged</div>
-        <div class="val" style="color:var(--accent3)">{{ "{:,}".format(cal_today) }}</div>
-      </div>
-      {% endif %}
-      {% if protein_today and card %}
-      <div>
-        <div class="lbl">Protein</div>
-        <div class="val" style="color:var(--protein)">{{ protein_today }} g</div>
-        <div class="note" style="font-size:12px;color:var(--muted)">of {{ card.protein_g }} g</div>
-      </div>
-      {% elif protein_today %}
-      <div>
-        <div class="lbl">Protein logged</div>
-        <div class="val" style="color:var(--protein)">{{ protein_today }} g</div>
-      </div>
-      {% endif %}
+    <div class="num-card">
+      <div class="lbl">Carbs</div>
+      <div class="val">{{ card.carbs_g }}</div>
+      <div class="note">{{ card.carbs_line }}</div>
     </div>
-  </section>
-{% endif %}
-
-  <section>
-    <div class="section-label">Weekly shop</div>
-    <div class="shop-grid">
-      <a class="shop-card" href="/nutrition/shopping-list">
-        <div class="store">One list</div>
-        <p class="blurb">This week’s batch, breakfasts, and weekend plates, in grams. Same list at Asda or Lidl.</p>
-        <span class="go">Open the list →</span>
-      </a>
+    <div class="num-card">
+      <div class="lbl">Fluids</div>
+      <div class="val" style="font-size:32px">{{ card.fluids }}</div>
+      <div class="note">{{ card.fluids_note }}</div>
     </div>
-  </section>
-
-  <section>
-    <details class="advanced">
-      <summary>Advanced</summary>
-      <div class="adv">
-        {% if card and card.why %}<p>{{ card.why }}</p>{% endif %}
-        {% if card and card.tdee %}
-        <p>Stable TDEE {{ "{:,}".format(card.tdee) }} kcal{% if card.deficit is not none %} · planned deficit {{ card.deficit }} kcal{% endif %}{% if card.maintenance %} · maintenance, no deficit{% endif %}.</p>
-        {% endif %}
-        {% if card and card.protein_basis %}<p>Protein basis: {{ card.protein_basis }}.</p>{% endif %}
-        {% if tdee_today and cal_today %}
-        <p>Today’s burn so far {{ "{:,}".format(tdee_today) }} kcal · logged {{ "{:,}".format(cal_today) }}.</p>
-        {% endif %}
-        {% if carbs_today %}<p>Carbs logged {{ carbs_today }} g.</p>{% endif %}
-        {% if nutrition_today and nutrition_today.ride_work_kj %}<p>Ride work {{ nutrition_today.ride_work_kj }} kJ.</p>{% endif %}
-        {% if ea_report %}<p>{{ ea_report.words }}</p>{% endif %}
-        {% if today_food and today_food.meals %}
-        <p>Per meal:
-          {% for m in today_food.meals %}{{ m.type }} {{ m.macros.kcal }} kcal / P {{ m.macros.p }} g / C {{ m.macros.c }} g{% if not loop.last %} · {% endif %}{% endfor %}
-        </p>
-        {% endif %}
-        {% if sunday_fuel %}
-        <p>Sunday ride about {{ sunday_fuel.ride_hours }} h: {{ sunday_fuel.rice_cakes }} rice cakes, bottles {{ sunday_fuel.bottles | join(' + ') }}{% if sunday_fuel.carb_drink_bottles %}, {{ sunday_fuel.carb_drink_bottles }} carb drink{% endif %}. <a href="/nutrition/fuelling">Fuelling</a>.</p>
-        {% endif %}
-        {% if supplements %}
-        <p style="margin-top:10px">{{ supplement_disclaimer }}</p>
-        <ul style="margin:8px 0 0 18px">
-          {% for s in supplements %}<li><strong style="color:var(--text)">{{ s.name }}</strong> — {{ s.dose }}. {{ s.why }}</li>{% endfor %}
-        </ul>
-        {% endif %}
-      </div>
-    </details>
-  </section>
-
-  <div class="quiet-links">
-    <a href="/nutrition/sunday">Batch cook</a>
-    <a href="/nutrition/shopping-list">Shop</a>
-    <a href="/nutrition/fuelling">Fuelling</a>
-    <a href="/nutrition/meals">This week’s meals</a>
   </div>
+  <p class="habit-line">{{ card.habit }}</p>
+  <p class="stone-line">{{ card.stone_line }}</p>
+</section>
+{% endif %}
+
+{% if camp_mode %}
+<section>
+  <div class="section-label">Camp day</div>
+  <p style="font-size:14px;color:#cdd0bb">The UK plates are off. Eat to the camp plan.</p>
+  {% if checklist %}
+  <ul style="margin:12px 0 0 18px;font-size:14px">
+    {% for item in checklist %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if plates %}
+<section id="meals">
+  <div class="section-label">Today’s meals</div>
+  {% for m in plates %}
+  <details class="meal-card">
+    <summary>
+      <div class="sum">
+        <div class="slot">{{ m.slot }}</div>
+        <div>
+          <div class="meal-name">{{ m.name }}</div>
+          <div class="share">{{ m.share }}</div>
+          <div class="macros">
+            <span class="macro m-kcal">{{ m.kcal }} kcal</span>
+            <span class="macro m-p">P {{ m.protein }} g</span>
+            <span class="macro m-c">C {{ m.carbs }} g</span>
+          </div>
+        </div>
+      </div>
+    </summary>
+    <div class="recipe">
+      {% if m.ingredients %}
+      <h3>This portion</h3>
+      <ul>{% for line in m.ingredients %}<li>{{ line }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if m.steps %}
+      <h3>Method</h3>
+      <ol>{% for step in m.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+      {% endif %}
+      {% if m.recipe_url %}<a href="{{ m.recipe_url }}">In the recipe index</a>{% endif %}
+    </div>
+  </details>
+  {% endfor %}
+  {% if meals_kcal_total %}
+  <p style="margin-top:8px;font-size:13px;color:var(--muted)">Planned {{ "{:,}".format(meals_kcal_total) }} kcal · protein {{ meals_protein_total }} g{% if dairy_calcium_mg %} · dairy calcium {{ "{:,}".format(dairy_calcium_mg) }} mg{% endif %}.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if ride %}
+<section id="ride-fuel">
+  <div class="section-label">Ride fuel</div>
+  <div class="ride-box">
+    <p style="font-size:13px;color:#cdd0bb;margin-bottom:8px">Today’s pre-ride, on the bike, and after. The longer guide is <a href="/nutrition/fuelling">Ride fuel</a>.</p>
+    {% for m in ride %}
+    <p class="share" style="margin-top:6px">{{ m.share }}</p>
+    {% endfor %}
+  </div>
+  {% for m in ride %}
+  <details class="meal-card">
+    <summary>
+      <div class="sum">
+        <div class="slot">{{ m.slot }}</div>
+        <div>
+          <div class="meal-name">{{ m.name }}</div>
+          <div class="share">{{ m.share }}</div>
+        </div>
+      </div>
+    </summary>
+    <div class="recipe">
+      {% if m.ingredients %}
+      <h3>This portion</h3>
+      <ul>{% for line in m.ingredients %}<li>{{ line }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if m.steps %}
+      <h3>Method</h3>
+      <ol>{% for step in m.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section id="logged">
+  <div class="section-label">Planned vs logged</div>
+  <div class="log-row">
+    <div>
+      <div class="lbl">Planned</div>
+      <div class="val">{% if card %}{{ "{:,}".format(card.kcal) }}{% else %}—{% endif %}</div>
+      <div class="sub">kcal on the plan</div>
+    </div>
+    <div>
+      <div class="lbl">Logged in Garmin</div>
+      <div class="val" style="color:var(--accent3)">{% if logged_kcal is not none %}{{ "{:,}".format(logged_kcal) }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if logged_kcal is none %}Nothing in Connect yet{% else %}kcal eaten{% endif %}</div>
+    </div>
+    <div>
+      <div class="lbl">Protein logged</div>
+      <div class="val">{% if logged_protein is not none %}{{ logged_protein }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if card %}of {{ card.protein_g }} g{% else %}g{% endif %}</div>
+    </div>
+    <div>
+      <div class="lbl">Carbs logged</div>
+      <div class="val">{% if logged_carbs is not none %}{{ logged_carbs }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if card %}of {{ card.carbs_g }} g{% else %}g{% endif %}</div>
+    </div>
+  </div>
+</section>
+
+<section id="week">
+  <div class="section-label">This week · {{ week_label }}</div>
+  <div class="week-grid">
+    {% for day in days %}
+    <article class="day-card{% if day.is_today %} today{% endif %}">
+      <div class="dn">{{ day.name }}{% if day.is_today %} · today{% endif %}</div>
+      <div class="dk">{% if day.kcal %}{{ "{:,}".format(day.kcal) }}{% else %}—{% endif %}</div>
+      {% if day.camp %}
+      <p class="dm">Camp — UK plates off</p>
+      {% else %}
+        {% for meal in day.plates %}
+        <p class="dm"><b>{{ meal.slot }}</b>{{ meal.name }}</p>
+        {% endfor %}
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  <p class="quiet"><a href="/nutrition/recipes">All recipes</a></p>
+</section>
+
+<section id="batch">
+  <div class="section-label">Sunday batch · {{ shop_label }}</div>
+  {% if shop_ahead %}
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Friday to Sunday, this is next week’s cook. The grid above is the week you are in.</p>
+  {% endif %}
+  <p style="font-size:13px;color:#cdd0bb;margin-bottom:12px">Two one-pots and one soup. They cover the weekday lunches and Monday to Thursday dinners. Friday dinner is a quick griddle plate, cooked that evening. Saturday and Sunday are fresh plates.</p>
+  {% for batch in batches %}
+  <details class="batch">
+    <summary>{{ batch.name }} · {{ batch.servings }} portions</summary>
+    <div class="body">
+      <p>{{ batch.method }}</p>
+      {% if batch.method_steps %}
+      <ol>{% for step in batch.method_steps %}<li>{{ step }}</li>{% endfor %}</ol>
+      {% endif %}
+      <p style="margin-top:8px"><a href="/nutrition/recipes#{{ batch.id }}">Recipe index</a></p>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+<section id="shop">
+  <div class="section-label">Shopping list · {{ shop_label }}</div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">One list, in grams. Same names at Lidl or Asda. <a href="#shop" onclick="window.print();return false;">Print</a></p>
+  {% for group in groups %}
+  <div class="shop-group">
+    <h3>{{ group.group }}</h3>
+    <ul>{% for item in group["items"] %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endfor %}
+</section>
+
+<section id="advanced">
+  <details class="advanced">
+    <summary>Advanced / why</summary>
+    <div class="adv">
+      {% if card and card.why %}<p>{{ card.why }}</p>{% endif %}
+      {% if card and card.tdee %}
+      <p>Stable TDEE {{ "{:,}".format(card.tdee) }} kcal{% if card.deficit is not none %} · planned deficit {{ card.deficit }} kcal{% endif %}{% if card.maintenance %} · maintenance, no deficit{% endif %}.</p>
+      {% endif %}
+      {% if card and card.protein_basis %}<p>Protein basis: {{ card.protein_basis }}.</p>{% endif %}
+      {% if tdee_today and logged_kcal %}
+      <p>Today’s burn so far {{ "{:,}".format(tdee_today) }} kcal · logged {{ "{:,}".format(logged_kcal) }}.</p>
+      {% endif %}
+      {% if ride_work_kj %}<p>Ride work {{ ride_work_kj }} kJ.</p>{% endif %}
+      {% if ea_words %}<p>{{ ea_words }}</p>{% endif %}
+      {% if supplements %}
+      <p style="margin-top:10px">{{ supplement_disclaimer }}</p>
+      <ul style="margin:8px 0 0 18px">
+        {% for s in supplements %}<li><strong style="color:var(--text)">{{ s.name }}</strong> — {{ s.dose }}. {{ s.why }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      <p style="margin-top:10px"><a href="/nutrition/cut">Weight goal and the cut</a></p>
+    </div>
+  </details>
+</section>
 
 </div>
-</body></html>
+</body>
+</html>
