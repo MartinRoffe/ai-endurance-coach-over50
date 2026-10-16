@@ -10,7 +10,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from .paths import data_dir
+from .paths import dashboard_bind_host, data_dir
 
 logger = logging.getLogger(__name__)
 _EMAIL_LOCK_FH = None
@@ -250,10 +250,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--host",
-        default=os.getenv("COACH_BIND_HOST", "127.0.0.1"),
-        help="Bind address for --serve (default 127.0.0.1, or COACH_BIND_HOST). "
-             "Stay on localhost and use Tailscale for remote access; "
-             "do not publish the dashboard on a public interface.",
+        default=dashboard_bind_host(),
+        help="Bind address for --serve (default 127.0.0.1, or HOST / "
+             "COACH_BIND_HOST from the environment). Prefer the Tailscale IP "
+             "over 0.0.0.0, and set DASHBOARD_USER and DASHBOARD_PASSWORD "
+             "before anything other than this machine can connect.",
     )
     parser.add_argument(
         "--port",
@@ -339,12 +340,7 @@ def main() -> None:
         from .server import run as serve_run
         host = args.host
         console.print(f"[bold]Dashboard at[/bold] http://{host}:{args.port}")
-        if host in {"0.0.0.0", "::", "[::]"}:
-            console.print(
-                "[yellow]Bound on all interfaces.[/yellow] Prefer Tailscale "
-                "(`tailscale serve --bg 8743`) and set DASHBOARD_USER / "
-                "DASHBOARD_PASSWORD. Do not port-forward this to the internet."
-            )
+        _warn_exposed_dashboard(host)
         serve_run(host=host, port=args.port)
         return
 
@@ -542,6 +538,28 @@ def main() -> None:
     comp_z = composite_score(m, stats)
 
     _render_dashboard(m, stats, comp_z)
+
+
+def _warn_exposed_dashboard(host: str) -> None:
+    """Loopback is the safe default. Anything else needs the existing basic auth."""
+    if host in {"127.0.0.1", "localhost", "::1"}:
+        return
+    user = os.getenv("DASHBOARD_USER", "").strip()
+    password = os.getenv("DASHBOARD_PASSWORD", "").strip()
+    if host in {"0.0.0.0", "::", "[::]"}:
+        console.print(
+            "[yellow]HOST is every interface, including Wi-Fi.[/yellow] "
+            "A Tailscale IP listens only on the tailnet."
+        )
+    if user and password:
+        console.print("[yellow]HTTP Basic auth is on for this bind address.[/yellow]")
+        return
+    console.print(
+        "[red]No DASHBOARD_USER / DASHBOARD_PASSWORD.[/red] "
+        "Every route is open, including /send-email, /sync-workouts, "
+        "/apply-plan-change, /refresh, coach chat, and the health pages. "
+        "Set both before using this host on a tailnet."
+    )
 
 
 def _hold_email_lock() -> bool:

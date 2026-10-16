@@ -1,0 +1,15 @@
+[Unit]
+Description=AI Endurance Coach daily readiness email
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/.ai_endurance_coach_over50/email.sh
+Environment=DOTENV_PATH=%h/.ai_endurance_coach_over50/.env
+Environment=PATH=%h/.ai_endurance_coach_over50/venv/bin:/usr/local/bin:/usr/bin:/bin
+# The script retries for up to three hours while the watch syncs.
+# systemd's default start timeout (90s) would kill that loop.
+TimeoutStartSec=infinity
+StandardOutput=append:%h/.ai_endurance_coach_over50/daily.log
+StandardError=append:%h/.ai_endurance_coach_over50/daily.log

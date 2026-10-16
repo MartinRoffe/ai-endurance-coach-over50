@@ -1,9 +1,13 @@
 """Install the daily email and the always-on dashboard.
 
-macOS uses launchd user agents. Linux uses systemd --user units. Both pin the
-dashboard to 127.0.0.1 and load ``~/.ai_endurance_coach_over50/.env`` (or
-``ENDURANCE_COACH_HOME``). The email runs at 07:00 local time, catches up after
-sleep or power-off, and the Python CLI refuses a second send the same day.
+macOS uses launchd user agents (07:00 in this installer, with RunAtLoad).
+The agents actually loaded on the Mac today are 08:00 with no RunAtLoad;
+``deploy/systemd/`` and the Linux branch copy that loaded schedule.
+Linux uses systemd --user units. Both load
+``~/.ai_endurance_coach_over50/.env`` (or ``ENDURANCE_COACH_HOME``).
+The dashboard listens on 127.0.0.1 unless ``HOST`` (or ``COACH_BIND_HOST``)
+is set. The email catches up after sleep or power-off, and the Python CLI
+refuses a second send the same day.
 """
 from __future__ import annotations
 
@@ -41,8 +45,8 @@ def render_serve_script(python: str, project_dir: str, env_file: Path) -> str:
         "set -euo pipefail\n"
         f"export PYTHONPATH={project_dir}\n"
         f"export DOTENV_PATH={env_file}\n"
-        "# Localhost only. Use Tailscale (`tailscale serve --bg 8743`) for other devices.\n"
-        f"exec {python} -m ai_endurance_coach_over50.cli --serve --host 127.0.0.1\n"
+        "# Bind address: HOST or COACH_BIND_HOST in the env file, else 127.0.0.1.\n"
+        f"exec {python} -m ai_endurance_coach_over50.cli --serve\n"
     )
 
 
@@ -130,46 +134,107 @@ def server_launchd_keys() -> str:
     <true/>"""
 
 
-def render_systemd_server(serve_script: Path, env_file: Path) -> str:
-    return f"""[Unit]
+def render_linux_email_script() -> str:
+    """Retry loop copied from the macOS ``email.sh`` the launchd agent runs.
+
+    Exit 0 finishes. Exit 2 (watch not synced) sleeps 30 minutes and tries
+    again. Any other code stops. The deadline is three hours after the
+    process starts (``date -v+3H`` on the Mac). The give-up line is the
+    same text the Mac wrapper prints.
+    """
+    return """#!/bin/bash
+# Daily readiness email. Same retry rules as the macOS launchd wrapper.
+# Exit 0: sent. Exit 2: watch has not synced — retry every 30 minutes.
+# Any other status stops immediately (no retry).
+# Deadline is three hours after start (same as the Mac wrapper).
+set -u
+DATA="${ENDURANCE_COACH_HOME:-$HOME/.ai_endurance_coach_over50}"
+export DOTENV_PATH="${DOTENV_PATH:-$DATA/.env}"
+BIN="${ENDURANCE_COACH_BIN:-$DATA/venv/bin/endurance-coach}"
+if [ ! -x "$BIN" ]; then
+    BIN="$(command -v endurance-coach || true)"
+fi
+if [ -z "${BIN}" ]; then
+    echo "endurance-coach not found" >&2
+    exit 1
+fi
+PY="${BIN%/*}/python"
+if [ ! -x "$PY" ]; then
+    PY="$(command -v python3)"
+fi
+DEADLINE="$("$PY" -c "from datetime import datetime, timedelta; print(int((datetime.now()+timedelta(hours=3)).timestamp()))")" || exit 1
+while true; do
+    "$BIN" --withings-sync --email --fetch
+    CODE=$?
+    if [ "$CODE" -eq 0 ]; then
+        exit 0
+    fi
+    if [ "$CODE" -ne 2 ]; then
+        exit "$CODE"
+    fi
+    NOW=$(date +%s)
+    if [ "$NOW" -ge "$DEADLINE" ]; then
+        echo "Watch never synced by 10:00 — giving up"
+        exit 2
+    fi
+    echo "Watch not synced yet, retrying in 30 min…"
+    sleep 1800
+done
+"""
+
+
+def render_systemd_server() -> str:
+    # No --host: the CLI reads HOST / COACH_BIND_HOST from DOTENV_PATH
+    # (default 127.0.0.1). Logs are the same files launchd appends to.
+    return """[Unit]
 Description=AI Endurance Coach dashboard
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart={serve_script}
+ExecStart=%h/.ai_endurance_coach_over50/venv/bin/endurance-coach --serve
+Environment=DOTENV_PATH=%h/.ai_endurance_coach_over50/.env
+Environment=PATH=%h/.ai_endurance_coach_over50/venv/bin:/usr/local/bin:/usr/bin:/bin
 Restart=on-failure
 RestartSec=5
-Environment=DOTENV_PATH={env_file}
+StandardOutput=append:%h/.ai_endurance_coach_over50/server.log
+StandardError=append:%h/.ai_endurance_coach_over50/server.log
 
 [Install]
 WantedBy=default.target
 """
 
 
-def render_systemd_email_service(email_script: Path, env_file: Path) -> str:
-    return f"""[Unit]
+def render_systemd_email_service() -> str:
+    return """[Unit]
 Description=AI Endurance Coach daily readiness email
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart={email_script}
-Environment=DOTENV_PATH={env_file}
-# The script retries for up to a few hours while the watch syncs.
+ExecStart=/bin/bash %h/.ai_endurance_coach_over50/email.sh
+Environment=DOTENV_PATH=%h/.ai_endurance_coach_over50/.env
+Environment=PATH=%h/.ai_endurance_coach_over50/venv/bin:/usr/local/bin:/usr/bin:/bin
+# The script retries for up to three hours while the watch syncs.
 # systemd's default start timeout (90s) would kill that loop.
 TimeoutStartSec=infinity
+StandardOutput=append:%h/.ai_endurance_coach_over50/daily.log
+StandardError=append:%h/.ai_endurance_coach_over50/daily.log
 """
 
 
 def render_systemd_email_timer() -> str:
+    # Hour 8 matches the loaded launchd plist (StartCalendarInterval).
+    # Persistent=true is launchd's missed-interval catch-up: if the machine
+    # was off at 08:00, the job runs at next boot. There is no RunAtLoad
+    # on the Mac daily agent, so this timer does not fire on every login.
     return f"""[Unit]
-Description=Daily 07:00 readiness email (catch up if the laptop was off)
+Description=Daily 08:00 readiness email (same clock as the macOS launchd agent)
 
 [Timer]
-OnCalendar=*-*-* 07:00:00
+OnCalendar=*-*-* 08:00:00
 Persistent=true
 AccuracySec=1min
 Unit={SYSTEMD_EMAIL}
@@ -189,13 +254,16 @@ def _ensure_env_file(home: Path) -> Path:
     return env_file
 
 
-def _write_scripts(home: Path, env_file: Path) -> tuple[Path, Path]:
+def _write_scripts(home: Path, env_file: Path, *, system: str) -> tuple[Path, Path]:
     python = sys.executable
     project_dir = str(Path(__file__).resolve().parent.parent)
     serve_script = home / "serve.sh"
     email_script = home / "email.sh"
     serve_script.write_text(render_serve_script(python, project_dir, env_file))
-    email_script.write_text(render_email_script(python, project_dir, env_file))
+    if system == "Linux":
+        email_script.write_text(render_linux_email_script())
+    else:
+        email_script.write_text(render_email_script(python, project_dir, env_file))
     serve_script.chmod(0o755)
     email_script.chmod(0o755)
     return serve_script, email_script
@@ -220,7 +288,7 @@ def setup_schedule(
     system = system or platform.system()
     home = data_dir()
     env_file = _ensure_env_file(home)
-    serve_script, email_script = _write_scripts(home, env_file)
+    serve_script, email_script = _write_scripts(home, env_file, system=system)
     lines = [
         f"Scripts: {serve_script}",
         f"         {email_script}",
@@ -235,7 +303,7 @@ def setup_schedule(
         ))
     elif system == "Linux":
         lines.extend(_install_systemd(
-            serve_script, email_script, env_file,
+            email_script,
             unit_dir=systemd_dir,
             apply=apply,
         ))
@@ -244,9 +312,9 @@ def setup_schedule(
             f"No scheduler integration for {system}. "
             "Run serve.sh for the dashboard and email.sh from cron at 07:00."
         )
-    lines.append("Dashboard binds to 127.0.0.1:8743 only.")
     lines.append(
-        "Remote access: Tailscale (`tailscale serve --bg 8743`), not a public bind."
+        "Dashboard bind defaults to 127.0.0.1. Set HOST in the data-dir .env "
+        "(Tailscale IP or 0.0.0.0) to listen beyond localhost."
     )
     return lines
 
@@ -292,24 +360,22 @@ def _install_launchd(
 
 
 def _install_systemd(
-    serve_script: Path,
     email_script: Path,
-    env_file: Path,
     *,
     unit_dir: Path | None,
     apply: bool,
 ) -> list[str]:
     units = unit_dir or (Path.home() / ".config" / "systemd" / "user")
     units.mkdir(parents=True, exist_ok=True)
-    (units / SYSTEMD_SERVER).write_text(render_systemd_server(serve_script, env_file))
-    (units / SYSTEMD_EMAIL).write_text(render_systemd_email_service(email_script, env_file))
+    (units / SYSTEMD_SERVER).write_text(render_systemd_server())
+    (units / SYSTEMD_EMAIL).write_text(render_systemd_email_service())
     (units / SYSTEMD_TIMER).write_text(render_systemd_email_timer())
     lines = [
         f"systemd user units written to {units}.",
-        "Server: Restart=on-failure, bound to 127.0.0.1.",
-        "Email: timer 07:00 with Persistent=true (runs on boot if 07:00 was missed).",
-        f"Logs: journalctl --user -u {SYSTEMD_SERVER} -u {SYSTEMD_EMAIL}",
-        f"      and {data_dir() / 'daily.log'}",
+        "Server: Restart=on-failure. Logs: ~/.ai_endurance_coach_over50/server.log",
+        "Email: 08:00 timer, Persistent=true, retry exit 2 every 30 min for 3 hours.",
+        f"Email script: {email_script}",
+        f"Logs: {data_dir() / 'daily.log'} and journalctl --user -u {SYSTEMD_SERVER}",
     ]
     if not apply:
         lines.append("systemctl not invoked (apply=False).")

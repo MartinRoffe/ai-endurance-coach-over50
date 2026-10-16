@@ -61,7 +61,6 @@ client = anthropic.Anthropic(api_key=api_key)
 message = client.messages.create(
     model=MODEL_SMART,
     max_tokens=500,
-    temperature=0,
     messages=[{"role": "user", "content": prompt}],
     system=system,
 )
@@ -71,13 +70,15 @@ text = message.content[0].text
 1. **`system` is separate from `messages`.** The system prompt is *who Claude is and the
    rules it follows*; messages are *the actual request/conversation*. Keep persona out of
    the per-request payload. (Here the persona comes from `coach_persona_brief()`.)
-2. **`temperature=0`.** Deterministic output. Daily training advice shouldn't be random;
-   creative tasks would use a higher value. Temperature is your randomness dial.
+2. **No `temperature`.** anthropic 1.x removed `temperature`, `top_p`, and `top_k` from
+   `messages.create` / `messages.stream`. Those methods take no `**kwargs`, so passing
+   `temperature=0` raises `TypeError` before any request is sent and the dashboard
+   returns HTTP 500. Leave sampling at the API default.
 3. **`message.content[0].text`.** The response is a *list of content blocks*, not a string.
    For plain text you take `[0].text`. This list structure becomes critical once tools are
    involved (see Tool use below) — a response can contain text blocks *and* tool-use blocks.
 
-**Concept: the system/user split, and the dials (`max_tokens`, `temperature`).**
+**Concept: the system/user split, and `max_tokens`.**
 
 ---
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily 08:00 readiness email (same clock as the macOS launchd agent)
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+AccuracySec=1min
+Unit=ai-endurance-coach-email.service
+
+[Install]
+WantedBy=timers.target
