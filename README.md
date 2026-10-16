@@ -96,10 +96,11 @@ Copy `.env.example` to `.env` and populate:
 | `REPORT_TO` | — | Recipient email (defaults to `GMAIL_ADDRESS`) |
 | `DASHBOARD_USER` | — | Basic auth username (dashboard is open if unset) |
 | `DASHBOARD_PASSWORD` | — | Basic auth password |
+| `HOST` | — | Dashboard bind address (default `127.0.0.1`; Tailscale IP or `0.0.0.0`) |
 
 Scheduled jobs (macOS launchd and Linux systemd) do not see your shell environment. Copy `.env` to `~/.ai_endurance_coach_over50/.env` as well — `--setup-schedule` does this when that file is missing.
 
-The dashboard binds to **127.0.0.1** by default (`--host`, or `COACH_BIND_HOST`). That is localhost only. For a phone or another computer, use [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) (`tailscale serve --bg 8743`) rather than binding `0.0.0.0` or port-forwarding the app onto a public network. Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` if anything other than this machine can open it. The installed server service always passes `--host 127.0.0.1` and ignores `COACH_BIND_HOST`.
+The dashboard binds to **127.0.0.1** by default (`--host`, or `HOST` / `COACH_BIND_HOST` in `.env`). `HOST` wins. That default is localhost only. On the always-on Ubuntu machine, set `HOST` to the Tailscale IPv4 (or `0.0.0.0`) and set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` — with either blank, every route is open. See [docs/deploy-ubuntu.md](docs/deploy-ubuntu.md). Do not port-forward the app onto a public network.
 
 ## Usage
 
@@ -122,8 +123,8 @@ endurance-coach --activate-power 30
 # Upload structured cycling workouts to Garmin Connect
 endurance-coach --workouts [--dry-run]
 
-# Install the 07:00 email + always-on server
-# macOS: launchd agents. Linux: systemd --user units.
+# Install the always-on server and the morning email
+# macOS launchd writes 07:00. Linux systemd uses deploy/systemd (08:00).
 endurance-coach --setup-schedule
 ```
 
@@ -186,7 +187,7 @@ Post-workout analysis uses Claude Sonnet. Recovery suggestions, workout descript
 ## Background service
 
 ```bash
-# macOS launchd, or Linux systemd --user: 07:00 email + localhost server
+# macOS launchd: 07:00 email + server. Linux: deploy/systemd (08:00, matches the loaded Mac agent)
 endurance-coach --setup-schedule
 ```
 
@@ -204,31 +205,4 @@ systemctl --user restart ai-endurance-coach.service
 
 ### Moving from the Mac to an always-on Ubuntu laptop
 
-1. On the Ubuntu machine, install the app (`pip install .`) and copy the whole data directory across, including the database and credentials:
-
-   ```bash
-   rsync -a ~/.ai_endurance_coach_over50/ user@laptop:~/.ai_endurance_coach_over50/
-   ```
-
-   That directory holds `history.db`, `.env`, the Garmin token cache, and Withings OAuth files. Do not commit it.
-
-2. Enable lingering so the user services keep running when you are not logged in:
-
-   ```bash
-   sudo loginctl enable-linger "$USER"
-   ```
-
-3. Install the units (localhost server with `Restart=on-failure`, email timer at 07:00 with `Persistent=true`):
-
-   ```bash
-   endurance-coach --setup-schedule
-   ```
-
-4. On the Mac, unload the old agents so it stops sending as well:
-
-   ```bash
-   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.server"
-   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.daily"
-   ```
-
-The email job records a `sent_YYYY-MM-DD` sentinel and takes an exclusive lock, so a 07:00 run plus a catch-up after wake or boot cannot send twice. If 07:00 was missed because the machine was asleep or off, the job runs at next wake (macOS `RunAtLoad` / calendar coalescing) or next boot (systemd `Persistent=true`). See [Email & Automation](docs/email-and-automation.md).
+The step-by-step is [docs/deploy-ubuntu.md](docs/deploy-ubuntu.md): venv under `~/.ai_endurance_coach_over50/venv`, `rsync -a` of the data dir (then `chmod 600` on `.env`), the units in `deploy/systemd/`, and `sudo loginctl enable-linger "$USER"`. The timer is 08:00, the same clock as the launchd agent loaded on the Mac. Replace the copied `email.sh` — it points at the Mac pyenv. Unload the Mac agents only after the Tailscale URL works.

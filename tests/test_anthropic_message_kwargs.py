@@ -7,8 +7,11 @@ so a leftover keyword raises ``TypeError`` before a request is sent.
 import ast
 import inspect
 from datetime import date
+from importlib.metadata import version
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from anthropic.resources.messages.messages import Messages
 
@@ -42,8 +45,8 @@ def test_repo_message_calls_match_installed_sdk():
     for scan_root in _SCAN_ROOTS:
         if not scan_root.is_dir():
             continue
-        for path in scan_root.rglob("*.py"):
-            tree = ast.parse(path.read_text(encoding="utf-8"))
+    for path in scan_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for call in _message_calls(tree):
             allowed = _CREATE_PARAMS if call.func.attr == "create" else _STREAM_PARAMS
             for kw in call.keywords:
@@ -82,3 +85,29 @@ def test_generate_advice_binds_on_messages_create():
     assert text == "Keep today easy and aerobic."
     assert "temperature" not in captured
     assert captured["model"]
+
+
+def _version_tuple(value: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for piece in value.split(".")[:3]:
+        digits = ""
+        for char in piece:
+            if char.isdigit():
+                digits += char
+            else:
+                break
+        parts.append(int(digits or "0"))
+    return tuple(parts)
+
+
+def test_installed_anthropic_is_in_the_pinned_range():
+    """pyproject allows anthropic>=1.4,<2 — 1.0 dropped sampling kwargs."""
+    installed = _version_tuple(version("anthropic"))
+    assert installed >= (1, 4)
+    assert installed < (2, 0)
+    assert "temperature" not in _CREATE_PARAMS
+    assert "temperature" not in _STREAM_PARAMS
+    with pytest.raises(TypeError):
+        inspect.signature(Messages.create).bind(
+            None, model="m", max_tokens=1, messages=[], temperature=0,
+        )
