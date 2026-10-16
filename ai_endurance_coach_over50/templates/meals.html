@@ -98,7 +98,7 @@
   .meal-table tr { border-bottom:1px solid var(--border); }
   .meal-table tr:last-child { border-bottom:none; }
   .meal-table td { padding:10px 18px; font-size:13px; vertical-align:top; }
-  .meal-type-cell { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; width:80px; padding-top:12px; white-space:nowrap; }
+  .meal-type-cell { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; width:108px; padding-top:12px; white-space:nowrap; }
   .meal-name { font-weight:500; color:var(--text); margin-bottom:2px; font-size:13px; }
   .meal-detail { color:var(--muted); font-size:11px; line-height:1.5; }
   .meal-macros { display:flex; gap:8px; margin-top:5px; flex-wrap:wrap; }
@@ -216,7 +216,7 @@
     <h2>THIS WEEK + FOOD TEMPLATES</h2>
 
     <div class="week-banner" style="margin-bottom:16px">
-      <p><strong>Fixed weekday pattern:</strong> overnight oats Mon/Wed/Fri · scotch egg + yogurt Tue/Thu (egg muffins Tue/Thu in recovery week only). Batch dinners Mon–Thu (A Mon/Tue, B Wed/Thu — cycle-week rotation); griddle Fri–Sun. <a href="/nutrition/sunday" style="color:var(--accent)">Sunday Prep</a> · <a href="/nutrition/recipes/weekday-dinners" style="color:var(--accent)">All dinner recipes</a>.</p>
+      <p><strong>Four-week cycle.</strong> Sunday cooks two one-pots and one soup for Monday–Friday lunch and dinner. Saturday and Sunday are cooked fresh, including a full English on Saturday. <a href="/nutrition/sunday" style="color:var(--accent)">Sunday Prep</a> · <a href="/nutrition/recipes/weekday-dinners" style="color:var(--accent)">Batch recipes</a>.</p>
     </div>
 
     <div class="week-tabs">
@@ -269,6 +269,7 @@ function renderDay(day) {
         <td class="meal-type-cell">${m.type}</td>
         <td>
           <div class="meal-name">${m.name}</div>
+          <div class="meal-macros">${macroHtml(m.macros || {})}</div>
           <div class="meal-detail">${m.detail}</div>
         </td>
       </tr>`).join('')}

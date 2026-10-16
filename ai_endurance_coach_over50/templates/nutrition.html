@@ -119,7 +119,7 @@
   .habit-line { margin-top:16px; font-size:15px; }
   .stone-line { margin-top:8px; font-size:13px; color:var(--muted); line-height:1.55; max-width:720px; }
   .meal-line { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; }
-  .meal-line .slot { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent2); width:88px; flex-shrink:0; padding-top:3px; }
+  .meal-line .slot { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent2); width:108px; flex-shrink:0; padding-top:3px; }
   details.advanced { margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:12px 16px; }
   details.advanced summary { cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
   details.advanced .adv { margin-top:12px; font-size:13px; color:var(--muted); line-height:1.6; }
@@ -192,9 +192,13 @@
     {% for m in today_food.meals %}
     <div class="meal-line">
       <div class="slot">{{ m.type }}</div>
-      <div>{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
+      <div>
+        <div>{% if m.recipe_url %}<a class="meal-link" href="{{ m.recipe_url }}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</div>
+        <div class="meal-macros"><span class="macro m-kcal">{{ m.macros.kcal }} kcal</span><span class="macro m-p">P {{ m.macros.p }} g</span><span class="macro m-c">C {{ m.macros.c }} g</span></div>
+      </div>
     </div>
     {% endfor %}
+    <p style="margin-top:12px;font-size:13px;color:var(--muted)">Planned {{ "{:,}".format(today_food.meals_kcal_total) }} kcal · protein {{ today_food.meals_protein_total }} g{% if today_food.dairy_calcium_mg %} · dairy calcium {{ "{:,}".format(today_food.dairy_calcium_mg) }} mg{% endif %}.</p>
     <p style="margin-top:10px"><a href="/nutrition/meals">This week →</a></p>
   </section>
 {% endif %}
@@ -236,7 +240,7 @@
     <div class="shop-grid">
       <a class="shop-card" href="/nutrition/shopping-list">
         <div class="store">One list</div>
-        <p class="blurb">This week’s one-pots and soups, plus yoghurt, milk, eggs, fruit and lemons. Same list at Asda or Lidl.</p>
+        <p class="blurb">This week’s batch, breakfasts, and weekend plates, in grams. Same list at Asda or Lidl.</p>
         <span class="go">Open the list →</span>
       </a>
     </div>

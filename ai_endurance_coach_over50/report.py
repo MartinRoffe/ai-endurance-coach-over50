@@ -554,7 +554,9 @@ def _daily_food_html(d: date) -> str:
         names.append(
             f'<span style="font-family:{_MONO};font-size:10px;letter-spacing:0.08em;'
             f'text-transform:uppercase;color:{_RED};">{meal.get("type", "")}</span> '
-            f'{meal.get("name", "")}'
+            f'{meal.get("name", "")} '
+            f'({(meal.get("macros") or {}).get("kcal", "")} kcal, '
+            f'P {(meal.get("macros") or {}).get("p", "")} g)'
         )
     meals_line = ""
     if names:

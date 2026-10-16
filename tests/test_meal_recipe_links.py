@@ -9,37 +9,37 @@ from ai_endurance_coach_over50.nutrition_plan import (
 
 def test_dinner_plate_anchor_w4_mon():
     url = meal_recipe_url("Dinner", "Lemon chicken and rice", cycle_week=3, weekday=0)
-    assert url == "/nutrition/recipes/weekday-dinners#chicken-rice"
+    assert url == "/nutrition/recipes/weekday-dinners#lemon-chicken-rice"
 
 
 def test_dinner_plate_anchor_w1_sat():
-    url = meal_recipe_url("Dinner", "Turkey and potato stew", cycle_week=0, weekday=5)
-    assert url == "/nutrition/recipes/weekday-dinners#turkey-stew"
+    url = meal_recipe_url("Dinner", "Pork chop, apple and cabbage", cycle_week=0, weekday=6)
+    assert url == "/nutrition/sunday#pork-chop-apple-cabbage"
 
 
 def test_overnight_oats_breakfast():
-    url = meal_recipe_url("Breakfast", "Skyr, oats and fruit")
+    url = meal_recipe_url("Breakfast", "Overnight oats")
     assert url == "/nutrition/recipes/overnight-oats"
 
 
-def test_scotch_egg_breakfast():
-    url = meal_recipe_url("Breakfast", "Eggs and Greek yoghurt")
-    assert url == "/nutrition/recipes#eggs"
+def test_porridge_breakfast():
+    url = meal_recipe_url("Breakfast", "Porridge")
+    assert url == "/nutrition/sunday#porridge"
 
 
-def test_egg_muffin_breakfast():
-    url = meal_recipe_url("Lunch", "Chicken and rice soup")
-    assert url == "/nutrition/recipes/weekday-dinners#chicken-soup"
+def test_turkey_soup_lunch():
+    url = meal_recipe_url("Lunch", "Turkey, leek and potato soup")
+    assert url == "/nutrition/recipes/weekday-dinners#turkey-leek-potato-soup"
 
 
-def test_chinese_lunch():
-    url = meal_recipe_url("Lunch", "Turkey and cabbage soup")
-    assert url == "/nutrition/recipes/weekday-dinners#turkey-soup"
+def test_beef_pasta_dinner():
+    url = meal_recipe_url("Dinner", "Beef and mushroom pasta")
+    assert url == "/nutrition/recipes/weekday-dinners#beef-mushroom-pasta"
 
 
-def test_batch_rice_chicken_lunch():
-    url = meal_recipe_url("Dinner", "Salmon, rice and peas")
-    assert url == "/nutrition/recipes/weekday-dinners#salmon-rice"
+def test_salmon_couscous_dinner():
+    url = meal_recipe_url("Dinner", "Salmon, couscous and peas")
+    assert url == "/nutrition/recipes/weekday-dinners#salmon-couscous-peas"
 
 
 def test_whey_shake_has_no_recipe():
