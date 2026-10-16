@@ -1,4 +1,7 @@
-"""Four-week menu: Sunday batch feeds Mon–Fri, weekends are cooked fresh."""
+"""Four-week menu: the Sunday batch feeds weekday lunches and Mon–Thu dinners.
+
+Friday dinner is a quick griddle plate. Saturday and Sunday are cooked fresh.
+"""
 from __future__ import annotations
 
 from collections import defaultdict
@@ -42,7 +45,12 @@ def _plates(cycle_week: int, weekday: int):
     week = WEEKS[cycle_week % 4]
     if weekday <= 4:
         lunch_key, dinner_key = WEEKDAY_PLATE[weekday]
-        return recipe_by_id(week[lunch_key]), recipe_by_id(week[dinner_key]), True, True
+        return (
+            recipe_by_id(week[lunch_key]),
+            recipe_by_id(week[dinner_key]),
+            lunch_key in COOKED_SERVINGS,
+            dinner_key in COOKED_SERVINGS,
+        )
     if weekday == 5:
         return recipe_by_id(week["sat_lunch"]), recipe_by_id(week["sat_dinner"]), False, False
     return recipe_by_id(week["sun_lunch"]), recipe_by_id(week["sun_dinner"]), False, False
@@ -280,14 +288,14 @@ def week_menu(cycle_week: int) -> dict:
 
 
 def eaten_protein_counts(cycle_week: int) -> dict[str, int]:
-    """How many Mon–Sun plates use each protein family. Frozen spares are not eaten."""
+    """How many Mon–Sun plates use each protein family. The batch is what gets eaten."""
     week = WEEKS[cycle_week % 4]
     counts: dict[str, int] = defaultdict(int)
     ledger = portion_ledger(cycle_week)
     for info in ledger.values():
         recipe = recipe_by_id(info["id"])
         counts[recipe.protein] += info["eaten"]
-    for key in ("sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"):
+    for key in ("fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"):
         counts[recipe_by_id(week[key]).protein] += 1
     return dict(counts)
 
