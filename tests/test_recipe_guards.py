@@ -96,6 +96,54 @@ def test_chicken_and_fish_counts():
         assert 1 <= counts.get("fish", 0) <= 2, counts
 
 
+# Griddle or pan plates that finish in about 20 minutes. Jacket potato and the
+# oven-wedge pork chop stay on the weekend, where there is time for them.
+_QUICK_FRESH = {
+    "beef-patty-roll",
+    "chicken-pepper-roll",
+    "turkey-tomato-roll",
+    "pork-chop-apple-cabbage",
+    "steak-salad-bread",
+    "mushroom-omelette-toast",
+}
+
+
+def test_no_day_repeats_a_dish_at_lunch_and_dinner():
+    """Lunch and dinner are different dishes on every day of the 4-week cycle."""
+    from ai_endurance_coach_over50.recipes.catalog import WEEKS, recipe_by_id
+    from ai_endurance_coach_over50.recipes.menu import cook_plan
+
+    for week in range(4):
+        days = cook_plan(week)["days"]
+        assert len(days) == 7
+        for day in days:
+            assert day["lunch"] and day["dinner"]
+            assert day["lunch"] != day["dinner"], (week, day["weekday"], day["lunch"])
+        friday = days[4]
+        dinner_id = WEEKS[week]["fri_dinner"]
+        dinner = recipe_by_id(dinner_id)
+        assert friday["dinner"] == dinner.name
+        assert dinner.slot == "weekend"
+        assert dinner.batch is False
+        assert dinner_id in _QUICK_FRESH
+        used_elsewhere = []
+        for other in days:
+            if other is friday:
+                used_elsewhere.append(other["lunch"])
+            else:
+                used_elsewhere.extend((other["lunch"], other["dinner"]))
+        assert friday["dinner"] not in used_elsewhere
+        ledger = portion_ledger(week)
+        pot_a = ledger[WEEKS[week]["pot_a"]]
+        soup = ledger[WEEKS[week]["soup"]]
+        pot_b = ledger[WEEKS[week]["pot_b"]]
+        assert pot_a["eaten"] == 4, pot_a
+        assert soup["eaten"] == 3, soup
+        assert pot_b["eaten"] == 2, pot_b
+        assert pot_a["frozen"] == 0
+        assert recipe_by_id(WEEKS[week]["pot_a"]).servings == 4
+
+
 def test_no_yoghurt_on_batch_dinners_and_no_extra_carb_side():
     for recipe in all_recipes():
         if not recipe.batch:
@@ -161,7 +209,7 @@ def test_saturday_17_oct_2026_and_cut_week(monkeypatch):
         "ai_endurance_coach_over50.nutrition_plan._stable_tdee",
         lambda days=7: 2000,
     )
-    # Easy cut day lands on the 1,600 kcal floor. Friday is two portions of pot A.
+    # Easy cut day lands on the 1,600 kcal floor. Friday lunch is pot A; dinner is fresh.
     _assert_on_target(date(2027, 1, 4))
     _assert_on_target(date(2027, 1, 8))
     # Hard and long use the real session on those dates when one exists,
