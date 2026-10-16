@@ -18,6 +18,7 @@ from .fitness_plan import (
     session_for_date,
 )
 from .load import pack_kg_from_label
+from .safety import is_hard
 
 Exercise = dict[str, str]
 Block = dict[str, str]
@@ -65,6 +66,36 @@ _KIT = (
     "or a weighted vest, a rower, and a MaxiClimber. No trap bar. "
     "The pull-up bar is in use from 27 Oct."
 )
+
+
+_COUNT_WORDS = {
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+}
+
+
+def hard_sessions_in_week(d: date) -> int:
+    """How many hard sessions the plan has in the Monday–Sunday week of ``d``."""
+    monday = d - timedelta(days=d.weekday())
+    count = 0
+    for offset in range(7):
+        session = session_for_date(monday + timedelta(days=offset))
+        if session is not None and is_hard(session):
+            count += 1
+    return count
+
+
+def hard_day_phrase(d: date) -> str:
+    """Lead-in that matches the week's actual hard-session count."""
+    count = hard_sessions_in_week(d)
+    if count <= 1:
+        return "The only hard day this week"
+    word = _COUNT_WORDS.get(count, str(count))
+    return f"One of the {word} hard days this week"
 
 
 def _fmt_dur(dur: int) -> str:
@@ -197,6 +228,7 @@ def day_detail(
     detail = _empty(d, stype, label, dur)
     detail["cap_note"] = cap_note
     detail["instead"] = instead
+    # Push status is only this flag and garmin_text. Purpose copy does not restate it.
     detail["garmin"] = garmin_allowed(d, stype, label)
     detail["garmin_text"] = "Pushed to Garmin" if detail["garmin"] else "Not pushed to Garmin"
     _fill(detail, d, stype, label, dur, book)
@@ -235,7 +267,7 @@ def _fill(detail: dict[str, Any], d: date, stype: str, label: str, dur: int, boo
         _fill_teide(detail, dur, book)
         return
     if stype in ("threshold", "vo2") or "threshold" in low or "vo2" in low:
-        _fill_quality_bike(detail, label, dur, book)
+        _fill_quality_bike(detail, d, label, dur, book)
         return
     if stype in ("bike", "long", "endurance") or "z2" in low or "long ride" in low:
         _fill_easy_bike(detail, label, dur, book)
@@ -762,7 +794,7 @@ def _maintenance_strength(detail: dict[str, Any]) -> None:
     ]
 
 
-def _fill_quality_bike(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any]) -> None:
+def _fill_quality_bike(detail: dict[str, Any], d: date, label: str, dur: int, book: dict[str, Any]) -> None:
     low = label.lower()
     vo2 = "vo2" in low or detail["type"] == "vo2"
     zone = 5 if vo2 else 4
@@ -781,8 +813,7 @@ def _fill_quality_bike(detail: dict[str, Any], label: str, dur: int, book: dict[
             _block("Cool-down", "7 min easy spin."),
         ]
         detail["purpose"] = (
-            "One of the two hard days. Short repeats, full rest between them. "
-            "Not pushed to Garmin — follow this, not a watch workout."
+            f"{hard_day_phrase(d)}. Short repeats, full rest between them."
         )
     else:
         work = "2 × 10 min" if dur >= 45 else "2 × 8 min"
@@ -793,8 +824,7 @@ def _fill_quality_bike(detail: dict[str, Any], label: str, dur: int, book: dict[
             _block("Cool-down", "10 min easy spin, zone 1."),
         ]
         detail["purpose"] = (
-            "One of the two hard days. Hold the power steady rather than surging the first minute. "
-            "Not pushed to Garmin."
+            f"{hard_day_phrase(d)}. Hold the power steady rather than surging the first minute."
         )
 
 
@@ -813,7 +843,7 @@ def _camp_quality(detail: dict[str, Any], vo2: bool, dur: int) -> None:
         ]
     detail["purpose"] = (
         f"Camp quality day, about {_fmt_dur(dur) or 'the planned time'}. "
-        "An easy day sits on either side. Shorten it when the legs are not there. Not pushed to Garmin."
+        "An easy day sits on either side. Shorten it when the legs are not there."
     )
 
 
@@ -845,13 +875,12 @@ def _fill_easy_bike(detail: dict[str, Any], label: str, dur: int, book: dict[str
             _block("Cool-down", "A few minutes easier than the main set."),
         ]
     fuel = " Eat from the first hour." if dur >= 75 else ""
-    pushed = " This one is pushed to Garmin." if detail["garmin"] else " Not pushed to Garmin."
     if long_ride:
         detail["purpose"] = (
-            "Easy long ride. The point is time in zone 2, not a harder average." + fuel + pushed
+            "Easy long ride. The point is time in zone 2, not a harder average." + fuel
         )
     else:
-        detail["purpose"] = "Easy aerobic ride. Conversation pace." + fuel + pushed
+        detail["purpose"] = "Easy aerobic ride. Conversation pace." + fuel
 
 
 def _fill_teide(detail: dict[str, Any], dur: int, book: dict[str, Any]) -> None:
@@ -867,7 +896,7 @@ def _fill_teide(detail: dict[str, Any], dur: int, book: dict[str, Any]) -> None:
     ]
     detail["purpose"] = (
         f"Optional Teide day, about {_fmt_dur(dur)}. There is no distance target. "
-        "Shorten it when fitness is not there. Not pushed to Garmin."
+        "Shorten it when fitness is not there."
     )
 
 
@@ -904,8 +933,7 @@ def _fill_rower(detail: dict[str, Any], label: str, dur: int, book: dict[str, An
             _block("Cool-down", "Easy row for whatever is left."),
         ]
     detail["purpose"] = (
-        "Hard day on the rower, so the bike is not the only place you can do it. "
-        "Not pushed to Garmin."
+        "Hard day on the rower, so the bike is not the only place you can do it."
     )
 
 
@@ -921,8 +949,7 @@ def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         _block("Cool-down", "Easy climbing for the time that is left."),
     ]
     detail["purpose"] = (
-        f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}. "
-        "Not pushed to Garmin."
+        f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
     )
 
 
@@ -946,7 +973,7 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["ruck_elevation"] = "As little climbing as you can find. The test is flat."
         detail["purpose"] = (
             "Dress rehearsal for the pack test, one week out. Time it, then stop. "
-            "No strength session on top. Not pushed to Garmin."
+            "No strength session on top."
         )
     else:
         main = max(dur - 20, 0)
@@ -964,7 +991,7 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         )
         detail["purpose"] = (
             f"Hill ruck at {pack}. Duration stays about {_fmt_dur(dur) or 'the same'}. "
-            "This is the pack-test load climbing toward 20.4 kg. Not pushed to Garmin."
+            "This is the pack-test load climbing toward 20.4 kg."
         )
 
 
@@ -1037,8 +1064,7 @@ def _fill_hike(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         )
         detail["purpose"] = (
             "Scotland winter hill week (ready from Mon 22 Mar 2027). "
-            "Day trips and optional multi-day; hills chosen from conditions. "
-            "Not pushed to Garmin."
+            "Day trips and optional multi-day; hills chosen from conditions."
         )
         detail["rpe_target"] = "4–5"
         return
