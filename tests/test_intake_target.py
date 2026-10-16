@@ -271,14 +271,19 @@ def test_stable_tdee_none_without_data(monkeypatch):
 # ── meals align with targets ─────────────────────────────────────────────────
 
 def test_meal_sums_match_targets_for_every_day_type():
-    """Each day is four protein doses. Portions are not scaled onto the kcal target."""
+    """Each day scales onto the fallback target and keeps protein in range."""
     for cw in range(4):
         wd_map = _WEEKDAY_TO_TYPE_BUILD if cw < 3 else _WEEKDAY_TO_TYPE_RECOVERY
         for wd in range(7):
             dtype = wd_map[wd]
             meals = _assemble_meals(dtype, cw, wd)
-            assert [m[0] for m in meals] == ["Breakfast", "Lunch", "Dinner", "Evening"]
-            assert sum(m[4] for m in meals) == 160
+            slots = [m[0] for m in meals]
+            assert slots[0] == "Breakfast"
+            assert "Lunch" in slots and "Dinner" in slots
+            assert "AM Snack" not in slots
+            total = sum(m[3] for m in meals)
+            assert abs(total - 2200) <= 2200 * 0.05
+            assert 166 <= sum(m[4] for m in meals) <= 184
 
 
 def test_meal_protein_hits_lean_mass_floor():
@@ -296,7 +301,8 @@ def test_meal_protein_hits_lean_mass_floor():
 
 def test_recovery_week_skips_protein_bar_on_rest_days():
     meals = _assemble_meals("recovery_weekday", 3, 0)
-    assert [m[0] for m in meals] == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    slots = [m[0] for m in meals]
+    assert "Breakfast" in slots and "Lunch" in slots and "Dinner" in slots
     assert all(m[0] != "AM Snack" for m in meals)
 
 
@@ -342,8 +348,10 @@ def test_build_today_food_rest_saturday_no_post_ruck(monkeypatch):
     out = np_mod.build_today_food(PLAN_START, d)
     assert "Rest" in out["session"]
     slots = [m["type"] for m in out["meals"]]
-    assert slots == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    assert "Breakfast" in slots and "Lunch" in slots and "Dinner" in slots
+    assert "Post-Ruck" not in slots and "AM Snack" not in slots
     assert out["kcal_target"] == np_mod.today_targets(d)["kcal"]
+    assert abs(out["meals_kcal_total"] - out["kcal_target"]) <= out["kcal_target"] * 0.05
     assert out["maintenance"] is True
     assert "maintenance" in (out.get("why") or "").lower()
 
@@ -354,8 +362,10 @@ def test_build_today_food_real_ruck_saturday_keeps_post_ruck(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
     out = np_mod.build_today_food(PLAN_START, date(2026, 5, 30))
     slots = [m["type"] for m in out["meals"]]
-    assert slots == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    assert "Breakfast" in slots and "Lunch" in slots and "Dinner" in slots
+    assert "Post-Ruck" not in slots
     assert out["kcal_target"] == np_mod.today_targets(date(2026, 5, 30))["kcal"]
+    assert abs(out["meals_kcal_total"] - out["kcal_target"]) <= out["kcal_target"] * 0.05
 
 
 def test_hard_cut_rest_kcal_below_long(monkeypatch):
@@ -400,8 +410,11 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
     plan_start = date(2026, 5, 18)
     sunday = date(2026, 5, 24)
     out = np_mod.build_today_food(plan_start, sunday)
-    assert [m["type"] for m in out["meals"]] == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    slots = [m["type"] for m in out["meals"]]
+    assert "Pre-ride" in slots and "On-bike" in slots and "Post-ride" in slots
+    assert "Breakfast" in slots and "Dinner" in slots
     assert out["kcal_target"] == np_mod.today_targets(sunday)["kcal"]
+    assert abs(out["meals_kcal_total"] - out["kcal_target"]) <= out["kcal_target"] * 0.05
     assert out["kcal_target"] == 2000 + round(175 * 1.5)
     card = np_mod.today_card(sunday)
     assert card["kind"] == "long"

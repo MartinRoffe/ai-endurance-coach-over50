@@ -1034,7 +1034,7 @@ def _shopping_list_context() -> dict:
     """Cycle week for nutrition shopping lists (Fri–Sun → next Monday's week)."""
     today = _today()
     from ..meal_library import cook_plan, shopping_list
-    from ..nutrition_plan import prep_cycle_week_index
+    from ..nutrition_plan import prep_cycle_week_index, prep_week_day_targets
     cycle_week = prep_cycle_week_index(_PLAN_START, today)
     labels = [
         "Week 1",
@@ -1042,14 +1042,15 @@ def _shopping_list_context() -> dict:
         "Week 3",
         "Week 4",
     ]
-    plan = cook_plan(cycle_week)
+    day_targets = prep_week_day_targets(_PLAN_START, today)
+    plan = cook_plan(cycle_week, day_targets)
     return {
         "cycle_week": cycle_week,
         "cycle_week_label": labels[cycle_week],
         "week_mode": "batch",
         "pots": [m["name"] for m in plan["pots"]],
         "soups": [m["name"] for m in plan["soups"]],
-        "groups": shopping_list(cycle_week),
+        "groups": shopping_list(cycle_week, day_targets),
     }
 
 

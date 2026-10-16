@@ -409,8 +409,9 @@ def _nutrition() -> list[SearchHit]:
             )
 
     _bf_urls = {
-        "skyr-oats": "/nutrition/recipes/overnight-oats",
-        "eggs-yoghurt": "/nutrition/recipes#eggs",
+        "overnight-oats": "/nutrition/recipes/overnight-oats",
+        "porridge": "/nutrition/sunday#porridge",
+        "full-english": "/nutrition/sunday#full-english",
     }
     for key, (name, detail, *_rest) in BREAKFASTS.items():
         out.append(

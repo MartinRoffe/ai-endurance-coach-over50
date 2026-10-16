@@ -32,7 +32,7 @@
 <div class="hero">
   <div class="eyebrow">Cycle week {{ cycle_week + 1 }} of 4</div>
   <h1>BATCH<br><span>COOK</span></h1>
-  <p>Two one-pots and two soups. Four portions each, freeze three. Lunch is a soup. Dinner is a one-pot. Chicken and rice is in the mix, not every week.</p>
+  <p>Two one-pots and one soup. They cover Monday to Friday lunch and dinner. Cook the portions on the card — they add up to the plates you eat, including a 1.25 portion when a day needs it. Saturday and Sunday are cooked fresh.</p>
 </div>
 <div class="container">
   <section id="cook-list">
@@ -40,27 +40,36 @@
     {% for meal in pots %}
     <article class="card" id="{{ meal.id }}">
       <h3>{{ meal.name }}</h3>
-      <div class="meta">Dinner · {{ meal.method }}</div>
-      <p>{{ meal.steps }}</p>
+      <div class="meta">One-pot · cook {{ meal.servings }} · eat {{ meal.eaten }}{% if meal.frozen %} · freeze {{ meal.frozen }}{% endif %}{% if meal.per_portion %} · {{ meal.per_portion.kcal }} kcal · P {{ meal.per_portion.protein }} g · C {{ meal.per_portion.carbs }} g{% endif %}</div>
+      <p>{{ meal.method }}</p>
+      {% if meal.method_steps %}<ol>{% for step in meal.method_steps %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p>{{ meal.steps }}</p>{% endif %}
       <ul>{% for line in meal.shop %}<li>{{ line }}</li>{% endfor %}</ul>
     </article>
     {% endfor %}
     {% for meal in soups %}
     <article class="card" id="{{ meal.id }}">
       <h3>{{ meal.name }}</h3>
-      <div class="meta">Soup · {{ meal.method }}</div>
-      <p>{{ meal.steps }}</p>
+      <div class="meta">Soup · cook {{ meal.servings }} · eat {{ meal.eaten }}{% if meal.frozen %} · freeze {{ meal.frozen }}{% endif %}{% if meal.per_portion %} · {{ meal.per_portion.kcal }} kcal · P {{ meal.per_portion.protein }} g · C {{ meal.per_portion.carbs }} g{% endif %}</div>
+      <p>{{ meal.method }}</p>
+      {% if meal.method_steps %}<ol>{% for step in meal.method_steps %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p>{{ meal.steps }}</p>{% endif %}
       <ul>{% for line in meal.shop %}<li>{{ line }}</li>{% endfor %}</ul>
     </article>
     {% endfor %}
   </section>
   <section id="dinners">
     <h2>HOW THE WEEK EATS</h2>
-    <p>Breakfast is eggs and yoghurt, or skyr with oats and fruit. Evening is another bowl of yoghurt, skyr, kefir or milk. Carb side is a quarter plate on an easy day, half a plate on a hard day, and a bigger plate on a long day. <a href="/nutrition/meals">See the week</a>.</p>
+    {% for day in days or [] %}
+    <p><strong>{{ day.weekday }}</strong> — {{ day.breakfast }}. Lunch: {{ day.lunch }}. Dinner: {{ day.dinner }}.</p>
+    {% endfor %}
+    <p>Evening yoghurt is added only when the day still needs protein or calcium. <a href="/nutrition/meals">See the week</a>.</p>
   </section>
   <section id="components">
     <h2>SHOP</h2>
-    <p><a href="/nutrition/shopping-list">One shopping list</a> for these batches plus yoghurt, milk, eggs, fruit and lemons. Same list at Asda or Lidl.</p>
+    <p>Grams for this week’s recipes. Generic names that both Lidl and Asda sell. <a href="/nutrition/shopping-list">Open the list on its own</a>.</p>
+    {% for group in groups or [] %}
+    <h3 style="margin-top:16px;font-size:16px">{{ group.group }}</h3>
+    <ul>{% for line in group["items"] %}<li>{{ line }}</li>{% endfor %}</ul>
+    {% endfor %}
   </section>
 </div>
 </body>

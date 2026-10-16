@@ -228,13 +228,14 @@ def resolve_calorie_target(
 SIMPLE_RULES = [
     "Calories — three day types only. Easy or rest: stable TDEE minus 600. "
     "Hard: minus 250. Long: maintenance plus ride fuel. Floor 1,600 kcal. No cut before 3 Jan 2027.",
-    "Protein — one lean-mass target, eaten as 4 doses (breakfast, lunch, dinner, and an evening "
-    "dairy dose such as Greek yoghurt, skyr, kefir or milk). About 35–40 g a dose.",
+    "Protein — one lean-mass target, spread across breakfast, lunch, dinner, and an evening "
+    "yoghurt only when the day still needs protein or calcium. Not a fixed 350 g bowl.",
     "Carbs — easy about 3 g/kg (a quarter plate); hard about 5 g/kg (half a plate, plus something "
     "before and after); long about 6–7 g/kg plus 60–90 g/h on the bike.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
-    "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Batch one-pots and soups "
-    "(4 portions, freeze). Chicken and rice stays in the rotation, not every day.",
+    "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
+        "one soup. Cook the portions the week eats, so the shop list matches the plates. "
+        "Chicken at most twice a week.",
 ]
 
 HABIT_LINE = "Veg or fruit at every meal, plus creatine 3–5 g."
@@ -270,22 +271,30 @@ _SUPPLEMENT_DISCLAIMER = (
     "especially alongside any medication or blood-pressure management."
 )
 
-# Breakfasts and the rotating one-pots/soups live in meal_library.
+# Breakfasts and the rotating one-pots/soups live in the recipe library.
 # BREAKFASTS stays as (name, detail, kcal, protein, carbs) for search.
-from .meal_library import BREAKFASTS as _LIB_BREAKFASTS, PROTEIN_DOSE_G
+# The kcal figures are one written plate. The day scaler moves the portion.
+from .recipes.catalog import BREAKFASTS as _BREAKFAST_RECIPES
+from .recipes.model import portion_macros as _portion_macros
+
+def _breakfast_tuple(recipe) -> tuple[str, str, int, int, int]:
+    macros = _portion_macros(recipe, 1)
+    return (
+        recipe.name,
+        recipe.summary,
+        int(round(macros["kcal"])),
+        int(round(macros["protein"])),
+        int(round(macros["carbs"])),
+    )
 
 BREAKFASTS: dict[str, tuple[str, str, int, int, int]] = {
-    item["id"]: (
-        item["name"],
-        item["detail"],
-        PROTEIN_DOSE_G * 4 + 120,
-        PROTEIN_DOSE_G,
-        30,
-    )
-    for item in _LIB_BREAKFASTS
+    recipe.id: _breakfast_tuple(recipe) for recipe in _BREAKFAST_RECIPES.values()
 }
 
-_BREAKFAST_LABEL = "Eggs and yoghurt, or skyr with oats and fruit."
+_BREAKFAST_LABEL = (
+    "Rotate porridge, overnight oats, eggs on toast, an omelette, a yoghurt bowl, "
+    "or cereal. Saturday is a full English."
+)
 
 _WEEKDAY_SHORT = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -295,19 +304,22 @@ def dinner_anchor(cycle_week: int, weekday: int) -> str:
     return f"w{cycle_week + 1}-{_WEEKDAY_SHORT[weekday]}"
 
 
-def breakfast_key(cycle_week: int, weekday: int) -> str:
-    """Mon–Fri breakfast slot. Recovery week (index 3) uses egg muffins Tue/Thu."""
-    if weekday in (0, 2, 4):
-        return "mwf"
-    if cycle_week == 3:
-        return "muffin_tuth"
-    return "scotch_tuth"
-
-
 def evening_dinner(cycle_week: int, weekday: int, kind: str = "easy") -> tuple:
-    """Dinner one-pot for this cycle slot."""
-    from .meal_library import dinner_tuple
-    return dinner_tuple(cycle_week, weekday, kind)
+    """Dinner plate for this cycle slot, at the written portion."""
+    _ = kind
+    from .recipes.menu import _plates
+    from .recipes.model import numbered_method, portion_macros
+
+    _lunch, dinner, _lunch_fixed, _dinner_fixed = _plates(cycle_week, weekday)
+    macros = portion_macros(dinner, 1)
+    return (
+        "Dinner",
+        dinner.name,
+        numbered_method(dinner),
+        int(round(macros["kcal"])),
+        int(round(macros["protein"])),
+        int(round(macros["carbs"])),
+    )
 
 
 def weekday_dinner(cycle_week: int, weekday: int) -> tuple | None:
@@ -330,11 +342,6 @@ def _evening_index() -> dict[int, dict[int, tuple]]:
 
 EVENING_DINNERS = _evening_index()
 WEEKDAY_DINNERS = EVENING_DINNERS
-
-
-def _skip_am_snack(_cycle_week: int, weekday: int) -> bool:
-    """Protein bar (Nature Valley or home-baked) is Tue/Thu mid-morning only."""
-    return weekday not in (1, 3)
 
 
 # On-bike solids for long rides (~55 g carbs/h; ~4 kcal per g carbohydrate).
@@ -526,8 +533,21 @@ def _resolve_day_meals(
     day_data = DAY_TYPES[dtype]
     # Single crowned kcal — same number as dashboard / Cut / email.
     tt = today_targets(ref_date)
-    from .meal_library import day_meals, rotation_index_for_date
-    meals = day_meals(rotation_index_for_date(ref_date), day_kind(tt["calorie_tier"]))
+    kind = day_kind(tt["calorie_tier"])
+    dur = int((tt.get("session") or {}).get("dur_min") or session_dur or 0)
+    if kind not in ("hard", "long"):
+        dur = 0
+    day = _plan_scaled_day(
+        cycle_week,
+        weekday,
+        target_kcal=tt["kcal"],
+        protein_low=tt["protein_low"],
+        protein_high=tt["protein_high"],
+        kind=kind,
+        dur_min=dur,
+        ref_date=ref_date,
+    )
+    meals = day["tuples"]
     target = {
         "kcal": tt["kcal"],
         "from_tdee": tt["kcal_source"] in ("tdee", "camp"),
@@ -543,29 +563,91 @@ def _resolve_day_meals(
         "why": tt.get("why"),
         "phase": tt.get("phase"),
     }
-    scale_meta = {
-        "adjusted": False,
-        "base_kcal": sum(m[3] for m in meals),
-        "target_kcal": target["kcal"],
-        "gap_kcal": target["kcal"] - sum(m[3] for m in meals),
-        "note": None,
-    }
+    scale_meta = _scale_meta(day, target["kcal"])
     return meals, {
         "target": target,
         "scale_meta": scale_meta,
         "dtype": dtype,
         "day_data": day_data,
         "cycle_week": cycle_week,
+        "meal_rows": day["meals"],
+        "totals": day["totals"],
     }
 
 
-def _assemble_meals(dtype: str, cycle_week: int, weekday: int) -> list[tuple]:
-    """Four protein doses: breakfast, soup, one-pot, evening dairy."""
-    from .meal_library import day_meals, rotation_index
+def _plan_scaled_day(
+    cycle_week: int,
+    weekday: int,
+    *,
+    target_kcal: int,
+    protein_low: int,
+    protein_high: int,
+    kind: str,
+    dur_min: int = 0,
+    ref_date: date | None = None,
+) -> dict:
+    from .recipes.menu import meals_as_tuples, plan_day
+
+    day = plan_day(
+        cycle_week,
+        weekday,
+        target_kcal=int(target_kcal),
+        protein_low=int(protein_low),
+        protein_high=int(protein_high),
+        kind=kind,
+        dur_min=int(dur_min or 0),
+        ref_date=ref_date,
+    )
+    day = dict(day)
+    day["tuples"] = meals_as_tuples(day)
+    return day
+
+
+def _scale_meta(day: dict, target_kcal: int) -> dict:
+    total = int(day["totals"]["kcal"])
+    gap = int(target_kcal) - total
+    band = max(1, int(round(target_kcal * 0.05)))
+    note = None
+    if abs(gap) > band:
+        note = (
+            f"Planned meals are {total:,} kcal, {gap:+d} kcal from the {target_kcal:,} kcal target."
+        )
+    return {
+        "adjusted": abs(day["base_kcal"] - total) > 30,
+        "base_kcal": day["base_kcal"],
+        "target_kcal": int(target_kcal),
+        "gap_kcal": gap,
+        "note": note,
+        "protein_g": int(day["totals"]["protein"]),
+        "dairy_calcium_mg": int(round(day["totals"]["dairy_calcium"])),
+    }
+
+
+def _assemble_meals(
+    dtype: str,
+    cycle_week: int,
+    weekday: int,
+    *,
+    target_kcal: int | None = None,
+    protein_low: int | None = None,
+    protein_high: int | None = None,
+    dur_min: int = 0,
+) -> list[tuple]:
+    """Breakfast, lunch, dinner, evening dairy, plus training snacks when the day needs them."""
     tier = "easy"
     if dtype in DAY_TYPES:
         tier = day_kind(DAY_TYPES[dtype].get("calorie_tier"))
-    return day_meals(rotation_index(cycle_week, weekday), tier)
+    pt = protein_target_g()
+    day = _plan_scaled_day(
+        cycle_week,
+        weekday,
+        target_kcal=FALLBACK_INTAKE_KCAL if target_kcal is None else target_kcal,
+        protein_low=pt["low"] if protein_low is None else protein_low,
+        protein_high=pt["high"] if protein_high is None else protein_high,
+        kind=tier if dur_min else tier,
+        dur_min=dur_min if tier == "long" else 0,
+    )
+    return day["tuples"]
 
 
 def _pre_dinner_protein(meals: list[tuple]) -> int:
@@ -577,7 +659,7 @@ def _pre_dinner_protein(meals: list[tuple]) -> int:
 
 # ── Day-type templates ────────────────────────────────────────────────────────
 # Meal rows come from meal_library. These keys only name the day and its calorie tier.
-_DOSE_NOTE = "Four protein doses. The carb side follows the day type."
+_DOSE_NOTE = "Protein is spread across the day. Evening yoghurt is a top-up, not a fixed bowl."
 
 def _day_type(label: str, tier: str) -> dict:
     return {
@@ -641,6 +723,34 @@ def prep_cycle_week_index(plan_start: date, today: date) -> int:
     if today.weekday() >= 4:  # Fri / Sat / Sun
         today = today + timedelta(days=(7 - today.weekday()))
     return cycle_week_index(plan_start, today)
+
+
+def prep_week_day_targets(plan_start: date, today: date) -> list[dict]:
+    """Mon–Sun targets for the week you are shopping and batching.
+
+    Fri–Sun look ahead to next Monday, matching ``prep_cycle_week_index``.
+    """
+    if today.weekday() >= 4:
+        monday = today + timedelta(days=(7 - today.weekday()))
+    else:
+        monday = today - timedelta(days=today.weekday())
+    out = []
+    for offset in range(7):
+        ref = monday + timedelta(days=offset)
+        tt = today_targets(ref)
+        kind = day_kind(tt["calorie_tier"])
+        dur = int((tt.get("session") or {}).get("dur_min") or 0)
+        if kind not in ("hard", "long"):
+            dur = 0
+        out.append({
+            "kcal": int(tt["kcal"]),
+            "protein_low": int(tt["protein_low"]),
+            "protein_high": int(tt["protein_high"]),
+            "kind": kind,
+            "dur_min": dur,
+            "date": ref,
+        })
+    return out
 
 
 def today_day_type(cycle_week: int, weekday: int) -> str:
@@ -1141,11 +1251,10 @@ def today_card(ref_date: date | None = None) -> dict:
     tt = today_targets(ref)
     kind = day_kind(tt["calorie_tier"])
     protein_g = int(tt["protein_g"])
-    dose = max(1, round(protein_g / 4))
-    if 35 <= dose <= 40:
-        protein_line = "4 doses of 35–40 g — breakfast, lunch, dinner, evening dairy"
-    else:
-        protein_line = f"4 doses of about {dose} g — breakfast, lunch, dinner, evening dairy"
+    protein_line = (
+        f"{tt['protein_low']}–{tt['protein_high']} g across breakfast, lunch, dinner, "
+        "and evening yoghurt if the day still needs it"
+    )
     carbs_g = round(_CARB_G_PER_KG[kind] * current_weight_kg())
     sess = tt.get("session") or {}
     dur = 0
@@ -1245,8 +1354,8 @@ _DELOAD_PLAN_WEEKS = frozenset({4, 8})
 
 _WEEK_BANNERS = {
     i: (
-        "<strong>One-pot and soup rotation.</strong> Lunch is a soup, dinner is a one-pot. "
-        "Batch 4 portions and freeze. Chicken and rice is in the mix, not every day. "
+        "<strong>Sunday batch.</strong> Two one-pots and one soup cover Monday to Friday "
+        "lunches and dinners. The batch is sized to those plates. Saturday and Sunday are cooked fresh. "
         "<a href=\"/nutrition/sunday\">Batch cook</a>."
     )
     for i in range(4)
@@ -1284,13 +1393,13 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
         banner = (
             f"<strong>This week — plan week {week_num} ({phase}).</strong> "
             "Workout badges match the <a href=\"/calendar\">training calendar</a> "
-            "(including overrides). Lunch is a soup and dinner is a one-pot. "
+            "(including overrides). Weekday lunch and dinner come from Sunday's batch. "
             "<a href=\"/nutrition/sunday\">Batch cook</a>."
         )
     else:
         banner = (
             "<strong>This week.</strong> Workout badges match the training calendar where a "
-            "session is planned. Lunch is a soup and dinner is a one-pot. "
+            "session is planned. Weekday lunch and dinner come from Sunday's batch. "
             "<a href=\"/nutrition/sunday\">Batch cook</a>."
         )
 
@@ -1367,8 +1476,14 @@ def build_meal_week(cycle_week: int) -> dict:
     for wd in range(7):
         dtype = today_day_type(cycle_week, wd)
         dd = DAY_TYPES[dtype]
-        meals = _assemble_meals(dtype, cycle_week, wd)
         target = resolve_calorie_target(stable, dd["calorie_tier"], ref_date)
+        pt_week = protein_target_g(ref_date)
+        meals = _assemble_meals(
+            dtype, cycle_week, wd,
+            target_kcal=target["kcal"],
+            protein_low=pt_week["low"],
+            protein_high=pt_week["high"],
+        )
         days_out.append({
             "name": _WEEKDAY_LABELS[wd],
             "badge": _BADGE_BY_TYPE.get(dtype, "badge-rest"),
@@ -1557,15 +1672,18 @@ def build_today_food(plan_start: date, today: date) -> dict:
         badge_text = day_data["label"]
         badge = _BADGE_BY_TYPE.get(ctx["dtype"], "badge-rest")
 
-    meal_dicts = [
-        _meal_dict(
-            m,
+    meal_dicts = []
+    for meal, row in zip(meals, ctx["meal_rows"]):
+        item = _meal_dict(
+            meal,
             recipe_url=meal_recipe_url(
-                m[0], m[1], cycle_week=cycle_week, weekday=weekday,
+                meal[0], meal[1], cycle_week=cycle_week, weekday=weekday,
             ),
         )
-        for m in meals
-    ]
+        item["multiplier"] = row.get("multiplier")
+        item["side_multiplier"] = row.get("side_multiplier")
+        item["grams_by_food"] = row.get("grams_by_food") or {}
+        meal_dicts.append(item)
 
     return {
         "camp_mode": False,
@@ -1583,7 +1701,9 @@ def build_today_food(plan_start: date, today: date) -> dict:
         "protein_high": pt["high"],
         "carbs_g_per_hr": tt.get("carbs_g_per_hr"),
         "meals": meal_dicts,
-        "meals_kcal_total": sum(m[3] for m in meals),
+        "meals_kcal_total": int(ctx["totals"]["kcal"]),
+        "meals_protein_total": int(ctx["totals"]["protein"]),
+        "dairy_calcium_mg": int(round(ctx["totals"]["dairy_calcium"])),
         "scale_meta": scale_meta,
         "pre_din_p": _pre_dinner_protein(meals),
         "protein_note": day_data["protein_note"],
@@ -1729,15 +1849,12 @@ def nutrition_week_context(plan_start: date, today: date) -> str:
         f"Cycle: {cycle_label}. {_BREAKFAST_LABEL}. "
         "For the full 4-week cycle and shopping tally, call get_meal_cycle.",
     ]
-    stable = _stable_tdee()
     for wd in range(7):
         d = monday + timedelta(days=wd)
         dtype = today_day_type(cycle_week, wd)
         day_data = DAY_TYPES[dtype]
-        meals = _assemble_meals(dtype, cycle_week, wd)
-        target = resolve_calorie_target(
-            stable, day_data["calorie_tier"], d
-        )
+        meals, day_ctx = _resolve_day_meals(plan_start, d)
+        target = day_ctx["target"]
         total_protein = sum(meal[4] for meal in meals)
         marker = "  ← today" if d == today else ""
         lines.append(
@@ -1792,8 +1909,8 @@ def meal_cycle_full() -> str:
         "FULL 4-WEEK NUTRITION CYCLE (repeats every 28 days).",
         f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}).",
         f"Breakfast: {_BREAKFAST_LABEL}.",
-        "Lunches are soups and dinners are one-pots (4 portions, freeze). "
-        "Chicken and rice is in the rotation, not every day.",
+        "Sunday cooks two one-pots and one soup for Monday to Friday. "
+        "Spare portions are frozen. Chicken is at most twice in the week.",
         "",
     ]
     stable = _stable_tdee()
@@ -1804,9 +1921,15 @@ def meal_cycle_full() -> str:
         for wd in range(7):
             dtype = today_day_type(cw, wd)
             day_data = DAY_TYPES[dtype]
-            meals = _assemble_meals(dtype, cw, wd)
+            anchor = ref_date + timedelta(days=(wd - ref_date.weekday()))
+            meals = _assemble_meals(
+                dtype, cw, wd,
+                target_kcal=resolve_calorie_target(
+                    stable, day_data["calorie_tier"], anchor
+                )["kcal"],
+            )
             target = resolve_calorie_target(
-                stable, day_data["calorie_tier"], ref_date
+                stable, day_data["calorie_tier"], anchor
             )
             total_protein = sum(meal[4] for meal in meals)
             lines.append(

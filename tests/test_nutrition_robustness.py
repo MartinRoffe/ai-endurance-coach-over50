@@ -108,7 +108,9 @@ def test_build_today_food_camp_mode():
     d = date(2026, 8, 15)
     out = build_today_food(PLAN_START, d)
     assert out["camp_mode"] is False
-    assert [m["type"] for m in out["meals"]] == ["Breakfast", "Lunch", "Dinner", "Evening"]
+    slots = [m["type"] for m in out["meals"]]
+    assert "Breakfast" in slots and "Lunch" in slots and "Dinner" in slots
+    assert "AM Snack" not in slots
 
 
 def test_nutrition_coach_context_camp_suppresses_uk_meals():

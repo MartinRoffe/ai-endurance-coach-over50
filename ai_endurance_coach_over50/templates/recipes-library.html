@@ -27,14 +27,14 @@
 {% include 'nutrition_subnav.html' %}
 <div class="hero">
   <h1>ONE-POTS AND SOUPS</h1>
-  <p style="color:var(--muted);max-width:640px;margin-top:8px">Low oxalate, light salt, one protein dose per bowl. Batch four and freeze. Chicken and rice stays in the rotation, about once or twice a week.</p>
+  <p style="color:var(--muted);max-width:640px;margin-top:8px">Low oxalate, light salt. Each card is one Sunday batch. Macros are calculated from the ingredient table, per portion.</p>
 </div>
 <div class="container">
   <h3 class="sec">Dinners</h3>
   {% for meal in pots %}
   <article id="{{ meal.id }}">
     <h2>{{ meal.name }}</h2>
-    <div class="meta">{{ meal.method }}</div>
+    <div class="meta">{{ meal.method }}{% if meal.per_portion_kcal %} · {{ meal.per_portion_kcal }} kcal · P {{ meal.per_portion_protein }} g{% endif %}</div>
     <p>{{ meal.steps }}</p>
   </article>
   {% endfor %}
@@ -42,11 +42,11 @@
   {% for meal in soups %}
   <article id="{{ meal.id }}">
     <h2>{{ meal.name }}</h2>
-    <div class="meta">{{ meal.method }}</div>
+    <div class="meta">{{ meal.method }}{% if meal.per_portion_kcal %} · {{ meal.per_portion_kcal }} kcal · P {{ meal.per_portion_protein }} g{% endif %}</div>
     <p>{{ meal.steps }}</p>
   </article>
   {% endfor %}
-  <p id="evening-dairy">Evening dairy is about 350 g Greek yoghurt or skyr, or enough kefir or milk to match that protein. That dose is calcium, with the meal, not extra meat.</p>
+  <p id="evening-dairy">Evening dairy is plain high-protein yoghurt, only as much as that day’s protein and calcium still need. It is its own bowl, not a spoon on the dinner.</p>
 </div>
 </body>
 </html>
