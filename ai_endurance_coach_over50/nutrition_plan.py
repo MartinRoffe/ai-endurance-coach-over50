@@ -234,7 +234,8 @@ SIMPLE_RULES = [
     "before and after); long about 6–7 g/kg plus 60–90 g/h on the bike.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
     "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
-        "one soup. Cook the portions the week eats, so the shop list matches the plates. "
+        "one soup for the weekday lunches and for Monday to Thursday dinners. Friday dinner is a "
+        "quick griddle plate. Cook the portions the week eats, so the shop list matches the plates. "
         "Chicken at most twice a week.",
 ]
 
@@ -1346,8 +1347,9 @@ _DELOAD_PLAN_WEEKS = frozenset({4, 8})
 
 _WEEK_BANNERS = {
     i: (
-        "<strong>Sunday batch.</strong> Two one-pots and one soup cover Monday to Friday "
-        "lunches and dinners. The batch is sized to those plates. Saturday and Sunday are cooked fresh. "
+        "<strong>Sunday batch.</strong> Two one-pots and one soup cover the weekday lunches "
+        "and Monday to Thursday dinners. Friday dinner is a quick griddle plate. "
+        "The batch is sized to those plates. Saturday and Sunday are cooked fresh. "
         "<a href=\"/nutrition#batch\">Batch cook</a>."
     )
     for i in range(4)
@@ -1385,13 +1387,15 @@ def build_this_meal_week(plan_start: date, today: date) -> dict:
         banner = (
             f"<strong>This week — plan week {week_num} ({phase}).</strong> "
             "Workout badges match the <a href=\"/calendar\">training calendar</a> "
-            "(including overrides). Weekday lunch and dinner come from Sunday's batch. "
+            "(including overrides). Weekday lunches and Monday to Thursday dinners come from "
+            "Sunday's batch. Friday dinner is a quick griddle plate. "
             "<a href=\"/nutrition#batch\">Batch cook</a>."
         )
     else:
         banner = (
             "<strong>This week.</strong> Workout badges match the training calendar where a "
-            "session is planned. Weekday lunch and dinner come from Sunday's batch. "
+            "session is planned. Weekday lunches and Monday to Thursday dinners come from "
+            "Sunday's batch. Friday dinner is a quick griddle plate. "
             "<a href=\"/nutrition#batch\">Batch cook</a>."
         )
 
@@ -1855,8 +1859,9 @@ def meal_cycle_full() -> str:
         "FULL 4-WEEK NUTRITION CYCLE (repeats every 28 days).",
         f"Protein floor: {pt['low']}–{pt['high']}g/day ({pt['basis']}).",
         f"Breakfast: {_BREAKFAST_LABEL}.",
-        "Sunday cooks two one-pots and one soup for Monday to Friday. "
-        "Spare portions are frozen. Chicken is at most twice in the week.",
+        "Sunday cooks two one-pots and one soup for the weekday lunches and for Monday to "
+        "Thursday dinners. Friday dinner is cooked fresh that evening. The batch is the plates "
+        "you eat. Chicken is at most twice in the week.",
         "",
     ]
     stable = _stable_tdee()
