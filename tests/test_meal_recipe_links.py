@@ -9,37 +9,37 @@ from ai_endurance_coach_over50.nutrition_plan import (
 
 def test_dinner_plate_anchor_w4_mon():
     url = meal_recipe_url("Dinner", "Lemon chicken and rice", cycle_week=3, weekday=0)
-    assert url == "/nutrition/recipes/weekday-dinners#lemon-chicken-rice"
+    assert url == "/nutrition/recipes#lemon-chicken-rice"
 
 
 def test_dinner_plate_anchor_w1_sat():
     url = meal_recipe_url("Dinner", "Pork chop, apple and cabbage", cycle_week=0, weekday=6)
-    assert url == "/nutrition/sunday#pork-chop-apple-cabbage"
+    assert url == "/nutrition/recipes#pork-chop-apple-cabbage"
 
 
 def test_overnight_oats_breakfast():
     url = meal_recipe_url("Breakfast", "Overnight oats")
-    assert url == "/nutrition/recipes/overnight-oats"
+    assert url == "/nutrition/recipes#overnight-oats"
 
 
 def test_porridge_breakfast():
     url = meal_recipe_url("Breakfast", "Porridge")
-    assert url == "/nutrition/sunday#porridge"
+    assert url == "/nutrition/recipes#porridge"
 
 
 def test_turkey_soup_lunch():
     url = meal_recipe_url("Lunch", "Turkey, leek and potato soup")
-    assert url == "/nutrition/recipes/weekday-dinners#turkey-leek-potato-soup"
+    assert url == "/nutrition/recipes#turkey-leek-potato-soup"
 
 
 def test_beef_pasta_dinner():
     url = meal_recipe_url("Dinner", "Beef and mushroom pasta")
-    assert url == "/nutrition/recipes/weekday-dinners#beef-mushroom-pasta"
+    assert url == "/nutrition/recipes#beef-mushroom-pasta"
 
 
 def test_salmon_couscous_dinner():
     url = meal_recipe_url("Dinner", "Salmon, couscous and peas")
-    assert url == "/nutrition/recipes/weekday-dinners#salmon-couscous-peas"
+    assert url == "/nutrition/recipes#salmon-couscous-peas"
 
 
 def test_whey_shake_has_no_recipe():
@@ -47,7 +47,7 @@ def test_whey_shake_has_no_recipe():
 
 
 def test_linkify_methods_rewrites_sunday_to_plate():
-    plate = "/nutrition/recipes/weekday-dinners#w4-mon"
+    plate = "/nutrition/recipes#lemon-chicken-rice"
     detail = (
         "Serves 1. Methods: /nutrition/sunday. Recovery week — lighter carb side."
     )

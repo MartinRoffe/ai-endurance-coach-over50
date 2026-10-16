@@ -167,7 +167,6 @@ from .context import (  # noqa: F401
     _plan_completion_stats,
     _position_context,
     _archive_context,
-    _shopping_list_context,
     _travel_checklist_context,
     _week_completion,
     _week_summary,
@@ -1414,66 +1413,46 @@ async def compliance_view(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="compliance.html", context=ctx)
 
 
-@app.get("/nutrition", response_class=HTMLResponse)
-async def nutrition_plan(request: Request):
-    today = _today()
-    from ..alerts import weekly_ea_report
-    from ..nutrition_plan import (
-        SUPPLEMENTS, _SUPPLEMENT_DISCLAIMER, protein_target_g,
-        SIMPLE_RULES, today_checklist, cycle_week_index,
-        fuel_prep_for_ride, _sunday_planned_ride_min, build_today_food,
-        in_camp_nutrition_window, today_card,
-    )
+def _nutrition_ref(day: Optional[str]) -> date:
+    if day:
+        return date_fromisoformat_safe(day)
+    return _today()
 
-    _tdee_today = None
+
+@app.get("/nutrition", response_class=HTMLResponse)
+async def nutrition_plan(request: Request, date: Optional[str] = None):
+    today = _nutrition_ref(date)
+    from ..alerts import weekly_ea_report
+    from ..nutrition_view import nutrition_page
+
+    tdee_today = None
     try:
-        _rows = tdee_history(1)
-        if _rows:
-            _tdee_today = _rows[-1].get("tdee")
+        rows = tdee_history(1)
+        if rows:
+            tdee_today = rows[-1].get("tdee")
     except Exception:
         logger.exception("nutrition_plan failed")
-    cycle_week = cycle_week_index(_PLAN_START, today)
-    checklist = today_checklist(_PLAN_START, today)
-    today_food = build_today_food(_PLAN_START, today)
-    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = None
-    if sunday_ride_min and not in_camp_nutrition_window(today):
-        sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=today)
 
     m = load(today) or DailyMetrics(date=today)
     nutrition_today = build_nutrition_today(m, today)
-    cut_line = cut_status_line(today)
-    card = today_card(today)
     try:
         ea_report = weekly_ea_report(today)
     except Exception:
         logger.exception("nutrition_plan ea report failed")
         ea_report = None
 
-    return TEMPLATES.TemplateResponse(
-        request=request,
-        name="nutrition.html",
-        context={
-            "today": today.isoformat(),
-            "cycle_week": cycle_week,
-            "simple_rules": SIMPLE_RULES,
-            "checklist": checklist,
-            "today_food": today_food,
-            "sunday_fuel": sunday_fuel,
-            "sunday_ride_min": sunday_ride_min,
-            "nutrition_today": nutrition_today,
-            "cut_line": cut_line,
-            "cal_today":     int(m.calories_consumed)    if m.calories_consumed is not None    else None,
-            "tdee_today":    int(round(_tdee_today)) if _tdee_today else None,
-            "carbs_today":   round(m.carbs_consumed)     if m.carbs_consumed is not None       else None,
-            "protein_today": round(m.protein_consumed)   if m.protein_consumed is not None     else None,
-            "supplements":   [{"name": n, "dose": d, "why": w} for n, d, w in SUPPLEMENTS],
-            "supplement_disclaimer": _SUPPLEMENT_DISCLAIMER,
-            "protein_target": protein_target_g(),
-            "card": card,
-            "ea_report": ea_report,
-        },
+    page = nutrition_page(
+        _PLAN_START,
+        today,
+        logged_kcal=int(m.calories_consumed) if m.calories_consumed is not None else None,
+        logged_protein=round(m.protein_consumed) if m.protein_consumed is not None else None,
+        logged_carbs=round(m.carbs_consumed) if m.carbs_consumed is not None else None,
+        tdee_today=int(round(tdee_today)) if tdee_today else None,
+        ride_work_kj=(nutrition_today or {}).get("ride_work_kj"),
+        ea_words=(ea_report or {}).get("words") if ea_report else None,
+        cut_line=cut_status_line(today),
     )
+    return TEMPLATES.TemplateResponse(request=request, name="nutrition.html", context=page)
 
 
 @app.get("/nutrition/cut", response_class=HTMLResponse)
@@ -1487,93 +1466,59 @@ async def nutrition_cut(request: Request):
     )
 
 
-@app.get("/nutrition/meals", response_class=HTMLResponse)
-async def nutrition_meals(request: Request):
-    today = _today()
-    from ..nutrition_plan import build_meal_week, build_this_meal_week, cycle_week_index
-    cycle_week = cycle_week_index(_PLAN_START, today)
-    this_week = build_this_meal_week(_PLAN_START, today)
-    weeks = [build_meal_week(i) for i in range(4)]
-    return TEMPLATES.TemplateResponse(
-        request=request,
-        name="meals.html",
-        context={"cycle_week": cycle_week, "this_week": this_week, "weeks": weeks},
-    )
+def _nutrition_redirect(url: str):
+    return RedirectResponse(url=url, status_code=302)
+
+
+@app.get("/nutrition/meals")
+async def nutrition_meals():
+    return _nutrition_redirect("/nutrition#week")
 
 
 @app.get("/nutrition/fuelling", response_class=HTMLResponse)
-async def nutrition_fuelling(request: Request):
-    today = _today()
-    from ..nutrition_plan import fuel_prep_for_ride, _sunday_planned_ride_min
-    sunday_ride_min = _sunday_planned_ride_min(_PLAN_START, today)
-    sunday_fuel = fuel_prep_for_ride(sunday_ride_min, ref_date=date.today()) if sunday_ride_min else None
-    fuel_tiers = [fuel_prep_for_ride(m, ref_date=date.today()) for m in (90, 120, 180, 240, 300, 360)]
+async def nutrition_fuelling(request: Request, date: Optional[str] = None):
+    from ..nutrition_view import fuelling_guide
+    today = _nutrition_ref(date)
     return TEMPLATES.TemplateResponse(
         request=request,
         name="fuelling.html",
-        context={
-            "sunday_fuel": sunday_fuel,
-            "sunday_ride_min": sunday_ride_min,
-            "fuel_tiers": fuel_tiers,
-        },
+        context=fuelling_guide(_PLAN_START, today),
     )
 
 
-@app.get("/nutrition/sunday", response_class=HTMLResponse)
-async def nutrition_sunday(request: Request):
-    today = _today()
-    from ..meal_library import cook_plan, shopping_list
-    from ..nutrition_plan import prep_cycle_week_index, prep_week_day_targets
-    cycle_week = prep_cycle_week_index(_PLAN_START, today)
-    day_targets = prep_week_day_targets(_PLAN_START, today)
-    plan = cook_plan(cycle_week, day_targets)
-    return TEMPLATES.TemplateResponse(
-        request=request,
-        name="sunday_prep.html",
-        context={
-            "cycle_week": cycle_week,
-            "pots": plan["pots"],
-            "soups": plan["soups"],
-            "days": plan["days"],
-            "groups": shopping_list(cycle_week, day_targets),
-        },
-    )
+@app.get("/nutrition/sunday")
+async def nutrition_sunday():
+    return _nutrition_redirect("/nutrition#batch")
 
 
 @app.get("/nutrition/recipes", response_class=HTMLResponse)
 async def nutrition_recipes(request: Request):
-    today = _today()
-    from ..nutrition_plan import cycle_week_index
+    from ..nutrition_view import recipe_groups
     return TEMPLATES.TemplateResponse(
         request=request,
-        name="recipes.html",
-        context={"cycle_week": cycle_week_index(_PLAN_START, today)},
+        name="recipes-index.html",
+        context={"groups": recipe_groups()},
     )
 
 
-@app.get("/nutrition/recipes/weekend-fuel", response_class=HTMLResponse)
-async def nutrition_recipes_weekend_fuel(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="recipes-weekend-fuel.html", context={})
+@app.get("/nutrition/recipes/weekend-fuel")
+async def nutrition_recipes_weekend_fuel():
+    return _nutrition_redirect("/nutrition/fuelling")
 
 
-@app.get("/nutrition/recipes/overnight-oats", response_class=HTMLResponse)
-async def nutrition_recipes_overnight_oats(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="recipes-overnight-oats.html", context={})
+@app.get("/nutrition/recipes/overnight-oats")
+async def nutrition_recipes_overnight_oats():
+    return _nutrition_redirect("/nutrition/recipes#overnight-oats")
 
 
-@app.get("/nutrition/recipes/griddle", response_class=HTMLResponse)
-async def nutrition_recipes_griddle(request: Request):
-    return TEMPLATES.TemplateResponse(request=request, name="recipes-griddle.html", context={})
+@app.get("/nutrition/recipes/griddle")
+async def nutrition_recipes_griddle():
+    return _nutrition_redirect("/nutrition/recipes")
 
 
-@app.get("/nutrition/recipes/weekday-dinners", response_class=HTMLResponse)
-async def nutrition_recipes_weekday_dinners(request: Request):
-    from ..meal_library import ONE_POTS, SOUPS
-    return TEMPLATES.TemplateResponse(
-        request=request,
-        name="recipes-library.html",
-        context={"pots": ONE_POTS, "soups": SOUPS},
-    )
+@app.get("/nutrition/recipes/weekday-dinners")
+async def nutrition_recipes_weekday_dinners():
+    return _nutrition_redirect("/nutrition#batch")
 
 
 @app.get("/nutrition/recipes/travel", response_class=HTMLResponse)
@@ -1582,16 +1527,14 @@ async def nutrition_recipes_travel(request: Request):
     return TEMPLATES.TemplateResponse(request=request, name="recipes-travel.html", context=ctx)
 
 
-@app.get("/nutrition/shopping-list", response_class=HTMLResponse)
-async def nutrition_shopping_list(request: Request):
-    ctx = _shopping_list_context()
-    return TEMPLATES.TemplateResponse(request=request, name="shopping.html", context=ctx)
+@app.get("/nutrition/shopping-list")
+async def nutrition_shopping_list():
+    return _nutrition_redirect("/nutrition#shop")
 
 
-@app.get("/nutrition/lidl-shopping-list", response_class=HTMLResponse)
-async def nutrition_lidl_shopping_list(request: Request):
-    ctx = _shopping_list_context()
-    return TEMPLATES.TemplateResponse(request=request, name="shopping.html", context=ctx)
+@app.get("/nutrition/lidl-shopping-list")
+async def nutrition_lidl_shopping_list():
+    return _nutrition_redirect("/nutrition#shop")
 
 
 def _bundled_html(*names: str) -> Path:
@@ -1872,29 +1815,7 @@ async def sleep_view(request: Request):
 
 @app.get("/nutrition-test")
 def nutrition_test():
-    """Debug endpoint: return raw Garmin nutrition API responses for today."""
-    import json as _json
-    email_addr = os.getenv("GARMIN_EMAIL", "")
-    password   = os.getenv("GARMIN_PASSWORD", "")
-    today_str  = date.today().isoformat()
-    out: dict = {"date": today_str}
-    if not (email_addr and password):
-        out["error"] = "GARMIN_EMAIL / GARMIN_PASSWORD not set"
-        return JSONResponse(out)
-    try:
-        api = get_api(email_addr, password)
-        for method in ("get_nutrition_daily_food_log",
-                        "get_nutrition_daily_meals",
-                        "get_nutrition_daily_settings"):
-            try:
-                out[method] = getattr(api, method)(today_str)
-            except Exception as exc:
-                logger.exception("nutrition_test failed")
-                out[method] = {"error": str(exc)}
-    except Exception as exc:
-        logger.exception("nutrition_test failed")
-        out["error"] = f"API init failed: {exc}"
-    return JSONResponse(out)
+    return _nutrition_redirect("/nutrition")
 
 
 @app.get("/refresh", response_class=RedirectResponse)

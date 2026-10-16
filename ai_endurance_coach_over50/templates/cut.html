@@ -140,44 +140,9 @@
 </section>
 
 <section>
-  <div class="section-label">Today’s prescription</div>
+  <div class="section-label">Today</div>
   <div class="panel">
-    <div class="stat-row">
-      <div class="stat">
-        <div class="lbl">Intake target</div>
-        <div class="val" style="font-size:28px">{{ "{:,}".format(cut.targets.kcal) }}</div>
-        <div class="sub">kcal · {{ cut.targets.kcal_source }}
-          {% if cut.targets.calorie_tier %} · {{ cut.targets.calorie_tier }} tier{% endif %}
-        </div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Planned deficit</div>
-        <div class="val" style="font-size:28px">
-          {% if cut.targets.maintenance or cut.phase_key == 'camp' %}0
-          {% elif cut.targets.tier_deficit is not none %}{{ cut.targets.tier_deficit }}
-          {% elif cut.targets.planned_deficit is not none %}{{ cut.targets.planned_deficit }}
-          {% else %}—{% endif %}
-        </div>
-        <div class="sub">
-          {% if cut.stable_tdee %}stable TDEE {{ "{:,}".format(cut.stable_tdee) }}{% endif %}
-        </div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Protein</div>
-        <div class="val" style="font-size:28px">{{ cut.targets.protein_low }}–{{ cut.targets.protein_high }}</div>
-        <div class="sub">g{% if cut.targets.protein_lean_locked %} · lean locked{% endif %}</div>
-      </div>
-    </div>
-    {% if cut.targets.session %}
-    <p style="margin-top:14px;font-size:13px;color:var(--muted)">
-      Session: <strong style="color:var(--text)">{{ cut.targets.session.label }}</strong>
-      ({{ cut.targets.session.type }}, {{ cut.targets.session.dur_min }} min)
-    </p>
-    {% endif %}
-    {% if cut.targets.why %}
-    <p style="margin-top:{% if cut.targets.session %}6{% else %}14{% endif %}px;font-size:13px;color:var(--text)">{{ cut.targets.why }}</p>
-    {% endif %}
-
+    <p style="font-size:14px;margin:0">Calories, protein, carbs, fluids, and what Garmin logged are on <a href="/nutrition">Today</a>. This page is the weight goal and the pace.</p>
     {% if cut.weekly_budget %}
     <div style="margin-top:18px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:4px">
       <div class="lbl" style="margin-bottom:8px">Weekly cut budget ({{ cut.phase_label }})</div>
@@ -196,63 +161,6 @@
       <p style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.55">{{ cut.weekly_budget.note }}</p>
     </div>
     {% endif %}
-
-    <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
-      <div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:12px">
-        <div class="lbl">Garmin logged today</div>
-        <a href="/nutrition" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-decoration:none">Meals / log →</a>
-      </div>
-      {% if cut.logged_kcal is not none %}
-      <div class="stat-row">
-        <div class="stat">
-          <div class="lbl">Logged</div>
-          <div class="val" style="font-size:28px;color:var(--accent3)">{{ "{:,}".format(cut.logged_kcal) }}</div>
-          <div class="sub">kcal</div>
-        </div>
-        <div class="stat">
-          <div class="lbl">Target</div>
-          <div class="val" style="font-size:28px">{{ "{:,}".format(cut.targets.kcal) }}</div>
-          <div class="sub">kcal intake target</div>
-        </div>
-        <div class="stat">
-          <div class="lbl">Gap</div>
-          <div class="val" style="font-size:28px{% if cut.vs_target is not none and cut.vs_target < 0 %};color:var(--warn){% elif cut.vs_target is not none and cut.vs_target > 0 %};color:var(--accent){% endif %}">
-            {% if cut.vs_target is not none %}{% if cut.vs_target > 0 %}+{% endif %}{{ cut.vs_target }}{% else %}—{% endif %}
-          </div>
-          <div class="sub">{% if cut.vs_target is not none and cut.vs_target > 0 %}under target · room left{% elif cut.vs_target is not none and cut.vs_target < 0 %}over target{% elif cut.vs_target == 0 %}on target{% else %}—{% endif %}{% if cut.vs_tdee is not none %} · vs weekly burn {{ "{:+d}".format(cut.vs_tdee) }}{% endif %}</div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <div class="lbl" style="margin-bottom:10px">Macros logged</div>
-        <div class="stat-row">
-          <div class="stat">
-            <div class="lbl">Protein</div>
-            <div class="val" style="font-size:28px;color:var(--accent3)">{% if cut.logged_protein is not none %}{{ cut.logged_protein }}{% else %}—{% endif %}</div>
-            <div class="sub">
-              g · floor {{ cut.targets.protein_low }}–{{ cut.targets.protein_high }}
-              {% if cut.protein_vs_floor is not none %}
-                {% if cut.protein_vs_floor >= 0 %} · +{{ cut.protein_vs_floor }} vs floor{% else %} · {{ cut.protein_vs_floor }} vs floor{% endif %}
-              {% endif %}
-              {% if cut.macro_kcal %} · {{ cut.macro_kcal.protein_pct }}% kcal{% endif %}
-            </div>
-          </div>
-          <div class="stat">
-            <div class="lbl">Carbs</div>
-            <div class="val" style="font-size:28px">{% if cut.logged_carbs is not none %}{{ cut.logged_carbs }}{% else %}—{% endif %}</div>
-            <div class="sub">g{% if cut.macro_kcal %} · {{ cut.macro_kcal.carbs_pct }}% kcal{% endif %}</div>
-          </div>
-          <div class="stat">
-            <div class="lbl">Fat{% if cut.logged_fat_estimated %} (est.){% endif %}</div>
-            <div class="val" style="font-size:28px">{% if cut.logged_fat is not none %}{{ cut.logged_fat }}{% else %}—{% endif %}</div>
-            <div class="sub">g{% if cut.macro_kcal %} · {{ cut.macro_kcal.fat_pct }}% kcal{% endif %}{% if cut.logged_fat_estimated %} · from kcal − P − C{% endif %}</div>
-          </div>
-        </div>
-      </div>
-      {% else %}
-      <p style="font-size:13px;color:var(--muted);margin:0">Not logged — log food in Garmin Connect, then refresh the dashboard.</p>
-      {% endif %}
-    </div>
   </div>
 </section>
 
@@ -280,13 +188,9 @@
 </section>
 
 <section>
-  <div class="section-label">TDEE &amp; logging</div>
+  <div class="section-label">Logging confidence</div>
   <div class="panel">
     <div class="stat-row">
-      <div class="stat">
-        <div class="lbl">Stable TDEE</div>
-        <div class="val" style="font-size:28px">{% if cut.stable_tdee %}{{ "{:,}".format(cut.stable_tdee) }}{% else %}—{% endif %}</div>
-      </div>
       <div class="stat">
         <div class="lbl">Confidence</div>
         <div class="val" style="font-size:28px">{{ cut.calibration.level }}</div>

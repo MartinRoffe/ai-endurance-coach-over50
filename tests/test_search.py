@@ -38,12 +38,12 @@ def test_overnight_oats_recipe():
 def test_weekday_dinner_bbq_chicken():
     hits = search("Lemon chicken and rice", limit=10)
     assert hits
-    assert any("weekday-dinners" in h["url"] or "sunday" in h["url"] for h in hits)
+    assert any("/nutrition/recipes#lemon-chicken-rice" in h["url"] for h in hits)
 
 
 def test_lidl_page():
     urls = _urls("lidl")
-    assert any("lidl-shopping-list" in u for u in urls)
+    assert any(u.startswith("/nutrition") and "shop" in u for u in urls)
 
 
 def test_help_nutrition():
