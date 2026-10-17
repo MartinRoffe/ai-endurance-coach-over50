@@ -44,6 +44,14 @@ _SPORT        = {"sportTypeId": SportType.CYCLING,           "sportTypeKey": "cy
 _FE_SPORT     = {"sportTypeId": getattr(SportType, "FITNESS_EQUIPMENT", 6), "sportTypeKey": "fitness_equipment", "displayOrder": 6}
 _HIKE_SPORT   = {"sportTypeId": getattr(SportType, "HIKING", 7),           "sportTypeKey": "hiking",             "displayOrder": 7}
 _CARDIO_SPORT = {"sportTypeId": 11,                          "sportTypeKey": "cardio",             "displayOrder": 11}
+# Indoor rowing is not a workout sport this library can upload. Cardio with
+# heart-rate targets is the supported push; the day-detail line says pushed
+# only when this workout is actually scheduled.
+_ROW_SPORT = {
+    "sportTypeId": SportType.CARDIO_TRAINING,
+    "sportTypeKey": "cardio_training",
+    "displayOrder": SportType.CARDIO_TRAINING,
+}
 
 _BIKE_TYPES         = {"bike", "tempo", "ftp", "long", "endurance", "sweetspot", "vo2", "threshold", "recovery", "back_to_back"}
 _STRENGTH_RUCK_TYPES = {"strength", "ruck"}
@@ -185,6 +193,20 @@ def _make_fe(name: str, steps: list, dur_min: int) -> FitnessEquipmentWorkout:
         workoutName=name,
         estimatedDurationInSecs=dur_min * 60,
         workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_FE_SPORT, workoutSteps=steps)],
+    )
+
+
+def _make_row(name: str, steps: list, dur_min: int) -> BaseWorkout:
+    """Cardio workout for the indoor rower. Pace is heart rate and RPE."""
+    return BaseWorkout(
+        workoutName=name,
+        description=(
+            "Indoor rower. Heart rate and RPE lead. "
+            "No 500 m split until a 2,000 m or 20-minute rower test."
+        ),
+        estimatedDurationInSecs=int(dur_min) * 60,
+        sportType=_ROW_SPORT,
+        workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_ROW_SPORT, workoutSteps=steps)],
     )
 
 
@@ -689,6 +711,70 @@ def _camp_z2(name: str, dur_min: int) -> CyclingWorkout:
     ], dur_min)
 
 
+def _build_row_workout(label: str, dur_min: int) -> BaseWorkout | None:
+    """Structured indoor-rower workout. Targets are HR zones, never power."""
+    dur = max(int(dur_min), 20)
+    low = label.lower()
+    if "vo2" in low:
+        return _row_vo2(dur)
+    if low.startswith("z2") or "z2" in low:
+        return _row_z2(dur)
+    if "threshold" in low or "rower" in low:
+        return _row_threshold(dur)
+    return None
+
+
+def _row_z2(dur_min: int) -> BaseWorkout:
+    cd = 5 if dur_min >= 20 else 3
+    wu = 10 if dur_min >= 25 else 5
+    main = max(dur_min - wu - cd, 5)
+    return _make_row(f"Row Z2 {dur_min}m", [
+        create_warmup_step(float(wu * 60), step_order=1),
+        _interval(2, float(main * 60), _hr_zone_target(), 2, 2),
+        create_cooldown_step(float(cd * 60), step_order=3),
+    ], dur_min)
+
+
+def _row_threshold(dur_min: int) -> BaseWorkout:
+    if dur_min >= 150:
+        work, rest, reps, wu, cd = 20, 10, 3, 20, 15
+    elif dur_min >= 45:
+        work, rest, reps, wu, cd = 10, 5, 2, 10, 10
+    elif dur_min <= 35:
+        work, rest, reps, wu, cd = 5, 2, 3, 8, 8
+    else:
+        work, rest, reps, wu, cd = 8, 4, 2, 10, 10
+    steps: list = [create_warmup_step(float(wu * 60), step_order=1)]
+    order = 2
+    for i in range(reps):
+        steps.append(_interval(order, float(work * 60), _hr_zone_target(), 4, 4))
+        order += 1
+        if i < reps - 1:
+            steps.append(_recovery(order, float(rest * 60), _hr_zone_target(), 1, 2))
+            order += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=order))
+    return _make_row(f"Row Threshold {dur_min}m", steps, dur_min)
+
+
+def _row_vo2(dur_min: int) -> BaseWorkout:
+    if dur_min >= 150:
+        work, rest, reps, wu, cd = 4, 4, 5, 20, 15
+    elif dur_min <= 35:
+        work, rest, reps, wu, cd = 2, 2, 5, 8, 9
+    else:
+        work, rest, reps, wu, cd = 3, 2, 5, 10, 5
+    steps: list = [create_warmup_step(float(wu * 60), step_order=1)]
+    order = 2
+    for i in range(reps):
+        steps.append(_interval(order, float(work * 60), _hr_zone_target(), 5, 5))
+        order += 1
+        if i < reps - 1:
+            steps.append(_recovery(order, float(rest * 60), _hr_zone_target(), 1, 2))
+            order += 1
+    steps.append(create_cooldown_step(float(cd * 60), step_order=order))
+    return _make_row(f"Row VO2 {dur_min}m", steps, dur_min)
+
+
 # ── Cycling label → builder dispatch ─────────────────────────────────────────
 
 _BUILDERS: dict[str, Any] = {
@@ -802,6 +888,7 @@ _NAME_PREFIXES: tuple[str, ...] = (
     "Camp Mountain Stage ", "Camp Summit Day ", "Camp BTB Day ", "Camp Stage Sim ",
     # Strength & ruck
     "Kettlebell Wk", "Light KB Wk", "MaxiClimber Wk", "Ruck ", "KB Position ",
+    "Row Threshold ", "Row VO2 ", "Row Z2 ",
 )
 
 
@@ -1034,13 +1121,50 @@ def _workout_schedule() -> dict[tuple[str, int], list[str]]:
                             schedule[(label, dur)].append(d.isoformat())
             d += timedelta(days=1)
 
-    from .fitness_plan import PLAN_END as FIT_END, PLAN_START as FIT_START, garmin_allowed, session_for_date as fitness_session
+    from .fitness_plan import (
+        PLAN_END as FIT_END,
+        PLAN_START as FIT_START,
+        garmin_bike_allowed,
+        plan_label,
+        session_for_date as fitness_session,
+    )
     d = FIT_START
     while d <= FIT_END:
         if should_push_garmin_date(d):
             sess = fitness_session(d)
-            if sess and garmin_allowed(d, sess[0], sess[1]):
-                schedule[(sess[1], sess[2])].append(d.isoformat())
+            if sess and garmin_bike_allowed(d, sess[0], sess[1]):
+                schedule[(plan_label(sess[1]), sess[2])].append(d.isoformat())
+        d += timedelta(days=1)
+    return schedule
+
+
+def _row_template(label: str, dur: int) -> tuple[str, int]:
+    """(builder label, push minutes) for one rower session."""
+    from .fitness_plan import plan_label, row_push_minutes
+    base = plan_label(label)
+    low = base.lower()
+    if "sandbag" in low or "threshold" in low:
+        name = "Threshold — rower"
+    elif "vo2" in low:
+        name = "VO2 — rower"
+    else:
+        name = "Z2 — rower"
+    return name, row_push_minutes(label, dur)
+
+
+def _workout_schedule_row() -> dict[tuple[str, int], list[str]]:
+    """Map (rower label, minutes) → dates. Uploaded as cardio, not cycling."""
+    from .fitness_plan import PLAN_END as FIT_END, PLAN_START as FIT_START, garmin_row_allowed, session_for_date
+    from .medical import should_push_garmin_date
+
+    schedule: dict[tuple[str, int], list[str]] = defaultdict(list)
+    d = FIT_START
+    while d <= FIT_END:
+        if should_push_garmin_date(d):
+            sess = session_for_date(d)
+            if sess and garmin_row_allowed(sess[0], sess[1]):
+                name, minutes = _row_template(sess[1], sess[2])
+                schedule[(name, minutes)].append(d.isoformat())
         d += timedelta(days=1)
     return schedule
 
@@ -1056,12 +1180,16 @@ def _specs_for(stype: str, label: str, dur: int, week_num: int) -> list[tuple]:
     (`_workouts_for_date`). week_num=0 is used for ruck (all durations share
     structure regardless of week).
     """
+    from .fitness_plan import plan_label
+    if stype == "rower" or "rower" in label.lower():
+        name, minutes = _row_template(label, dur)
+        return [("row", name, minutes)]
     if label in _STRENGTH_FE_A:
         return [("sr", "KB Position A", 0, dur)]
     if label in _STRENGTH_FE_B:
         return [("sr", "KB Position B", 0, dur)]
     if stype in _BIKE_TYPES:
-        return [("bike", label, dur)]
+        return [("bike", plan_label(label), dur)]
     if stype not in _STRENGTH_RUCK_TYPES:
         return []
     if label == "KB + MaxiClimber":
@@ -1432,6 +1560,36 @@ def upload_and_schedule(
         print(f"  uploaded '{label}' {dur}m → id={workout_id}")
         _schedule_dates(api, workout_id, dates, summary, failed_schedules)
 
+    # ── Indoor rower (cardio sport — Connect has no rowing workout type here) ─
+    row_schedule = _filter_schedule_from(_workout_schedule_row(), start)
+    row_total = sum(len(v) for v in row_schedule.values())
+    print(f"\nRower plan: {len(row_schedule)} unique templates, {row_total} sessions")
+    for (label, dur), dates in sorted(row_schedule.items()):
+        workout = _build_row_workout(label, dur)
+        if not workout:
+            print(f"  [skip] no rower builder for '{label}' {dur}m")
+            summary["errors"] += 1
+            continue
+        if dry_run:
+            print(f"  [dry]  '{workout.workoutName}' → would schedule on {', '.join(dates)}")
+            summary["templates"] += 1
+            summary["scheduled"] += len(dates)
+            continue
+        try:
+            response = api.upload_workout(workout.to_dict())
+        except Exception as exc:
+            print(f"  [error] upload failed for '{workout.workoutName}': {exc}")
+            summary["errors"] += 1
+            continue
+        workout_id = _extract_id(response)
+        if not workout_id:
+            print(f"  [error] no workoutId for '{workout.workoutName}': {response}")
+            summary["errors"] += 1
+            continue
+        summary["templates"] += 1
+        print(f"  uploaded '{workout.workoutName}' → id={workout_id}")
+        _schedule_dates(api, workout_id, dates, summary, failed_schedules)
+
     # ── Strength & ruck workouts ──────────────────────────────────────────────
     sr_schedule = _filter_schedule_from(_workout_schedule_strength_ruck(), start)
     sr_total = sum(len(v) for v in sr_schedule.values())
@@ -1631,6 +1789,14 @@ def apply_override_to_garmin(api: Any, date_str: str, dry_run: bool = False) -> 
                 push_errors.append(msg)
                 continue
             workout = builder(dur)
+        elif spec[0] == "row":
+            _, label, dur = spec
+            workout = _build_row_workout(label, dur)
+            if not workout:
+                msg = f"no rower builder for '{label}' {dur}m"
+                print(f"  [skip] {msg}")
+                push_errors.append(msg)
+                continue
         else:  # ("sr", kind, week_num, dur)
             _, kind, week_num, dur = spec
             workout = _build_strength_ruck_workout(kind, week_num, dur)

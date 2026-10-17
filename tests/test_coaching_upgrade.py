@@ -49,14 +49,14 @@ def test_three_hour_sunday_survives_the_weekly_cap():
 
 def test_camp_week_is_not_trimmed_to_the_home_cap():
     teide = prescribed_session(date(2026, 12, 26))
-    assert teide.session == ("long", "Teide — optional long day", 300)
+    assert teide.session == ("long", "Teide — optional long day · outdoor", 300)
     long_quality = prescribed_session(date(2026, 12, 28))
     assert long_quality.session[2] == 240
 
 
 def test_clearance_week_does_not_cap_the_return():
     ride = prescribed_session(date(2026, 10, 25))
-    assert ride.session == ("long", "Long Ride (Easy)", 70)
+    assert ride.session == ("long", "Long Ride (Easy) · outdoor", 70)
 
 
 def test_pullups_three_days_a_week_change_phase():
@@ -82,7 +82,7 @@ def test_ruck_reaches_pack_test_load_without_a_kettlebell_deadlift():
     assert "burpee" in skills[1]
     assert session_for_date(date(2026, 10, 29))[0] == "rower"
     assert session_for_date(date(2026, 11, 26))[0] == "maxiclimber"
-    assert session_for_date(date(2026, 10, 20))[0] == "threshold"
+    assert session_for_date(date(2026, 10, 20)) == ("rower", "Threshold — rower", 40)
     assert session_for_date(date(2026, 10, 21))[0] == "strength"
 
 

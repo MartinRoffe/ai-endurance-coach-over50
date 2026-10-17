@@ -80,8 +80,18 @@ def _has_side(recipe: Recipe) -> bool:
     return any(item.food_id in STARCH_IDS for item in recipe.ingredients)
 
 
-def training_foods(kind: str, dur_min: int, ref_date: date | None) -> dict:
-    """Pre-ride, on-bike, and post-ride food fixed by the session length."""
+def training_foods(
+    kind: str,
+    dur_min: int,
+    ref_date: date | None,
+    *,
+    ride: bool = True,
+) -> dict:
+    """Pre, during, and post food fixed by the session length.
+
+    ``ride`` is an outdoor bike day. A short rower or MaxiClimber session
+    keeps the pre/post snack on a hard day and skips during-session carbs.
+    """
     pre: dict[str, float] = {}
     on_bike: dict[str, float] = {}
     post: dict[str, float] = {}
@@ -91,11 +101,13 @@ def training_foods(kind: str, dur_min: int, ref_date: date | None) -> dict:
     if kind == "hard":
         pre["banana"] = _BANANA_G
         post["milk_semi"] = 300.0 if dur_min >= 60 else 250.0
-        if dur_min >= 120:
-            cakes = 2
-        elif dur_min >= 75:
-            cakes = 1
-    elif kind == "long" and dur_min >= 75:
+        # Short indoor sessions (rower, MaxiClimber) do not take ride fuel.
+        if ride or dur_min >= 75:
+            if dur_min >= 120:
+                cakes = 2
+            elif dur_min >= 75:
+                cakes = 1
+    elif kind == "long" and dur_min >= 75 and ride:
         from ..nutrition_plan import fuel_prep_for_ride
         prep = fuel_prep_for_ride(dur_min, ref_date=ref_date)
         if prep.get("banana_before"):
@@ -116,6 +128,7 @@ def training_foods(kind: str, dur_min: int, ref_date: date | None) -> dict:
         "bottles": bottles,
         "note": note,
         "allow_snack": kind == "easy" or (kind == "long" and dur_min < 75),
+        "ride": ride,
     }
 
 
@@ -156,10 +169,11 @@ def solve(
     kind: str,
     dur_min: int,
     ref_date: date | None = None,
+    ride: bool = True,
 ) -> PortionPlan:
     """Pick the closest real portions. Slightly under the calorie target beats an oversized plate."""
     del lunch_fixed, dinner_fixed
-    training = training_foods(kind, int(dur_min or 0), ref_date)
+    training = training_foods(kind, int(dur_min or 0), ref_date, ride=ride)
     bf_pack = {mult: _pack(portion_macros(breakfast, mult)) for mult in _BF_STEPS}
     lunch_pot, lunch_side = _component_table(lunch)
     dinner_pot, dinner_side = _component_table(dinner)
@@ -286,9 +300,13 @@ def build_meals(
     meals: list[dict] = []
     meals.append(_recipe_meal("Breakfast", breakfast, plan.bf, plan.bf))
     training = plan.training
+    ride = bool(training.get("ride", True))
+    pre_slot = "Pre-ride" if ride else "Pre-session"
+    during_slot = "On-bike" if ride else "During"
+    post_slot = "Post-ride" if ride else "Post-session"
     if training["pre"]:
         meals.append(_food_meal(
-            "Pre-ride",
+            pre_slot,
             "Banana",
             training["pre"],
             "Eat the banana about 30–60 minutes before you start. One medium banana is about 120 g.",
@@ -298,26 +316,27 @@ def build_meals(
         cakes = training["cakes"]
         bottles = training["bottles"]
         bits = []
+        place = "the ride" if ride else "the session"
         if cakes:
             bits.append(
                 f"Take {cakes} plain rice cake{'s' if cakes != 1 else ''} "
-                f"({int(cakes * _CAKE_G)} g) and eat them across the session, with water."
+                f"({int(cakes * _CAKE_G)} g) and eat them across {place}, with water."
             )
         if bottles:
             bits.append(
                 f"Mix {bottles} maltodextrin bottle{'s' if bottles != 1 else ''} "
-                f"({int(bottles * _BOTTLE_G)} g powder) so the ride hits the carb target."
+                f"({int(bottles * _BOTTLE_G)} g powder) so {place} hits the carb target."
             )
         name = "Rice cakes"
         if bottles and cakes:
             name = "Rice cakes and carb drink"
         elif bottles:
             name = "Carb drink"
-        meals.append(_food_meal("On-bike", name, training["on_bike"], " ".join(bits)))
+        meals.append(_food_meal(during_slot, name, training["on_bike"], " ".join(bits)))
     if training["post"]:
         ml = int(round(training["post"]["milk_semi"]))
         meals.append(_food_meal(
-            "Post-ride",
+            post_slot,
             "Milk",
             training["post"],
             f"Drink {ml} ml semi-skimmed milk within an hour of finishing. That is the recovery drink.",

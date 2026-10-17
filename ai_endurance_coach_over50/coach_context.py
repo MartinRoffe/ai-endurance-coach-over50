@@ -553,14 +553,16 @@ def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None
         f"  {label} — {discipline} ({stype}, {dur_str}){note}{status}",
     ]
     try:
-        from .fitness_plan import garmin_allowed, in_plan
+        from .fitness_plan import garmin_allowed, garmin_row_allowed, in_plan
         if in_plan(target):
-            if garmin_allowed(target, stype, label):
-                lines.append("  Watch: pushed to Garmin (bike structure on the Edge).")
+            if garmin_row_allowed(stype, label):
+                lines.append("  Watch: pushed to Garmin as a cardio (rower) workout.")
+            elif garmin_allowed(target, stype, label):
+                lines.append("  Watch: pushed to Garmin as an outdoor ride.")
             else:
                 lines.append(
                     "  Watch: NOT pushed to Garmin — calendar / Sessions only "
-                    "(rower, Maxi, strength, hike, Teide, BUSAR)."
+                    "(MaxiClimber, strength, hike, Teide, BUSAR)."
                 )
     except Exception:
         logger.warning("_section_today_session garmin flag failed", exc_info=True)
@@ -715,9 +717,10 @@ def _section_key_dates(today: date) -> list[str]:
             "shorten when fitness is not there."
         )
         lines.append(
-            "  Garmin push (fitness year): Z2 Easy, Long Ride (Easy), Threshold — bike, "
-            "VO2 — bike, Camp quality bike. Not pushed: rower, MaxiClimber, strength, "
-            "rucks, hikes, Teide, BUSAR."
+            "  Garmin push (fitness year): weekend outdoor rides — Z2 Easy, Long Ride (Easy) — "
+            "as cycling workouts. Weekday rower (Threshold — rower, VO2 — rower, Z2 — rower) "
+            "as cardio workouts. Not pushed: MaxiClimber, strength, rucks, hikes, Teide, BUSAR. "
+            "Bike rides are outdoors and weekends only."
         )
         lines.append(
             "  Scotland week: ready from Mon 22 Mar 2027. Exact hills chosen that week "

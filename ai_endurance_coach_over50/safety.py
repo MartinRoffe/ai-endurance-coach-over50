@@ -156,6 +156,10 @@ def as_easy(session: tuple, *, max_min: Optional[int] = None) -> Session:
         return ("long", "Long Ride (Easy)", dur)
     if stype == "endurance":
         return ("endurance", "Z2 Easy", dur)
+    if stype == "rower" or "rower" in low:
+        return ("rower", "Z2 — rower", dur)
+    if stype == "maxiclimber" or "maxiclimber" in low:
+        return ("maxiclimber", "Z2 — MaxiClimber", dur)
     return ("bike", "Z2 Easy", dur)
 
 

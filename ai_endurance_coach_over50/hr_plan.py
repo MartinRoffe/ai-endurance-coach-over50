@@ -611,7 +611,7 @@ HR_HEAT_PROTOCOL: dict = {
     "title": "Heat protocol — final 10 days (scheduled)",
     "note": (
         "Five Heat Z2 sessions are on the calendar (Fri 13, Sun 15, Tue 17, Wed 18, "
-        "Fri 20 Aug) — extra layers or indoor trainer with no fan. Last session is "
+        "Fri 20 Aug) — extra layers on an outdoor ride. Last session is "
         "3 days pre-event. Sodium 500–800 mg/h; weigh before/after to calibrate fluid loss."
     ),
 }

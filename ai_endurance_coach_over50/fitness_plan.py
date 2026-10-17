@@ -1,12 +1,15 @@
 """12-month general fitness block: 12 Oct 2026 → 3 Oct 2027.
 
-Source of truth for the dashboard, calendar, and Garmin bike push (easy Z2 / long
-plus bike threshold and bike VO2). Haute Route week-by-week stays gated. Gravel
-stays off until the bike is in use.
+Source of truth for the dashboard, calendar, and Garmin push. With
+``HAS_TURBO`` false (the default), weekday bike sessions resolve to the indoor
+rower and weekend rides are outdoor. Haute Route week-by-week stays gated.
+Gravel stays off until the bike is in use.
 """
 from __future__ import annotations
 
 from datetime import date, timedelta
+
+from .settings import has_turbo
 
 PLAN_START = date(2026, 10, 12)  # Monday of the clearance week
 PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
@@ -17,7 +20,7 @@ PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
 # MEDICAL_RETURN_EASY_DAYS window — see safety._procedure_dates.
 PROCEDURE_START = date(2026, 10, 12)
 PROCEDURE_END = date(2026, 10, 18)
-QUALITY_START = date(2026, 10, 20)   # first hard session (threshold bike)
+QUALITY_START = date(2026, 10, 20)   # first hard session (rower threshold; bike if HAS_TURBO)
 TWO_QUALITY_FROM = date(2026, 10, 26)
 PULLUP_START = date(2026, 10, 27)    # bar in the house; negatives start here
 # Kept for older imports / docs that still name the easy-return end.
@@ -40,9 +43,9 @@ CAMP_END = date(2027, 1, 2)
 
 GRAVEL_BIKE_ACTIVE = False
 
-# Bike labels pushed to Garmin. Easy endurance plus fitness-year hard bike
-# sessions (threshold / VO2 on the bike or turbo). Rower, MaxiClimber, Teide,
-# hikes, strength, and race-sim labels stay calendar-only.
+# Bike labels pushed to Garmin as cycling workouts. With no turbo these are
+# weekend outdoor rides (and camp days only when HAS_TURBO is on, because
+# weekday camp rides otherwise become rower workouts).
 _GARMIN_BIKE_LABELS = frozenset({
     "Z2 Easy",
     "Long Ride (Easy)",
@@ -51,6 +54,15 @@ _GARMIN_BIKE_LABELS = frozenset({
     "Camp quality — threshold",
     "Camp quality — VO2",
 })
+# Indoor rower labels pushed as cardio workouts (rowing is not a Connect
+# workout sport the library can upload, so the push is cardio with HR targets).
+_GARMIN_ROW_LABELS = frozenset({
+    "Threshold — rower",
+    "VO2 — rower",
+    "Z2 — rower",
+    "Threshold — rower, then sandbag",
+})
+_OUTDOOR_MARK = " · outdoor"
 # Kept as an alias for callers/tests that still import the old name.
 _EASY_BIKE_LABELS = _GARMIN_BIKE_LABELS
 # Race-sim / HR-vocabulary types that must never be auto-pushed from fitness.
@@ -115,28 +127,120 @@ def in_procedure_week(d: date) -> bool:
 def gravel_sunday_note() -> str:
     if GRAVEL_BIKE_ACTIVE:
         return "Sunday long ride may be ridden on the gravel bike."
+    if has_turbo():
+        return (
+            "Gravel bike is not in use. Sunday stays a road ride "
+            "until that flag is turned on."
+        )
     return (
-        "Gravel bike is not in use. Sunday stays a road or turbo ride "
+        "Gravel bike is not in use. Sunday is an outdoor road ride "
         "until that flag is turned on."
     )
 
 
-def garmin_allowed(d: date, stype: str, label: str) -> bool:
-    """True for fitness-year bike days that should be scheduled on Garmin.
+def plan_label(label: str) -> str:
+    """Label without the outdoor mark, for Garmin builders and comparisons."""
+    if _OUTDOOR_MARK in label:
+        return label.split(_OUTDOOR_MARK, 1)[0].strip()
+    return label
 
-    Easy Z2 / long rides plus bike threshold and bike VO2 (including camp
-    quality days and clearance-week easy bikes). Teide, Masca, sweetspot/tempo
-    race labels, and non-bike sessions stay off the watch. Clinic day is rest
-    so it never pushes; clearance-week easy bikes are allowed.
-    """
+
+def garmin_bike_allowed(d: date, stype: str, label: str) -> bool:
+    """True for a cycling workout (outdoor weekend ride, or a bike day when a turbo exists)."""
+    del d
     if stype in _BLOCKED_PUSH_TYPES:
         return False
-    lowered = label.lower()
-    if any(tok in lowered for tok in ("teide", "sweetspot", "tempo", "masca")):
+    base = plan_label(label)
+    lowered = base.lower()
+    if any(tok in lowered for tok in ("teide", "sweetspot", "tempo", "masca", "rower")):
         return False
     if stype not in ("bike", "long", "endurance", "recovery", "threshold", "vo2"):
         return False
-    return label in _GARMIN_BIKE_LABELS
+    return base in _GARMIN_BIKE_LABELS
+
+
+def garmin_row_allowed(stype: str, label: str) -> bool:
+    """True when the session is an indoor rower workout we can push as cardio."""
+    base = plan_label(label)
+    if "maxiclimber" in base.lower():
+        return False
+    if stype == "rower" or "rower" in base.lower():
+        return base in _GARMIN_ROW_LABELS or base.startswith("Threshold — rower")
+    return False
+
+
+def garmin_allowed(d: date, stype: str, label: str) -> bool:
+    """True when this fitness-year session is scheduled on Garmin.
+
+    Outdoor bike days go up as cycling workouts. Rower days go up as cardio
+    workouts. Teide, MaxiClimber, strength, hikes and race-sim labels stay
+    off the watch. The day-detail line uses this same flag.
+    """
+    return garmin_bike_allowed(d, stype, label) or garmin_row_allowed(stype, label)
+
+
+def row_push_minutes(label: str, dur: int) -> int:
+    """Minutes of the Garmin rower workout.
+
+    A sandbag day is a short row and then lifting. The plan duration includes
+    both; the watch workout is only the row.
+    """
+    if "sandbag" in label.lower():
+        return 30
+    return dur
+
+
+_CYCLE_TYPES = frozenset({
+    "bike", "long", "endurance", "tempo", "sweetspot", "ftp", "recovery",
+})
+
+
+def _is_cycle_session(stype: str, label: str) -> bool:
+    """A bike ride in the stored week, before the no-turbo resolution."""
+    low = label.lower()
+    if "rower" in low or "maxiclimber" in low:
+        return False
+    if stype in {"hike", "ruck", "strength", "rest", "rower", "maxiclimber", "kettlebell"}:
+        return "bike" in low
+    if stype in _CYCLE_TYPES:
+        return True
+    if stype in {"threshold", "vo2"}:
+        return any(tok in low for tok in ("bike", "camp quality", "ride", "z2", "teide"))
+    return any(tok in low for tok in ("long ride", "z2 easy", "teide", "bike"))
+
+
+def _as_rower(stype: str, label: str, dur: int) -> tuple[str, str, int]:
+    """Same minutes and the same hard/easy intent, on the indoor rower."""
+    low = label.lower()
+    sandbag = "then sandbag" in low
+    if "vo2" in low or stype == "vo2":
+        new = "VO2 — rower"
+    elif sandbag or "threshold" in low or stype == "threshold" or "camp quality" in low:
+        new = "Threshold — rower"
+    else:
+        new = "Z2 — rower"
+    if sandbag:
+        new = "Threshold — rower, then sandbag"
+    return ("rower", new, dur)
+
+
+def apply_equipment(d: date, session: tuple[str, str, int]) -> tuple[str, str, int]:
+    """Resolve bike vs rower from ``HAS_TURBO``.
+
+    Stored weeks keep the bike wording so turning the flag on restores them.
+    With the flag off, Monday–Friday bike sessions become rower sessions of
+    the same duration, and Saturday–Sunday rides are marked outdoor.
+    """
+    stype, label, dur = session
+    if not _is_cycle_session(stype, label):
+        return session
+    if has_turbo():
+        return session
+    if d.weekday() >= 5:
+        if _OUTDOOR_MARK in label:
+            return session
+        return (stype, f"{label}{_OUTDOOR_MARK}", dur)
+    return _as_rower(stype, label, dur)
 
 
 def session_for_date(d: date) -> tuple[str, str, int] | None:
@@ -214,6 +318,10 @@ _BUSAR_LABEL = (
 
 
 def _planned(d: date) -> tuple[str, str, int]:
+    return apply_equipment(d, _template_session(d))
+
+
+def _template_session(d: date) -> tuple[str, str, int]:
     if d in (date(2027, 2, 20), date(2027, 2, 21)):
         return ("hike", _BUSAR_LABEL, 0)
     if d in _CAMP:
@@ -552,26 +660,27 @@ _PHASE_NOTES = {
     ),
     "Return": (
         "First hard session Tue 20 Oct, then two from the week of 26 Oct "
-        "(threshold or VO2, on the bike, the rower, or the MaxiClimber). "
+        "(threshold or VO2, on the rower or the MaxiClimber through the week; "
+        "Sunday is the outdoor ride). "
         "Strength is twice a week from 21 Oct: a lighter endurance session "
         "on Wednesday and a load session on Saturday. Every 4th week the "
         "bells get lighter, not the long ride. Sunday reaches 3 hours on 22 Nov."
     ),
     "Tenerife": (
-        "Time on the bike, not a distance target. Quality days are 3–4 hours "
-        "with an easy day between them. Saturday 26 Dec is the optional longer "
-        "Teide day. Shorten a ride when fitness is not there."
+        "Weekday camp hours are on the rower, same duration as the old ride. "
+        "Saturday 26 Dec is the optional outdoor Teide ride. "
+        "Shorten a session when fitness is not there."
     ),
     "Keswick build": (
         "Saturday is a hill ruck. The pack reaches 20.4 kg on 6 Feb. "
-        "Tuesday is the hard ride, then sandbag deadlift sets. Wednesday is "
-        "the lighter strength session, before Thursday. The week of 25 Jan "
-        "is a load deload. The week of 8 Feb practises step-overs and "
-        "burpee pull-ups. The week of 15 Feb is the taper. "
-        "Pull-ups stay a short add-on three days a week."
+        "Tuesday is the hard rower session, then sandbag deadlift sets. "
+        "Wednesday is the lighter strength session, before Thursday. "
+        "The week of 25 Jan is a load deload. The week of 8 Feb practises "
+        "step-overs and burpee pull-ups. The week of 15 Feb is the taper. "
+        "Pull-ups stay a short add-on three days a week. Sunday is outdoors."
     ),
     "Lakes": "The weekend is on foot. The hill names are options, not a fixed route.",
-    "Recovery": "Walks and short easy rides. No strength session.",
+    "Recovery": "Walks, a short weekday rower, and a short outdoor ride on Sunday. No strength session.",
     "Scotland": (
         "Two prep weekends, then a hill week from Mon 22 Mar. Hours are ceilings. "
         "Pick hills that week from the conditions report (Keswick pattern). "
@@ -581,6 +690,32 @@ _PHASE_NOTES = {
         "This shape holds through the 3 Oct 2027 checkpoint. "
         "The Haute Route week-by-week block is written after that."
     ),
+}
+
+
+def _phase_note(name: str) -> str:
+    if has_turbo() and name in _PHASE_NOTES_TURBO:
+        return _PHASE_NOTES_TURBO[name]
+    return _PHASE_NOTES.get(name, "")
+
+
+_PHASE_NOTES_TURBO = {
+    "Return": (
+        "First hard session Tue 20 Oct, then two from the week of 26 Oct "
+        "(threshold or VO2, on the bike, the rower, or the MaxiClimber). "
+        "Strength is twice a week from 21 Oct. Sunday reaches 3 hours on 22 Nov."
+    ),
+    "Tenerife": (
+        "Time on the bike, not a distance target. Quality days are 3–4 hours "
+        "with an easy day between them. Saturday 26 Dec is the optional longer "
+        "Teide day. Shorten a ride when fitness is not there."
+    ),
+    "Keswick build": (
+        "Saturday is a hill ruck. The pack reaches 20.4 kg on 6 Feb. "
+        "Tuesday is the hard ride, then sandbag deadlift sets. "
+        "The week of 15 Feb is the taper."
+    ),
+    "Recovery": "Walks and short easy rides. No strength session.",
 }
 
 
@@ -636,7 +771,7 @@ def guide_phases() -> list[dict]:
             "start": start,
             "end": end,
             "span": _span(start, end),
-            "note": _PHASE_NOTES.get(bucket["name"], ""),
+            "note": _phase_note(bucket["name"]),
             "days": days_out,
             "weeks": week_rows,
         })
