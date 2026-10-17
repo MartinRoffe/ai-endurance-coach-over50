@@ -349,36 +349,101 @@ def _fill_busar(detail: dict[str, Any]) -> None:
     detail["ruck_elevation"] = "The pack test is flat. Do not turn it into a hill."
 
 
+def _rower_zone(book: dict[str, Any], zone: int) -> str:
+    """Rower heart-rate target. Lactate-threshold Z4 is 160–167 at max HR 191."""
+    if zone == 4 and "Garmin" not in (book.get("hr_source") or ""):
+        return "Z4 · 160–167 bpm (Garmin lactate-threshold zones, max HR 191)"
+    if zone == 5 and "Garmin" not in (book.get("hr_source") or ""):
+        return "Z5 · above 167 bpm (above the lactate-threshold band, max HR 191)"
+    return _hr(book, zone)
+
+
+def _rower_split_note(hard: bool) -> str:
+    if not hard:
+        return (
+            "No 500 m split target. Keep it easy enough to talk. "
+            "A 2,000 m or 20-minute rower test would set splits later; until then, RPE and heart rate lead."
+        )
+    return (
+        "No rower test yet, so do not chase a 500 m split. "
+        "Hold the stroke that produces the RPE and the heart-rate band, and let the split be whatever that is. "
+        "A 2,000 m test or a 20-minute rower test would set real splits for later."
+    )
+
+
+def _outdoor_ride_note(detail: dict[str, Any]) -> str:
+    """Weekend ride cues: quiet loop, HR on climbs, Assioma, winter lights, weather fallback."""
+    try:
+        month = int(str(detail.get("date") or "")[5:7])
+    except ValueError:
+        month = 0
+    lights = ""
+    if month in (10, 11, 12, 1, 2, 3):
+        lights = " Lights and something bright — be seen in the dark months."
+    return (
+        " Outdoor ride: a flat quiet loop. On a climb, heart rate leads — drop a gear "
+        "before you leave the zone. The Assioma pedals still record power."
+        + lights
+        + " Wind or weather that makes the road a bad idea: rower or MaxiClimber "
+        "for the same duration, zone 2."
+    )
+
+
 def _fill_bike_then_sandbag(detail: dict[str, Any], d: date, dur: int, book: dict[str, Any]) -> None:
     detail["role"] = "sandbag"
     detail["type_label"] = "Threshold, then strength"
     detail["deload"] = d in _DELOAD_DATES
-    detail["hr_target"] = _hr(book, 4)
-    detail["power_target"] = _pwr(book, 4)
-    detail["rpe_target"] = "8 on the bike, 6–7 on the sandbag" if not detail["deload"] else "7 on the bike, 5 on the sandbag"
-    detail["intensity"] = f"{detail['power_target']}. Heart rate {detail['hr_target']}."
-    detail["purpose"] = (
-        "Hard ride first, sandbag second, so the heavier lift is not the day before Thursday. "
-        "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
-        "There is no trap bar. A kettlebell is not this lift: the heaviest bell is 24 kg and the "
-        "test is 102 kg for 15 reps in one minute. That standard is the target, not today's load. "
-        + _KIT
-    )
-    detail["blocks"] = [
-        _block("Warm-up", "8 min easy spinning, zone 1 rising into zone 2."),
-        _block("Main set", "2 × 6 min at threshold. 3 min easy spinning between the efforts."),
-        _block("Cool-down", "7 min easy spin, then a few minutes on your feet before the sandbag."),
-        _block(
-            "Sandbag",
-            "After the ride. Stop each set with 2 reps left. If the back rounds, the bag is too heavy.",
-        ),
-    ]
+    on_rower = "rower" in (detail.get("title") or "").lower() or detail.get("type") == "rower"
+    detail["hr_target"] = _rower_zone(book, 4) if on_rower else _hr(book, 4)
+    detail["power_target"] = "" if on_rower else _pwr(book, 4)
+    if on_rower:
+        detail["rpe_target"] = "7–8 on the rower, 6–7 on the sandbag" if not detail["deload"] else "7 on the rower, 5 on the sandbag"
+        detail["intensity"] = f"RPE {detail['rpe_target']}. Heart rate {detail['hr_target']}."
+    else:
+        detail["rpe_target"] = "8 on the bike, 6–7 on the sandbag" if not detail["deload"] else "7 on the bike, 5 on the sandbag"
+        detail["intensity"] = f"{detail['power_target']}. Heart rate {detail['hr_target']}."
+    if on_rower:
+        detail["purpose"] = (
+            f"{hard_day_phrase(d)}. Hard row first, sandbag second, so the heavier lift is not the day before Thursday. "
+            "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
+            "There is no trap bar. A kettlebell is not this lift: the heaviest bell is 24 kg and the "
+            "test is 102 kg for 15 reps in one minute. That standard is the target, not today's load. "
+            + _rower_split_note(True) + " "
+            + _KIT
+        )
+        detail["blocks"] = [
+            _block("Warm-up", "8 min easy row, damper in the middle, zone 1 rising into zone 2."),
+            _block("Main set", "2 × 6 min at rower threshold (RPE 7–8, heart rate in the Z4 band). 3 min easy row between."),
+            _block("Cool-down", "7 min easy row, then a few minutes on your feet before the sandbag."),
+            _block(
+                "Sandbag",
+                "After the row. Stop each set with 2 reps left. If the back rounds, the bag is too heavy.",
+            ),
+        ]
+    else:
+        detail["purpose"] = (
+            "Hard ride first, sandbag second, so the heavier lift is not the day before Thursday. "
+            "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
+            "There is no trap bar. A kettlebell is not this lift: the heaviest bell is 24 kg and the "
+            "test is 102 kg for 15 reps in one minute. That standard is the target, not today's load. "
+            + _KIT
+        )
+        detail["blocks"] = [
+            _block("Warm-up", "8 min easy, zone 1 rising into zone 2."),
+            _block("Main set", "2 × 6 min at threshold. 3 min easy between the efforts."),
+            _block("Cool-down", "7 min easy, then a few minutes on your feet before the sandbag."),
+            _block(
+                "Sandbag",
+                "After the ride. Stop each set with 2 reps left. If the back rounds, the bag is too heavy.",
+            ),
+        ]
     if detail["deload"]:
         detail["exercises"] = [
             _ex("Sandbag deadlift", "2×5", "Same load as the last build week, not more", "2 sec down, stand up", "2–3 min"),
         ]
+        opener = "Deload week. The row stays, " if on_rower else "Deload week. The ride stays, "
         detail["purpose"] = (
-            "Deload week. The ride stays, the sandbag sets are cut in half, and the load does not go up. "
+            opener + "the sandbag sets are cut in half, and the load does not go up. "
             + detail["purpose"]
         )
     elif d == date(2027, 2, 2):
@@ -875,12 +940,13 @@ def _fill_easy_bike(detail: dict[str, Any], label: str, dur: int, book: dict[str
             _block("Cool-down", "A few minutes easier than the main set."),
         ]
     fuel = " Eat from the first hour." if dur >= 75 else ""
+    outside = _outdoor_ride_note(detail) if "outdoor" in label.lower() else ""
     if long_ride:
         detail["purpose"] = (
-            "Easy long ride. The point is time in zone 2, not a harder average." + fuel
+            "Easy long ride. The point is time in zone 2, not a harder average." + fuel + outside
         )
     else:
-        detail["purpose"] = "Easy aerobic ride. Conversation pace." + fuel
+        detail["purpose"] = "Easy aerobic ride. Conversation pace." + fuel + outside
 
 
 def _fill_teide(detail: dict[str, Any], dur: int, book: dict[str, Any]) -> None:
@@ -895,46 +961,90 @@ def _fill_teide(detail: dict[str, Any], dur: int, book: dict[str, Any]) -> None:
         _block("Cool-down", "Turn around whenever you want. The last 15 min are easy."),
     ]
     detail["purpose"] = (
-        f"Optional Teide day, about {_fmt_dur(dur)}. There is no distance target. "
+        f"Optional outdoor Teide day, about {_fmt_dur(dur)}. There is no distance target. "
+        "Heart rate leads on the steep pitches; the Assioma pedals still record power. "
+        "Lights if you will be out in the dark. "
+        "Wind or weather that shuts the road: rower or MaxiClimber for the same duration, zone 2. "
         "Shorten it when fitness is not there."
     )
 
 
 def _fill_rower(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any]) -> None:
-    vo2 = "vo2" in label.lower()
+    low = label.lower()
+    easy = low.startswith("z2") or "z2" in low
+    vo2 = "vo2" in low
+    if easy:
+        detail["role"] = "endurance_row"
+        detail["hr_target"] = _hr(book, 2)
+        detail["power_target"] = ""
+        detail["rpe_target"] = "3–4"
+        detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
+        main = max(dur - 15, 5) if dur else 20
+        detail["blocks"] = [
+            _block("Warm-up", "5–10 min very easy row. Damper in the middle."),
+            _block("Main set", f"About {main} min in zone 2, conversational. The MaxiClimber at the same duration and zone 2 is a fair swap."),
+            _block("Cool-down", "5 min easier than the main set."),
+        ]
+        detail["purpose"] = (
+            "Easy weekday aerobic work on the rower. "
+            + _rower_split_note(False)
+        )
+        return
     zone = 5 if vo2 else 4
     detail["role"] = "vo2" if vo2 else "threshold"
-    detail["hr_target"] = _hr(book, zone)
+    detail["hr_target"] = _rower_zone(book, zone)
     detail["power_target"] = ""
     detail["rpe_target"] = "8–9" if vo2 else "7–8"
     detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
     if vo2 and dur <= 35:
         detail["blocks"] = [
             _block("Warm-up", "8 min easy row. Damper in the middle, not a sprint setting."),
-            _block("Main set", "5 × 2 min hard, 2 min easy between. Breathe before the first hard stroke."),
+            _block("Main set", "5 × 2 min at VO2 (RPE 8–9, heart rate in Z5). 2 min easy between. Breathe before the first hard stroke."),
             _block("Cool-down", "9 min easy row."),
+        ]
+    elif vo2 and dur >= 150:
+        detail["blocks"] = [
+            _block("Warm-up", "20 min easy row, zone 2."),
+            _block("Main set", "5 × 4 min at VO2 (RPE 8–9, heart rate in Z5). 4 min easy row between."),
+            _block("Cool-down", "The rest of the session is zone 2, with the last 20 min very easy."),
         ]
     elif vo2:
         detail["blocks"] = [
-            _block("Warm-up", "8 min easy row."),
-            _block("Main set", "6 × 2 min hard, 2 min easy between."),
-            _block("Cool-down", "Easy row for whatever is left."),
+            _block("Warm-up", "10 min easy row, zone 1 into zone 2. Damper in the middle."),
+            _block("Main set", "5 × 3 min at VO2 (RPE 8–9, heart rate in Z5). 2 min easy row between."),
+            _block("Cool-down", "Easy row for whatever time is left."),
+        ]
+    elif dur >= 150:
+        effort = "25 min" if dur >= 220 else "20 min"
+        detail["blocks"] = [
+            _block("Warm-up", "20 min easy row, zone 2."),
+            _block("Main set", f"3 × {effort} at rower threshold (RPE 7–8, heart rate in the Z4 band). 10 min zone 2 between."),
+            _block("Cool-down", "Zone 2 until the last 20 min, then very easy."),
         ]
     elif dur <= 35:
         detail["blocks"] = [
             _block("Warm-up", "8 min easy row."),
-            _block("Main set", "3 × 5 min at threshold, 2 min easy between."),
+            _block("Main set", "3 × 5 min at rower threshold (RPE 7–8, heart rate in the Z4 band). 2 min easy between."),
             _block("Cool-down", "8 min easy row."),
+        ]
+    elif dur >= 45:
+        detail["blocks"] = [
+            _block("Warm-up", "10 min easy row, zone 1 into zone 2."),
+            _block("Main set", "2 × 10 min at rower threshold (RPE 7–8, heart rate in the Z4 band). 5 min easy row between."),
+            _block("Cool-down", "Easy row for the time that is left."),
         ]
     else:
         detail["blocks"] = [
-            _block("Warm-up", "8 min easy row."),
-            _block("Main set", "4 × 5 min at threshold, 2 min easy between."),
-            _block("Cool-down", "Easy row for whatever is left."),
+            _block("Warm-up", "10 min easy row, zone 1 into zone 2."),
+            _block("Main set", "2 × 8 min at rower threshold (RPE 7–8, heart rate in the Z4 band). 4 min easy row between."),
+            _block("Cool-down", "10 min easy row, zone 1."),
         ]
-    detail["purpose"] = (
-        "Hard day on the rower, so the bike is not the only place you can do it."
-    )
+    try:
+        day = date.fromisoformat(detail["date"])
+    except ValueError:
+        day = None
+    lead = f"{hard_day_phrase(day)}. " if day else ""
+    detail["purpose"] = lead + "Hard day on the rower. " + _rower_split_note(True)
 
 
 def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any]) -> None:

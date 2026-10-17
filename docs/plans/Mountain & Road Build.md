@@ -25,7 +25,7 @@ Read first
 - Scottish winter trip in late March 2027, with both day trips and multi-day outings.
 - Saturday on foot and Sunday long ride stay fixed. Weekdays were free to move.
 - Up to 10 to 12 hours a week, quality sessions only.
-- Kit: single bells of 8, 12, 14, 16, 20 and 24 kg (no pairs), rower, MaxiClimber, smart turbo, sandbag or vest, poles, a steep hill or stairs.
+- Kit: single bells of 8, 12, 14, 16, 20 and 24 kg (no pairs), rower, MaxiClimber, sandbag or vest, poles, a steep hill or stairs. Bike rides are outdoors.
 - You will buy a pull-up bar, build a step box, and build a drag-only sled for a tarmac run of over 20 m.
 - The gravel bike comes later in 2027, so it is not in this plan.
 - A back-to-back mountain weekend in the Lake District on 27 and 28 Feb, based in Keswick, in place of that Sunday ride. All four routes stay as options and you choose that week from the conditions report.
@@ -97,7 +97,7 @@ I took the equipment approach (pack, bell, box, carries) and the pack circuit as
 
 Reading the result: 3 to 5 percent drift means your starting heart rate was your aerobic threshold. Under 3 percent, repeat about 5 beats higher. Over 5 percent, repeat lower. Do it on a flat course or indoors, after a 15 minute warm-up. They report it agrees closely with lab testing.
 
-Wednesday of Week 4, on the turbo at constant power. Your current Zone 2 runs 130 to 158, which is a wide band. Until the test, I suggest staying at 130 to 140 for easy work. That interim cap is my judgement, not from the sources.
+Wednesday of Week 4, outdoors on a flat loop at a steady effort. Your current Zone 2 runs 130 to 158, which is a wide band. Until the test, I suggest staying at 130 to 140 for easy work. That interim cap is my judgement, not from the sources.
 
 **A drag sled fits, as part of the two hard days**Norrøna expedition school / sled researchDragging has no lowering phase, so it loads the legs hard with less soreness than squats or lunges. Tyre hauling is also the standard training for pulling a pulk.
 
@@ -206,7 +206,7 @@ Tuesday · Phase 2
 
 ### Climbing Tempo
 
-Turbo · 60 to 75 min · done before Strength A
+Outdoor ride · 60 to 75 min · done before Strength A
 
 1. Warm-up 15 min easy
 2. 2 to 3 blocks of 12 to 15 minLow Zone 3, heart rate about 158 to 165, cadence 65 to 75. Seated, steady, like the lower slopes of Teide
@@ -219,7 +219,7 @@ Wednesday and Sunday
 
 ### Zone 2 Ride
 
-Turbo midweek · outdoors Sunday
+Rower midweek · outdoors Sunday
 
 Heart rate 130 to 140 until the drift test, then from 10 beats under your aerobic threshold up to it. On Sunday, fuel from the first hour and practise the camp drink mix. Keep it flat and easy on the day after a weighted hill session, and cut it to 2 hours if your legs are sore.
 
@@ -264,7 +264,7 @@ Tests and rules
 
 | Test | When | How | What it decides |
 | --- | --- | --- | --- |
-| Heart rate drift | Wed 4 Nov | Turbo. 15 min warm-up, then 60 min at one fixed power. Compare average heart rate of the two halves. | Your aerobic threshold, and the top of every easy session after it. |
+| Heart rate drift | Wed 4 Nov | Outdoors, flat loop. 15 min warm-up, then 60 min at one steady effort. Compare average heart rate of the two halves. | Your aerobic threshold, and the top of every easy session after it. |
 | FTP | Tue 8 Dec | Your usual protocol, on the Assioma pedals. Note the average heart rate of the hard effort. | Power targets for pacing Teide. |
 | Readiness for weighted hills | Week of 4 Jan | Compare aerobic threshold heart rate with the FTP test heart rate. I am using the FTP figure as a stand-in for anaerobic threshold. | Within 10 percent: start weighted sessions on 16 Jan. Wider: keep Saturdays as easy hill rucks for two more weeks. |
 

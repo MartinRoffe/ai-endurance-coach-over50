@@ -537,6 +537,7 @@ def _resolve_day_meals(
         protein_low=tt["protein_low"],
         protein_high=tt["protein_high"],
         kind=kind,
+        ride=_session_takes_ride_fuel(session_type, session_label),
         dur_min=dur,
         ref_date=ref_date,
     )
@@ -578,6 +579,7 @@ def _plan_scaled_day(
     kind: str,
     dur_min: int = 0,
     ref_date: date | None = None,
+    ride: bool = True,
 ) -> dict:
     from .recipes.menu import meals_as_tuples, plan_day
 
@@ -590,6 +592,7 @@ def _plan_scaled_day(
         kind=kind,
         dur_min=int(dur_min or 0),
         ref_date=ref_date,
+        ride=ride,
     )
     day = dict(day)
     day["tuples"] = meals_as_tuples(day)
@@ -966,6 +969,16 @@ _RIDE_TYPES = {
     "long", "bike", "tempo", "ftp", "vo2", "sweetspot", "endurance",
     "back_to_back", "threshold",
 }
+
+
+def _session_takes_ride_fuel(stype: str | None, label: str | None) -> bool:
+    """Outdoor bike days take on-bike fuel. Rower and MaxiClimber do not."""
+    low = (label or "").lower()
+    if stype in {"rower", "maxiclimber"} or "rower" in low or "maxiclimber" in low:
+        return False
+    if stype in _RIDE_TYPES or stype in {"long", "bike"}:
+        return True
+    return stype not in {"rower", "maxiclimber", "strength", "hike", "ruck", "rest"}
 _HARD_SESSION_TYPES = {"tempo", "ftp", "vo2", "sweetspot", "threshold"}
 
 # Plan / HR session type → calorie deficit tier.
@@ -1174,9 +1187,14 @@ def today_targets(ref_date: date | None = None) -> dict:
     pt = protein_target_g(ref)
 
     # One in-ride carbs number (+ prep detail for long rides).
+    # Rower and MaxiClimber never get an on-bike number, including short hard rows.
     carbs_g_per_hr = None
     fuel_prep = None
-    is_ride = stype in _RIDE_TYPES and dur >= 75
+    is_ride = (
+        _session_takes_ride_fuel(stype, label)
+        and stype in _RIDE_TYPES
+        and dur >= 75
+    )
     if is_ride:
         if dur >= 150:
             carbs_g_per_hr = gut_training_target_g_per_hr(ref)

@@ -419,3 +419,18 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
     card = np_mod.today_card(sunday)
     assert card["kind"] == "long"
     assert set(card) >= {"kcal", "protein_g", "carbs_g", "fluids", "habit", "stone_line"}
+
+
+def test_short_rower_threshold_has_no_on_bike_fuel(monkeypatch):
+    """Tue 20 Oct is a 40-minute rower. Pre and post stay; on-bike fuel does not."""
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2200)
+    day = date(2026, 10, 20)
+    targets = np_mod.today_targets(day)
+    assert targets["session"]["type"] == "rower"
+    assert targets["carbs_g_per_hr"] is None
+    food = np_mod.build_today_food(date(2026, 5, 18), day)
+    slots = [m["type"] for m in food["meals"]]
+    assert "On-bike" not in slots
+    assert "Pre-ride" not in slots
+    assert "Pre-session" in slots
+    assert "Post-session" in slots

@@ -212,10 +212,10 @@ def test_easy_rides_are_the_ones_pushed_to_garmin():
     assert hard["garmin"] is True
     assert "Threshold" in hard["title"] or hard["type"] == "threshold"
     assert hard["garmin_text"] == "Pushed to Garmin"
-    # Non-bike hard sessions stay calendar-only.
+    # Weekday rower sessions are pushed as cardio, and the line says so.
     rower = day_detail(date(2026, 11, 5))
     assert "rower" in (rower["title"] or "").lower()
-    assert rower["garmin"] is False
+    assert rower["garmin"] is True
     _assert_push_text_matches_flag(rower)
 
 
@@ -223,7 +223,8 @@ def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
     """Tue 20 Oct is the only hard session that week, and it is pushed."""
     assert _hard_dates(date(2026, 10, 19)) == [date(2026, 10, 20)]
     detail = day_detail(date(2026, 10, 20))
-    assert detail["type"] == "threshold"
+    assert detail["type"] == "rower"
+    assert "Threshold" in detail["title"]
     assert detail["duration_min"] == 40
     assert "the only hard day this week" in detail["purpose"].lower()
     assert "two hard" not in detail["purpose"].lower()
@@ -232,20 +233,22 @@ def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
 
 
 def test_week_from_26_oct_has_two_hard_days_and_push_text_agrees():
-    """Two hard days from the week of 26 Oct. Bike is pushed; the rower is not."""
+    """Two hard days from the week of 26 Oct. Both are rower sessions and both are pushed."""
     hard = _hard_dates(date(2026, 10, 26))
     assert hard == [date(2026, 10, 27), date(2026, 10, 29)]
     bike = day_detail(date(2026, 10, 27))
+    assert bike["type"] == "rower"
     assert "one of the two hard days this week" in bike["purpose"].lower()
     assert "only hard day" not in bike["purpose"].lower()
     assert bike["garmin"] is True
     _assert_push_text_matches_flag(bike)
     rower = day_detail(date(2026, 10, 29))
-    assert rower["garmin"] is False
+    assert rower["garmin"] is True
     _assert_push_text_matches_flag(rower)
-    # VO2 bike in a later two-hard week uses the same count.
+    # VO2 in a later two-hard week is also a rower session, same count.
     vo2 = day_detail(date(2026, 11, 3))
-    assert vo2["type"] == "vo2"
+    assert vo2["type"] == "rower"
+    assert "VO2" in vo2["title"]
     assert len(_hard_dates(date(2026, 11, 2))) == 2
     assert "one of the two hard days this week" in vo2["purpose"].lower()
     assert vo2["garmin"] is True

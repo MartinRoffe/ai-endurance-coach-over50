@@ -30,31 +30,31 @@ def test_clinic_day_is_rest_and_weekend_is_a_normal_easy():
     assert sat[2] == 45
     assert "optional" not in sat[1].lower()
     sun = session_for_date(date(2026, 10, 18))
-    assert sun == ("long", "Long Ride (Easy)", 60)
+    assert sun == ("long", "Long Ride (Easy) · outdoor", 60)
     assert garmin_allowed(date(2026, 10, 18), sun[0], sun[1])
     assert should_push_garmin_date(date(2026, 10, 18))
 
 
 def test_december_sunday_reaches_the_cap():
     first = session_for_date(date(2026, 11, 22))
-    assert first == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
+    assert first == ("long", "Long Ride (Easy) · outdoor", HOME_SUNDAY_CAP_MIN)
     mid = session_for_date(date(2026, 12, 13))
-    assert mid == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
+    assert mid == ("long", "Long Ride (Easy) · outdoor", HOME_SUNDAY_CAP_MIN)
     cap = session_for_date(date(2026, 12, 20))
-    assert cap == ("long", "Long Ride (Easy)", HOME_SUNDAY_CAP_MIN)
+    assert cap == ("long", "Long Ride (Easy) · outdoor", HOME_SUNDAY_CAP_MIN)
     assert HOME_SUNDAY_CAP_MIN == 180
 
 
 def test_camp_day_is_time_based_and_teide_is_optional():
     assert not XMAS_CAMP_TENTATIVE
     camp = session_for_date_extended(date(2026, 12, 26))
-    assert camp == ("long", "Teide — optional long day", 300)
+    assert camp == ("long", "Teide — optional long day · outdoor", 300)
     assert not garmin_allowed(date(2026, 12, 26), camp[0], camp[1])
     assert _workouts_for_date(date(2026, 12, 26)) == []
     quality = session_for_date_extended(date(2026, 12, 23))
-    assert quality == ("threshold", "Camp quality — threshold", 180)
+    assert quality == ("rower", "Threshold — rower", 180)
     assert garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
-    assert _workouts_for_date(date(2026, 12, 23))
+    assert _workouts_for_date(date(2026, 12, 23)) == [("row", "Threshold — rower", 180)]
 
 
 def test_busar_weekend_replaces_the_last_keswick_ruck():
@@ -104,7 +104,7 @@ def test_guide_covers_the_block_in_phase_order():
     assert phases[0]["start"] == PLAN_START
     assert phases[-1]["end"] == PLAN_END
     ret = phases[1]
-    assert any("Threshold — bike" in w["text"] for w in ret["weeks"])
+    assert any("Threshold — rower" in w["text"] for w in ret["weeks"])
     assert any("3h" in w["text"] for w in ret["weeks"])
     assert phases[3]["weeks"]
     joined = " ".join(w["text"] for w in phases[3]["weeks"])

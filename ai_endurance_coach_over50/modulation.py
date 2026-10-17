@@ -45,6 +45,7 @@ EASIER_VARIANT: dict[str, tuple[str, str]] = {
     "bike":     ("bike", "Recovery Spin"),
     "strength": ("strength", "Light KB"),
     "ruck":     ("ruck", "Easy Walk (no load)"),
+    "rower":    ("rower", "Z2 — rower"),
 }
 
 # Haute Route plan equivalent — kept separate so swaps stay within the HR
@@ -210,9 +211,19 @@ def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
     base.update({"planned_type": stype, "planned_label": label, "planned_dur": dur})
 
     if status == "red":
+        from .fitness_plan import in_plan
+        from .settings import has_turbo
+        if not hr_day and in_plan(target) and not has_turbo():
+            if target.weekday() >= 5:
+                red_type, red_label = "bike", "Z2 Easy · outdoor"
+            else:
+                red_type, red_label = "rower", "Z2 — rower"
+        else:
+            red_type = "recovery" if hr_day else "bike"
+            red_label = "Recovery Spin"
         base.update({
-            "session_type": "recovery" if hr_day else "bike",
-            "label": "Recovery Spin",
+            "session_type": red_type,
+            "label": red_label,
             "duration_min": 30,
             "headline": "Red day — swap to recovery",
         })

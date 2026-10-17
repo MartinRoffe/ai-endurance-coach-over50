@@ -71,10 +71,11 @@ for the day you are actually doing.
 ### What you'll see
 
 One card per phase. A phase that repeats shows the week; a phase that changes
-(the camp, the ruck build, Scotland) lists each week. Garmin receives easy bike
-days plus bike threshold / bike VO2 / camp quality bike
-(`Z2 Easy`, `Long Ride (Easy)`, `Threshold — bike`, `VO2 — bike`, camp quality).
-Rower, MaxiClimber, strength, hikes, Teide, and BUSAR stay calendar-only.
+(the camp, the ruck build, Scotland) lists each week. Garmin receives weekend
+outdoor rides (`Z2 Easy`, `Long Ride (Easy)`) and weekday rower sessions
+(`Threshold — rower`, `VO2 — rower`, `Z2 — rower`) as cardio workouts.
+MaxiClimber, strength, hikes, Teide, and BUSAR stay calendar-only.
+Bike rides are outdoors and only at the weekend.
 
 The cancelled Ghent→Amsterdam 12-week bible is an archive at `/training/charity`.
 
