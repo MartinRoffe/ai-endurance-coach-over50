@@ -223,6 +223,11 @@ def _make_cardio(name: str, steps: list, dur_min: int) -> BaseWorkout:
 def _make_hike(name: str, steps: list, dur_min: int) -> HikingWorkout:
     return HikingWorkout(
         workoutName=name,
+        description=(
+            "Easy loaded walk, heart rate zone 2. "
+            "Pack weight is the one on the plan for this date. "
+            "Hadleigh Country Park or Mersea, unless this date is the flat pack-test rehearsal."
+        ),
         estimatedDurationInSecs=dur_min * 60,
         workoutSegments=[WorkoutSegment(segmentOrder=1, sportType=_HIKE_SPORT, workoutSteps=steps)],
     )
@@ -1008,7 +1013,7 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> CyclingWorkout:
 
 
 def _ruck_workout(dur_min: int) -> HikingWorkout:
-    """Timed ruck with Z2 HR guidance."""
+    """Timed ruck. Hiking is the Connect sport; there is no ruck type."""
     main_secs = max(60.0, (dur_min - 20) * 60)
     return _make_hike(f"Ruck {dur_min}m", [
         create_warmup_step(600.0, step_order=1),
@@ -1277,6 +1282,21 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
                         ):
                             schedule[(sr_label, sr_week, sr_dur)].append(d.isoformat())
             d += timedelta(days=1)
+
+    # Fitness-year Saturday rucks. Hiking sport on the watch.
+    from .fitness_plan import (
+        PLAN_END as FIT_END,
+        PLAN_START as FIT_START,
+        garmin_ruck_allowed,
+        session_for_date as fitness_session,
+    )
+    d = FIT_START
+    while d <= FIT_END:
+        if should_push_garmin_date(d):
+            sess = fitness_session(d)
+            if sess and garmin_ruck_allowed(sess[0], sess[1]):
+                schedule[("Ruck", 0, sess[2])].append(d.isoformat())
+        d += timedelta(days=1)
     return schedule
 
 

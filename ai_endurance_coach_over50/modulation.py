@@ -21,14 +21,22 @@ from __future__ import annotations
 
 import math
 import statistics
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
+from .fitness_plan import PLAN_START as FITNESS_PLAN_START
+from .fitness_plan import plan_label
 from .history import get_plan_override, load_btb_summary, load_durability, load_session_rpe, raw_history
 from .load import RPE_HIGH
 from .hr_plan import hr_session_for_date
+from .medical import MEDICAL_PAUSE_END
 from .metrics import DailyMetrics
-from .plan import PLAN_START, session_for_date_extended
+from .plan import session_for_date_extended
+
+# Late-ride drift older than this, or from before the medical break, is not
+# "the last long ride".
+DURABILITY_RECENT_DAYS = 21
+_OUTDOOR_MARK = " · outdoor"
 
 QUALITY_BIKE_TYPES = frozenset({"ftp", "tempo", "sweetspot", "vo2", "threshold"})
 
@@ -157,6 +165,36 @@ def hrv_traffic_light(m: DailyMetrics, comp_z: Optional[float]) -> dict:
     return _pack("green", ["7-day ln(rMSSD) is inside the smallest-worthwhile-change band."])
 
 
+def _same_session_label(left: Optional[str], right: Optional[str]) -> bool:
+    """True when two labels differ only by the outdoor suffix."""
+    return plan_label(left or "") == plan_label(right or "")
+
+
+def _keep_outdoor(new_label: str, original: str) -> str:
+    """An easier swap on an outdoor day stays outdoor."""
+    if _OUTDOOR_MARK in (original or "") and _OUTDOOR_MARK not in new_label:
+        return f"{new_label}{_OUTDOOR_MARK}"
+    return new_label
+
+
+def recent_durability(rows: list[dict], today: date) -> list[dict]:
+    """Drop drift from before the break or older than three weeks."""
+    cutoff = today - timedelta(days=DURABILITY_RECENT_DAYS)
+    kept: list[dict] = []
+    for row in rows:
+        raw = row.get("date")
+        if not raw:
+            continue
+        if isinstance(raw, date):
+            ride_day = raw
+        else:
+            ride_day = date.fromisoformat(str(raw)[:10])
+        if ride_day <= MEDICAL_PAUSE_END or ride_day < cutoff:
+            continue
+        kept.append(row)
+    return kept
+
+
 def modulation_decision_text(light: Optional[dict], modulation: Optional[dict]) -> str:
     """One sentence the email must explain, not replace."""
     light = light or {}
@@ -165,7 +203,7 @@ def modulation_decision_text(light: Optional[dict], modulation: Optional[dict]) 
         dur_bit = f" ({dur} min)" if dur else ""
         planned = modulation.get("planned_label")
         swap = ""
-        if planned and planned != modulation.get("label"):
+        if planned and not _same_session_label(planned, modulation.get("label")):
             swap = f" instead of {planned}"
         reason = (modulation.get("reason") or light.get("reason") or "").strip()
         line = f"Rule-based decision: {modulation['label']}{dur_bit}{swap}."
@@ -230,11 +268,11 @@ def session_modulation(target: date, m: DailyMetrics, comp_z: Optional[float],
         return base
     if status == "amber":
         variant = (HR_EASIER_VARIANT if hr_day else EASIER_VARIANT).get(stype)
-        if variant is None or (variant[0] == stype and variant[1] == label):
+        if variant is None or (variant[0] == stype and _same_session_label(variant[1], label)):
             return base  # already easy — show pill only, no swap
         base.update({
             "session_type": variant[0],
-            "label": variant[1],
+            "label": _keep_outdoor(variant[1], label),
             "duration_min": dur,
             "headline": "Amber day — keep duration, drop intensity",
         })
@@ -304,11 +342,11 @@ def _planned_session(target: date) -> tuple[Optional[tuple], bool]:
 
 def _amber_variant(stype: str, label: str, dur: int, hr_day: bool) -> Optional[dict]:
     variant = (HR_EASIER_VARIANT if hr_day else EASIER_VARIANT).get(stype)
-    if variant is None or (variant[0] == stype and variant[1] == label):
+    if variant is None or (variant[0] == stype and _same_session_label(variant[1], label)):
         return None
     return {
         "session_type": variant[0],
-        "label": variant[1],
+        "label": _keep_outdoor(variant[1], label),
         "duration_min": dur,
     }
 
@@ -415,7 +453,8 @@ def durability_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
     """Gate long rides in plan weeks 9+ when durability or BTB fatigue is poor."""
     if get_plan_override(target.isoformat()):
         return None
-    days_into = (target - PLAN_START).days
+    # Week 9 of the live fitness year, not week 9 of the retired charity plan.
+    days_into = (target - FITNESS_PLAN_START).days
     if days_into < 0:
         return None
     week_num = days_into // 7 + 1
@@ -439,7 +478,7 @@ def durability_gate(target: date, m: DailyMetrics, comp_z: Optional[float],
         "planned_dur": dur,
     }
 
-    dur_rows = load_durability(90)
+    dur_rows = recent_durability(load_durability(90), target)
     if dur_rows:
         last = dur_rows[-1]
         drift = last.get("drift_pct")

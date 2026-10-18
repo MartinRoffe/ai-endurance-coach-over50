@@ -93,7 +93,10 @@ def test_two_strength_sessions_until_the_taper_except_camp():
         count = sum(
             1 for i in range(7) if _is_strength(session_for_date(monday + timedelta(days=i)))
         )
-        assert count == 2, (monday, count)
+        # Return weeks keep one gym day (Wednesday). Saturday is the ruck.
+        # Keswick weeks add the Tuesday sandbag day, so they have two.
+        expected = 1 if monday < date(2027, 1, 4) else 2
+        assert count == expected, (monday, count, expected)
     taper = [
         session_for_date(date(2027, 2, 15) + timedelta(days=i)) for i in range(5)
     ]
@@ -141,8 +144,9 @@ def test_plan_is_not_rewritten_by_the_caps():
 
 
 def test_deload_weeks_use_lighter_bells():
-    before = day_detail(date(2026, 11, 7))
-    after = day_detail(date(2026, 11, 14))
+    # Wednesday is the gym day. Saturday of those weeks is the ruck.
+    before = day_detail(date(2026, 11, 4))
+    after = day_detail(date(2026, 11, 11))
     assert after["deload"] is True
     assert before["deload"] is False
 
@@ -171,14 +175,14 @@ def test_pullup_addon_keeps_the_progression_and_names_the_bar():
 
 def test_ruck_detail_carries_the_pack_and_the_flat_rehearsal():
     ruck = day_detail(date(2027, 1, 9))
-    assert ruck["ruck_pack"] == "10 kg"
-    assert ruck["ruck_route"]
+    assert ruck["ruck_pack"] == "15 kg"
+    assert "hadleigh" in ruck["ruck_route"].lower()
     assert ruck["ruck_elevation"]
-    assert ruck["garmin"] is False
+    assert ruck["garmin"] is True
     rehearsal = day_detail(date(2027, 2, 13))
     assert "20.4" in rehearsal["ruck_pack"]
     assert "flat" in rehearsal["ruck_route"].lower()
-    assert not garmin_allowed(date(2027, 2, 13), "ruck", rehearsal["title"])
+    assert garmin_allowed(date(2027, 2, 13), "ruck", rehearsal["title"])
 
 
 def _hard_dates(monday: date) -> list[date]:

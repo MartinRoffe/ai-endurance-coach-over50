@@ -14,13 +14,17 @@
   <p style="font-size:12px;color:var(--text-dim);line-height:1.55;margin:0 0 10px">{{ et.reason }}</p>
   {% endif %}
   <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-    {% if et.week_num %}
+    {% if et.left_label %}
+    <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">{{ et.left_label }}</span>
+    {% elif et.week_num %}
     <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">Week {{ et.week_num }} / 12</span>
     {% else %}
     <span style="font-family:var(--font-m);font-size:12px;color:var(--text)">Two-year rebuild</span>
     {% endif %}
     <span style="font-family:var(--font-m);font-size:12px;color:var(--muted)">
-      {% if et.mode == 'medical' or et.mode == 'rebuild' %}
+      {% if et.countdown_label %}
+      {{ et.countdown_label }}
+      {% elif et.mode == 'medical' or et.mode == 'rebuild' %}
       ~{{ et.days_to_event }} days to HR 2028 (TBC)
       {% else %}
       {{ et.days_to_event }} days to event

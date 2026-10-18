@@ -20,6 +20,8 @@ def test_email_live_send_ignores_past_date(monkeypatch):
         date=today,
         sleep_score=80,
         body_battery_morning=70,
+        resting_hr=50,
+        rest_stress=18,
         sleep_end_ts=1_700_000_000.0,
     )
 

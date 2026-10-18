@@ -498,13 +498,10 @@ def main() -> None:
             console.print(f"[dim]Email already sent for {target}, skipping.[/dim]")
             sys.exit(0)
 
-        # Require sleep end + body battery — ensures overnight sleep was recorded and
-        # body battery reflects the post-sleep reading, not a mid-sleep partial value
-        _missing = []
-        if getattr(m, "sleep_end_ts", None) is None:
-            _missing.append("sleep_end (sleep not yet recorded)")
-        if getattr(m, "body_battery_morning", None) is None:
-            _missing.append("body_battery_morning")
+        # Wait until Garmin has had time to finish the morning picture.
+        # Exit 2 is the existing retry (every 30 min, until the scheduler deadline).
+        from .metrics import email_readiness_gaps
+        _missing = email_readiness_gaps(m)
         if m.date != target:
             _missing.append(f"metrics date {m.date} != today {target}")
         if _missing and not args.dry_run:

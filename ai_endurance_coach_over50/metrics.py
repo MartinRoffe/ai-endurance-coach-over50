@@ -84,9 +84,70 @@ def local_today() -> date:
     return datetime.now().astimezone().date()
 
 
+# A wake body-battery under this is the overnight series, not the charged morning value.
+BODY_BATTERY_MORNING_MIN = 15.0
+# Garmin often publishes sleep end before body battery, resting HR, and stress settle.
+SLEEP_SETTLE_SECONDS = 20 * 60
+RHR_PLAUSIBLE_MIN = 30.0
+RHR_PLAUSIBLE_MAX = 110.0
+
+
 def morning_metrics_ready(m: DailyMetrics) -> bool:
     """True once overnight watch data has synced (sleep or morning body battery)."""
     return m.sleep_score is not None or m.body_battery_morning is not None
+
+
+def morning_picture_implausible(m: DailyMetrics) -> bool:
+    """True when a stored morning value is too early to trust."""
+    bb = m.body_battery_morning
+    if bb is not None and bb < BODY_BATTERY_MORNING_MIN:
+        return True
+    rhr = m.resting_hr
+    if rhr is not None and (rhr < RHR_PLAUSIBLE_MIN or rhr > RHR_PLAUSIBLE_MAX):
+        return True
+    return False
+
+
+def morning_picture_complete(m: DailyMetrics) -> bool:
+    """Sleep, a plausible post-sleep body battery, and a plausible resting HR.
+
+    Resting stress is required by the email gate separately. It is not part of
+    this check, so a settled battery and heart rate can still replace an early
+    snapshot when the stress series is slow.
+    """
+    if morning_picture_implausible(m):
+        return False
+    if m.body_battery_morning is None or m.resting_hr is None:
+        return False
+    return m.sleep_score is not None or m.sleep_end_ts is not None
+
+
+def email_readiness_gaps(m: DailyMetrics, *, now_ts: Optional[float] = None) -> list[str]:
+    """Reasons the daily email should wait for the 30-minute retry.
+
+    Sleep end alone is not enough: Garmin can stamp it a couple of minutes
+    before body battery, resting HR, and stress have finished processing.
+    """
+    import time
+
+    gaps: list[str] = []
+    if m.sleep_end_ts is None:
+        gaps.append("sleep_end (sleep not yet recorded)")
+    else:
+        now = time.time() if now_ts is None else now_ts
+        if now < m.sleep_end_ts + SLEEP_SETTLE_SECONDS:
+            gaps.append("sleep ended under 20 min ago")
+    if m.body_battery_morning is None:
+        gaps.append("body_battery_morning (no reading after sleep end)")
+    elif m.body_battery_morning < BODY_BATTERY_MORNING_MIN:
+        gaps.append("body_battery_morning implausible (not yet synced)")
+    if m.resting_hr is None:
+        gaps.append("resting_hr")
+    elif m.resting_hr < RHR_PLAUSIBLE_MIN or m.resting_hr > RHR_PLAUSIBLE_MAX:
+        gaps.append("resting_hr implausible (not yet synced)")
+    if m.rest_stress is None:
+        gaps.append("rest_stress")
+    return gaps
 
 
 def needs_metrics_refetch(m: DailyMetrics) -> bool:
@@ -100,6 +161,9 @@ def needs_metrics_refetch(m: DailyMetrics) -> bool:
     # or active calories. The summary endpoint supplies all three together, so
     # resting_hr present + total_steps missing means a stale/broken fetch.
     if m.resting_hr is not None and m.total_steps is None:
+        return True
+    # Today's row was saved before Garmin finished the morning charge.
+    if m.date == local_today() and morning_picture_implausible(m):
         return True
     return False
 
@@ -226,14 +290,18 @@ def fetch_metrics(api, target_date: date) -> DailyMetrics:
             if all_readings:
                 all_readings.sort(key=lambda pair: pair[0])
                 m.body_battery_current = all_readings[-1][1]
+                # Only a reading strictly after sleep end is the wake value.
+                # The max of the pre-sleep series is the evening charge, and a
+                # reading of a few points right at sleep end is still the
+                # unprocessed overnight number. Leave morning unset so the
+                # email retry waits instead of locking that value.
                 if _sleep_end_ms is not None:
-                    # Earliest reading at/after sleep end — the true wake-up BB level
-                    post_sleep = [(ts, v) for ts, v in all_readings if ts >= _sleep_end_ms]
-                    m.body_battery_morning = (
-                        post_sleep[0][1] if post_sleep else max(v for _, v in all_readings)
-                    )
-                else:
-                    m.body_battery_morning = max(v for _, v in all_readings)
+                    post_sleep = [
+                        (ts, v) for ts, v in all_readings
+                        if ts > _sleep_end_ms and v >= BODY_BATTERY_MORNING_MIN
+                    ]
+                    if post_sleep:
+                        m.body_battery_morning = post_sleep[0][1]
     except Exception as e:
         logger.warning("Body Battery fetch failed: %s", e)
 

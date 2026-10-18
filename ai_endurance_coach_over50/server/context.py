@@ -428,7 +428,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
     if m.training_status_label:
         text = f"Training {m.training_status_label}"
         badges.append((text, _badge_cls(m.training_status_label)))
-    if m.acwr is not None and m.acwr_status:
+    from ..display import ACWR_BREAK_NOTE, acwr_suppressed
+    if acwr_suppressed(m.acwr, m.training_load_acute):
+        badges.append(("No recent load", "badge-muted"))
+    elif m.acwr is not None and m.acwr_status:
         status_text = m.acwr_status.replace("_", " ").title()
         text = f"ACWR {m.acwr:.2f} · {status_text}"
         badges.append((text, _badge_cls(status_text)))
@@ -440,7 +443,10 @@ def _build_context(target: date, force_fetch: bool = False) -> dict[str, Any]:
         val_str = fmt_value(field, value)
         context_only = field in _UNSCORED
 
-        if field == "acwr" and m.acwr_status and value is not None:
+        if field == "acwr" and acwr_suppressed(m.acwr, m.training_load_acute):
+            val_str = "—"
+            unit = ""
+        elif field == "acwr" and m.acwr_status and value is not None:
             badge = m.acwr_status.replace("_", " ").title()
             unit = f" [{badge}]"
 
@@ -1138,43 +1144,48 @@ _PLAN_BLOCK_DAYS = 84
 
 
 def build_event_tracker(target: date) -> Optional[dict]:
-    """Countdown / status card for Calendar — medical pause or HR 2028 A-event."""
-    from ..medical import (
-        HR_A_EVENT_NAME,
-        HR_A_EVENT_START,
-        CHARITY_CANCELLED,
-        in_medical_pause,
-        medical_pause_banner,
-    )
+    """Countdown card for Calendar — the pause while it lasts, then the next goal."""
+    from ..fitness_plan import next_goal
+    from ..medical import in_medical_pause, medical_pause_banner
 
-    if in_medical_pause(target) or CHARITY_CANCELLED:
-        banner = medical_pause_banner(target)
-        if banner:
-            return {
-                "mode": "medical",
-                "title": "Medical pause",
-                "subtitle": HR_A_EVENT_NAME,
-                "days_to_event": (HR_A_EVENT_START - target).days,
-                "on_track_label": "Paused",
-                "on_track_colour": "text-sky-400",
-                "week_num": None,
-                "plan_pct": 0,
-                "reason": banner["reason"],
-            }
-        # Charity cancelled but pause ended — still not a charity countdown
+    if in_medical_pause(target):
+        banner = medical_pause_banner(target) or {}
         return {
-            "mode": "rebuild",
-            "title": HR_A_EVENT_NAME,
-            "subtitle": "Two-year rebuild · dates TBC",
-            "days_to_event": (HR_A_EVENT_START - target).days,
-            "on_track_label": "Rebuild",
+            "mode": "medical",
+            "title": "Medical pause",
+            "subtitle": "",
+            "days_to_event": 0,
+            "countdown_label": "Training resumes after 21 Sep 2026",
+            "left_label": "Medical pause",
+            "on_track_label": "Paused",
             "on_track_colour": "text-sky-400",
             "week_num": None,
             "plan_pct": 0,
-            "reason": (
-                "Charity ride cancelled. General fitness through 3 Oct 2027 "
-                "(road and hills). Haute Route week-by-week starts after that checkpoint."
-            ),
+            "reason": banner.get("reason") or "",
+        }
+
+    goal = next_goal(target)
+    if goal is not None:
+        name, start, end = goal
+        during = start <= target <= end
+        days_out = 0 if during else (start - target).days
+        when = f"{start.strftime('%-d %b %Y')}"
+        if during:
+            countdown = f"{name} is underway"
+        else:
+            countdown = f"{days_out} days to {name}"
+        return {
+            "mode": "goal",
+            "title": name,
+            "subtitle": when if not during else f"through {end.strftime('%-d %b')}",
+            "days_to_event": days_out,
+            "countdown_label": countdown,
+            "left_label": "This goal" if during else "Next goal",
+            "on_track_label": "Now" if during else "Next",
+            "on_track_colour": "text-sky-400",
+            "week_num": None,
+            "plan_pct": 0,
+            "reason": "",
         }
 
     _days_into = (target - _PLAN_START).days

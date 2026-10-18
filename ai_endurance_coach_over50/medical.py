@@ -62,7 +62,10 @@ MEDICAL_HISTORY_SUMMARY = (
     "already passed. Only a confirmation CT remains. Structured training is "
     "live from the week of 19 Oct. Until the confirmation CT: stop for flank "
     "pain, fever or blood. "
-    "A-event is Haute Route Alpes 2028 (late August, dates TBC). "
+    "Haute Route Alpes 2028 is a later horizon, not the live A-event. "
+    "He is not in a medical pause (that ended 21 Sep 2026). "
+    "Live goals: Tenerife camp 21 Dec 2026–2 Jan 2027, BUSAR 20–21 Feb 2027, "
+    "Lake District 27–28 Feb 2027, Scotland from 22 Mar 2027. "
     "The live year is general fitness for road and hills through 3 Oct 2027. "
     "Christmas Tenerife (21 Dec 2026–2 Jan 2027) is confirmed. Stored ride minutes "
     "are a ceiling; shorten the ride when fitness is not there. "
@@ -220,7 +223,10 @@ def medical_context_lines() -> list[str]:
         f"  Pause window: {MEDICAL_PAUSE_START.isoformat()} → {MEDICAL_PAUSE_END.isoformat()} (inclusive).",
         f"  Stent removal: {STENT_REMOVAL_DATE.isoformat()}.",
         f"  Charity ride (Ghent→Amsterdam 13–14 Sep 2026): CANCELLED.",
-        f"  Primary A-event: {hr_a_event_summary()}.",
+        "  Live goals, in order: Tenerife camp 21 Dec 2026–2 Jan 2027, "
+        "BUSAR 20–21 Feb 2027, Lake District 27–28 Feb 2027, Scotland from 22 Mar 2027. "
+        f"Haute Route Alpes 2028 ({hr_a_event_summary()}) is not the live A-event. "
+        "The medical pause has ended. Do not coach him as paused.",
         "  Do NOT prescribe Sweetspot, Tempo, VO2, Pre-Event Long, charity fuelling, "
         "or Haute Route race weeks. The 46-week Haute Route template is not the live plan. "
         "Clinic 15 Oct 2026: ESWL not performed (fragments already passed). "
