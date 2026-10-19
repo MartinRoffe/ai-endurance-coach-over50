@@ -2043,9 +2043,10 @@ async def coach_memory_update():
 def run(host: str = "127.0.0.1", port: int = 8743) -> None:
     """Serve the dashboard. The default bind is localhost only.
 
-    Reach it from another device with Tailscale (``tailscale serve --bg 8743``).
-    Do not bind ``0.0.0.0`` on a network you do not trust, and set
-    ``DASHBOARD_USER`` / ``DASHBOARD_PASSWORD`` if you do.
+    ``endurance-coach --serve`` passes ``HOST`` or ``COACH_BIND_HOST`` from
+    the environment (see ``dashboard_bind_host``). Set ``DASHBOARD_USER`` and
+    ``DASHBOARD_PASSWORD`` before listening on a Tailscale address. With those
+    unset, every route is open.
     """
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="warning")

@@ -161,7 +161,7 @@ The Performance tab additionally renders: durability drift chart (`activity_dura
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Env vars are also loaded from `~/.ai_endurance_coach_over50/.env` (used by launchd and systemd, which run without a shell environment). `endurance-coach --serve` binds `127.0.0.1` unless `--host` / `COACH_BIND_HOST` is set; the scheduled server always binds localhost. Use Tailscale Serve for remote access.
+Copy `.env.example` to `.env`. Env vars are also loaded from `~/.ai_endurance_coach_over50/.env` (used by launchd and systemd, which run without a shell environment). `endurance-coach --serve` binds `127.0.0.1` unless `--host`, `HOST`, or `COACH_BIND_HOST` is set (`HOST` wins). The Linux units in `deploy/systemd/` do not pass `--host`, so they honour `HOST`. Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` before binding a Tailscale address — auth is a no-op if either is blank. See [docs/deploy-ubuntu.md](docs/deploy-ubuntu.md).
 
 Key vars: `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `REPORT_TO`, `DASHBOARD_USER`, `DASHBOARD_PASSWORD`.
 

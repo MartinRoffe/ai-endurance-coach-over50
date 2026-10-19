@@ -1,0 +1,17 @@
+[Unit]
+Description=AI Endurance Coach dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.ai_endurance_coach_over50/venv/bin/endurance-coach --serve
+Environment=DOTENV_PATH=%h/.ai_endurance_coach_over50/.env
+Environment=PATH=%h/.ai_endurance_coach_over50/venv/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:%h/.ai_endurance_coach_over50/server.log
+StandardError=append:%h/.ai_endurance_coach_over50/server.log
+
+[Install]
+WantedBy=default.target

@@ -81,18 +81,12 @@ On **macOS** this installs two launchd agents: the dashboard (`RunAtLoad` +
 `KeepAlive`) and the email (`StartCalendarInterval` at 07:00 **and**
 `RunAtLoad`, so a login after 07:00 still sends once).
 
-On **Linux** it installs systemd user units:
+On Linux it installs the units in `deploy/systemd/` (also copied by hand in [docs/deploy-ubuntu.md](deploy-ubuntu.md)):
 
-- `ai-endurance-coach.service` — dashboard, `Restart=on-failure`
-- `ai-endurance-coach-email.service` + `ai-endurance-coach-email.timer` —
-  07:00, `Persistent=true` (if the laptop was off at 07:00, the missed run
-  happens at next boot), `TimeoutStartSec=infinity` so the watch-sync retry
-  is not killed by systemd's 90-second start timeout
+- `ai-endurance-coach.service` — dashboard, `Restart=on-failure`, logs to `~/.ai_endurance_coach_over50/server.log`. Bind address comes from `HOST` in the data-dir `.env` (default `127.0.0.1`).
+- `ai-endurance-coach-email.service` + `ai-endurance-coach-email.timer` — **08:00**, matching the launchd agent loaded on the Mac (`Hour` 8, no `RunAtLoad`). `Persistent=true` runs a missed 08:00 at next boot. `TimeoutStartSec=infinity` so the watch-sync retry is not killed by systemd's 90-second start timeout. The wrapper retries only exit code 2, every 30 minutes, for three hours after it starts, and logs to `daily.log`.
 
-Both bind the server to **127.0.0.1** only. Use Tailscale
-(`tailscale serve --bg 8743`) to open it from a phone. Do not publish port
-8743 on a public interface. Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` if
-anything besides this machine can reach it.
+Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` before `HOST` is anything other than localhost. With either blank, every route is open — including `/send-email`, `/sync-workouts`, and `/apply-plan-change`. The full list is in [deploy-ubuntu.md](deploy-ubuntu.md).
 
 After changing code, restart the server:
 
@@ -111,37 +105,20 @@ systemctl --user restart ai-endurance-coach.service
 
 ### Moving from a Mac to an always-on Ubuntu laptop
 
-1. Copy the data directory (database, `.env`, Garmin tokens, Withings files):
-
-   ```bash
-   rsync -a ~/.ai_endurance_coach_over50/ user@laptop:~/.ai_endurance_coach_over50/
-   ```
-
-2. On the laptop, `pip install .` then `sudo loginctl enable-linger "$USER"`
-   so the user services survive logout, then `endurance-coach --setup-schedule`.
-
-3. On the Mac, disable the old agents:
-
-   ```bash
-   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.server"
-   launchctl bootout "gui/$(id -u)/com.ai-endurance-coach-over50.daily"
-   ```
-
-Logs: `~/.ai_endurance_coach_over50/daily.log` and `server.log`. On Linux also
-`journalctl --user -u ai-endurance-coach.service -u ai-endurance-coach-email.service`.
+Follow [deploy-ubuntu.md](deploy-ubuntu.md): rsync the data dir (keep `.env` mode `600`), install the venv, copy `deploy/systemd/` and `deploy/email.sh`, then `loginctl enable-linger`. The committed timer is **08:00**, matching the launchd agent loaded on the Mac. Leave the Mac agents loaded until the Tailscale URL works.
 
 ## All command-line flags
 
 | Command | What it does |
 |---|---|
 | `endurance-coach` | Fetch today's data and print a readiness report in the terminal |
-| `endurance-coach --serve` | Start the web dashboard at **http://127.0.0.1:8743** (localhost; `--host` / `COACH_BIND_HOST` to change a manual run) |
+| `endurance-coach --serve` | Start the web dashboard at **http://127.0.0.1:8743** (localhost; `--host` / `HOST` / `COACH_BIND_HOST` to change the bind) |
 | `endurance-coach --email [--dry-run]` | Send the daily email (or preview it) |
 | `endurance-coach --backfill 30` | Pull the last *N* days from Garmin to build your baseline |
 | `endurance-coach --activate-power 30` | Backfill power ingest, TSS, decoupling, and FTP seed (7–90 days; also `GET /activate-power` on Performance) |
 | `endurance-coach --workouts [--dry-run]` | Upload the plan's structured cycling workouts to Garmin Connect and schedule them on their dates |
 | `endurance-coach --withings-sync` | Push recent Withings measurements to Garmin, then continue the fetch |
-| `endurance-coach --setup-schedule` | Install the 07:00 email and the always-on server (launchd on macOS, systemd --user on Linux) |
+| `endurance-coach --setup-schedule` | macOS: 07:00 email + always-on server. Linux: the 08:00 units in `deploy/systemd/` |
 
 ### About `--workouts`
 
