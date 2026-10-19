@@ -389,11 +389,20 @@ def _plan_activity_logged(target: date) -> bool:
 
 
 def morning_snapshot_premature(snap: dict) -> bool:
-    """True when the snapshot was taken before overnight watch data synced."""
-    return (
-        snap.get("sleep_score") is None
-        and snap.get("body_battery_morning") is None
-    )
+    """True when the snapshot was taken before the morning picture had settled.
+
+    A body battery of a few points, or a resting HR outside a human range,
+    means Garmin had not finished processing. That row can be replaced.
+    """
+    from ..metrics import BODY_BATTERY_MORNING_MIN, RHR_PLAUSIBLE_MAX, RHR_PLAUSIBLE_MIN
+
+    bb = snap.get("body_battery_morning")
+    if bb is not None and bb < BODY_BATTERY_MORNING_MIN:
+        return True
+    rhr = snap.get("resting_hr")
+    if rhr is not None and (rhr < RHR_PLAUSIBLE_MIN or rhr > RHR_PLAUSIBLE_MAX):
+        return True
+    return snap.get("sleep_score") is None and bb is None
 
 
 def delete_morning_snapshot(target: date) -> None:
@@ -435,9 +444,15 @@ def capture_morning_snapshot(
     traffic_light: Optional[dict],
     advice_pre: Optional[str] = None,
 ) -> bool:
-    """Write the morning gate snapshot once; returns True if a new row was inserted."""
-    if load_morning_snapshot(target) is not None:
-        return False
+    """Write the morning gate snapshot once; returns True if a new row was inserted.
+
+    A snapshot taken before the morning values settled is replaced.
+    """
+    existing = load_morning_snapshot(target)
+    if existing is not None:
+        if not morning_snapshot_premature(existing):
+            return False
+        delete_morning_snapshot(target)
     tl = traffic_light or {}
     with _conn() as con:
         _ensure_morning_snapshot_schema(con)
@@ -474,14 +489,18 @@ def maybe_capture_morning_snapshot(
     traffic_light: Optional[dict],
     advice_pre: Optional[str] = None,
 ) -> bool:
-    """Lock morning readiness before the first plan-matched activity is logged."""
-    if load_morning_snapshot(target) is not None:
-        return False
-    from ..metrics import morning_metrics_ready
+    """Lock morning readiness before the first plan-matched activity is logged.
 
-    if not morning_metrics_ready(m):
+    An early, implausible snapshot is replaced by a later complete fetch.
+    """
+    from ..metrics import morning_metrics_ready, morning_picture_complete
+
+    if not morning_metrics_ready(m) or not morning_picture_complete(m):
         return False
-    if _plan_activity_logged(target):
+    existing = load_morning_snapshot(target)
+    if existing is not None and not morning_snapshot_premature(existing):
+        return False
+    if existing is None and _plan_activity_logged(target):
         return False
     return capture_morning_snapshot(
         target,

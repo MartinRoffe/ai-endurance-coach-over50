@@ -1093,15 +1093,16 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
             _block("Cool-down", "10 min with the pack off."),
         ]
         detail["ruck_route"] = (
-            "The same local hill each week. Hadleigh from Leigh-on-Sea is the default "
-            "if that is the hill you can repeat. Do not pick a bigger hill on a week the pack goes up."
+            "Hadleigh Country Park or Mersea. Same kind of route each week. "
+            "Do not pick a bigger hill on the week the time goes up."
         )
         detail["ruck_elevation"] = (
-            "Whatever that hill already gives you. Kilograms go up, the route stays put."
+            "Whatever that route already gives you. The pack stays put; time is the progression."
         )
         detail["purpose"] = (
-            f"Hill ruck at {pack}. Duration stays about {_fmt_dur(dur) or 'the same'}. "
-            "This is the pack-test load climbing toward 20.4 kg."
+            f"Saturday ruck at {pack}, about {_fmt_dur(dur) or 'the planned time'}. "
+            "The pack stays 15 kg. This is the weekly loaded walk toward the "
+            "30-miler and the hill weekends, not a gym session on top."
         )
 
 

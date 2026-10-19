@@ -99,6 +99,10 @@ def test_kb_trunk_and_gym_are_fe_not_bike():
 
 def test_hr_strength_not_in_sr_schedule_while_year2_gated():
     sr = _workout_schedule_strength_ruck()
-    dates = {d for ds in sr.values() for d in ds}
-    assert not any(d.startswith("2026-10") for d in dates)
-    assert not any(d.startswith("2026-12") for d in dates)
+    hr_dates = {d for key, ds in sr.items() if str(key[0]).startswith("KB") for d in ds}
+    assert not any(d.startswith("2026-10") for d in hr_dates)
+    assert not any(d.startswith("2026-12") for d in hr_dates)
+    ruck_dates = {d for key, ds in sr.items() if key[0] == "Ruck" for d in ds}
+    assert "2026-10-24" in ruck_dates
+    assert "2026-12-19" in ruck_dates
+    assert "2026-12-26" not in ruck_dates

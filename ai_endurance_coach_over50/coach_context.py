@@ -51,7 +51,7 @@ from .history import (
     tdee_history,
     weekly_monotony_strain,
 )
-from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
+from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, equipment_note, hr_channel_note
 from .hr_plan import HR_EVENT_NAME, HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
 from .metrics import DailyMetrics
 from .plan import (
@@ -117,6 +117,7 @@ def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
     return (
         COACH_VOICE + "\n\n"
         + ATHLETE_CONSTRAINTS + "\n\n"
+        + equipment_note(_has_turbo()) + "\n\n"
         + task + "\n\n"
         + "When referring to A-events, use only the official names in context "
         f"(e.g. \"{HR_EVENT_NAME}\"; charity ride is cancelled — do not treat it as live). "
@@ -140,9 +141,19 @@ def _load_day_state(target: date):
     return m, stats, comp_z, traffic_light, modulation, today_pmc
 
 
+def _has_turbo() -> bool:
+    from .settings import has_turbo
+    return has_turbo()
+
+
 def _acwr_line(m: Optional["DailyMetrics"]) -> Optional[str]:
     """Garmin's own acute:chronic ratio (unitless — comparable to standard thresholds)."""
+    from .display import ACWR_BREAK_NOTE, acwr_suppressed
+
     acwr = getattr(m, "acwr", None) if m else None
+    acute = getattr(m, "training_load_acute", None) if m else None
+    if acwr_suppressed(acwr, acute):
+        return ACWR_BREAK_NOTE
     if acwr is None:
         return None
     status = getattr(m, "acwr_status", None)
@@ -576,13 +587,29 @@ def _section_today_session(target: date, timing: Optional[dict[str, Any]] = None
     return lines
 
 
+def _relative_day(offset: int) -> str:
+    """Calendar offset from today. Rest days still count."""
+    if offset <= 0:
+        return "today"
+    if offset == 1:
+        return "tomorrow"
+    return f"in {offset} days"
+
+
 def _section_week_ahead(target: date) -> list[str]:
-    lines = ["## Next 7 Days (non-rest sessions)"]
-    found = False
+    """Every day in the next week, with the real offset.
+
+    Skipping rest days made the first training day look like tomorrow
+    (Tue 20 Oct called 'tomorrow' on Sun 18 Oct).
+    """
+    lines = ["## Next 7 Days"]
     for i in range(1, 8):
         d = target + timedelta(days=i)
+        when = _relative_day(i)
         sess = session_for_date_extended(d)
         if not sess or sess[0] == "rest":
+            label = sess[1] if sess else "Rest"
+            lines.append(f"  {d.strftime('%a %d %b')} ({when}): {label}")
             continue
         stype, label, dur = sess
         ov = get_plan_override(d.isoformat())
@@ -590,11 +617,9 @@ def _section_week_ahead(target: date) -> list[str]:
             dur = ov["duration_min"]
             label = f"{label} [MODIFIED]"
         lines.append(
-            f"  {d.strftime('%a %d %b')}: {label} — {session_discipline(stype)} ({dur}min)"
+            f"  {d.strftime('%a %d %b')} ({when}): {label} — "
+            f"{session_discipline(stype)} ({dur}min)"
         )
-        found = True
-    if not found:
-        lines.append("  None scheduled")
     return lines
 
 
@@ -719,7 +744,8 @@ def _section_key_dates(today: date) -> list[str]:
         lines.append(
             "  Garmin push (fitness year): weekend outdoor rides — Z2 Easy, Long Ride (Easy) — "
             "as cycling workouts. Weekday rower (Threshold — rower, VO2 — rower, Z2 — rower) "
-            "as cardio workouts. Not pushed: MaxiClimber, strength, rucks, hikes, Teide, BUSAR. "
+            "as cardio workouts. Saturday rucks push as hiking workouts. "
+            "Not pushed: MaxiClimber, strength, hikes, Teide, BUSAR. "
             "Bike rides are outdoors and weekends only."
         )
         lines.append(
@@ -757,7 +783,12 @@ def _section_key_dates(today: date) -> list[str]:
     elif CHARITY_DAYS:
         c1, c2 = CHARITY_DAYS[0]["date"], CHARITY_DAYS[-1]["date"]
         lines.append(f"  {CHARITY_EVENT_NAME}: {c1.isoformat()} → {c2.isoformat()} (starts {_until(c1)})")
-    lines.append(f"  Primary A-event: {hr_a_event_summary()}")
+    lines.append(
+        "  Live goals (not Haute Route): Tenerife camp 21 Dec 2026–2 Jan 2027, "
+        "BUSAR 20–21 Feb 2027, Lake District 27–28 Feb 2027, Scotland from 22 Mar 2027. "
+        f"Haute Route Alpes 2028 ({hr_a_event_summary()}) is a later horizon, not the live A-event. "
+        "He is not in a medical pause."
+    )
     if year2_sessions_live():
         lines.append(f"  Haute Route Year-2 week-by-week starts: {HR_PLAN_START.isoformat()} ({_until(HR_PLAN_START)})")
     else:
@@ -985,7 +1016,10 @@ def _section_athlete_goals() -> list[str]:
     return [
         "## Athlete Goals",
         f"  {charity_status_summary()}",
-        f"  Primary A-event: {hr_a_event_summary()}",
+        "  Live goals: Tenerife camp 21 Dec 2026–2 Jan 2027, BUSAR 20–21 Feb 2027, "
+        "Lake District 27–28 Feb 2027, Scotland from 22 Mar 2027. "
+        f"Haute Route Alpes 2028 ({hr_a_event_summary()}) is not the live A-event. "
+        "The medical pause ended 21 Sep 2026.",
         "",
         *medical_context_lines(),
     ]
@@ -1690,16 +1724,24 @@ def build_coach_context() -> str:
     hr_profile_parts = _section_hr_profile(m.resting_hr)
     power_profile_parts = _section_power_profile()
 
-    # Durability drift (late-ride HR drift, last 5 rides ≥ 90 min)
+    # Durability drift. Rides from before the break, or older than 21 days,
+    # are not "the last long ride".
     dur_parts: list[str] = []
-    dur_rows = load_durability(90)
+    from .modulation import recent_durability
+    dur_rows = recent_durability(load_durability(90), today)
     if dur_rows:
-        dur_parts = ["## Durability (late-ride HR drift, rides ≥ 90 min)"]
+        dur_parts = ["## Durability (late-ride HR drift, rides ≥ 90 min, last 21 days)"]
         for r in dur_rows[-5:]:
             dur_parts.append(
                 f"  {r['date']}: first-third HR {r['first_third_hr']:.0f}bpm "
                 f"→ final-third {r['final_third_hr']:.0f}bpm  drift {r['drift_pct']:+.1f}%"
             )
+    else:
+        dur_parts = [
+            "## Durability (late-ride HR drift)",
+            "  No long ride in the last 21 days. Ignore drift from before the "
+            "medical break. Do not cite an old ride as the last long ride.",
+        ]
 
     # Foster monotony / strain (last 6 weeks)
     monotony_parts: list[str] = []

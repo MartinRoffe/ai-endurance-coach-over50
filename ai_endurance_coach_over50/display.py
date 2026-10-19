@@ -21,6 +21,20 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
 }
 
 
+ACWR_BREAK_NOTE = (
+    "Returning from a break — no recent training load, so the acute:chronic ratio is hidden."
+)
+
+
+def acwr_suppressed(acwr: Optional[float], acute: Optional[float] = None) -> bool:
+    """True when acute load is zero and the ratio would read 0.00."""
+    if acute is not None and float(acute) <= 0:
+        return True
+    if acwr is not None and float(acwr) <= 0:
+        return True
+    return False
+
+
 def fmt_value(field: str, value: Optional[float]) -> str:
     if value is None:
         return "—"

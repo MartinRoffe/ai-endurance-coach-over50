@@ -12,7 +12,7 @@ from typing import Optional
 
 from ..client import get_api
 from ..coach_context import build_coach_context as _build_coach_context
-from ..coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, hr_channel_note
+from ..coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, equipment_note, hr_channel_note
 from ..history import (
     estimated_wkg_history,
     get_coach_memory,
@@ -117,16 +117,19 @@ def _coach_system() -> str:
         "(21 Dec 2026 – 2 Jan 2027) is CONFIRMED with camp quality days; stored ride "
         "minutes are a ceiling — shorten when fitness is not there. May 2027 race-sim "
         "is not in the live plan. The 46-week Haute Route template is NOT live "
-        "(get_hr_plan is archive / future skeleton only). A-event is Haute Route "
-        "Alpes 2028 (late August, dates TBC). Do NOT prescribe Sweetspot, Tempo, "
+        "(get_hr_plan is archive / future skeleton only). Haute Route Alpes 2028 "
+        "is not the live A-event. The goals he is training for now are Tenerife camp, "
+        "BUSAR (20–21 Feb 2027), the Lake District (27–28 Feb 2027), and Scotland "
+        "(from 22 Mar 2027). Do NOT prescribe Sweetspot, Tempo, "
         "Pre-Event Long, Haute Route race weeks, or charity-ride load. Plan VO2 / "
         "threshold days in the fitness year are live and allowed. Weekday hard sessions "
         "are on the indoor rower. Bike rides are outdoors and only at the weekend.\n\n"
         "Garmin on the watch: weekend outdoor rides (Z2 Easy, Long Ride (Easy)) push "
         "as cycling workouts. Rower sessions (Threshold — rower, VO2 — rower, Z2 — rower) "
-        "push as cardio workouts, paced by heart rate and RPE. There is no rower split "
+        "push as cardio workouts, paced by heart rate and RPE. Saturday rucks push "
+        "as hiking workouts. There is no rower split "
         "test yet — a 2,000 m or 20-minute test would set 500 m splits. "
-        "MaxiClimber, kettlebell, strength, rucks, hikes, Teide, and BUSAR stay "
+        "MaxiClimber, kettlebell, strength, hikes, Teide, and BUSAR stay "
         "calendar-only (web Sessions). When you propose "
         "a plan change, say whether that date will sync to Garmin or stays web-only. "
         "Apply saves locally always; Garmin push is best-effort — if sync fails, tell "
@@ -160,7 +163,15 @@ def _coach_system() -> str:
         "(single-digit evening values are common after travel or a stressful day). Prioritise HRV "
         "traffic light, how they feel, and session quality (easy Z2/recovery vs hard intervals).\n\n"
     )
-    return base + hr_channel_note(power_meter_active()) + "\n\n" + ATHLETE_CONSTRAINTS
+    from ..settings import has_turbo
+    return (
+        base
+        + equipment_note(has_turbo())
+        + "\n\n"
+        + hr_channel_note(power_meter_active())
+        + "\n\n"
+        + ATHLETE_CONSTRAINTS
+    )
 
 _COACH_TOOL = {
     "name": "propose_plan_change",
@@ -653,8 +664,10 @@ def _regenerate_coach_memory(api_key: str) -> None:
         f"Recent conversations:\n{conv_text}\n\n"
         f"Live context summary (for reference only — don't repeat this):\n{context[:600]}\n\n"
         "Write a replacement memo (150–250 words) covering:\n"
-        "- Goals and timeline (charity ride CANCELLED; Haute Route Alpes 2028 TBC; "
-        "medical pause after kidney stones / stent — stent removal 8 Sep 2026)\n"
+        "- Goals and timeline (charity ride CANCELLED; medical pause ended 21 Sep 2026; "
+        "live goals are Tenerife camp, BUSAR 20–21 Feb 2027, the Lake District "
+        "27–28 Feb 2027, and Scotland from 22 Mar 2027. Haute Route Alpes 2028 "
+        "is not the live A-event)\n"
         "- Tendencies (e.g. pushes through fatigue, HRV baseline, training response)\n"
         "- Plan decisions made via coach chat (formal checkpoints/guardrails live in the "
         "coach_commitments store and are injected separately — don't duplicate them here)\n"

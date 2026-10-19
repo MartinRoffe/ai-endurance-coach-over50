@@ -275,12 +275,14 @@ def test_durability_gate_before_week_9_returns_none(monkeypatch):
 
 
 def test_durability_gate_eases_long_ride(monkeypatch):
+    # Week 9 of the fitness year starts 7 Dec 2026. The drift row has to be
+    # inside the last 21 days and after the medical break.
     monkeypatch.setattr(modulation, "session_for_date_extended",
                         lambda d: ("long", "Long Ride", 240))
     monkeypatch.setattr(modulation, "load_durability", lambda days=180: [{
-        "date": "2026-07-10", "drift_pct": 12.0,
+        "date": "2026-12-01", "drift_pct": 12.0,
         "first_third_hr": 130.0, "final_third_hr": 145.0,
     }])
-    gate = durability_gate(date(2026, 7, 28), _metrics(60.0), None, light=_light("green"))
+    gate = durability_gate(date(2026, 12, 13), _metrics(60.0), None, light=_light("green"))
     assert gate["gate_type"] == "durability"
     assert gate["label"] == "Long Ride (Easy)"
