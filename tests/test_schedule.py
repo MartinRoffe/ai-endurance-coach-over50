@@ -51,7 +51,9 @@ def test_linux_systemd_units(tmp_path):
     assert "--withings-sync --email --fetch" in email_sh
     assert "sleep 1800" in email_sh
     assert 'exit "$CODE"' in email_sh
-    assert "Watch never synced by 10:00" in email_sh
+    assert "--email-incomplete" in email_sh
+    assert "sending with the data on hand" in email_sh
+    assert "giving up" not in email_sh
     assert "pyenv" not in email_sh
     assert "/Users/" not in email_sh
     env = data_dir() / ".env"

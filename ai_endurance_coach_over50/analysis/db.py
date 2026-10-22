@@ -29,6 +29,7 @@ def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
             analysed_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    existing = {row[1] for row in con.execute("PRAGMA table_info(activity_analyses)")}
     for col, typ in [
         ("ftp_effort_avg_hr",  "REAL"),
         ("ftp_effort_max_hr",  "REAL"),
@@ -36,9 +37,15 @@ def _ensure_analysis_schema(con: sqlite3.Connection) -> None:
         ("interval_data_json", "TEXT"),
         ("power_zones_json",   "TEXT"),
     ]:
+        if col in existing:
+            continue
         try:
             con.execute(f"ALTER TABLE activity_analyses ADD COLUMN {col} {typ}")
-        except Exception:
+        except Exception as exc:
+            # Concurrent callers can lose the pragma race. The duplicate-column
+            # error is the column already being there; it is not a failure.
+            if isinstance(exc, sqlite3.OperationalError) and "duplicate column" in str(exc).lower():
+                continue
             logger.warning("_ensure_analysis_schema failed", exc_info=True)
 
 def save_detail(activity_id: int, detail: dict, analysis_text: str) -> None:

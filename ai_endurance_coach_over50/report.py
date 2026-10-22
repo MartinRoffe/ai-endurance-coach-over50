@@ -94,6 +94,7 @@ def _build_advice_prompt(
     stats: dict,
     comp_z: Optional[float],
     timing: Optional[dict] = None,
+    missing_notes: Optional[list[str]] = None,
 ) -> str:
     target = m.date
     timing = timing or build_advice_timing(target)
@@ -128,6 +129,10 @@ def _build_advice_prompt(
     ]
 
     for field, (label_str, unit) in FIELD_LABELS.items():
+        phrase = _unsynced_phrase(field, missing_notes)
+        if phrase:
+            lines.append(f"  {label_str}: {phrase}")
+            continue
         value = getattr(m, field)
         val_str = fmt_value(field, value) + (unit if value is not None else "")
         if field in stats and value is not None:
@@ -139,6 +144,12 @@ def _build_advice_prompt(
         else:
             lines.append(f"  {label_str}: {val_str}  (no baseline)")
 
+    if missing_notes:
+        lines += [
+            "",
+            "The watch did not finish syncing. Do not invent values for the missing lines above.",
+            "Base the session call on the planned session and only the metrics that have numbers.",
+        ]
     lines += [""]
     if m.hrv_status:
         lines.append(f"HRV status: {m.hrv_status}")
@@ -200,6 +211,52 @@ def _build_advice_prompt(
     return "\n".join(lines)
 
 
+_UNSYNCED_PHRASE = {
+    "sleep_score": "No sleep data — watch not worn/charged",
+    "sleep_seconds": "No sleep data — watch not worn/charged",
+    "body_battery_morning": "Body battery: not synced",
+    "resting_hr": "Resting HR: not synced",
+    "rest_stress": "Rest stress: not synced",
+    "hrv_last_night": "HRV: not synced",
+}
+
+
+def missing_morning_notes(m: DailyMetrics) -> list[str]:
+    """Labels for a deadline email. Nothing here is a measured value."""
+    from .metrics import (
+        BODY_BATTERY_MORNING_MIN,
+        RHR_PLAUSIBLE_MAX,
+        RHR_PLAUSIBLE_MIN,
+    )
+
+    notes: list[str] = []
+    no_sleep = (
+        m.sleep_score is None and m.sleep_end_ts is None and m.sleep_seconds is None
+    )
+    if no_sleep:
+        notes.append(_UNSYNCED_PHRASE["sleep_score"])
+    if no_sleep and m.hrv_last_night is None:
+        notes.append(_UNSYNCED_PHRASE["hrv_last_night"])
+    bb = m.body_battery_morning
+    if bb is None or bb < BODY_BATTERY_MORNING_MIN:
+        notes.append(_UNSYNCED_PHRASE["body_battery_morning"])
+    rhr = m.resting_hr
+    if rhr is None or rhr < RHR_PLAUSIBLE_MIN or rhr > RHR_PLAUSIBLE_MAX:
+        notes.append(_UNSYNCED_PHRASE["resting_hr"])
+    if m.rest_stress is None:
+        notes.append(_UNSYNCED_PHRASE["rest_stress"])
+    return notes
+
+
+def _unsynced_phrase(field: str, notes: Optional[list[str]]) -> Optional[str]:
+    if not notes:
+        return None
+    phrase = _UNSYNCED_PHRASE.get(field)
+    if phrase and phrase in notes:
+        return phrase
+    return None
+
+
 def generate_advice(
     m: DailyMetrics,
     stats: dict,
@@ -207,6 +264,7 @@ def generate_advice(
     *,
     mode: Optional[str] = None,
     traffic_light: Optional[dict] = None,
+    missing_notes: Optional[list[str]] = None,
 ) -> str:
     from .history import maybe_capture_morning_snapshot
 
@@ -215,7 +273,7 @@ def generate_advice(
     if mode == "post" and not timing["post_workout"]:
         return ""
 
-    if mode == "pre" and not morning_metrics_ready(m):
+    if mode == "pre" and not morning_metrics_ready(m) and not missing_notes:
         return ""
 
     mode_key = (
@@ -264,7 +322,9 @@ def generate_advice(
     )
 
     client = anthropic.Anthropic(api_key=api_key)
-    prompt = _build_advice_prompt(m, stats, comp_z, timing=advice_timing)
+    prompt = _build_advice_prompt(
+        m, stats, comp_z, timing=advice_timing, missing_notes=missing_notes,
+    )
 
     try:
         message = client.messages.create(
@@ -649,7 +709,14 @@ def _week_completion_html(today: date) -> str:
         </tr>"""
 
 
-def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: str, activities: list[dict] | None = None) -> str:
+def build_html(
+    m: DailyMetrics,
+    stats: dict,
+    comp_z: Optional[float],
+    advice: str,
+    activities: list[dict] | None = None,
+    missing_notes: list[str] | None = None,
+) -> str:
     import re as _re
 
     label, _ = readiness_label(comp_z)
@@ -667,6 +734,10 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
     for field, (label_str, unit) in FIELD_LABELS.items():
         value = getattr(m, field)
         val_str = fmt_value(field, value) + (unit if value is not None else "")
+        phrase = _unsynced_phrase(field, missing_notes)
+        if phrase:
+            val_str = _html.escape(phrase)
+            value = None
         context_only = field in _UNSCORED
 
         if field == "acwr" and acwr_suppressed(m.acwr, m.training_load_acute):
@@ -757,6 +828,18 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
         logger.exception("build_html failed")
 
     briefing_no = m.date.timetuple().tm_yday
+    missing_banner = ""
+    if missing_notes:
+        body = "<br>".join(_html.escape(note) for note in missing_notes)
+        missing_banner = f"""
+        <tr>
+          <td style="padding:16px 28px 0;">
+            <p style="margin:0;font-family:{_SERIF};font-size:14px;line-height:1.55;color:{_INK};">
+              <strong>Watch not fully synced.</strong> Missing metrics are not estimated. The session call uses the planned session and the numbers that are present.<br>
+              {body}
+            </p>
+          </td>
+        </tr>"""
 
     return f"""<!doctype html>
 <html>
@@ -783,6 +866,7 @@ def build_html(m: DailyMetrics, stats: dict, comp_z: Optional[float], advice: st
             {route_line}
           </td>
         </tr>
+        {missing_banner}
 
         <!-- Verdict panel -->
         <tr>
@@ -883,7 +967,7 @@ def send_email(html: str, subject: str, to_addr: str, from_addr: str, app_passwo
         raise RuntimeError(f"Failed to send email via Gmail SMTP: {exc}") from exc
 
 
-def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
+def run_report(m: DailyMetrics, dry_run: bool = False, *, incomplete: bool = False) -> None:
     """Generate and send (or print) the daily readiness email."""
     from .alerts import check_fatigue_alerts
     stats = baseline_stats(m.date)
@@ -891,10 +975,15 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
     label, _ = readiness_label(comp_z)
 
     activities = load_recent_activities(days=7)
-    advice = generate_advice(m, stats, comp_z, mode="pre")
+    notes = missing_morning_notes(m) if incomplete else None
+    if not notes:
+        notes = None
+    advice = generate_advice(m, stats, comp_z, mode="pre", missing_notes=notes)
     score_str = f"{comp_z:+.2f}σ" if comp_z is not None else "—"
     subject = f"Readiness {m.date.strftime('%-d %b')} · {score_str} {label}"
-    html = build_html(m, stats, comp_z, advice, activities)
+    if notes:
+        subject += " · incomplete sync"
+    html = build_html(m, stats, comp_z, advice, activities, missing_notes=notes)
 
     stale_notes = _freshness_notes()
     if stale_notes:
@@ -1001,6 +1090,11 @@ def run_report(m: DailyMetrics, dry_run: bool = False) -> None:
 
     if dry_run:
         print(f"Subject: {subject}\n")
+        if notes:
+            print("--- Missing ---")
+            for note in notes:
+                print(note)
+            print()
         if stale_notes:
             print("--- Stale data ---")
             for note in stale_notes:

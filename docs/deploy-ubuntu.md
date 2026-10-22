@@ -8,7 +8,7 @@ The units in [`deploy/systemd/`](../deploy/systemd/) follow the agents loaded on
 |---|---|
 | `com.ai-endurance-coach-over50.server` — `RunAtLoad` + `KeepAlive`, logs to `~/.ai_endurance_coach_over50/server.log` | `ai-endurance-coach.service` — `Restart=on-failure`, same `server.log` |
 | `com.ai-endurance-coach-over50.daily` — calendar **08:00**, no `RunAtLoad`, logs to `daily.log` | `ai-endurance-coach-email.timer` — `OnCalendar=*-*-* 08:00:00`, `Persistent=true` (a missed 08:00 runs at next boot, which is what launchd does for a missed calendar interval) |
-| `email.sh` — retry **only exit code 2** every 30 minutes, stop **three hours after the process starts**, print `Watch never synced by 10:00 — giving up` | [`deploy/email.sh`](../deploy/email.sh) — the same rules, without the Mac `date -v` / pyenv paths |
+| `email.sh` — retry **only exit code 2** every 30 minutes for **three hours**, then send once with whatever has synced | [`deploy/email.sh`](../deploy/email.sh) — the same rules, without the Mac `date -v` / pyenv paths |
 
 `--setup-schedule` on a Mac still writes a **07:00** agent with `RunAtLoad`. That is not what is loaded on this Mac, and this move does not reload it.
 
