@@ -33,7 +33,7 @@ def test_email_live_send_ignores_past_date(monkeypatch):
 
     sent = {"called": False}
 
-    def _fake_run_report(metrics, dry_run=False):
+    def _fake_run_report(metrics, dry_run=False, incomplete=False):
         sent["called"] = True
         assert metrics.date == today
 

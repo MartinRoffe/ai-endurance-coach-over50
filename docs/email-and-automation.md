@@ -32,10 +32,11 @@ You can also trigger it from the **Send Email** action on the
 
 ### Why the email sometimes waits
 
-The email deliberately holds off until your overnight data (sleep score and
-morning body battery) has synced from the watch. If that data isn't there yet,
-the run exits and — under the scheduled setup below — retries about 30 minutes
-later. This stops you getting an empty 7 a.m. email before your watch has synced.
+The email holds off until overnight data has synced from the watch, then retries
+about every 30 minutes. Body battery is the wake level: a reading after sleep
+end, or the peak sitting on sleep end, once 20 minutes have passed. If the watch
+never syncs, the last attempt at the deadline still sends, with missing metrics
+marked and no invented numbers.
 
 ## The weekly briefing
 

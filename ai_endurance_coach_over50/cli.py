@@ -268,6 +268,12 @@ def main() -> None:
         help="Fetch today's data and send the daily readiness email",
     )
     parser.add_argument(
+        "--email-incomplete",
+        action="store_true",
+        help="With --email: send even if morning metrics are still missing "
+             "(the scheduler's last attempt before the deadline)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="With --email or --workouts: print what would be done without sending/uploading",
@@ -496,11 +502,14 @@ def main() -> None:
 
         # Wait until Garmin has had time to finish the morning picture.
         # Exit 2 is the existing retry (every 30 min, until the scheduler deadline).
+        # --email-incomplete is that last attempt: send with whatever synced.
         from .metrics import email_readiness_gaps
         _missing = email_readiness_gaps(m)
-        if m.date != target:
+        date_mismatch = m.date != target
+        if date_mismatch:
             _missing.append(f"metrics date {m.date} != today {target}")
-        if _missing and not args.dry_run:
+        _send_partial = args.email_incomplete and not date_mismatch
+        if _missing and not args.dry_run and not _send_partial:
             logger.warning(
                 "email deferred; watch not synced yet: %s", ", ".join(_missing)
             )
@@ -509,6 +518,11 @@ def main() -> None:
                 "Will retry later.[/yellow]"
             )
             sys.exit(2)
+        if _send_partial and _missing and not args.dry_run:
+            logger.warning(
+                "email deadline: sending with missing morning data: %s",
+                ", ".join(_missing),
+            )
 
         # Touch the sentinel BEFORE sending so a crash after SMTP delivery can't
         # cause a duplicate email on the scheduler retry. On a clean failure the
@@ -517,7 +531,9 @@ def main() -> None:
             sentinel.touch()
         try:
             with console.status("Generating advice…"):
-                run_report(m, dry_run=args.dry_run)
+                run_report(
+                    m, dry_run=args.dry_run, incomplete=args.email_incomplete,
+                )
         except GarminAuthError as e:
             logger.error("daily email blocked by Garmin MFA: %s", e)
             if not args.dry_run:

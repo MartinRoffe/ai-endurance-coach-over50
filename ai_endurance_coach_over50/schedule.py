@@ -79,6 +79,11 @@ def render_email_script(python: str, project_dir: str, env_file: Path) -> str:
         "    fi\n"
         "    NOW=$(date +%s)\n"
         "    if [ \"$NOW\" -ge \"$DEADLINE\" ]; then\n"
+        "        if [ \"$CODE\" -eq 2 ]; then\n"
+        "            echo \"$(date '+%Y-%m-%dT%H:%M:%S%z') deadline reached — sending with the data on hand\"\n"
+        f"            {python} -m ai_endurance_coach_over50.cli --withings-sync --email --fetch --email-incomplete\n"
+        "            exit $?\n"
+        "        fi\n"
         "        echo \"$(date '+%Y-%m-%dT%H:%M:%S%z') email job giving up for today (last exit $CODE)\"\n"
         "        exit \"$CODE\"\n"
         "    fi\n"
@@ -139,14 +144,15 @@ def render_linux_email_script() -> str:
 
     Exit 0 finishes. Exit 2 (watch not synced) sleeps 30 minutes and tries
     again. Any other code stops. The deadline is three hours after the
-    process starts (``date -v+3H`` on the Mac). The give-up line is the
-    same text the Mac wrapper prints.
+    process starts. The attempt that lands on the deadline sends with
+    whatever Garmin has, instead of skipping the day.
     """
     return """#!/bin/bash
 # Daily readiness email. Same retry rules as the macOS launchd wrapper.
 # Exit 0: sent. Exit 2: watch has not synced — retry every 30 minutes.
 # Any other status stops immediately (no retry).
 # Deadline is three hours after start (same as the Mac wrapper).
+# The attempt that reaches the deadline sends with whatever has synced.
 set -u
 DATA="${ENDURANCE_COACH_HOME:-$HOME/.ai_endurance_coach_over50}"
 export DOTENV_PATH="${DOTENV_PATH:-$DATA/.env}"
@@ -174,8 +180,9 @@ while true; do
     fi
     NOW=$(date +%s)
     if [ "$NOW" -ge "$DEADLINE" ]; then
-        echo "Watch never synced by 10:00 — giving up"
-        exit 2
+        echo "Watch never synced by the deadline — sending with the data on hand"
+        "$BIN" --withings-sync --email --fetch --email-incomplete
+        exit $?
     fi
     echo "Watch not synced yet, retrying in 30 min…"
     sleep 1800
