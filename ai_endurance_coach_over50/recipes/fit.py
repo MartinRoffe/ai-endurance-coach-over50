@@ -10,8 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from .catalog import recipe_by_id
 from .model import Recipe, numbered_method, portion_grams_by_food, portion_macros
-from .nutrition_table import add_macros, empty_macros, macros_for
+from .nutrition_table import add_macros, empty_macros, food, macros_for
 
 _BF_STEPS = (0.75, 1.0, 1.25)
 _PLATE_STEPS = (0.75, 1.0, 1.25, 1.5)
@@ -25,8 +26,11 @@ _SNACKS = (
     ("toast", {"bread": 75.0, "honey": 22.0}),
 )
 _BANANA_G = 120.0
+# Calorie-model piece weight for the day's on-bike row. The homemade cake is
+# heavier than this; its real carbohydrate is what fuel_prep_for_ride counts.
 _CAKE_G = 25.0
 _BOTTLE_G = 60.0
+_SAVOURY_CAKE_ID = "standard-rice-cake"
 
 
 @dataclass(frozen=True)
@@ -318,21 +322,30 @@ def build_meals(
         bits = []
         place = "the ride" if ride else "the session"
         if cakes:
+            carbs_each = portion_macros(recipe_by_id(_SAVOURY_CAKE_ID), 1)["carbs"]
             bits.append(
-                f"Take {cakes} plain rice cake{'s' if cakes != 1 else ''} "
-                f"({int(cakes * _CAKE_G)} g) and eat them across {place}, with water."
+                f"Take {cakes} homemade savoury rice cake{'s' if cakes != 1 else ''} "
+                f"({round(carbs_each):.0f} g carbohydrate each) and eat them across {place}, with water. "
+                "Cook a full batch in the small rice cooker. The method is on the recipe page."
             )
         if bottles:
             bits.append(
                 f"Mix {bottles} maltodextrin bottle{'s' if bottles != 1 else ''} "
                 f"({int(bottles * _BOTTLE_G)} g powder) so {place} hits the carb target."
             )
-        name = "Rice cakes"
+        name = "Savoury rice cakes"
         if bottles and cakes:
-            name = "Rice cakes and carb drink"
+            name = "Savoury rice cakes and carb drink"
         elif bottles:
             name = "Carb drink"
-        meals.append(_food_meal(during_slot, name, training["on_bike"], " ".join(bits)))
+        meal = _food_meal(during_slot, name, training["on_bike"], " ".join(bits))
+        if cakes:
+            shown = _shown_ride_lines(training["on_bike"], cakes)
+            meal["display_ingredients"] = shown
+            meal["recipe_id"] = _SAVOURY_CAKE_ID
+            meal["rice_cakes"] = cakes
+            meal["multiplier"] = None
+        meals.append(meal)
     if training["post"]:
         ml = int(round(training["post"]["milk_semi"]))
         meals.append(_food_meal(
@@ -467,6 +480,18 @@ def _food_meal(slot: str, name: str, foods: dict[str, float], detail: str) -> di
         "multiplier": 1.0,
         "side_multiplier": 1.0,
     }
+
+
+def _shown_ride_lines(foods: dict[str, float], cakes: int) -> list[str]:
+    """What the page lists for the on-bike slot. The shop cake row stays in the calorie sum only."""
+    lines = [f"Homemade savoury rice cakes — {cakes}"]
+    for food_id, grams in sorted(foods.items(), key=lambda pair: food(pair[0]).name):
+        if food_id == "rice_cake" or grams < 0.5:
+            continue
+        row = food(food_id)
+        unit = "ml" if row.liquid else "g"
+        lines.append(f"{row.name} — {int(round(grams))} {unit}")
+    return lines
 
 
 def _snack_detail(foods: dict[str, float]) -> str:

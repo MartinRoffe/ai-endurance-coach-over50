@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 from functools import lru_cache
+from math import ceil
 
 from .catalog import (
     BATCHES,
@@ -19,7 +20,7 @@ from .catalog import (
     recipe_by_id,
 )
 from .fit import build_meals, published_totals, solve
-from .model import numbered_method, portion_macros, shop_line
+from .model import batch_grams_by_food, numbered_method, portion_macros, shop_line
 from .nutrition_table import AISLE_ORDER, food
 
 _WEEKDAY_NAMES = (
@@ -314,12 +315,25 @@ def default_week_targets() -> list[dict]:
 
 
 def shopping_list(cycle_week: int, day_targets: list[dict] | None = None) -> list[dict]:
-    """Aisle groups for one cycle week. Grams are the portions actually eaten."""
+    """Aisle groups for one cycle week. Grams are the portions actually eaten.
+
+    Ride weeks buy whole batches of the savoury rice cakes. The day's calorie
+    row still carries a shop-cake allowance, and that row is not a shop item.
+    """
     grams: dict[str, float] = defaultdict(float)
+    cakes = 0
     for day in _week_plans(cycle_week, day_targets):
         for meal in day["meals"]:
+            cakes += int(meal.get("rice_cakes") or 0)
             for food_id, amount in meal["grams_by_food"].items():
+                if food_id == "rice_cake":
+                    continue
                 grams[food_id] += amount
+    if cakes:
+        recipe = recipe_by_id("standard-rice-cake")
+        batches = ceil(cakes / recipe.servings)
+        for food_id, amount in batch_grams_by_food(recipe).items():
+            grams[food_id] += amount * batches
 
     grouped: dict[str, list[str]] = {aisle: [] for aisle in AISLE_ORDER}
     for food_id, amount in sorted(grams.items(), key=lambda pair: food(pair[0]).name):

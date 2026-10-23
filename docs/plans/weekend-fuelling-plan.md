@@ -2,7 +2,7 @@
 
 In-ride solids are for **weekend long rides only**. Weekday 60 min rides: **banana 45 min before, nothing on the bike.**
 
-Full methods: **Nutrition → Ride Fuelling** (`/nutrition/fuelling`), **Recipes → Overnight Oats** (`/nutrition/recipes/overnight-oats`) and **Weekend Ride Fuel** (`/nutrition/recipes/weekend-fuel`).
+Full methods: **Nutrition → Ride fuel** (`/nutrition/fuelling`) and **Recipes** (`/nutrition/recipes#standard-rice-cake` for the savoury batch, `#sweet-rice-cakes` for banana and honey). Overnight oats: `/nutrition/recipes#overnight-oats`.
 
 ## How many rice cakes?
 
@@ -17,9 +17,9 @@ Prep **Friday evening** (rice cakes need ~24 h in the fridge). Use the planned S
 | 4.5–5 h | 10 | E2 + E3 | 1 flapjack bar |
 | 5.5–6 h | 12 | E3 + E4 | 1 flapjack bar |
 
-**Rule of thumb:** 2 rice cakes per ride-hour + 1 spare (~27 g carbs each → ~55 g/hr).
+**Rule of thumb:** 2 rice cakes per ride-hour + 1 spare. Carbohydrate per cake is the savoury recipe's computed figure (the old 27 g was a guess). The sweet batch is higher because of the banana and honey.
 
-**One recipe:** standard bacon & egg rice cakes (or cinnamon sweet every other weekend for variety). See `/nutrition/recipes/weekend-fuel#standard-rice-cake`.
+**One recipe:** homemade bacon and egg rice cakes (or the cinnamon sweet batch every other weekend). See `/nutrition/recipes#standard-rice-cake`.
 
 ## On the ride
 

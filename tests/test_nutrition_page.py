@@ -75,7 +75,7 @@ def test_old_nutrition_urls_redirect(client):
         "/nutrition/shopping-list": "/nutrition#shop",
         "/nutrition/lidl-shopping-list": "/nutrition#shop",
         "/nutrition/recipes/overnight-oats": "/nutrition/recipes#overnight-oats",
-        "/nutrition/recipes/weekend-fuel": "/nutrition/fuelling",
+        "/nutrition/recipes/weekend-fuel": "/nutrition/recipes#standard-rice-cake",
         "/nutrition/recipes/griddle": "/nutrition/recipes",
         "/nutrition/recipes/weekday-dinners": "/nutrition#batch",
         "/nutrition-test": "/nutrition",

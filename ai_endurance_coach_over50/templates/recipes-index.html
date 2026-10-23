@@ -43,7 +43,7 @@
 <div class="hero">
   <div class="container" style="padding-bottom:0">
     <h1>RECIPE <span>INDEX</span></h1>
-    <p>Every plate in the library. Open a meal on <a href="/nutrition">Today</a> for the portion you eat that day. This page is one written portion.</p>
+    <p>Every plate in the library. Open a meal on <a href="/nutrition">Today</a> for the portion you eat that day. Plates here are one written portion. The ride-fuel cakes show the whole batch, and the macros are for one cake.</p>
   </div>
 </div>
 
@@ -54,7 +54,7 @@
   {% for recipe in group.recipes %}
   <article id="{{ recipe.id }}">
     <h2>{{ recipe.name }}</h2>
-    <p class="meta">{{ recipe.kcal }} kcal · P {{ recipe.protein }} g · C {{ recipe.carbs }} g</p>
+    <p class="meta">{{ recipe.kcal }} kcal · P {{ recipe.protein }} g · C {{ recipe.carbs }} g{% if recipe.fat %} · F {{ recipe.fat }} g{% endif %}{% if recipe.macro_note %} {{ recipe.macro_note }}{% endif %}</p>
     <p class="note">{{ recipe.summary }} {{ recipe.servings_note }}</p>
     <h3>Ingredients</h3>
     <ul>{% for line in recipe.ingredients %}<li>{{ line }}</li>{% endfor %}</ul>

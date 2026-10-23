@@ -224,6 +224,7 @@
       <h3>Method</h3>
       <ol>{% for step in m.steps %}<li>{{ step }}</li>{% endfor %}</ol>
       {% endif %}
+      {% if m.recipe_url %}<a href="{{ m.recipe_url }}">Recipe</a>{% endif %}
     </div>
   </details>
   {% endfor %}
