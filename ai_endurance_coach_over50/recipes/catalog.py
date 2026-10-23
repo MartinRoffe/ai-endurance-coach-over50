@@ -1008,6 +1008,72 @@ WEEKDAY_PLATE: tuple[tuple[str, str], ...] = (
 COOKED_SERVINGS = {"soup": 4, "pot_a": 4, "pot_b": 4}
 
 
+# Ride fuel. One serving is one cake. The method and the gram weights are the whole batch.
+# Savoury is the standard cake the ride-fuel counts use. Sweet is the other batch.
+
+SAVOURY_RICE_CAKES = _R(
+    "standard-rice-cake",
+    "Savoury rice cakes",
+    "ride",
+    12,
+    _ing(
+        ("sushi_rice", 400),
+        ("egg", 174),
+        ("bacon", 90),
+        ("soy_sauce", 30),
+        ("sesame_oil", 15),
+        ("rice_vinegar", 15),
+    ),
+    (
+        "Weigh 400 g uncooked short-grain sushi rice and cook it in the small rice cooker, using the cooker's own rice and water marks. It should come out sticky.",
+        "Dice 90 g raw back bacon (about 3 rashers). Warm 15 ml sesame oil in a frying pan and cook the bacon for 4 to 5 minutes. Crack in 3 eggs (174 g) and scramble them until just set, about 2 minutes. Take the pan off the heat.",
+        "While the rice is still warm, stir in the bacon and egg, 30 ml soy sauce, and 15 ml rice vinegar. Leave the vinegar out if you do not have it.",
+        "Line a baking tray or dish about A4 size with cling film, with some hanging over the sides. Tip in the rice and press it down firmly until it is about 2 to 3 cm thick.",
+        "Fold the cling film over the top. Chill for at least 2 hours, or overnight, until the slab is firm enough to slice.",
+        "Lift the slab out and cut 12 cakes. Wrap each one. A ride takes the number on the ride-fuel line; this batch is the whole 12.",
+        "Keep them in the fridge for 3 days, or freeze them wrapped. A frozen cake thaws in a jersey pocket in an hour or two.",
+    ),
+    ("Small rice cooker", "Frying pan", "Baking tray", "Cling film"),
+    "Chill the slab for at least 2 hours, or overnight. Wrapped cakes keep in the fridge for 3 days.",
+    "Freeze the wrapped cakes. They thaw in a jersey pocket in an hour or two.",
+    "rice",
+    "Bacon and egg sushi-rice cakes for the bike. One batch is about 12 cakes, cooked in the small rice cooker.",
+)
+
+SWEET_RICE_CAKES = _R(
+    "sweet-rice-cakes",
+    "Sweet rice cakes",
+    "ride",
+    10,
+    _ing(
+        ("sushi_rice", 400),
+        ("banana", 200),
+        ("honey", 63),
+        ("cinnamon", 3),
+        ("salt", 0.3),
+    ),
+    (
+        "Weigh 400 g uncooked short-grain sushi rice and cook it in the small rice cooker, using the cooker's own rice and water marks. Leave it for 5 minutes so it is warm rather than piping hot.",
+        "Peel 2 ripe bananas (200 g) and mash them with a fork.",
+        "Stir the warm rice into the banana with 63 g honey (3 level tablespoons), 3 g ground cinnamon if you are using it, and a pinch of salt (0.3 g).",
+        "Line a baking tray or dish about A4 size with cling film, with some hanging over the sides. Tip in the mixture and press it down firmly until it is about 2 to 3 cm thick.",
+        "Fold the cling film over the top. Chill for at least 2 hours, or overnight, until the slab is firm enough to slice.",
+        "Lift the slab out and cut 10 cakes. Wrap each one.",
+        "Keep them in the fridge for 3 days, or freeze them wrapped. A frozen cake thaws in a jersey pocket in an hour or two.",
+    ),
+    ("Small rice cooker", "Fork", "Baking tray", "Cling film"),
+    "Chill the slab for at least 2 hours, or overnight. Wrapped cakes keep in the fridge for 3 days.",
+    "Freeze the wrapped cakes. They thaw in a jersey pocket in an hour or two.",
+    "rice",
+    "Banana and honey sushi-rice cakes for the later part of a long ride. One batch is about 10 cakes, cooked in the small rice cooker.",
+)
+
+RIDE_FUEL: dict[str, Recipe] = {
+    SAVOURY_RICE_CAKES.id: SAVOURY_RICE_CAKES,
+    SWEET_RICE_CAKES.id: SWEET_RICE_CAKES,
+}
+
+
 def recipe_by_id(recipe_id: str) -> Recipe:
     if recipe_id in BREAKFASTS:
         return BREAKFASTS[recipe_id]
@@ -1015,8 +1081,15 @@ def recipe_by_id(recipe_id: str) -> Recipe:
         return BATCHES[recipe_id]
     if recipe_id in WEEKEND:
         return WEEKEND[recipe_id]
+    if recipe_id in RIDE_FUEL:
+        return RIDE_FUEL[recipe_id]
     raise KeyError(recipe_id)
 
 
 def all_recipes() -> list[Recipe]:
-    return list(BREAKFASTS.values()) + list(BATCHES.values()) + list(WEEKEND.values())
+    return (
+        list(BREAKFASTS.values())
+        + list(BATCHES.values())
+        + list(WEEKEND.values())
+        + list(RIDE_FUEL.values())
+    )

@@ -17,7 +17,7 @@ from .nutrition_plan import (
 )
 from .recipes.catalog import all_recipes, recipe_by_id
 from .recipes.menu import cook_plan, shopping_list
-from .recipes.model import portion_grams_by_food, portion_macros
+from .recipes.model import batch_grams_by_food, portion_grams_by_food, portion_macros
 from .recipes.nutrition_table import food
 
 RIDE_SLOTS = ("Pre-ride", "On-bike", "Post-ride")
@@ -82,6 +82,10 @@ def present_meal(meal: dict) -> dict:
         steps = list(recipe_by_id(recipe_id).method)
     elif meal.get("detail"):
         steps = [meal["detail"]]
+    if meal.get("display_ingredients") is not None:
+        ingredients = list(meal["display_ingredients"])
+    else:
+        ingredients = ingredient_lines(meal.get("grams_by_food"))
     slot = meal.get("type") or meal.get("slot") or ""
     return {
         "slot": slot,
@@ -91,7 +95,7 @@ def present_meal(meal: dict) -> dict:
         "protein": _macro(meal, "p", "protein"),
         "carbs": _macro(meal, "c", "carbs"),
         "share": meal_share_line(meal),
-        "ingredients": ingredient_lines(meal.get("grams_by_food")),
+        "ingredients": ingredients,
         "steps": steps,
         "recipe_url": f"/nutrition/recipes#{recipe_id}" if recipe_id else None,
         "ride": slot in RIDE_SLOTS,
@@ -175,15 +179,19 @@ def nutrition_page(
 
 
 def fuelling_guide(plan_start: date, today: date) -> dict:
-    """Current ride-fuel guide: banana, rice cakes, maltodextrin, milk."""
+    """Current ride-fuel guide: banana, homemade rice cakes, maltodextrin, milk."""
     from .nutrition_plan import fuel_prep_for_ride
 
     food = build_today_food(plan_start, today)
     meals = [present_meal(meal) for meal in (food.get("meals") or [])]
+    savoury = portion_macros(recipe_by_id("standard-rice-cake"), 1)
+    sweet = portion_macros(recipe_by_id("sweet-rice-cakes"), 1)
     return {
         "today": today.isoformat(),
         "kind": today_card(today)["kind"],
         "ride": [meal for meal in meals if meal["ride"]],
+        "savoury_carbs": round(savoury["carbs"]),
+        "sweet_carbs": round(sweet["carbs"]),
         "tiers": [
             fuel_prep_for_ride(minutes, ref_date=today)
             for minutes in (75, 90, 120, 150, 180, 240, 300)
@@ -192,25 +200,56 @@ def fuelling_guide(plan_start: date, today: date) -> dict:
 
 
 def recipe_groups() -> list[dict]:
-    """Every library recipe, one portion, with the written method."""
-    order = (("Breakfast", "breakfast"), ("Sunday batch", "batch"), ("Weekend plates", "weekend"))
+    """Every library recipe, with the written method.
+
+    Plates show one portion. Ride-fuel cakes show the whole batch in grams and
+    the macros for one cake.
+    """
+    order = (
+        ("Breakfast", "breakfast"),
+        ("Sunday batch", "batch"),
+        ("Weekend plates", "weekend"),
+        ("Ride fuel", "ride"),
+    )
     buckets: dict[str, list[dict]] = {key: [] for _label, key in order}
     for recipe in all_recipes():
-        key = "breakfast" if recipe.slot == "breakfast" else ("batch" if recipe.batch else "weekend")
+        if recipe.slot == "ride":
+            key = "ride"
+        elif recipe.slot == "breakfast":
+            key = "breakfast"
+        elif recipe.batch:
+            key = "batch"
+        else:
+            key = "weekend"
         macros = portion_macros(recipe, 1)
+        if key == "ride":
+            ingredients = ingredient_lines(batch_grams_by_food(recipe))
+            servings_note = (
+                f"Ingredients are the whole batch, about {recipe.servings} cakes. "
+                "The figures beside the name are one cake."
+            )
+            macro_note = "per cake"
+            fat = int(round(macros["fat"]))
+        else:
+            ingredients = ingredient_lines(portion_grams_by_food(recipe, 1))
+            servings_note = (
+                f"Ingredients are one portion. The method is written for {recipe.servings}."
+                if recipe.servings != 1
+                else "Ingredients and method are one portion."
+            )
+            macro_note = ""
+            fat = None
         buckets[key].append({
             "id": recipe.id,
             "name": recipe.name,
             "summary": recipe.summary,
-            "servings_note": (
-                f"Ingredients are one portion. The method is written for {recipe.servings}."
-                if recipe.servings != 1
-                else "Ingredients and method are one portion."
-            ),
+            "servings_note": servings_note,
+            "macro_note": macro_note,
             "kcal": int(round(macros["kcal"])),
             "protein": int(round(macros["protein"])),
             "carbs": int(round(macros["carbs"])),
-            "ingredients": ingredient_lines(portion_grams_by_food(recipe, 1)),
+            "fat": fat,
+            "ingredients": ingredients,
             "steps": list(recipe.method),
             "equipment": list(recipe.equipment),
             "fridge": recipe.fridge,

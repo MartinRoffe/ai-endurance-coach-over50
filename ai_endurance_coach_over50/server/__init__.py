@@ -1503,7 +1503,7 @@ async def nutrition_recipes(request: Request):
 
 @app.get("/nutrition/recipes/weekend-fuel")
 async def nutrition_recipes_weekend_fuel():
-    return _nutrition_redirect("/nutrition/fuelling")
+    return _nutrition_redirect("/nutrition/recipes#standard-rice-cake")
 
 
 @app.get("/nutrition/recipes/overnight-oats")

@@ -141,6 +141,11 @@ Maltodextrin drink protocols remain optional for winter / event gut training.
 **Routes:** `/nutrition/recipes` and subpaths (overnight oats, weekend fuel,
 griddle, weekday dinners archive, travel checklist).
 
+**Homemade rice cakes:** `/nutrition/recipes#standard-rice-cake` (bacon and egg,
+about 12 from one batch) and `#sweet-rice-cakes` (banana and honey, about 10).
+`/nutrition/recipes/weekend-fuel` redirects to the savoury recipe. Carbohydrate
+per cake is calculated from the ingredients.
+
 Still available for bookmarks and Sunday Prep component links. Prefer **Sunday
 Prep** for the active week’s cook day.
 

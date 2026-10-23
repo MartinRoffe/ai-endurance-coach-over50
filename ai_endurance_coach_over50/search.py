@@ -463,7 +463,7 @@ def _aliases() -> list[SearchHit]:
         ("creatine", "Creatine supplement", "/nutrition", "supplements"),
         ("Lidl", "Lidl shopping list", "/nutrition#shop", "lidl asda"),
         ("Asda", "Asda shopping list", "/nutrition#shop", "lidl asda"),
-        ("rice cakes", "Plain rice cakes", "/nutrition/fuelling", "ride fuel"),
+        ("rice cakes", "Homemade rice cakes", "/nutrition/recipes#standard-rice-cake", "savoury sweet ride fuel"),
         ("Haute Route", "Haute Route Alpes plan", "/haute-route", ""),
         ("Tenerife", "Tenerife camp", "/tenerife", ""),
         ("architecture", "System architecture", "/help/architecture", ""),

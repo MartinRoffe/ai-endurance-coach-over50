@@ -276,6 +276,7 @@ _SUPPLEMENT_DISCLAIMER = (
 # BREAKFASTS stays as (name, detail, kcal, protein, carbs) for search.
 # The kcal figures are one written plate. The day scaler moves the portion.
 from .recipes.catalog import BREAKFASTS as _BREAKFAST_RECIPES
+from .recipes.catalog import recipe_by_id as _recipe_by_id
 from .recipes.model import portion_macros as _portion_macros
 
 def _breakfast_tuple(recipe) -> tuple[str, str, int, int, int]:
@@ -836,7 +837,8 @@ _CARB_BOTTLE_G = 60
 def fuel_prep_for_ride(duration_min: int, *, ref_date: date | None = None) -> dict:
     """Batch counts for a weekend long ride.
 
-    Rice cakes cover ~55 g/h solids. For rides ≥150 min, maltodextrin/fructose
+    Rice cakes cover the solid carbohydrate, using one savoury cake's computed
+    grams. For rides ≥150 min, maltodextrin/fructose
     **carb drink bottles** close the gap to the gut-training target (60→75→90 g/h).
     Electrolyte bottles remain separate (hydration/sodium).
     """
@@ -854,7 +856,8 @@ def fuel_prep_for_ride(duration_min: int, *, ref_date: date | None = None) -> di
     else:
         cakes, bottles, flapjack = 12, ["E3", "E4"], True
 
-    solid_g_per_hr = (cakes * 27) / h
+    carbs_each = float(_portion_macros(_recipe_by_id("standard-rice-cake"), 1)["carbs"])
+    solid_g_per_hr = (cakes * carbs_each) / h
     target = 55
     carb_drink_bottles = 0
     carb_drink_g_per_hr = 0.0
@@ -867,8 +870,8 @@ def fuel_prep_for_ride(duration_min: int, *, ref_date: date | None = None) -> di
 
     total_g_per_hr = round(solid_g_per_hr + carb_drink_g_per_hr, 1)
     prep_note = (
-        f"Make {cakes} standard rice cakes; mix electrolyte bottles "
-        f"{', '.join(bottles)}."
+        f"Make {cakes} homemade savoury rice cakes ({round(carbs_each):.0f} g carbohydrate each); "
+        f"mix electrolyte bottles {', '.join(bottles)}."
     )
     if carb_drink_bottles:
         prep_note += (
@@ -884,6 +887,7 @@ def fuel_prep_for_ride(duration_min: int, *, ref_date: date | None = None) -> di
         "duration_min": duration_min,
         "ride_hours": round(h, 1),
         "rice_cakes": cakes,
+        "carbs_per_cake": round(carbs_each, 1),
         "bottles": bottles,
         "flapjack": flapjack,
         "banana_before": True,
@@ -959,7 +963,7 @@ def fuel_prep_context(plan_start: date, today: date) -> str:
             f"(target ~{prep['target_g_per_hr']} g/h)"
         )
     return (
-        f"Sunday long ride ~{h} h → make **{prep['rice_cakes']} rice cakes** tonight, "
+        f"Sunday long ride ~{h} h → make **{prep['rice_cakes']} homemade savoury rice cakes** tonight, "
         f"mix **{bottles}** electrolyte bottles{carb}{flap}."
     )
 
@@ -1651,6 +1655,10 @@ def build_today_food(plan_start: date, today: date) -> dict:
         item["side_multiplier"] = row.get("side_multiplier")
         item["grams_by_food"] = row.get("grams_by_food") or {}
         item["recipe_id"] = row.get("recipe_id")
+        if row.get("display_ingredients") is not None:
+            item["display_ingredients"] = list(row["display_ingredients"])
+        if row.get("rice_cakes"):
+            item["rice_cakes"] = row["rice_cakes"]
         meal_dicts.append(item)
 
     return {
@@ -1841,7 +1849,7 @@ def nutrition_week_context(plan_start: date, today: date) -> str:
                 f"(~{prep['target_g_per_hr']} g/h)"
             )
         lines.append(
-            f"  Sunday fuel prep (Fri eve): {prep['rice_cakes']} rice cakes, "
+            f"  Sunday fuel prep (Fri eve): {prep['rice_cakes']} homemade savoury rice cakes, "
             f"bottles {', '.join(prep['bottles'])}{carb}"
             + (" + backstop bar" if prep["flapjack"] else "")
         )

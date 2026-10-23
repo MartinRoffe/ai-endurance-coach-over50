@@ -27,12 +27,12 @@ function buildTravelItems(opts) {
   const satLine = opts.satLabel + (opts.satDurMin ? " · ~" + opts.satDurMin + " min planned" : "");
 
   return [
-    { id: "prep-rice-cakes", section: "prep", name: "Rice cakes × " + fuel.rice_cakes,
-      note: "Make ≥24 h before Sunday ride (~" + fuel.ride_hours + " h). Foil-wrap each." },
+    { id: "prep-rice-cakes", section: "prep", name: "Homemade savoury rice cakes × " + fuel.rice_cakes,
+      note: "Make ≥24 h before Sunday ride (~" + fuel.ride_hours + " h). Full batch in the small rice cooker. Foil-wrap each." },
     { id: "prep-foil", section: "prep", name: "Foil-wrap rice cakes + stage in jersey bag",
       note: "Pack Fri night for Sunday pockets." },
     { id: "prep-electrolyte", section: "prep", name: "Mix electrolyte bottles " + bottleStr,
-      note: "500 ml each — fridge or cool bag. See weekend-fuel drink recipes." },
+      note: "500 ml each — fridge or cool bag. See Ride fuel." },
     { id: "prep-defrost", section: "prep", name: "Defrost 2 weekend chicken tubs (Sat + Sun lunch)",
       note: "Freezer → fridge Friday night." },
     { id: "prep-oats-jar", section: "prep", name: "Sat night: build recovery overnight oats jar",
