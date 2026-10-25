@@ -321,14 +321,14 @@ def test_meal_day_type_rest_saturday_not_ruck():
 def test_meal_day_type_real_ruck_saturday():
     assert np_mod.meal_day_type_for_session("ruck", "Ruck  8–10 kg", 0, 5) == "ruck"
     assert np_mod.meal_day_type_for_session(
-        "ruck", "Easy recovery ruck", 3, 5
-    ) == "recovery_saturday"
+        "ruck", "Easy recovery ruck", 3, 5, session_dur=40,
+    ) == "ruck"
 
 
 def test_meal_day_type_bike_on_ruck_saturday_slot():
     assert np_mod.meal_day_type_for_session(
         "bike", "Z2 Endurance", 0, 5, session_dur=75
-    ) == "bike"
+    ) == "training"
 
 
 def test_build_today_food_rest_saturday_no_post_ruck(monkeypatch):

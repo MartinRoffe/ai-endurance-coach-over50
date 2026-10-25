@@ -520,13 +520,19 @@ def _resolve_day_meals(
     """
     cycle_week = cycle_week_index(plan_start, ref_date)
     weekday = ref_date.weekday()
+    # Single crowned kcal — same number as dashboard / Cut / email.
+    tt = today_targets(ref_date)
+    if session_type is None and session_label is None:
+        sess = tt.get("session") or {}
+        session_type = sess.get("type")
+        session_label = sess.get("label")
+        if session_dur is None:
+            session_dur = sess.get("dur_min")
     dtype = meal_day_type_for_session(
         session_type, session_label, cycle_week, weekday,
         session_dur=session_dur,
     )
     day_data = DAY_TYPES[dtype]
-    # Single crowned kcal — same number as dashboard / Cut / email.
-    tt = today_targets(ref_date)
     kind = day_kind(tt["calorie_tier"])
     dur = int((tt.get("session") or {}).get("dur_min") or session_dur or 0)
     if kind not in ("hard", "long"):
@@ -541,6 +547,7 @@ def _resolve_day_meals(
         ride=_session_takes_ride_fuel(session_type, session_label),
         dur_min=dur,
         ref_date=ref_date,
+        evening=evening_plate_target(dtype, tt["kcal"]),
     )
     meals = day["tuples"]
     target = {
@@ -581,6 +588,7 @@ def _plan_scaled_day(
     dur_min: int = 0,
     ref_date: date | None = None,
     ride: bool = True,
+    evening: tuple[int, int, int] | None = None,
 ) -> dict:
     from .recipes.menu import meals_as_tuples, plan_day
 
@@ -594,6 +602,7 @@ def _plan_scaled_day(
         dur_min=int(dur_min or 0),
         ref_date=ref_date,
         ride=ride,
+        evening=evening,
     )
     day = dict(day)
     day["tuples"] = meals_as_tuples(day)
@@ -643,6 +652,10 @@ def _assemble_meals(
         protein_high=pt["high"] if protein_high is None else protein_high,
         kind=tier if dur_min else tier,
         dur_min=dur_min if tier == "long" else 0,
+        evening=evening_plate_target(
+            dtype,
+            FALLBACK_INTAKE_KCAL if target_kcal is None else target_kcal,
+        ),
     )
     return day["tuples"]
 
@@ -756,9 +769,6 @@ def today_day_type(cycle_week: int, weekday: int) -> str:
     return _WEEKDAY_TO_TYPE_BUILD[weekday]
 
 
-_WEEKEND_RUCK_LONG = frozenset({"ruck", "recovery_saturday", "long", "recovery_sunday"})
-
-
 def meal_day_type_for_session(
     stype: str | None,
     label: str | None,
@@ -767,40 +777,53 @@ def meal_day_type_for_session(
     *,
     session_dur: int | None = None,
 ) -> str:
-    """Pick a DAY_TYPES key from the planned session (not weekday alone).
+    """Pick a DAY_TYPES key from the planned session.
 
-    Breakfast/dinner rotation still uses cycle_week × weekday inside
-    ``_assemble_meals``; this only chooses the meal-slot skeleton so Rest
-    Saturdays never get Post-Ruck copy.
+    A known session is rest, training, ruck, or long ride. The weekday map
+    (including ``recovery_weekday``) is only the fallback when no session
+    was passed, which is the abstract cycle with no dates.
     """
-    fallback = today_day_type(cycle_week, weekday)
     if not stype and not label:
-        return fallback
+        return today_day_type(cycle_week, weekday)
 
     label_l = (label or "").lower()
-    is_ruck = stype == "ruck" or "ruck" in label_l
-    if is_ruck:
-        return "recovery_saturday" if cycle_week == 3 else "ruck"
-
-    if stype in ("long", "back_to_back"):
-        return "recovery_sunday" if cycle_week == 3 else "long"
-
-    if stype == "rest":
-        if cycle_week == 3 and weekday <= 4:
-            return "recovery_weekday"
+    if stype in ("long", "back_to_back") or "long ride" in label_l:
+        return "long"
+    if stype == "rest" or session_dur == 0:
         return "rest"
+    if stype == "ruck" or "ruck" in label_l:
+        return "ruck"
+    return "training"
 
-    # Active non-ruck/non-long session on a weekday that still maps to ruck/long.
-    if fallback in _WEEKEND_RUCK_LONG:
-        if stype in ("recovery", "strength", "gym") and not (session_dur or 0):
-            return "rest"
-        if stype in ("recovery", "strength", "gym"):
-            return "rest"
-        if weekday == 4:
-            return "bike_fri"
-        return "bike"
 
-    return fallback
+# Evening plate at a 1,900 kcal day. Ruck shares the training plate.
+# Other day sizes scale by day_kcal / 1900.
+_EVENING_AT_1900: dict[str, tuple[int, int, int]] = {
+    "rest": (570, 45, 50),
+    "training": (665, 45, 70),
+    "long": (760, 45, 90),
+}
+_EVENING_BASE_KCAL = 1900
+
+
+def evening_load_key(dtype: str) -> str:
+    """rest / training / long. Ruck uses the training plate."""
+    if dtype in {"long", "recovery_sunday"}:
+        return "long"
+    if dtype in {"rest", "recovery_weekday"}:
+        return "rest"
+    return "training"
+
+
+def evening_plate_target(dtype: str, day_kcal: int) -> tuple[int, int, int]:
+    """Dinner kcal, protein, and carbs for this load, scaled from 1,900 kcal."""
+    kcal, protein, carbs = _EVENING_AT_1900[evening_load_key(dtype)]
+    scale = int(day_kcal) / _EVENING_BASE_KCAL
+    return (
+        int(round(kcal * scale)),
+        int(round(protein * scale)),
+        int(round(carbs * scale)),
+    )
 
 
 def gut_training_target_g_per_hr(ref: date | None = None) -> int:
@@ -1827,9 +1850,8 @@ def nutrition_week_context(plan_start: date, today: date) -> str:
     ]
     for wd in range(7):
         d = monday + timedelta(days=wd)
-        dtype = today_day_type(cycle_week, wd)
-        day_data = DAY_TYPES[dtype]
         meals, day_ctx = _resolve_day_meals(plan_start, d)
+        day_data = day_ctx["day_data"]
         target = day_ctx["target"]
         total_protein = sum(meal[4] for meal in meals)
         marker = "  ← today" if d == today else ""

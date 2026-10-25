@@ -69,6 +69,7 @@ def plan_day(
     dur_min: int = 0,
     ref_date: date | None = None,
     ride: bool = True,
+    evening: tuple[int, int, int] | None = None,
 ) -> dict:
     """One day's meals, scaled so kcal and protein land on the targets."""
     breakfast = breakfast_for(cycle_week, weekday)
@@ -86,6 +87,7 @@ def plan_day(
         dur_min=int(dur_min or 0),
         ref_date=ref_date,
         ride=ride,
+        evening=evening,
     )
     meals = build_meals(
         flex, breakfast, lunch, dinner, kind=kind, target_kcal=int(target_kcal),
