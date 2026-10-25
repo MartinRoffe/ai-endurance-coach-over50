@@ -1336,6 +1336,7 @@ async def training_plan(request: Request):
         gravel_sunday_note,
         guide_phases,
     )
+    from ..settings import has_rower
     return TEMPLATES.TemplateResponse(
         request=request,
         name="fitness_guide.html",
@@ -1345,6 +1346,7 @@ async def training_plan(request: Request):
             "plan_end": PLAN_END,
             "sunday_cap": f"{HOME_SUNDAY_CAP_MIN // 60} h",
             "gravel_note": gravel_sunday_note(),
+            "has_rower": has_rower(),
             "phases": guide_phases(),
             "busar": BUSAR_STANDARDS,
         },

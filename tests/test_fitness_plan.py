@@ -52,9 +52,9 @@ def test_camp_day_is_time_based_and_teide_is_optional():
     assert not garmin_allowed(date(2026, 12, 26), camp[0], camp[1])
     assert _workouts_for_date(date(2026, 12, 26)) == []
     quality = session_for_date_extended(date(2026, 12, 23))
-    assert quality == ("rower", "Threshold — rower", 180)
-    assert garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
-    assert _workouts_for_date(date(2026, 12, 23)) == [("row", "Threshold — rower", 180)]
+    assert quality == ("maxiclimber", "Threshold — MaxiClimber", 135)
+    assert not garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
+    assert _workouts_for_date(date(2026, 12, 23)) == []
 
 
 def test_busar_weekend_replaces_the_last_keswick_ruck():
@@ -104,7 +104,7 @@ def test_guide_covers_the_block_in_phase_order():
     assert phases[0]["start"] == PLAN_START
     assert phases[-1]["end"] == PLAN_END
     ret = phases[1]
-    assert any("Threshold — rower" in w["text"] for w in ret["weeks"])
+    assert any("Threshold — MaxiClimber" in w["text"] for w in ret["weeks"])
     assert any("3h" in w["text"] for w in ret["weeks"])
     assert phases[3]["weeks"]
     joined = " ".join(w["text"] for w in phases[3]["weeks"])

@@ -219,7 +219,8 @@ def test_early_snapshot_is_replaced_by_a_complete_fetch():
 def test_coach_prompt_forbids_a_turbo_and_drops_the_pause():
     note = equipment_note(False)
     assert "NO turbo" in note
-    assert "rower" in note
+    assert "MaxiClimber" in note
+    assert "no rower" in note.lower()
     assert "· outdoor" in note
     brief = coach_persona_brief(False)
     system = _coach_system()
@@ -236,7 +237,7 @@ def test_next_seven_days_keeps_rest_days_in_the_count():
     blob = "\n".join(lines)
     assert "Mon 19 Oct (tomorrow): Rest" in blob
     assert "Tue 20 Oct (in 2 days):" in blob
-    assert "Threshold — rower" in blob
+    assert "Threshold — MaxiClimber" in blob
     assert "tomorrow" not in blob.split("Tue 20 Oct")[1].split("\n")[0]
 
 

@@ -11,7 +11,9 @@ Defaults
 MAX_WEEKLY_LOAD_INCREASE = 0.10
     Planned load may rise by at most 10% versus the previous week's prescribed
     load. Load is Foster's session RPE (RPE 1–10 × minutes) when a session
-    RPE is logged for that date, otherwise the duration in minutes. Rucks and
+    RPE is logged for that date, otherwise the duration in minutes. A rower
+    session shown as a shorter MaxiClimber session still counts the rower
+    minutes: that swap is equipment, not a deload. Rucks and
     hikes also take the pack-weight and vertical-gain factors in ``load.py``.
     A previous week with no load is not percentage-capped. The clearance week
     of 12 Oct 2026 (clinic visit, no ESWL) is a light base, not a training
@@ -464,11 +466,28 @@ def _day_loads(days: list[tuple[date, Session]], cache: dict) -> Optional[dict[d
             loads[day] = foster_load(minutes, rpe, pack_kg=pack, terrain=terrain)
             custom = True
             continue
-        load = planned_load(session)
+        counted = _cap_load_session(day, session)
+        load = planned_load(counted)
         loads[day] = load
-        if abs(load - minutes) > 1e-6:
+        counted_minutes = 0.0 if is_rest(counted) else float(counted[2])
+        if abs(load - minutes) > 1e-6 or abs(counted_minutes - minutes) > 1e-6:
             custom = True
     return loads if custom else None
+
+
+def _cap_load_session(day: date, session: Session) -> Session:
+    """Minutes the weekly cap counts for ``session``.
+
+    A rower day shown as a shorter MaxiClimber session still counts the
+    rower minutes. Inline import: fitness_plan must not import safety.
+    """
+    from .fitness_plan import cap_count_minutes
+    counted = cap_count_minutes(day)
+    if counted is None or is_rest(session):
+        return session
+    if int(counted) == int(session[2]):
+        return session
+    return (session[0], session[1], int(counted))
 
 
 def _raw_week(monday: date) -> list[tuple[date, Session]]:

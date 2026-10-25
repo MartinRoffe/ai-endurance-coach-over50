@@ -69,19 +69,62 @@ ATHLETE_CONSTRAINTS = (
 )
 
 
-def equipment_note(has_turbo: bool) -> str:
-    """Trainer line. Only the false case forbids indoor bike sessions."""
-    if has_turbo:
-        return (
-            "Equipment: a turbo trainer is available, so an indoor bike session is allowed. "
-            "Still no running."
-        )
-    return (
+def equipment_note(has_turbo: bool, has_rower: bool = False) -> str:
+    """Trainer and rower line. A false flag forbids that kit."""
+    turbo = (
+        "Equipment: a turbo trainer is available, so an indoor bike session is allowed. "
+        if has_turbo else
         "Equipment: he has NO turbo trainer and no indoor bike. "
         "Never tell him to ride a turbo, a trainer, Rouvy, or an erg. "
-        "Every bike ride is outdoors. Weekday hard sessions are on the indoor rower. "
+        "Every bike ride is outdoors. "
+    )
+    if has_rower:
+        rower = "Weekday hard sessions are on the indoor rower. "
+    else:
+        rower = (
+            "He has no rower right now. Do not send him to a rower. "
+            "Weekday sessions that were on the rower are a shorter MaxiClimber session instead. "
+        )
+    weekend = (
         "Weekend rides keep the ' · outdoor' label. That suffix is the same session, "
-        "not a change of plan."
+        "not a change of plan. Still no running."
+        if not has_turbo else
+        "Still no running."
+    )
+    return turbo + rower + weekend
+
+
+def weekday_equipment_sentence(has_rower: bool) -> str:
+    """One sentence for the coach prompt: where weekday hard work happens."""
+    if has_rower:
+        return (
+            "Weekday hard sessions are on the indoor rower. "
+            "Bike rides are outdoors and only at the weekend."
+        )
+    return (
+        "He has no rower right now. Weekday sessions that were on the rower are a shorter "
+        "MaxiClimber session, and they are not pushed to Garmin. "
+        "Bike rides are outdoors and only at the weekend."
+    )
+
+
+def garmin_push_sentence(has_rower: bool) -> str:
+    """What the watch actually receives in the fitness year."""
+    if has_rower:
+        return (
+            "Garmin on the watch: weekend outdoor rides (Z2 Easy, Long Ride (Easy)) push "
+            "as cycling workouts. Rower sessions (Threshold — rower, VO2 — rower, Z2 — rower) "
+            "push as cardio workouts, paced by heart rate and RPE. Saturday rucks push "
+            "as hiking workouts. There is no rower split "
+            "test yet — a 2,000 m or 20-minute test would set 500 m splits. "
+            "MaxiClimber, kettlebell, strength, hikes, Teide, and BUSAR stay "
+            "calendar-only (web Sessions)."
+        )
+    return (
+        "Garmin on the watch: weekend outdoor rides (Z2 Easy, Long Ride (Easy)) push "
+        "as cycling workouts. Saturday rucks push as hiking workouts. "
+        "Rower sessions are not on the plan: they are a shorter MaxiClimber session and stay "
+        "off the watch, with kettlebell, strength, hikes, Teide, and BUSAR."
     )
 
 

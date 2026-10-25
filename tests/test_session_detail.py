@@ -213,26 +213,26 @@ def test_easy_rides_are_the_ones_pushed_to_garmin():
     assert easy["power_target"]
     assert "220" in easy["power_target"] or "FTP" in easy["power_target"]
     hard = day_detail(date(2026, 10, 20))
-    assert hard["garmin"] is True
-    assert "Threshold" in hard["title"] or hard["type"] == "threshold"
-    assert hard["garmin_text"] == "Pushed to Garmin"
-    # Weekday rower sessions are pushed as cardio, and the line says so.
-    rower = day_detail(date(2026, 11, 5))
-    assert "rower" in (rower["title"] or "").lower()
-    assert rower["garmin"] is True
-    _assert_push_text_matches_flag(rower)
+    assert hard["garmin"] is False
+    assert "MaxiClimber" in hard["title"]
+    assert hard["garmin_text"] == "Not pushed to Garmin"
+    # Weekday sessions that were on the rower are MaxiClimber, and stay off the watch.
+    swapped = day_detail(date(2026, 11, 5))
+    assert "maxiclimber" in (swapped["title"] or "").lower()
+    assert swapped["garmin"] is False
+    _assert_push_text_matches_flag(swapped)
 
 
 def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
-    """Tue 20 Oct is the only hard session that week, and it is pushed."""
+    """Tue 20 Oct is the only hard session that week, on the MaxiClimber."""
     assert _hard_dates(date(2026, 10, 19)) == [date(2026, 10, 20)]
     detail = day_detail(date(2026, 10, 20))
-    assert detail["type"] == "rower"
+    assert detail["type"] == "maxiclimber"
     assert "Threshold" in detail["title"]
-    assert detail["duration_min"] == 40
+    assert detail["duration_min"] == 30
     assert "the only hard day this week" in detail["purpose"].lower()
     assert "two hard" not in detail["purpose"].lower()
-    assert detail["garmin"] is True
+    assert detail["garmin"] is False
     _assert_push_text_matches_flag(detail)
 
 
@@ -255,13 +255,13 @@ def test_week_from_26_oct_has_one_hard_day_and_thursday_is_easy_z2():
     assert is_hard(("maxiclimber", easy["title"], 30)) is False
     assert easy["garmin"] is False
     _assert_push_text_matches_flag(easy)
-    # VO2 in a later two-hard week is also a rower session, same count.
+    # VO2 in a later two-hard week is the MaxiClimber swap of the rower session.
     vo2 = day_detail(date(2026, 11, 3))
-    assert vo2["type"] == "rower"
+    assert vo2["type"] == "maxiclimber"
     assert "VO2" in vo2["title"]
     assert len(_hard_dates(date(2026, 11, 2))) == 2
     assert "one of the two hard days this week" in vo2["purpose"].lower()
-    assert vo2["garmin"] is True
+    assert vo2["garmin"] is False
     _assert_push_text_matches_flag(vo2)
 
 
@@ -321,8 +321,8 @@ def test_day_detail_template_shows_one_push_status_and_the_week_count():
         })
 
     only = render(date(2026, 10, 20))
-    assert "Pushed to Garmin" in only
-    assert "Not pushed to Garmin" not in only
+    assert "Not pushed to Garmin" in only
+    assert only.lower().count("pushed to garmin") == 1
     assert "only hard day this week" in only.lower()
     assert "two hard" not in only.lower()
 
