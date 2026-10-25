@@ -236,19 +236,25 @@ def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
     _assert_push_text_matches_flag(detail)
 
 
-def test_week_from_26_oct_has_two_hard_days_and_push_text_agrees():
-    """Two hard days from the week of 26 Oct. Both are rower sessions and both are pushed."""
+def test_week_from_26_oct_has_one_hard_day_and_thursday_is_easy_z2():
+    """Tue 27 Oct is the only hard day. Thu 29 is easy zone 2, not VO2."""
     hard = _hard_dates(date(2026, 10, 26))
-    assert hard == [date(2026, 10, 27), date(2026, 10, 29)]
+    assert hard == [date(2026, 10, 27)]
     bike = day_detail(date(2026, 10, 27))
-    assert bike["type"] == "rower"
-    assert "one of the two hard days this week" in bike["purpose"].lower()
-    assert "only hard day" not in bike["purpose"].lower()
-    assert bike["garmin"] is True
+    assert bike["type"] == "maxiclimber"
+    assert "threshold" in bike["title"].lower()
+    assert "5 × 4 min" in " ".join(b["detail"] for b in bike["blocks"])
+    assert "the only hard day this week" in bike["purpose"].lower()
+    assert "two hard" not in bike["purpose"].lower()
+    assert bike["garmin"] is False
     _assert_push_text_matches_flag(bike)
-    rower = day_detail(date(2026, 10, 29))
-    assert rower["garmin"] is True
-    _assert_push_text_matches_flag(rower)
+    easy = day_detail(date(2026, 10, 29))
+    assert easy["type"] == "maxiclimber"
+    assert "z2" in easy["title"].lower()
+    assert easy["duration_min"] == 30
+    assert is_hard(("maxiclimber", easy["title"], 30)) is False
+    assert easy["garmin"] is False
+    _assert_push_text_matches_flag(easy)
     # VO2 in a later two-hard week is also a rower session, same count.
     vo2 = day_detail(date(2026, 11, 3))
     assert vo2["type"] == "rower"
@@ -302,7 +308,7 @@ def test_logged_activity_brief_is_plain_data():
 
 
 def test_day_detail_template_shows_one_push_status_and_the_week_count():
-    """The dialog for 20 Oct must not contradict itself, and 27 Oct names two."""
+    """The dialog for 20 Oct must not contradict itself. 27 Oct is the only hard day."""
     env = TEMPLATES.env
 
     def render(day: date) -> str:
@@ -321,9 +327,9 @@ def test_day_detail_template_shows_one_push_status_and_the_week_count():
     assert "two hard" not in only.lower()
 
     two = render(date(2026, 10, 27))
-    assert "Pushed to Garmin" in two
-    assert "Not pushed to Garmin" not in two
-    assert "one of the two hard days this week" in two.lower()
+    assert "Not pushed to Garmin" in two
+    assert "only hard day this week" in two.lower()
+    assert "two hard" not in two.lower()
 
 
 def test_day_detail_template_escapes_and_does_not_mark_safe():

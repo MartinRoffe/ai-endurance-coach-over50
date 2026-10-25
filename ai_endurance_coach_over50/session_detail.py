@@ -941,7 +941,11 @@ def _fill_easy_bike(detail: dict[str, Any], label: str, dur: int, book: dict[str
         ]
     fuel = " Eat from the first hour." if dur >= 75 else ""
     outside = _outdoor_ride_note(detail) if "outdoor" in label.lower() else ""
-    if long_ride:
+    if long_ride and dur < 90:
+        detail["purpose"] = (
+            "Easy ride in zone 1–2. Keep it conversational." + fuel + outside
+        )
+    elif long_ride:
         detail["purpose"] = (
             "Easy long ride. The point is time in zone 2, not a harder average." + fuel + outside
         )
@@ -1048,6 +1052,53 @@ def _fill_rower(detail: dict[str, Any], label: str, dur: int, book: dict[str, An
 
 
 def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any]) -> None:
+    low = label.lower()
+    easy = ("z2" in low or "easy" in low) and "threshold" not in low and "vo2" not in low
+    if easy:
+        detail["role"] = "endurance"
+        detail["hr_target"] = _hr(book, 2)
+        detail["power_target"] = ""
+        detail["rpe_target"] = "3–4"
+        detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
+        main = max(dur - 10, 15) if dur else 20
+        detail["blocks"] = [
+            _block("Warm-up", "5 min very easy climbing. Hands light on the bars."),
+            _block("Main set", f"About {main} min in zone 2. Conversational. Short steps. Do not yank the handles."),
+            _block("Cool-down", "5 min easier than the main set."),
+        ]
+        detail["purpose"] = (
+            f"Easy zone 2 on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}. "
+            "Not a hard day."
+        )
+        return
+    if "threshold" in low:
+        detail["role"] = "threshold"
+        detail["hr_target"] = _hr(book, 4)
+        detail["power_target"] = ""
+        detail["rpe_target"] = "7"
+        detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
+        if dur <= 45:
+            detail["blocks"] = [
+                _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
+                _block("Main set", "5 × 4 min at RPE 7, with 2 min easy between. Short steps. Do not yank the handles."),
+                _block("Cool-down", "5 min easy climbing."),
+            ]
+        else:
+            detail["blocks"] = [
+                _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
+                _block("Main set", "Threshold efforts at RPE 7, with easy climbing between. Short steps. Do not yank the handles."),
+                _block("Cool-down", "5 min easy climbing."),
+            ]
+        try:
+            day = date.fromisoformat(detail["date"])
+        except ValueError:
+            day = None
+        lead = f"{hard_day_phrase(day)}. " if day else ""
+        detail["purpose"] = (
+            lead
+            + f"Threshold on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
+        )
+        return
     detail["role"] = "vo2"
     detail["hr_target"] = _hr(book, 5)
     detail["power_target"] = ""
@@ -1085,6 +1136,21 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
             "Dress rehearsal for the pack test, one week out. Time it, then stop. "
             "No strength session on top."
         )
+    elif "flat" in label.lower():
+        detail["rpe_target"] = "3–4"
+        detail["hr_target"] = _hr(book, 1)
+        detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}. Flat and easy."
+        detail["blocks"] = [
+            _block("Warm-up", "5 min walk, pack off."),
+            _block("Main set", f"35–40 min with {pack}, flat and easy. Stop at 35 if that is enough. Conversational pace."),
+            _block("Cool-down", "5 min with the pack off."),
+        ]
+        detail["ruck_route"] = "A flat path. No hill on this one."
+        detail["ruck_elevation"] = "As flat as you can find. The easy pace is the session."
+        detail["purpose"] = (
+            f"Easy flat ruck at {pack}, 35–40 min. "
+            "A gentle loaded walk. Not the 15 kg hill progression."
+        )
     else:
         main = max(dur - 20, 0)
         detail["blocks"] = [
@@ -1099,9 +1165,10 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["ruck_elevation"] = (
             "Whatever that route already gives you. The pack stays put; time is the progression."
         )
+        pack_line = "The pack stays 15 kg." if kg == 15 else f"The pack is {pack}."
         detail["purpose"] = (
             f"Saturday ruck at {pack}, about {_fmt_dur(dur) or 'the planned time'}. "
-            "The pack stays 15 kg. This is the weekly loaded walk toward the "
+            f"{pack_line} This is the weekly loaded walk toward the "
             "30-miler and the hill weekends, not a gym session on top."
         )
 
