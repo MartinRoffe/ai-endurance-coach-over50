@@ -178,21 +178,14 @@ def _assert_portion_caps(food: dict, *, easy: bool):
         assert "Post-ride" not in [meal["type"] for meal in food["meals"]]
 
 
-def _assert_on_target(day: date, *, easy: bool | None = None, strict: bool = True):
+def _assert_on_target(day: date, *, easy: bool | None = None):
     food = build_today_food(PLAN_START, day)
     target = today_targets(day)
     assert food["camp_mode"] is False
     total = food["meals_kcal_total"]
-    # A long ride's on-bike row is the homemade cake. That is heavier than the
-    # old 25 g shop cake, so the plated day can miss the calorie band and the
-    # calcium floor while the fuel is still counted inside the day.
-    if strict:
-        assert abs(total - target["kcal"]) <= target["kcal"] * 0.05 + 0.01
-        assert food["dairy_calcium_mg"] >= 1000
-    else:
-        on_bike = next(meal for meal in food["meals"] if meal["type"] == "On-bike")
-        assert int(on_bike["macros"]["kcal"]) >= 300
+    assert abs(total - target["kcal"]) <= target["kcal"] * 0.05 + 0.01
     assert target["protein_low"] <= food["meals_protein_total"] <= target["protein_high"]
+    assert food["dairy_calcium_mg"] >= 1000
     slots = [meal["type"] for meal in food["meals"]]
     assert "Breakfast" in slots and "Lunch" in slots and "Dinner" in slots
     for meal in food["meals"]:
@@ -230,7 +223,7 @@ def test_saturday_17_oct_2026_and_cut_week(monkeypatch):
     monkeypatch.setattr(
         plan_mod, "session_for_date_extended", lambda d: ("long", "Long ride", 180)
     )
-    _assert_on_target(date(2027, 1, 10), strict=False)
+    _assert_on_target(date(2027, 1, 10))
 
 
 @pytest.mark.parametrize("kind_date", [date(2026, 10, 17), date(2027, 1, 6)])
@@ -296,8 +289,10 @@ def test_cut_week_easy_hard_and_long_inside_1600_to_2000(monkeypatch):
         plan_mod, "session_for_date_extended", lambda d: ("long", "Long ride", 120),
     )
     long_day = today_targets(date(2027, 1, 10))
-    assert long_day["kcal"] == 2000
-    _assert_on_target(date(2027, 1, 10), easy=False, strict=False)
+    assert long_day["plate_kcal"] == 2000
+    assert long_day["kcal"] == 2000 + long_day["on_bike_kcal"]
+    assert long_day["on_bike_kcal"] > 0
+    _assert_on_target(date(2027, 1, 10), easy=False)
 
 
 def test_unreachable_high_target_stays_under_and_says_so():

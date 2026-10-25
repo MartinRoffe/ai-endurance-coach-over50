@@ -144,6 +144,33 @@ def training_foods(
     }
 
 
+def on_bike_slot_totals(
+    kind: str,
+    dur_min: int,
+    ref_date: date | None,
+    *,
+    ride: bool = True,
+) -> tuple[int, int]:
+    """Rounded kcal and protein of the on-bike slot. Zeros when it is empty."""
+    training = training_foods(kind, int(dur_min or 0), ref_date, ride=ride)
+    if not training["cakes"] and not training["on_bike"]:
+        return 0, 0
+    macros = _foods_macros(training["on_bike"], int(training["cakes"]))
+    kcal, protein, _carbs = _meal_triple(macros)
+    return kcal, protein
+
+
+def on_bike_slot_kcal(
+    kind: str,
+    dur_min: int,
+    ref_date: date | None,
+    *,
+    ride: bool = True,
+) -> int:
+    """Rounded kcal of the on-bike slot. Zero when that slot is empty."""
+    return on_bike_slot_totals(kind, dur_min, ref_date, ride=ride)[0]
+
+
 def _component_table(recipe: Recipe) -> tuple[dict, dict]:
     """Non-starch pot and carbohydrate side, packed for each step."""
     from .model import STARCH_IDS
@@ -187,6 +214,11 @@ def solve(
     """Pick the closest real portions. Slightly under the calorie target beats an oversized plate."""
     del lunch_fixed, dinner_fixed
     training = training_foods(kind, int(dur_min or 0), ref_date, ride=ride)
+    if kind == "long":
+        # Cake protein is eaten, so it must not push the plates under the protein ceiling.
+        fuel_macros = _foods_macros(training["on_bike"], int(training["cakes"]))
+        _fuel_kcal, fuel_protein, _fuel_carbs = _meal_triple(fuel_macros)
+        protein_high = int(protein_high) + fuel_protein
     bf_pack = {mult: _pack(portion_macros(breakfast, mult)) for mult in _BF_STEPS}
     lunch_pot, lunch_side = _component_table(lunch)
     dinner_pot, dinner_side = _component_table(dinner)
@@ -205,7 +237,10 @@ def solve(
             continue
         packed = _pack(_foods_macros(foods, cakes))
         ki, pi = _meal_ints(packed[0], packed[1], packed[2])
-        fixed_k += ki
+        # A long ride adds on-bike food on top of the base. Its protein still
+        # counts. Its calories do not come out of breakfast, lunch, or dinner.
+        if not (key == "on_bike" and kind == "long"):
+            fixed_k += ki
         fixed_p += pi
         fixed_ca += packed[3]
 
