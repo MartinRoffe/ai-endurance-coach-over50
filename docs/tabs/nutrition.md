@@ -158,8 +158,11 @@ Prep** for the active week’s cook day.
 
 **Route:** `/nutrition/shopping-list` (the Lidl URL serves the same page)
 
-One list for this cook-week’s batches plus everyday staples (yoghurt, milk,
-eggs, fruit, lemons, creatine). Use it at Asda or Lidl.
+Chef owns the recipes, the plan, and the shop. The nutrition page shows
+evening plate targets by load (rest, training or ruck, long ride), scaled
+when the day’s calories are not 1,900. The app’s own gram list is still on
+the page, behind **Show the app list** (`?app_shop=1`) or
+`SHOW_APP_SHOPPING_LIST=true`. It is off unless one of those is set.
 
 ---
 

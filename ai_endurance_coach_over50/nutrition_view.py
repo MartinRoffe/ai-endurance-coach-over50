@@ -9,11 +9,14 @@ from datetime import date, timedelta
 
 from .nutrition_plan import (
     SUPPLEMENTS,
+    _EVENING_BASE_KCAL,
     _SUPPLEMENT_DISCLAIMER,
     build_today_food,
+    evening_plate_target,
     prep_cycle_week_index,
     prep_week_day_targets,
     today_card,
+    today_targets,
 )
 from .recipes.catalog import all_recipes, recipe_by_id
 from .recipes.menu import cook_plan, shopping_list
@@ -108,6 +111,27 @@ def _week_monday(today: date) -> date:
     return today - timedelta(days=today.weekday())
 
 
+_EVENING_ROWS = (
+    ("Rest", "rest"),
+    ("Training or ruck", "training"),
+    ("Long ride", "long"),
+)
+
+
+def evening_target_rows(day_kcal: int) -> list[dict]:
+    """Evening plate targets for the three loads, scaled from ``day_kcal``."""
+    rows = []
+    for label, key in _EVENING_ROWS:
+        kcal, protein, carbs = evening_plate_target(key, day_kcal)
+        rows.append({
+            "label": label,
+            "kcal": kcal,
+            "protein": protein,
+            "carbs": carbs,
+        })
+    return rows
+
+
 def nutrition_page(
     plan_start: date,
     today: date,
@@ -119,6 +143,7 @@ def nutrition_page(
     ride_work_kj: int | None = None,
     ea_words: str | None = None,
     cut_line: dict | None = None,
+    show_shop: bool = False,
 ) -> dict:
     """Everything /nutrition renders for one date."""
     card = today_card(today)
@@ -146,6 +171,8 @@ def nutrition_page(
     plan = cook_plan(prep_week, targets)
     shop_monday = _week_monday(today)
     batches = list(plan["pots"]) + list(plan["soups"])
+    tt = today_targets(today)
+    evening_base = int(tt.get("plate_kcal") or tt["kcal"])
     return {
         "today": today.isoformat(),
         "day_name": food.get("day_name") or today.strftime("%A %-d %B"),
@@ -170,6 +197,10 @@ def nutrition_page(
         "shop_ahead": today.weekday() >= 4,
         "batches": batches,
         "groups": shopping_list(prep_week, targets),
+        "show_shop": bool(show_shop),
+        "evening_targets": evening_target_rows(evening_base),
+        "evening_base": evening_base,
+        "evening_scaled": evening_base != _EVENING_BASE_KCAL,
         "tdee_today": tdee_today,
         "ride_work_kj": ride_work_kj,
         "ea_words": ea_words,

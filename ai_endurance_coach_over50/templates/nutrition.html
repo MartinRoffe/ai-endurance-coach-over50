@@ -26,6 +26,7 @@
   section:last-child { border-bottom:none; }
   .section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
   .num-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .evening-grid { grid-template-columns:repeat(3,1fr); }
   .num-card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 16px 14px; }
   .num-card .lbl { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
   .num-card .val { font-family:'Bebas Neue',sans-serif; font-size:40px; line-height:1; letter-spacing:0.02em; margin:6px 0 4px; }
@@ -79,6 +80,7 @@
     .hero { padding:24px 20px 16px; }
     .container { padding:0 14px 40px; }
     .num-grid { grid-template-columns:1fr 1fr; }
+    .evening-grid { grid-template-columns:1fr; }
     .week-grid { grid-template-columns:1fr; }
     .recipe { padding-left:16px; }
     .slot { width:72px; }
@@ -142,6 +144,25 @@
   </div>
   <p class="habit-line">{{ card.habit }}</p>
   <p class="stone-line">{{ card.stone_line }}</p>
+</section>
+{% endif %}
+
+{% if evening_targets %}
+<section id="evening-targets">
+  <div class="section-label">Evening targets</div>
+  <p style="font-size:14px;color:#cdd0bb;margin-bottom:12px">These are targets for the evening plate. Chef owns the recipes, the plan, and the shop.</p>
+  {% if evening_scaled %}
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Scaled from a {{ "{:,}".format(evening_base) }} kcal day.</p>
+  {% endif %}
+  <div class="num-grid evening-grid">
+    {% for row in evening_targets %}
+    <div class="num-card">
+      <div class="lbl">{{ row.label }}</div>
+      <div class="val" style="font-size:32px">{{ row.kcal }}</div>
+      <div class="note">{{ row.protein }} g protein · {{ row.carbs }} g carbs</div>
+    </div>
+    {% endfor %}
+  </div>
 </section>
 {% endif %}
 
@@ -299,13 +320,18 @@
 
 <section id="shop">
   <div class="section-label">Shopping list · {{ shop_label }}</div>
-  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">One list, in grams. Same names at Lidl or Asda. <a href="#shop" onclick="window.print();return false;">Print</a></p>
+  {% if show_shop %}
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Chef’s list is the one to shop from. This is the app’s own list. One list, in grams. Same names at Lidl or Asda. <a href="#shop" onclick="window.print();return false;">Print</a></p>
   {% for group in groups %}
   <div class="shop-group">
     <h3>{{ group.group }}</h3>
     <ul>{% for item in group["items"] %}<li>{{ item }}</li>{% endfor %}</ul>
   </div>
   {% endfor %}
+  <p class="quiet"><a href="/nutrition?date={{ today }}">Hide the app list</a></p>
+  {% else %}
+  <p style="font-size:13px;color:var(--muted)">The app’s own shopping list is off. Chef’s list is the one to shop from. <a href="/nutrition?date={{ today }}&amp;app_shop=1">Show the app list</a></p>
+  {% endif %}
 </section>
 
 <section id="advanced">

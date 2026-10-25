@@ -34,6 +34,7 @@ from ..coach_context import build_coach_context as _build_coach_context
 from ..display import enrich_activity
 from ..tts import synthesize as _tts_synthesize, tts_configured as _tts_configured
 from ..search import search as app_search
+from ..settings import show_app_shopping_list
 from ..history import (
     ACTIVITY_MATCH,
     acclimation_latest,
@@ -1419,8 +1420,18 @@ def _nutrition_ref(day: Optional[str]) -> date:
     return _today()
 
 
+def _query_flag(value: Optional[str]) -> bool:
+    if value is None or not str(value).strip():
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 @app.get("/nutrition", response_class=HTMLResponse)
-async def nutrition_plan(request: Request, date: Optional[str] = None):
+async def nutrition_plan(
+    request: Request,
+    date: Optional[str] = None,
+    app_shop: Optional[str] = None,
+):
     today = _nutrition_ref(date)
     from ..alerts import weekly_ea_report
     from ..nutrition_view import nutrition_page
@@ -1451,6 +1462,7 @@ async def nutrition_plan(request: Request, date: Optional[str] = None):
         ride_work_kj=(nutrition_today or {}).get("ride_work_kj"),
         ea_words=(ea_report or {}).get("words") if ea_report else None,
         cut_line=cut_status_line(today),
+        show_shop=_query_flag(app_shop) or show_app_shopping_list(),
     )
     return TEMPLATES.TemplateResponse(request=request, name="nutrition.html", context=page)
 
