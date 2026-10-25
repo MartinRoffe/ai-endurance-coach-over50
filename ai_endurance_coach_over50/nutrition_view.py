@@ -16,12 +16,25 @@ from .nutrition_plan import (
     today_card,
 )
 from .recipes.catalog import all_recipes, recipe_by_id
+from .recipes.fit import recipes_under_protein_floor
 from .recipes.menu import cook_plan, shopping_list
 from .recipes.model import batch_grams_by_food, portion_grams_by_food, portion_macros
 from .recipes.nutrition_table import food
 
 RIDE_SLOTS = ("Pre-ride", "On-bike", "Post-ride")
 _PLATE_SLOTS = ("Breakfast", "Lunch", "Dinner")
+_SHORT_RECIPE_NOTE = (
+    "This recipe stays under 35 g protein at the largest portion, "
+    "so the day keeps its calorie target."
+)
+_SHORT_RECIPE_IDS: set[str] | None = None
+
+
+def _short_recipe_ids() -> set[str]:
+    global _SHORT_RECIPE_IDS
+    if _SHORT_RECIPE_IDS is None:
+        _SHORT_RECIPE_IDS = set(recipes_under_protein_floor())
+    return _SHORT_RECIPE_IDS
 
 
 def _times(value: float) -> str:
@@ -97,6 +110,7 @@ def present_meal(meal: dict) -> dict:
         "share": meal_share_line(meal),
         "ingredients": ingredients,
         "steps": steps,
+        "note": _SHORT_RECIPE_NOTE if recipe_id in _short_recipe_ids() else "",
         "recipe_url": f"/nutrition/recipes#{recipe_id}" if recipe_id else None,
         "ride": slot in RIDE_SLOTS,
     }

@@ -3,7 +3,11 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+from fastapi.testclient import TestClient
+
 from ai_endurance_coach_over50.recipes.catalog import recipe_by_id
+from ai_endurance_coach_over50.server import app
 from ai_endurance_coach_over50.recipes.fit import (
     build_meals,
     published_totals,
@@ -36,6 +40,17 @@ def _day(breakfast, lunch, dinner, target, protein_low, protein_high):
 def _in_band(total: int, target: int) -> bool:
     band = max(1, round(target * 0.05))
     return abs(total - target) <= band
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def test_porridge_page_says_it_cannot_reach_35g(client):
+    html = client.get("/nutrition?date=2026-10-23").text
+    assert "Porridge" in html
+    assert "stays under 35 g protein at the largest portion" in html
 
 
 def test_only_two_breakfasts_cannot_reach_35g():
