@@ -173,6 +173,7 @@
             <span class="macro m-p">P {{ m.protein }} g</span>
             <span class="macro m-c">C {{ m.carbs }} g</span>
           </div>
+          {% if m.note %}<div class="share">{{ m.note }}</div>{% endif %}
         </div>
       </div>
     </summary>
