@@ -26,10 +26,8 @@ _SNACKS = (
     ("toast", {"bread": 75.0, "honey": 22.0}),
 )
 _BANANA_G = 120.0
-# Calorie-model piece weight for the day's on-bike row. The homemade cake is
-# heavier than this; its real carbohydrate is what fuel_prep_for_ride counts.
-_CAKE_G = 25.0
 _BOTTLE_G = 60.0
+# The day calorie card prices this homemade cake. Sweet cakes are the other batch.
 _SAVOURY_CAKE_ID = "standard-rice-cake"
 
 
@@ -55,11 +53,23 @@ def _add(a: tuple[float, float, float, float], b: tuple[float, float, float, flo
 
 
 def _foods_pack(foods: dict[str, float]) -> tuple[float, float, float, float]:
+    return _pack(_foods_macros(foods))
+
+
+def _foods_macros(foods: dict[str, float], cakes: int = 0) -> dict[str, float]:
+    """Nutrients in a snack or ride slot.
+
+    Rice cakes are the homemade savoury recipe, one serving per cake. The
+    shop rice-cake row is not the piece the day is priced on.
+    """
     total = empty_macros()
     for food_id, grams in foods.items():
-        if grams > 0:
-            add_macros(total, macros_for(food_id, grams))
-    return _pack(total)
+        if food_id == "rice_cake" or grams <= 0:
+            continue
+        add_macros(total, macros_for(food_id, grams))
+    if cakes:
+        add_macros(total, portion_macros(recipe_by_id(_SAVOURY_CAKE_ID), cakes))
+    return total
 
 
 def _meal_ints(kcal: float, protein: float, carbs: float) -> tuple[int, int]:
@@ -120,8 +130,6 @@ def training_foods(
         bottles = int(prep.get("carb_drink_bottles") or 0)
         post["milk_semi"] = 300.0
         note = prep.get("prep_note") or ""
-    if cakes:
-        on_bike["rice_cake"] = cakes * _CAKE_G
     if bottles:
         on_bike["maltodextrin"] = bottles * _BOTTLE_G
     return {
@@ -192,9 +200,10 @@ def solve(
     fixed_ca = 0.0
     for key in ("pre", "on_bike", "post"):
         foods = training[key]
-        if not foods:
+        cakes = int(training["cakes"]) if key == "on_bike" else 0
+        if not foods and not cakes:
             continue
-        packed = _foods_pack(foods)
+        packed = _pack(_foods_macros(foods, cakes))
         ki, pi = _meal_ints(packed[0], packed[1], packed[2])
         fixed_k += ki
         fixed_p += pi
@@ -325,7 +334,7 @@ def build_meals(
             "Eat the banana about 30–60 minutes before you start. One medium banana is about 120 g.",
         ))
     meals.append(_recipe_meal("Lunch", lunch, plan.lunch, plan.lunch_side))
-    if training["on_bike"]:
+    if training["cakes"] or training["on_bike"]:
         cakes = training["cakes"]
         bottles = training["bottles"]
         bits = []
@@ -347,7 +356,9 @@ def build_meals(
             name = "Savoury rice cakes and carb drink"
         elif bottles:
             name = "Carb drink"
-        meal = _food_meal(during_slot, name, training["on_bike"], " ".join(bits))
+        meal = _food_meal(
+            during_slot, name, training["on_bike"], " ".join(bits), cakes=cakes,
+        )
         if cakes:
             shown = _shown_ride_lines(training["on_bike"], cakes)
             meal["display_ingredients"] = shown
@@ -468,11 +479,15 @@ def _meal_triple(macros: dict[str, float]) -> tuple[int, int, int]:
     return k, p, c
 
 
-def _food_meal(slot: str, name: str, foods: dict[str, float], detail: str) -> dict:
-    macros = empty_macros()
-    for food_id, grams in foods.items():
-        if grams > 0:
-            add_macros(macros, macros_for(food_id, grams))
+def _food_meal(
+    slot: str,
+    name: str,
+    foods: dict[str, float],
+    detail: str,
+    *,
+    cakes: int = 0,
+) -> dict:
+    macros = _foods_macros(foods, cakes)
     kcal, protein, carbs = _meal_triple(macros)
     return {
         "slot": slot,
@@ -492,7 +507,7 @@ def _food_meal(slot: str, name: str, foods: dict[str, float], detail: str) -> di
 
 
 def _shown_ride_lines(foods: dict[str, float], cakes: int) -> list[str]:
-    """What the page lists for the on-bike slot. The shop cake row stays in the calorie sum only."""
+    """What the page lists for the on-bike slot. Cake calories come from the recipe."""
     lines = [f"Homemade savoury rice cakes — {cakes}"]
     for food_id, grams in sorted(foods.items(), key=lambda pair: food(pair[0]).name):
         if food_id == "rice_cake" or grams < 0.5:

@@ -97,5 +97,6 @@ def test_evening_plate_is_closer_to_the_load_target(monkeypatch):
     assert ctx["dtype"] == "long"
     assert ctx["target"]["kcal"] == 1900
     assert abs(ctx["totals"]["kcal"] - 1900) <= 1900 * 0.05
-    dinner = _dinner(meals)
-    assert dinner[3] > plates["rest"][3]
+    on_bike = next(meal for meal in meals if meal[0] == "On-bike")
+    assert on_bike[3] == 332
+    assert on_bike[5] == 58

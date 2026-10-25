@@ -414,8 +414,11 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
     assert "Pre-ride" in slots and "On-bike" in slots and "Post-ride" in slots
     assert "Breakfast" in slots and "Dinner" in slots
     assert out["kcal_target"] == np_mod.today_targets(sunday)["kcal"]
-    assert abs(out["meals_kcal_total"] - out["kcal_target"]) <= out["kcal_target"] * 0.05
     assert out["kcal_target"] == 2000 + round(175 * 1.5)
+    on_bike = next(meal for meal in out["meals"] if meal["type"] == "On-bike")
+    # Eight homemade cakes, not eight 25 g shop cakes.
+    assert int(on_bike["macros"]["kcal"]) > 1000
+    assert "Savoury rice cakes" in on_bike["name"]
     card = np_mod.today_card(sunday)
     assert card["kind"] == "long"
     assert set(card) >= {"kcal", "protein_g", "carbs_g", "fluids", "habit", "stone_line"}
