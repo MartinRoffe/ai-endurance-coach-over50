@@ -72,6 +72,8 @@ def test_evening_plate_is_closer_to_the_load_target(monkeypatch):
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 1900)
     # Rest and training fit a 1,900 kcal day. A long ride's on-bike food
     # shares that same day, so the Sunday steak cannot also be a 760 kcal plate.
+    # Breakfast and lunch take enough of the day to clear 35 g protein, which
+    # leaves the steak smaller than the rest-day dinner.
     cases = {
         date(2026, 10, 26): "rest",
         date(2026, 10, 27): "training",
@@ -97,5 +99,6 @@ def test_evening_plate_is_closer_to_the_load_target(monkeypatch):
     assert ctx["dtype"] == "long"
     assert ctx["target"]["kcal"] == 1900
     assert abs(ctx["totals"]["kcal"] - 1900) <= 1900 * 0.05
-    dinner = _dinner(meals)
-    assert dinner[3] > plates["rest"][3]
+    for slot in ("Breakfast", "Lunch", "Dinner"):
+        plate = next(meal for meal in meals if meal[0] == slot)
+        assert plate[4] >= 35, plate

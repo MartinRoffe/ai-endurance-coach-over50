@@ -2,21 +2,27 @@
 
 Breakfast stays a real plate (0.75×, 1×, or 1.25×). Lunch and dinner move in
 quarter-plate steps. Rice, pasta, potato, and bread scale on their own.
-Evening yoghurt stays at or under 250 g. Easy days get one modest snack or none.
-Hard and long days take the ride food the session length already asks for.
+Each of those three plates aims for 35 g protein when a larger step still
+fits the calorie band. Evening yoghurt stays at or under 250 g. Easy days
+get one modest snack or none. Hard and long days take the ride food the
+session length already asks for.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
 
-from .catalog import recipe_by_id
+from .catalog import BATCHES, BREAKFASTS, WEEKEND, recipe_by_id
 from .model import Recipe, numbered_method, portion_grams_by_food, portion_macros
 from .nutrition_table import add_macros, empty_macros, food, macros_for
 
 _BF_STEPS = (0.75, 1.0, 1.25)
 _PLATE_STEPS = (0.75, 1.0, 1.25, 1.5)
 _SIDE_STEPS = (0.0, 0.5, 1.0, 1.5, 2.0)
+# Each main plate aims for this much protein. The penalty sits under the
+# calorie-band miss (2,000 / 9,000) and the daily protein miss (8,000), so a
+# day that cannot afford the grams keeps its calorie target.
+_PROTEIN_FLOOR_G = 35
 _YOG_STEPS = (0, 50, 100, 150, 200, 250)
 _MILK_STEPS = (0, 100, 150, 200, 250, 300, 350, 400)
 # One modest snack, or none. Both sit inside 150–250 kcal.
@@ -75,6 +81,46 @@ def _meal_ints(kcal: float, protein: float, carbs: float) -> tuple[int, int]:
 def _times(value: float) -> str:
     text = f"{value:.2f}".rstrip("0").rstrip(".")
     return f"{text}×"
+
+
+def _floor_penalty(protein: int) -> float:
+    if protein >= _PROTEIN_FLOOR_G:
+        return 0
+    return 1500 + (_PROTEIN_FLOOR_G - protein) * 40
+
+
+def _plate_protein(recipe: Recipe, multiplier: float, side: float) -> int:
+    return _meal_triple(portion_macros(recipe, multiplier, side_multiplier=side))[1]
+
+
+def _max_plate_protein(recipe: Recipe, *, breakfast: bool) -> int:
+    if breakfast:
+        return max(_plate_protein(recipe, mult, mult) for mult in _BF_STEPS)
+    return max(
+        _plate_protein(recipe, mult, side)
+        for mult in _PLATE_STEPS
+        for side in _SIDE_STEPS
+    )
+
+
+def recipes_under_protein_floor() -> list[str]:
+    """Recipe ids that stay under 35 g protein at the largest allowed portion.
+
+    Breakfast uses the breakfast steps. Lunch and dinner use the plate and
+    side steps. Ride-fuel cakes are not main meals.
+    """
+    short = [
+        recipe.id
+        for recipe in BREAKFASTS.values()
+        if _max_plate_protein(recipe, breakfast=True) < _PROTEIN_FLOOR_G
+    ]
+    for group in (BATCHES, WEEKEND):
+        short.extend(
+            recipe.id
+            for recipe in group.values()
+            if _max_plate_protein(recipe, breakfast=False) < _PROTEIN_FLOOR_G
+        )
+    return short
 
 
 def _has_side(recipe: Recipe) -> bool:
@@ -281,6 +327,7 @@ def solve(
                             score += 8000 + (protein - protein_high) * 30
                         if dairy < 1000:
                             score += 3000 + (1000 - dairy)
+                        score += _floor_penalty(bp) + _floor_penalty(lp) + _floor_penalty(dp)
                         if score < best_score:
                             best_score = score
                             best = (bf, lm, dm, ls, ds, yog, milk, sfoods, kcal, protein)
@@ -445,6 +492,14 @@ def _recipe_meal(slot: str, recipe: Recipe, multiplier: float, side: float) -> d
         )
     else:
         how = f"About {int(round(macros['grams']))} g raw.{portion_bit}{side_bit} {numbered_method(recipe)}"
+    if (
+        protein < _PROTEIN_FLOOR_G
+        and _max_plate_protein(recipe, breakfast=(slot == "Breakfast")) < _PROTEIN_FLOOR_G
+    ):
+        how += (
+            f" This recipe stays under {_PROTEIN_FLOOR_G} g protein at the largest portion,"
+            " so the day keeps its calorie target."
+        )
     return {
         "slot": slot,
         "name": recipe.name,
