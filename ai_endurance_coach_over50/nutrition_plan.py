@@ -230,8 +230,8 @@ SIMPLE_RULES = [
     "Hard: minus 250. Long: maintenance plus ride fuel. Floor 1,600 kcal. No cut before 3 Jan 2027.",
     "Protein — one lean-mass target, spread across breakfast, lunch, dinner, and an evening "
     "yoghurt only when the day still needs protein or calcium. Not a fixed 350 g bowl.",
-    "Carbs — easy about 3 g/kg (a quarter plate); hard about 5 g/kg (half a plate, plus something "
-    "before and after); long about 6–7 g/kg plus 60–90 g/h on the bike.",
+    "Carbs — one figure that fits the day's calories, after protein and about a quarter of the day "
+    "for fat. On-bike grams per hour are part of that figure, not a second pile.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
     "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
         "one soup for the weekday lunches and for Monday to Thursday dinners. Friday dinner is a "
@@ -1247,12 +1247,27 @@ def today_targets(ref_date: date | None = None) -> dict:
     }
 
 
-_CARB_G_PER_KG = {"easy": 3.0, "hard": 5.0, "long": 6.5}
 _CARB_LINE = {
-    "easy": "about 3 g/kg · a quarter plate",
-    "hard": "about 5 g/kg · half a plate, plus something before and after",
-    "long": "about 6–7 g/kg, plus 60–90 g/h on the bike",
+    "easy": "fits today's calories, after protein and some fat",
+    "hard": "fits today's calories, with more of them around the session",
+    "long": "fits today's calories. On-bike grams per hour are part of this, not extra",
 }
+
+
+def carbs_g_for_kcal(kcal: int, protein_g: int) -> int:
+    """Carbohydrate grams that still fit the day's calories.
+
+    Protein is 4 kcal/g. About a quarter of the day is left for fat. The
+    rest is carbohydrate. If protein and that fat floor already use the
+    day, carbohydrate is whatever is left after protein.
+    """
+    if kcal <= 0:
+        return 0
+    protein_kcal = max(int(protein_g), 0) * 4
+    fat_kcal = int(round(kcal * 0.25))
+    if protein_kcal + fat_kcal >= kcal:
+        return max(kcal - protein_kcal, 0) // 4
+    return (kcal - protein_kcal - fat_kcal) // 4
 _KIND_LABEL = {"easy": "Easy", "hard": "Hard", "long": "Long"}
 
 
@@ -1270,7 +1285,7 @@ def today_card(ref_date: date | None = None) -> dict:
         f"{tt['protein_low']}–{tt['protein_high']} g across breakfast, lunch, dinner, "
         "and evening yoghurt if the day still needs it"
     )
-    carbs_g = round(_CARB_G_PER_KG[kind] * current_weight_kg())
+    carbs_g = carbs_g_for_kcal(int(tt["kcal"]), protein_g)
     sess = tt.get("session") or {}
     dur = 0
     if sess.get("type") not in (None, "rest") and sess.get("dur_min"):
