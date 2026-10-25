@@ -231,7 +231,7 @@ SIMPLE_RULES = [
     "Protein — one lean-mass target, spread across breakfast, lunch, dinner, and an evening "
     "yoghurt only when the day still needs protein or calcium. Not a fixed 350 g bowl.",
     "Carbs — one figure that fits the day's calories, after protein and about a quarter of the day "
-    "for fat. On-bike grams per hour are part of that figure, not a second pile.",
+    "for fat. On a long ride, on-bike fuel is added on top of the base and this figure includes it.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
     "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
         "one soup for the weekday lunches and for Monday to Thursday dinners. Friday dinner is a "
@@ -277,6 +277,7 @@ _SUPPLEMENT_DISCLAIMER = (
 # The kcal figures are one written plate. The day scaler moves the portion.
 from .recipes.catalog import BREAKFASTS as _BREAKFAST_RECIPES
 from .recipes.catalog import recipe_by_id as _recipe_by_id
+from .recipes.fit import on_bike_slot_totals
 from .recipes.model import portion_macros as _portion_macros
 
 def _breakfast_tuple(recipe) -> tuple[str, str, int, int, int]:
@@ -547,11 +548,13 @@ def _resolve_day_meals(
         ride=_session_takes_ride_fuel(session_type, session_label),
         dur_min=dur,
         ref_date=ref_date,
-        evening=evening_plate_target(dtype, tt["kcal"]),
+        evening=evening_plate_target(dtype, int(tt.get("plate_kcal") or tt["kcal"])),
     )
     meals = day["tuples"]
     target = {
         "kcal": tt["kcal"],
+        "plate_kcal": int(tt.get("plate_kcal") or tt["kcal"]),
+        "on_bike_kcal": int(tt.get("on_bike_kcal") or 0),
         "from_tdee": tt["kcal_source"] in ("tdee", "camp"),
         "tdee": tt.get("stable_tdee"),
         "planned_deficit": tt.get("planned_deficit"),
@@ -1086,6 +1089,12 @@ def format_intake_why(
             else "Camp day — UK deficit suspended"
         )
 
+    if int(target.get("on_bike_kcal") or 0) > 0 and tier == "long" and kcal is not None:
+        return (
+            f"Long ride: {int(target.get('plate_kcal') or kcal):,} base "
+            f"+ {int(target['on_bike_kcal']):,} on the bike → eat {kcal:,}"
+        )
+
     if phase == "maintenance":
         if tdee is not None and kcal is not None:
             return (
@@ -1238,6 +1247,24 @@ def today_targets(ref_date: date | None = None) -> dict:
         except Exception:
             logger.warning("today_targets failed", exc_info=True)
 
+    plate_kcal = int(target["kcal"])
+    on_bike_kcal = 0
+    if tier == "long" and not target.get("camp"):
+        # The approximate hours-over-2 h top-up is replaced by the real on-bike slot.
+        plate_kcal = int(target["kcal"]) - int(target.get("long_fuel_topup") or 0)
+        on_bike_kcal, on_bike_protein = on_bike_slot_totals(
+            "long",
+            int(dur or 0),
+            ref,
+            ride=_session_takes_ride_fuel(stype, label),
+        )
+        pt = dict(pt)
+        pt["high"] = int(pt["high"]) + on_bike_protein
+    target = dict(target)
+    target["plate_kcal"] = plate_kcal
+    target["on_bike_kcal"] = on_bike_kcal
+    target["kcal"] = plate_kcal + on_bike_kcal
+
     phase = _intake_phase(target)
     why = format_intake_why(target, tier, session=session)
     session_work = _optional_session_work_kcal(stype, label, dur)
@@ -1246,6 +1273,8 @@ def today_targets(ref_date: date | None = None) -> dict:
         "date": ref.isoformat(),
         "session": session,
         "kcal": target["kcal"],
+        "plate_kcal": int(target.get("plate_kcal") or target["kcal"]),
+        "on_bike_kcal": int(target.get("on_bike_kcal") or 0),
         "kcal_source": "camp" if target.get("camp") else ("tdee" if target.get("from_tdee") else "tier"),
         "calorie_tier": tier,
         "stable_tdee": target.get("tdee"),
@@ -1273,7 +1302,7 @@ def today_targets(ref_date: date | None = None) -> dict:
 _CARB_LINE = {
     "easy": "fits today's calories, after protein and some fat",
     "hard": "fits today's calories, with more of them around the session",
-    "long": "fits today's calories. On-bike grams per hour are part of this, not extra",
+    "long": "fits today's calories. On-bike fuel is added on top of the base",
 }
 
 

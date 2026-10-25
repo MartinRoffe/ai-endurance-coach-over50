@@ -70,8 +70,8 @@ def test_week_of_26_oct_labels_follow_the_scheduled_load(monkeypatch):
 def test_evening_plate_is_closer_to_the_load_target(monkeypatch):
     import ai_endurance_coach_over50.nutrition_plan as np_mod
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 1900)
-    # Rest and training fit a 1,900 kcal day. A long ride's on-bike food
-    # shares that same day, so the Sunday steak cannot also be a 760 kcal plate.
+    # Rest and training fit a 1,900 kcal day. A long ride keeps that base for
+    # the plates and adds on-bike fuel on top, so Sunday can still aim at 760.
     cases = {
         date(2026, 10, 26): "rest",
         date(2026, 10, 27): "training",
@@ -95,8 +95,11 @@ def test_evening_plate_is_closer_to_the_load_target(monkeypatch):
 
     meals, ctx = _resolve_day_meals(PLAN_START, date(2026, 11, 1))
     assert ctx["dtype"] == "long"
-    assert ctx["target"]["kcal"] == 1900
-    assert abs(ctx["totals"]["kcal"] - 1900) <= 1900 * 0.05
+    assert ctx["target"]["plate_kcal"] == 1900
+    assert ctx["target"]["kcal"] == 1900 + ctx["target"]["on_bike_kcal"]
+    assert abs(ctx["totals"]["kcal"] - ctx["target"]["kcal"]) <= ctx["target"]["kcal"] * 0.05
     on_bike = next(meal for meal in meals if meal[0] == "On-bike")
     assert on_bike[3] == 332
     assert on_bike[5] == 58
+    dinner = _dinner(meals)
+    assert _gap(dinner, targets["long"]) < _gap(dinner, targets["rest"])

@@ -22,7 +22,7 @@ Four numbers and one habit, from `today_card()`:
 
 - **Calories** — one figure. Easy or rest is stable TDEE minus 600. Hard is minus 250. Long is maintenance plus ride fuel.
 - **Protein** — one midpoint from the lean-mass target, eaten as four doses (breakfast, lunch, dinner, evening dairy).
-- **Carbs** — one gram figure that fits the day's calories, after protein and about a quarter of the day for fat. On-bike grams per hour are part of that figure, not a second pile on top.
+- **Carbs** — one gram figure that fits the day's calories, after protein and about a quarter of the day for fat. On a long ride, on-bike fuel is added on top of the base and this figure includes it.
 - **Fluids** — 2.5–3 L plus 0.5 L per training hour. Urine pale.
 - **Habit** — veg or fruit at every meal, plus creatine 3–5 g.
 

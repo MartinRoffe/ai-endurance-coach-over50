@@ -19,7 +19,7 @@ from .catalog import (
     WEEKS,
     recipe_by_id,
 )
-from .fit import build_meals, published_totals, solve
+from .fit import build_meals, on_bike_slot_kcal, published_totals, solve
 from .model import batch_grams_by_food, numbered_method, portion_macros, shop_line
 from .nutrition_table import AISLE_ORDER, food
 
@@ -71,16 +71,23 @@ def plan_day(
     ride: bool = True,
     evening: tuple[int, int, int] | None = None,
 ) -> dict:
-    """One day's meals, scaled so kcal and protein land on the targets."""
+    """One day's meals, scaled so kcal and protein land on the targets.
+
+    ``target_kcal`` is the day the page shows. On a long ride that includes
+    the on-bike slot, and the plates are fitted to the base underneath it.
+    """
     breakfast = breakfast_for(cycle_week, weekday)
     lunch, dinner, lunch_fixed, dinner_fixed = _plates(cycle_week, weekday)
+    fuel = 0
+    if kind == "long":
+        fuel = on_bike_slot_kcal(kind, int(dur_min or 0), ref_date, ride=ride)
     flex = solve(
         breakfast,
         lunch,
         dinner,
         lunch_fixed=lunch_fixed,
         dinner_fixed=dinner_fixed,
-        target_kcal=int(target_kcal),
+        target_kcal=int(target_kcal) - fuel,
         protein_low=int(protein_low),
         protein_high=int(protein_high),
         kind=kind,
