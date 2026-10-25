@@ -10,7 +10,9 @@ from ai_endurance_coach_over50.session_detail import day_detail
 
 def test_week_of_19_oct_matches_the_agreed_weekend():
     assert session_for_date(date(2026, 10, 19)) == ("rest", "Rest", 0)
-    assert session_for_date(date(2026, 10, 20)) == ("rower", "Threshold — rower", 40)
+    assert session_for_date(date(2026, 10, 20)) == (
+        "maxiclimber", "Threshold — MaxiClimber", 30,
+    )
     assert session_for_date(date(2026, 10, 21))[0] == "strength"
     assert session_for_date(date(2026, 10, 22)) == ("hike", "Easy steps", 32)
     assert session_for_date(date(2026, 10, 23)) == ("rest", "Rest", 0)

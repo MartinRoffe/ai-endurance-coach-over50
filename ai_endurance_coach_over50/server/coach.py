@@ -12,7 +12,14 @@ from typing import Optional
 
 from ..client import get_api
 from ..coach_context import build_coach_context as _build_coach_context
-from ..coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, equipment_note, hr_channel_note
+from ..coach_voice import (
+    ATHLETE_CONSTRAINTS,
+    COACH_VOICE,
+    equipment_note,
+    garmin_push_sentence,
+    hr_channel_note,
+    weekday_equipment_sentence,
+)
 from ..history import (
     estimated_wkg_history,
     get_coach_memory,
@@ -45,6 +52,7 @@ from .context import (
 # ── AI Coach chat ─────────────────────────────────────────────────────────────
 
 def _coach_system() -> str:
+    from ..settings import has_rower, has_turbo
     base = (
         COACH_VOICE + "\n\n"
         "You have access to their live Garmin data in the context block below. "
@@ -122,15 +130,11 @@ def _coach_system() -> str:
         "BUSAR (20–21 Feb 2027), the Lake District (27–28 Feb 2027), and Scotland "
         "(from 22 Mar 2027). Do NOT prescribe Sweetspot, Tempo, "
         "Pre-Event Long, Haute Route race weeks, or charity-ride load. Plan VO2 / "
-        "threshold days in the fitness year are live and allowed. Weekday hard sessions "
-        "are on the indoor rower. Bike rides are outdoors and only at the weekend.\n\n"
-        "Garmin on the watch: weekend outdoor rides (Z2 Easy, Long Ride (Easy)) push "
-        "as cycling workouts. Rower sessions (Threshold — rower, VO2 — rower, Z2 — rower) "
-        "push as cardio workouts, paced by heart rate and RPE. Saturday rucks push "
-        "as hiking workouts. There is no rower split "
-        "test yet — a 2,000 m or 20-minute test would set 500 m splits. "
-        "MaxiClimber, kettlebell, strength, hikes, Teide, and BUSAR stay "
-        "calendar-only (web Sessions). When you propose "
+        "threshold days in the fitness year are live and allowed. "
+        + weekday_equipment_sentence(has_rower())
+        + "\n\n"
+        + garmin_push_sentence(has_rower())
+        + " When you propose "
         "a plan change, say whether that date will sync to Garmin or stays web-only. "
         "Apply saves locally always; Garmin push is best-effort — if sync fails, tell "
         "the athlete to use Sync to Watch or Retry.\n\n"
@@ -163,10 +167,9 @@ def _coach_system() -> str:
         "(single-digit evening values are common after travel or a stressful day). Prioritise HRV "
         "traffic light, how they feel, and session quality (easy Z2/recovery vs hard intervals).\n\n"
     )
-    from ..settings import has_turbo
     return (
         base
-        + equipment_note(has_turbo())
+        + equipment_note(has_turbo(), has_rower())
         + "\n\n"
         + hr_channel_note(power_meter_active())
         + "\n\n"

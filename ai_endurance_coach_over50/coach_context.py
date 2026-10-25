@@ -51,7 +51,14 @@ from .history import (
     tdee_history,
     weekly_monotony_strain,
 )
-from .coach_voice import ATHLETE_CONSTRAINTS, COACH_VOICE, equipment_note, hr_channel_note
+from .coach_voice import (
+    ATHLETE_CONSTRAINTS,
+    COACH_VOICE,
+    equipment_note,
+    garmin_push_sentence,
+    hr_channel_note,
+    weekday_equipment_sentence,
+)
 from .hr_plan import HR_EVENT_NAME, HR_PHASES, HR_PLAN_START, hr_session_for_date, hr_2012_lessons_context
 from .metrics import DailyMetrics
 from .plan import (
@@ -117,7 +124,7 @@ def coach_persona_brief(has_power: bool, *, post_workout: bool = False) -> str:
     return (
         COACH_VOICE + "\n\n"
         + ATHLETE_CONSTRAINTS + "\n\n"
-        + equipment_note(_has_turbo()) + "\n\n"
+        + equipment_note(_has_turbo(), _has_rower()) + "\n\n"
         + task + "\n\n"
         + "When referring to A-events, use only the official names in context "
         f"(e.g. \"{HR_EVENT_NAME}\"; charity ride is cancelled — do not treat it as live). "
@@ -144,6 +151,11 @@ def _load_day_state(target: date):
 def _has_turbo() -> bool:
     from .settings import has_turbo
     return has_turbo()
+
+
+def _has_rower() -> bool:
+    from .settings import has_rower
+    return has_rower()
 
 
 def _acwr_line(m: Optional["DailyMetrics"]) -> Optional[str]:
@@ -742,11 +754,10 @@ def _section_key_dates(today: date) -> list[str]:
             "shorten when fitness is not there."
         )
         lines.append(
-            "  Garmin push (fitness year): weekend outdoor rides — Z2 Easy, Long Ride (Easy) — "
-            "as cycling workouts. Weekday rower (Threshold — rower, VO2 — rower, Z2 — rower) "
-            "as cardio workouts. Saturday rucks push as hiking workouts. "
-            "Not pushed: MaxiClimber, strength, hikes, Teide, BUSAR. "
-            "Bike rides are outdoors and weekends only."
+            "  Garmin push (fitness year): "
+            + garmin_push_sentence(_has_rower())
+            + " "
+            + weekday_equipment_sentence(_has_rower())
         )
         lines.append(
             "  Scotland week: ready from Mon 22 Mar 2027. Exact hills chosen that week "

@@ -56,17 +56,17 @@ def test_august_and_hr_appear_in_bike_schedule():
     assert "Low Cadence Sweetspot" not in labels
     assert "2026-10-15" not in dates  # clinic day (no treatment), not pushed
     assert "2026-10-18" in dates      # clearance-week Long Ride (Easy), outdoor
-    assert "2026-10-20" not in dates  # weekday threshold is a rower, not a bike
+    assert "2026-10-20" not in dates  # weekday threshold is MaxiClimber, not a bike
     assert "2026-10-25" in dates      # first return-week Long Ride (Easy)
-    assert "2026-12-23" not in dates  # camp weekday quality is a rower
-    assert "2026-12-24" not in dates  # camp weekday easy hours are a rower
+    assert "2026-12-23" not in dates  # camp weekday quality is MaxiClimber
+    assert "2026-12-24" not in dates  # camp weekday easy hours are MaxiClimber
     assert "2026-12-26" not in dates  # optional Teide day is not pushed
-    assert "2026-12-30" not in dates  # camp weekday VO2 is a rower
+    assert "2026-12-30" not in dates  # camp weekday VO2 is MaxiClimber
     row_dates = {d for ds in _workout_schedule_row().values() for d in ds}
-    assert "2026-10-20" in row_dates
-    assert "2026-12-23" in row_dates
-    assert "2026-12-24" in row_dates
-    assert "2026-12-30" in row_dates
+    assert "2026-10-20" not in row_dates
+    assert "2026-12-23" not in row_dates
+    assert "2026-12-24" not in row_dates
+    assert "2026-12-30" not in row_dates
     assert "2026-10-18" not in row_dates
     assert "2026-12-26" not in row_dates
     # Medical pause / cancelled charity — no Sep event-prep quality

@@ -1,4 +1,8 @@
-"""No turbo trainer: weekday bikes become rower sessions; weekends stay outdoors."""
+"""No turbo trainer: weekday bikes leave the bike; weekends stay outdoors.
+
+With no rower either, those weekday sessions are a shorter MaxiClimber session.
+The rower wording below is what comes back when HAS_ROWER is turned on.
+"""
 from __future__ import annotations
 
 import re
@@ -48,7 +52,8 @@ def test_no_weekday_bike_in_the_plan_year():
         assert "long ride" not in low, (d, sess)
 
 
-def test_tuesday_20_oct_is_a_rower_threshold():
+def test_tuesday_20_oct_is_a_rower_threshold_when_the_rower_is_available(monkeypatch):
+    monkeypatch.setattr("ai_endurance_coach_over50.settings.HAS_ROWER", True)
     assert session_for_date(date(2026, 10, 20)) == ("rower", "Threshold — rower", 40)
     detail = day_detail(date(2026, 10, 20))
     text = " ".join(
@@ -103,7 +108,8 @@ def test_has_turbo_restores_the_weekday_bike(monkeypatch):
     assert session_for_date(date(2026, 10, 20)) == ("threshold", "Threshold — bike", 40)
 
 
-def test_tuesday_20_oct_pushes_as_cardio_not_power():
+def test_tuesday_20_oct_pushes_as_cardio_not_power(monkeypatch):
+    monkeypatch.setattr("ai_endurance_coach_over50.settings.HAS_ROWER", True)
     assert _workouts_for_date(date(2026, 10, 20)) == [("row", "Threshold — rower", 40)]
     workout = _build_row_workout("Threshold — rower", 40)
     assert workout is not None

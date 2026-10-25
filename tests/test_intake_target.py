@@ -422,11 +422,11 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
 
 
 def test_short_rower_threshold_has_no_on_bike_fuel(monkeypatch):
-    """Tue 20 Oct is a 40-minute rower. Pre and post stay; on-bike fuel does not."""
+    """Tue 20 Oct is a 30-minute MaxiClimber threshold. No on-bike fuel."""
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2200)
     day = date(2026, 10, 20)
     targets = np_mod.today_targets(day)
-    assert targets["session"]["type"] == "rower"
+    assert targets["session"]["type"] == "maxiclimber"
     assert targets["carbs_g_per_hr"] is None
     food = np_mod.build_today_food(date(2026, 5, 18), day)
     slots = [m["type"] for m in food["meals"]]

@@ -2,14 +2,16 @@
 
 Source of truth for the dashboard, calendar, and Garmin push. With
 ``HAS_TURBO`` false (the default), weekday bike sessions resolve to the indoor
-rower and weekend rides are outdoor. Haute Route week-by-week stays gated.
+rower and weekend rides are outdoor. With ``HAS_ROWER`` false (the default),
+those rower sessions become a shorter MaxiClimber session. Haute Route
+week-by-week stays gated.
 Gravel stays off until the bike is in use.
 """
 from __future__ import annotations
 
 from datetime import date, timedelta
 
-from .settings import has_turbo
+from .settings import has_rower, has_turbo
 
 PLAN_START = date(2026, 10, 12)  # Monday of the clearance week
 PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
@@ -269,7 +271,7 @@ def _as_rower(stype: str, label: str, dur: int) -> tuple[str, str, int]:
     return ("rower", new, dur)
 
 
-def apply_equipment(d: date, session: tuple[str, str, int]) -> tuple[str, str, int]:
+def _apply_turbo(d: date, session: tuple[str, str, int]) -> tuple[str, str, int]:
     """Resolve bike vs rower from ``HAS_TURBO``.
 
     Stored weeks keep the bike wording so turning the flag on restores them.
@@ -286,6 +288,83 @@ def apply_equipment(d: date, session: tuple[str, str, int]) -> tuple[str, str, i
             return session
         return (stype, f"{label}{_OUTDOOR_MARK}", dur)
     return _as_rower(stype, label, dur)
+
+
+def _is_rower_session(stype: str, label: str) -> bool:
+    return stype == "rower" or "rower" in label.lower()
+
+
+def _shorten_for_maxi(dur: int) -> int:
+    """About three quarters of the rower minutes, in 5-minute steps.
+
+    Never longer than the rower session. A session of 20 minutes or more
+    stays at least 20.
+    """
+    if dur <= 0:
+        return dur
+    stepped = int(dur * 0.75 / 5 + 0.5) * 5
+    if dur >= 20:
+        stepped = max(stepped, 20)
+    return min(stepped, dur)
+
+
+def _as_maxi(stype: str, label: str, dur: int) -> tuple[str, str, int]:
+    """Same hard or easy intent, on the MaxiClimber, and shorter.
+
+    A sandbag day is about 30 minutes of cardio plus the lift. Only the
+    cardio piece is shortened; the lifting minutes stay.
+    """
+    del stype
+    low = label.lower()
+    if "sandbag" in low:
+        lift = max(dur - 30, 0)
+        cardio = _shorten_for_maxi(min(dur, 30))
+        return ("maxiclimber", "Threshold — MaxiClimber, then sandbag", cardio + lift)
+    if "vo2" in low:
+        new = "VO2 — MaxiClimber"
+    elif "threshold" in low or "camp quality" in low:
+        new = "Threshold — MaxiClimber"
+    else:
+        new = "Z2 — MaxiClimber"
+    return ("maxiclimber", new, _shorten_for_maxi(dur))
+
+
+def apply_equipment(d: date, session: tuple[str, str, int]) -> tuple[str, str, int]:
+    """Resolve turbo, then rower, from the equipment flags.
+
+    Stored weeks keep the bike or rower wording. ``HAS_TURBO`` false turns
+    weekday bike sessions into rower sessions. ``HAS_ROWER`` false then turns
+    those into a shorter MaxiClimber session. Turning a flag on restores the
+    previous kit without editing the week tables.
+    """
+    resolved = _apply_turbo(d, session)
+    if has_rower() or not _is_rower_session(resolved[0], resolved[1]):
+        return resolved
+    return _as_maxi(*resolved)
+
+
+def cap_count_minutes(d: date) -> int | None:
+    """Rower minutes the weekly load cap should count, or None.
+
+    A shorter MaxiClimber session is an equipment swap, not a deload. The
+    +10% cap keeps the pre-swap rower minutes so later weeks are not trimmed.
+    None means the shown duration is already the right number: the rower is
+    available, the day is not a rower day, an override replaced the plan, or
+    the swap did not shorten it.
+    """
+    if has_rower() or not in_plan(d):
+        return None
+    # Inline import: history imports this package's session helpers.
+    from .history import get_plan_override
+    if get_plan_override(d.isoformat()):
+        return None
+    turbo = _apply_turbo(d, _template_session(d))
+    if not _is_rower_session(turbo[0], turbo[1]):
+        return None
+    shown = _as_maxi(*turbo)
+    if shown[2] >= turbo[2]:
+        return None
+    return int(turbo[2])
 
 
 def session_for_date(d: date) -> tuple[str, str, int] | None:
@@ -727,7 +806,8 @@ _PHASE_NOTES = {
         "Until the confirmation CT: stop for flank pain, fever or blood."
     ),
     "Return": (
-        "First hard session Tue 20 Oct, then two from the week of 26 Oct "
+        "First hard session Tue 20 Oct, then one hard day in the week of 26 Oct "
+        "and two from the week of 2 Nov "
         "(threshold or VO2, on the rower or the MaxiClimber through the week; "
         "Sunday is the outdoor ride). "
         "Strength is Wednesday from 21 Oct. Saturday is a 15 kg ruck "
@@ -768,7 +848,43 @@ _PHASE_NOTES = {
 def _phase_note(name: str) -> str:
     if has_turbo() and name in _PHASE_NOTES_TURBO:
         return _PHASE_NOTES_TURBO[name]
+    if not has_rower() and name in _PHASE_NOTES_NO_ROWER:
+        return _PHASE_NOTES_NO_ROWER[name]
     return _PHASE_NOTES.get(name, "")
+
+
+# Same phases, with rower sessions written as the shorter MaxiClimber swap.
+_PHASE_NOTES_NO_ROWER = {
+    "Return": (
+        "First hard session Tue 20 Oct on the MaxiClimber, shorter than the "
+        "old rower slot. The week of 26 Oct has one hard day; two hard days "
+        "start the week of 2 Nov (threshold or VO2 on the MaxiClimber through "
+        "the week; Sunday is the outdoor ride). "
+        "Strength is Wednesday from 21 Oct. Saturday is a 15 kg ruck "
+        "(Hadleigh Country Park or Mersea), short while Sunday is still "
+        "building, then longer once the ride is at 3 hours. Every 4th week "
+        "the bells and the ruck get lighter, not the long ride. "
+        "Sunday reaches 3 hours on 22 Nov."
+    ),
+    "Tenerife": (
+        "Weekday camp hours are on the MaxiClimber, shorter than the old "
+        "rower slot. Saturday 26 Dec is the optional outdoor Teide ride. "
+        "Shorten a session when fitness is not there."
+    ),
+    "Keswick build": (
+        "Saturday is a 15 kg ruck. Time goes up; the pack does not, until the "
+        "20.4 kg pack-test rehearsal on 13 Feb. "
+        "Tuesday is the hard MaxiClimber session, then sandbag deadlift sets. "
+        "Wednesday is the lighter strength session, before Thursday. "
+        "The week of 25 Jan is a shorter ruck. The week of 8 Feb practises "
+        "step-overs and burpee pull-ups. The week of 15 Feb is the taper. "
+        "Pull-ups stay a short add-on three days a week. Sunday is outdoors."
+    ),
+    "Recovery": (
+        "Walks, a short weekday MaxiClimber, and a short outdoor ride on Sunday. "
+        "No strength session."
+    ),
+}
 
 
 _PHASE_NOTES_TURBO = {

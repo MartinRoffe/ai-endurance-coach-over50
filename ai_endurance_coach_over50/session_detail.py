@@ -393,16 +393,41 @@ def _fill_bike_then_sandbag(detail: dict[str, Any], d: date, dur: int, book: dic
     detail["role"] = "sandbag"
     detail["type_label"] = "Threshold, then strength"
     detail["deload"] = d in _DELOAD_DATES
-    on_rower = "rower" in (detail.get("title") or "").lower() or detail.get("type") == "rower"
+    title_low = (detail.get("title") or "").lower()
+    on_maxi = "maxiclimber" in title_low or detail.get("type") == "maxiclimber"
+    on_rower = not on_maxi and ("rower" in title_low or detail.get("type") == "rower")
     detail["hr_target"] = _rower_zone(book, 4) if on_rower else _hr(book, 4)
-    detail["power_target"] = "" if on_rower else _pwr(book, 4)
-    if on_rower:
+    detail["power_target"] = "" if (on_rower or on_maxi) else _pwr(book, 4)
+    if on_maxi:
+        detail["rpe_target"] = (
+            "7 on the MaxiClimber, 6–7 on the sandbag"
+            if not detail["deload"] else "6 on the MaxiClimber, 5 on the sandbag"
+        )
+        detail["intensity"] = f"RPE {detail['rpe_target']}. Heart rate {detail['hr_target']}."
+    elif on_rower:
         detail["rpe_target"] = "7–8 on the rower, 6–7 on the sandbag" if not detail["deload"] else "7 on the rower, 5 on the sandbag"
         detail["intensity"] = f"RPE {detail['rpe_target']}. Heart rate {detail['hr_target']}."
     else:
         detail["rpe_target"] = "8 on the bike, 6–7 on the sandbag" if not detail["deload"] else "7 on the bike, 5 on the sandbag"
         detail["intensity"] = f"{detail['power_target']}. Heart rate {detail['hr_target']}."
-    if on_rower:
+    if on_maxi:
+        detail["purpose"] = (
+            f"{hard_day_phrase(d)}. Hard MaxiClimber first, sandbag second, so the heavier lift is not the day before Thursday. "
+            "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
+            "There is no trap bar. A kettlebell is not this lift: the heaviest bell is 24 kg and the "
+            "test is 102 kg for 15 reps in one minute. That standard is the target, not today's load. "
+            + _KIT
+        )
+        detail["blocks"] = [
+            _block("Warm-up", "5 min easy climbing. Hands light on the bars."),
+            _block("Main set", "2 × 6 min at RPE 7, with 2 min easy between. Short steps. Do not yank the handles."),
+            _block("Cool-down", "6 min easy climbing, then a few minutes on your feet before the sandbag."),
+            _block(
+                "Sandbag",
+                "After the MaxiClimber. Stop each set with 2 reps left. If the back rounds, the bag is too heavy.",
+            ),
+        ]
+    elif on_rower:
         detail["purpose"] = (
             f"{hard_day_phrase(d)}. Hard row first, sandbag second, so the heavier lift is not the day before Thursday. "
             "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
@@ -441,7 +466,12 @@ def _fill_bike_then_sandbag(detail: dict[str, Any], d: date, dur: int, book: dic
         detail["exercises"] = [
             _ex("Sandbag deadlift", "2×5", "Same load as the last build week, not more", "2 sec down, stand up", "2–3 min"),
         ]
-        opener = "Deload week. The row stays, " if on_rower else "Deload week. The ride stays, "
+        if on_maxi:
+            opener = "Deload week. The MaxiClimber stays, "
+        elif on_rower:
+            opener = "Deload week. The row stays, "
+        else:
+            opener = "Deload week. The ride stays, "
         detail["purpose"] = (
             opener + "the sandbag sets are cut in half, and the load does not go up. "
             + detail["purpose"]
@@ -1077,10 +1107,17 @@ def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["power_target"] = ""
         detail["rpe_target"] = "7"
         detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
-        if dur <= 45:
+        if 38 <= dur <= 45:
+            # The agreed 40 min session: 10 min warm-up, 5×4 with 2 min easy, 5 min cool-down.
             detail["blocks"] = [
                 _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
                 _block("Main set", "5 × 4 min at RPE 7, with 2 min easy between. Short steps. Do not yank the handles."),
+                _block("Cool-down", "5 min easy climbing."),
+            ]
+        elif dur < 38:
+            detail["blocks"] = [
+                _block("Warm-up", "5 min easy climbing. Hands light on the bars."),
+                _block("Main set", "4 × 3 min at RPE 7, with 2 min easy between. Short steps. Do not yank the handles."),
                 _block("Cool-down", "5 min easy climbing."),
             ]
         else:
@@ -1109,8 +1146,14 @@ def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         _block("Main set", "6 × 2 min hard, 90 s easy between. Short steps. Do not yank the handles."),
         _block("Cool-down", "Easy climbing for the time that is left."),
     ]
+    try:
+        day = date.fromisoformat(detail["date"])
+    except ValueError:
+        day = None
+    lead = f"{hard_day_phrase(day)}. " if day else ""
     detail["purpose"] = (
-        f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
+        lead
+        + f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
     )
 
 

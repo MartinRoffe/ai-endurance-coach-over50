@@ -100,8 +100,13 @@
   <section class="rules">
     <h2>How to use it</h2>
     <ul>
+      {% if has_rower %}
       <li>Bike rides are outdoors, and only at the weekend. Weekday threshold and VO2 are on the rower. Easy weekday aerobic work is a rower or MaxiClimber session.</li>
       <li>Garmin receives weekend <strong>Z2 Easy</strong> and <strong>Long Ride (Easy)</strong> rides, plus rower sessions as cardio. Walks, rucks, MaxiClimber, and strength stay off the watch schedule.</li>
+      {% else %}
+      <li>Bike rides are outdoors, and only at the weekend. There is no rower right now, so weekday threshold, VO2, and easy aerobic work are a shorter MaxiClimber session.</li>
+      <li>Garmin receives weekend <strong>Z2 Easy</strong> and <strong>Long Ride (Easy)</strong> rides. MaxiClimber, walks, rucks, and strength stay off the watch schedule.</li>
+      {% endif %}
       <li>Home Sunday rides stop at {{ sunday_cap }}. {{ gravel_note }}</li>
     </ul>
   </section>
