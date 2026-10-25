@@ -162,11 +162,11 @@ HR_TRAINING_WEEKS: list[list[tuple[str, str, int]]] = [
         ("long",      "Long Ride",             270),
     ],
     # WK 12 — Tenerife Christmas camp · week 1 · ~12 hrs (Dec 21)12
-    # Arrive Tue 22 Dec; bike hire Wed 23–Thu 31 Dec. August-style hard/easy
+    # Arrive Mon 21 Dec; bike hire Wed 23–Thu 31 Dec. August-style hard/easy
     # overload (Teide repeats) — the Base aerobic volume boost.
     [
-        ("rest",      "Tenerife — Pre-Camp Rest",       0),   # Mon 21
-        ("rest",      "Tenerife — Travel Arrive",       0),   # Tue 22
+        ("rest",      "Tenerife — Travel Arrive",       0),   # Mon 21
+        ("rest",      "Tenerife — Rest",                0),   # Tue 22
         ("long",      "Tenerife — Leg Openers",       120),   # Wed 23
         ("long",      "Tenerife — Tamaimo / Teno",    210),   # Thu 24
         ("endurance", "Tenerife — Christmas Easy",     90),   # Fri 25

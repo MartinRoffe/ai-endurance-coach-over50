@@ -44,7 +44,7 @@ YEAR2_PLAN_ACTIVE = False
 
 # Christmas 2026 Tenerife — Year 1, tentative until post-stent follow-up
 XMAS_CAMP_TENTATIVE = False
-XMAS_CAMP_ARRIVE = date(2026, 12, 22)
+XMAS_CAMP_ARRIVE = date(2026, 12, 21)
 XMAS_CAMP_BIKE_START = date(2026, 12, 23)
 XMAS_CAMP_BIKE_END = date(2026, 12, 31)
 XMAS_CAMP_HOME = date(2027, 1, 2)
