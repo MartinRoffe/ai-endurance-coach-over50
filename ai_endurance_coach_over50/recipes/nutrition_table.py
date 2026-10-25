@@ -52,8 +52,8 @@ FOODS: dict[str, Food] = {
         _F("honey", "Honey", "Store cupboard", 304, 0.4, 76.4, 0.0, 5, "CoFID honey"),
         _F("maltodextrin", "Maltodextrin", "Store cupboard", 400, 0.0, 100.0, 0.0, 0, "Typical maltodextrin powder, 4 kcal per gram"),
         _F("olive_oil", "Olive oil", "Store cupboard", 884, 0.0, 0.0, 100.0, 0, "CoFID oil, olive", True),
-        # Day calorie fit still counts this 25 g shop cake. The homemade batches
-        # are standard-rice-cake and sweet-rice-cakes; the shop buys those ingredients.
+        # Shop plain rice cake. The day calorie card prices standard-rice-cake
+        # and sweet-rice-cakes instead. The shop buys those ingredients.
         _F("rice_cake", "Plain rice cakes", "Store cupboard", 387, 8.0, 81.0, 2.8, 10, "CoFID rice cakes, plain"),
         _F("sushi_rice", "Sushi rice, dry", "Store cupboard", 352, 5.6, 85.6, 0.9, 6, "CoFID 2021 rice, white, pudding, raw (short-grain; no sushi-rice row)"),
         _F("soy_sauce", "Soy sauce", "Store cupboard", 79, 3.0, 17.9, 0.0, 17, "CoFID 2021 soy sauce, light and dark varieties", True),

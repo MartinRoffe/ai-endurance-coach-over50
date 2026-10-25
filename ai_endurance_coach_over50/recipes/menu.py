@@ -319,8 +319,8 @@ def default_week_targets() -> list[dict]:
 def shopping_list(cycle_week: int, day_targets: list[dict] | None = None) -> list[dict]:
     """Aisle groups for one cycle week. Grams are the portions actually eaten.
 
-    Ride weeks buy whole batches of the savoury rice cakes. The day's calorie
-    row still carries a shop-cake allowance, and that row is not a shop item.
+    Ride weeks buy whole batches of the savoury rice cakes. A leftover shop-cake
+    gram row is not a shop item; the cake count buys the homemade batch.
     """
     grams: dict[str, float] = defaultdict(float)
     cakes = 0

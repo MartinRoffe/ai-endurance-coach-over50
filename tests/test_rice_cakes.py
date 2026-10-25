@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -88,6 +89,35 @@ def test_long_ride_card_lists_homemade_cakes_not_the_shop_product():
     assert "small rice cooker" in html.lower()
     assert "Plain rice cakes" not in html
     assert 'href="/nutrition/recipes#standard-rice-cake"' in html
+
+
+def test_day_calorie_card_prices_homemade_cakes_not_the_shop_cake(monkeypatch):
+    """Two on-bike cakes are the savoury recipe, not two 25 g shop cakes (~194 kcal)."""
+    import ai_endurance_coach_over50.nutrition_plan as np_mod
+    from ai_endurance_coach_over50.nutrition_plan import build_today_food
+    from ai_endurance_coach_over50.plan import PLAN_START
+
+    monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 1900)
+    food = build_today_food(PLAN_START, date(2026, 11, 1))
+    on_bike = next(meal for meal in food["meals"] if meal["type"] == "On-bike")
+    savoury = portion_macros(recipe_by_id("standard-rice-cake"), 1)
+    sweet = portion_macros(recipe_by_id("sweet-rice-cakes"), 1)
+    cakes = int(on_bike["rice_cakes"])
+    assert cakes == 2
+    assert round(savoury["kcal"]) == 166
+    assert round(savoury["carbs"]) == 29
+    assert round(sweet["kcal"]) == 180
+    assert round(sweet["carbs"]) == 44
+    assert int(on_bike["macros"]["kcal"]) == round(savoury["kcal"] * cakes)
+    assert int(on_bike["macros"]["c"]) == round(savoury["carbs"] * cakes)
+    assert int(on_bike["macros"]["kcal"]) != 194
+
+
+def test_fuelling_card_tables_use_29g_per_cake():
+    text = Path(__file__).resolve().parents[1].joinpath("docs/plans/fuelling-card.html").read_text()
+    assert "Standard rice cake (your recipe)</td><td class=\"n\">29 g</td>" in text
+    assert ">27 g<" not in text
+    assert ">27<" not in text
 
 
 def test_fuelling_page_names_the_homemade_cakes():
