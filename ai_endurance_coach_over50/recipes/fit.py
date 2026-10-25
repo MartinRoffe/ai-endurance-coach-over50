@@ -174,6 +174,7 @@ def solve(
     dur_min: int,
     ref_date: date | None = None,
     ride: bool = True,
+    evening: tuple[int, int, int] | None = None,
 ) -> PortionPlan:
     """Pick the closest real portions. Slightly under the calorie target beats an oversized plate."""
     del lunch_fixed, dinner_fixed
@@ -210,7 +211,7 @@ def solve(
         for scale in _SIDE_STEPS:
             raw = _add(dinner_pot[mult], dinner_side[scale])
             ki, pi = _meal_ints(raw[0], raw[1], raw[2])
-            dinner_opts.append((mult, scale, ki, pi, raw[3]))
+            dinner_opts.append((mult, scale, ki, pi, int(round(raw[2])), raw[3]))
     bf_opts = []
     for mult in _BF_STEPS:
         raw = bf_pack[mult]
@@ -240,7 +241,7 @@ def solve(
     for bf, bk, bp, bca in bf_opts:
         bf_pref = 0 if abs(bf - 1.0) < 0.01 else 100
         for lm, ls, lk, lp, lca in lunch_opts:
-            for dm, ds, dk, dp, dca in dinner_opts:
+            for dm, ds, dk, dp, dc, dca in dinner_opts:
                 plate_k = bk + lk + dk
                 plate_p = bp + lp + dp
                 plate_ca = bca + lca + dca
@@ -252,6 +253,14 @@ def solve(
                         score = bf_pref
                         score += abs(lm - 1.0) * 4 + abs(dm - 1.0) * 4
                         score += abs(ls - 1.0) * 2 + abs(ds - 1.0) * 2
+                        if evening is not None:
+                            # Prefer the dinner that matches this day's load.
+                            # Missing the day calorie band or the protein range
+                            # still costs more than missing the plate.
+                            tek, tep, tec = evening
+                            score += abs(dk - tek) * 2
+                            score += abs(dp - tep) * 6
+                            score += abs(dc - tec) * 3
                         # Yoghurt and milk top up calcium. They are expensive enough that a day
                         # which is already on target does not pour either one in for calories.
                         # Yoghurt is the cheaper calcium source, and it is capped at 250 g.
