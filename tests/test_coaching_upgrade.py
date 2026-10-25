@@ -33,9 +33,8 @@ def _hards(monday: date) -> list[date]:
 def test_quality_starts_20_oct_then_two_from_26_oct():
     assert _hards(date(2026, 10, 12)) == []
     assert _hards(date(2026, 10, 19)) == [date(2026, 10, 20)]
-    later = _hards(date(2026, 10, 26))
-    assert later == [date(2026, 10, 27), date(2026, 10, 29)]
-    assert later[1] - later[0] >= timedelta(days=2)
+    # Week of 26 Oct: Tuesday threshold only. Thursday is easy zone 2.
+    assert _hards(date(2026, 10, 26)) == [date(2026, 10, 27)]
     nov = _hards(date(2026, 11, 2))
     assert nov == [date(2026, 11, 3), date(2026, 11, 5)]
     assert nov[1] - nov[0] >= timedelta(days=2)
@@ -56,7 +55,7 @@ def test_camp_week_is_not_trimmed_to_the_home_cap():
 
 def test_clearance_week_does_not_cap_the_return():
     ride = prescribed_session(date(2026, 10, 25))
-    assert ride.session == ("long", "Long Ride (Easy) · outdoor", 70)
+    assert ride.session == ("long", "Long Ride (Easy) · outdoor", 60)
 
 
 def test_pullups_three_days_a_week_change_phase():
@@ -81,7 +80,7 @@ def test_ruck_reaches_pack_test_load_without_a_kettlebell_deadlift():
     skills = session_for_date(date(2027, 2, 9))
     assert "step-overs" in skills[1]
     assert "burpee" in skills[1]
-    assert session_for_date(date(2026, 10, 29))[0] == "rower"
+    assert session_for_date(date(2026, 10, 29)) == ("maxiclimber", "Z2 — MaxiClimber", 30)
     assert session_for_date(date(2026, 11, 26))[0] == "maxiclimber"
     assert session_for_date(date(2026, 10, 20)) == ("rower", "Threshold — rower", 40)
     assert session_for_date(date(2026, 10, 21))[0] == "strength"

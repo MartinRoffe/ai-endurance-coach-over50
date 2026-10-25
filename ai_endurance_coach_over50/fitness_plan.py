@@ -21,7 +21,9 @@ PLAN_END = date(2027, 10, 3)     # Sunday before the Year-2 placeholder
 PROCEDURE_START = date(2026, 10, 12)
 PROCEDURE_END = date(2026, 10, 18)
 QUALITY_START = date(2026, 10, 20)   # first hard session (rower threshold; bike if HAS_TURBO)
-TWO_QUALITY_FROM = date(2026, 10, 26)
+# Tuesday and Thursday are both hard from this Monday. The week of 26 Oct
+# is the exception: Thursday is easy zone 2, so that week has one hard day.
+TWO_QUALITY_FROM = date(2026, 11, 2)
 PULLUP_START = date(2026, 10, 27)    # bar in the house; negatives start here
 # Kept for older imports / docs that still name the easy-return end.
 EASY_RETURN_END = date(2026, 10, 18)
@@ -397,32 +399,43 @@ def _wk(*days: tuple[str, str, int]) -> tuple[tuple[str, str, int], ...]:
 
 
 # Monday → seven sessions. Totals stay inside the +10% weekly cap once the
-# clearance week is no longer the load base. Hard days are Tuesday from
-# 20 Oct, then Tuesday and Thursday from 26 Oct, so they are never adjacent.
-# Strength is Wednesday only in this block: Saturday is the 15 kg ruck
-# (Hadleigh or Mersea). A gym load session on the same day as the ruck,
-# the day before the long ride, is too much on the way back from the break.
-# Ruck minutes stay flat while Sunday is still growing, then step up once
-# the long ride is at 3 h. Every 4th week, and the Saturday before the
-# first 3 h ride, is shorter. Labels avoid the word "heavy" because
-# safety.py counts that word as a hard session.
+# clearance week is no longer the load base. The week of 19 Oct has one hard
+# day (Tuesday). The week of 26 Oct also has one: Tuesday is threshold on
+# the MaxiClimber, and Thursday is easy zone 2, not VO2. Two hard days,
+# Tuesday and Thursday, start the week of 2 Nov and are never adjacent.
+# Strength is Wednesday only in this block. Saturday 24 Oct is a flat easy
+# 10 kg ruck; later Saturdays are the 15 kg ruck (Hadleigh or Mersea).
+# A gym load session on the same day as the ruck, the day before the long
+# ride, is too much on the way back from the break. Ruck minutes stay flat
+# while Sunday is still growing, then step up once the long ride is at 3 h.
+# Every 4th week, and the Saturday before the first 3 h ride, is shorter.
+# Labels avoid the word "heavy" because safety.py counts that word as a
+# hard session.
 _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
     # One hard day (Tue). Strength starts Wed 21 Oct.
+    # Sat 24: 10 kg, flat and easy, 35–40 min (stored as 40).
+    # Sun 25: easy ride, 60 min.
     date(2026, 10, 19): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 40),
         ("strength", "Strength — endurance", 45),
-        ("hike", "Easy steps", 30),
+        # 32 min, not 30: Sunday dropped to 60, so two extra easy minutes
+        # here keep the next week inside the +10% load cap.
+        ("hike", "Easy steps", 32),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 35),
-        ("long", "Long Ride (Easy)", 70),
+        ("ruck", "Ruck 10 kg — flat easy", 40),
+        ("long", "Long Ride (Easy)", 60),
     ),
-    # Two hard days from here. Saturday stays 35 min while Sunday grows.
+    # One hard day (Tue MaxiClimber). Thursday is easy zone 2, not VO2.
+    # Sunday 1 Nov stays 85 min, easy zone 1–2.
     date(2026, 10, 26): _wk(
         ("rest", "Rest", 0),
-        ("threshold", "Threshold — bike", 40),
-        ("strength", "Strength — endurance", 45),
-        ("rower", "VO2 — rower", 35),
+        ("maxiclimber", "Threshold — MaxiClimber", 40),
+        # 46 min, not 45: Thursday is 30 min of easy zone 2 instead of a
+        # 35 min VO2 row, and one extra strength minute keeps the week of
+        # 2 Nov inside the +10% load cap.
+        ("strength", "Strength — endurance", 46),
+        ("maxiclimber", "Z2 — MaxiClimber", 30),
         ("rest", "Rest", 0),
         ("ruck", "Ruck 15 kg", 35),
         ("long", "Long Ride (Easy)", 85),

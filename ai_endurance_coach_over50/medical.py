@@ -250,8 +250,10 @@ def medical_context_lines() -> list[str]:
     if not MAY_2027_RACE_SIM_ACTIVE:
         lines.append("  May 2027 Tenerife race-sim camp: not part of the live plan.")
     lines.append(
-        "  First hard session is Tue 20 Oct 2026. Two non-adjacent hard sessions "
-        "a week from the week of 26 Oct. Strength starts Wed 21 Oct."
+        "  First hard session is Tue 20 Oct 2026. The week of 26 Oct has one hard "
+        "day (Tue 27, MaxiClimber threshold); Thu 29 is easy zone 2 on the "
+        "MaxiClimber, not VO2. Two non-adjacent hard sessions a week from the "
+        "week of 2 Nov. Strength starts Wed 21 Oct."
     )
     from .fitness_plan import BUSAR_STANDARDS, GRAVEL_BIKE_ACTIVE, gravel_sunday_note
     lines.append(f"  {gravel_sunday_note()}")

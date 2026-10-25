@@ -243,7 +243,7 @@ def test_next_seven_days_keeps_rest_days_in_the_count():
 def test_saturday_rucks_progress_and_push_as_hikes():
     expected = {
         date(2026, 10, 17): ("hike", "light pack", 45),
-        date(2026, 10, 24): ("ruck", "Ruck 15 kg", 35),
+        date(2026, 10, 24): ("ruck", "Ruck 10 kg", 40),
         date(2026, 10, 31): ("ruck", "Ruck 15 kg", 35),
         date(2026, 11, 7): ("ruck", "Ruck 15 kg", 35),
         date(2026, 11, 14): ("ruck", "Ruck 15 kg", 30),
@@ -280,14 +280,14 @@ def test_saturday_rucks_progress_and_push_as_hikes():
     assert session_for_date(date(2026, 10, 24))[0] == "ruck"
 
     specs = _workouts_for_date(date(2026, 10, 24))
-    assert specs == [("sr", "Ruck", 0, 35)]
-    hike = _build_strength_ruck_workout("Ruck", 0, 35)
+    assert specs == [("sr", "Ruck", 0, 40)]
+    hike = _build_strength_ruck_workout("Ruck", 0, 40)
     assert hike.sportType["sportTypeKey"] == "hiking"
     assert _workouts_for_date(date(2026, 12, 26)) == []
     assert _workouts_for_date(date(2027, 2, 20)) == []
 
     schedule = _workout_schedule_strength_ruck()
-    assert "2026-10-24" in schedule[("Ruck", 0, 35)]
+    assert "2026-10-24" in schedule[("Ruck", 0, 40)]
     assert "2026-12-26" not in {day for dates in schedule.values() for day in dates}
 
     cache: dict = {}
