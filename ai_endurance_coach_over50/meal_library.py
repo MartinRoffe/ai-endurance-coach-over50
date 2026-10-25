@@ -19,7 +19,7 @@ PROTEIN_DOSE_G = 40
 CARB_SIDE = {
     "easy": "Carb side: about a quarter plate of potato, rice or pasta.",
     "hard": "Carb side: about half a plate, plus a banana before and after training.",
-    "long": "Carb side: a larger plate across the day (about 6–7 g/kg), plus 60–90 g/h on the bike.",
+    "long": "Carb side: a larger plate across the day, sized so carbohydrate still fits the calories. On-bike grams per hour are part of that, not extra.",
 }
 
 
