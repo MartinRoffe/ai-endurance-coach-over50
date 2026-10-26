@@ -29,7 +29,7 @@ def test_known_session_does_not_use_the_recovery_weekday_label():
         "threshold", "Threshold — bike", 3, 1, session_dur=40,
     ) == "training"
     assert meal_day_type_for_session(
-        "ruck", "Ruck 15 kg", 3, 5, session_dur=35,
+        "ruck", "Ruck 10 kg", 3, 5, session_dur=35,
     ) == "ruck"
     assert meal_day_type_for_session(
         "hike", "Easy steps", 3, 3, session_dur=30,

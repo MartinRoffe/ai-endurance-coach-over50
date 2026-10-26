@@ -48,7 +48,7 @@ def test_week_of_26_oct_matches_the_agreed_sessions():
     assert not is_hard(thu)
     assert "vo2" not in thu[1].lower()
     assert session_for_date(date(2026, 10, 30)) == ("rest", "Rest", 0)
-    assert session_for_date(date(2026, 10, 31)) == ("ruck", "Ruck 15 kg", 35)
+    assert session_for_date(date(2026, 10, 31)) == ("ruck", "Ruck 10 kg", 35)
     sun = session_for_date(date(2026, 11, 1))
     assert sun[0] == "long"
     assert sun[2] == 85

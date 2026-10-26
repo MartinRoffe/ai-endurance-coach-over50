@@ -244,27 +244,27 @@ def test_saturday_rucks_progress_and_push_as_hikes():
     expected = {
         date(2026, 10, 17): ("hike", "light pack", 45),
         date(2026, 10, 24): ("ruck", "Ruck 10 kg", 40),
-        date(2026, 10, 31): ("ruck", "Ruck 15 kg", 35),
-        date(2026, 11, 7): ("ruck", "Ruck 15 kg", 35),
-        date(2026, 11, 14): ("ruck", "Ruck 15 kg", 30),
-        date(2026, 11, 21): ("ruck", "Ruck 15 kg", 25),
-        date(2026, 11, 28): ("ruck", "Ruck 15 kg", 45),
-        date(2026, 12, 5): ("ruck", "Ruck 15 kg", 35),
-        date(2026, 12, 12): ("ruck", "Ruck 15 kg", 55),
-        date(2026, 12, 19): ("ruck", "Ruck 15 kg", 65),
+        date(2026, 10, 31): ("ruck", "Ruck 10 kg", 35),
+        date(2026, 11, 7): ("ruck", "Ruck 10 kg", 35),
+        date(2026, 11, 14): ("ruck", "Ruck 10 kg", 30),
+        date(2026, 11, 21): ("ruck", "Ruck 10 kg", 25),
+        date(2026, 11, 28): ("ruck", "Ruck 10 kg", 45),
+        date(2026, 12, 5): ("ruck", "Ruck 10 kg", 35),
+        date(2026, 12, 12): ("ruck", "Ruck 10 kg", 55),
+        date(2026, 12, 19): ("ruck", "Ruck 10 kg", 65),
         date(2026, 12, 26): ("long", "Teide", 300),
         date(2027, 1, 2): ("rest", "Travel home", 0),
-        date(2027, 1, 9): ("ruck", "Ruck 15 kg", 50),
-        date(2027, 1, 16): ("ruck", "Ruck 15 kg", 60),
-        date(2027, 1, 23): ("ruck", "Ruck 15 kg", 70),
-        date(2027, 1, 30): ("ruck", "Ruck 15 kg", 50),
-        date(2027, 2, 6): ("ruck", "Ruck 15 kg", 70),
+        date(2027, 1, 9): ("ruck", "Ruck 10 kg", 50),
+        date(2027, 1, 16): ("ruck", "Ruck 10 kg", 60),
+        date(2027, 1, 23): ("ruck", "Ruck 10 kg", 70),
+        date(2027, 1, 30): ("ruck", "Ruck 10 kg", 50),
+        date(2027, 2, 6): ("ruck", "Ruck 10 kg", 70),
         date(2027, 2, 13): ("ruck", "Pack test rehearsal 20.4 kg", 60),
         date(2027, 2, 20): ("hike", "BUSAR", 0),
         date(2027, 2, 27): ("hike", "Skiddaw", 360),
         date(2027, 3, 6): ("hike", "Easy walk", 60),
-        date(2027, 4, 3): ("ruck", "Ruck 15 kg", 90),
-        date(2027, 4, 24): ("ruck", "Ruck 15 kg", 60),
+        date(2027, 4, 3): ("ruck", "Ruck 10 kg", 90),
+        date(2027, 4, 24): ("ruck", "Ruck 10 kg", 60),
     }
     for day, (stype, label, dur) in expected.items():
         sess = session_for_date(day)
@@ -280,14 +280,15 @@ def test_saturday_rucks_progress_and_push_as_hikes():
     assert session_for_date(date(2026, 10, 24))[0] == "ruck"
 
     specs = _workouts_for_date(date(2026, 10, 24))
-    assert specs == [("sr", "Ruck", 0, 40)]
-    hike = _build_strength_ruck_workout("Ruck", 0, 40)
+    assert specs == [("sr", "Ruck 10 kg", 0, 40)]
+    hike = _build_strength_ruck_workout("Ruck 10 kg", 0, 40)
     assert hike.sportType["sportTypeKey"] == "hiking"
+    assert hike.workoutName == "Ruck 10 kg 40m"
     assert _workouts_for_date(date(2026, 12, 26)) == []
     assert _workouts_for_date(date(2027, 2, 20)) == []
 
     schedule = _workout_schedule_strength_ruck()
-    assert "2026-10-24" in schedule[("Ruck", 0, 40)]
+    assert "2026-10-24" in schedule[("Ruck 10 kg", 0, 40)]
     assert "2026-12-26" not in {day for dates in schedule.values() for day in dates}
 
     cache: dict = {}

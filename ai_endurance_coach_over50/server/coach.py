@@ -30,6 +30,7 @@ from ..history import (
     sleep_history,
     weekly_monotony_strain,
 )
+from ..fitness_plan import WEEKLY_RUCK_PACK_KG
 from ..hr_plan import HR_PHASES
 from ..llm import MODEL_COACH, MODEL_FAST
 from ..plan import session_for_date_extended
@@ -127,7 +128,10 @@ def _coach_system() -> str:
         "Garmin on the watch: weekend outdoor rides (Z2 Easy, Long Ride (Easy)) push "
         "as cycling workouts. Rower sessions (Threshold — rower, VO2 — rower, Z2 — rower) "
         "push as cardio workouts, paced by heart rate and RPE. Saturday rucks push "
-        "as hiking workouts. There is no rower split "
+        "as hiking workouts. The weekly Saturday pack is "
+        f"{WEEKLY_RUCK_PACK_KG:g} kg; time is the progression. "
+        "The 13 Feb pack-test rehearsal stays 20.4 kg, and BUSAR keeps its own test loads. "
+        "There is no rower split "
         "test yet — a 2,000 m or 20-minute test would set 500 m splits. "
         "MaxiClimber, kettlebell, strength, hikes, Teide, and BUSAR stay "
         "calendar-only (web Sessions). When you propose "

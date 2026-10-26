@@ -227,7 +227,7 @@ Saturday · Phases 1 and 2
 
 ### Hill Ruck
 
-Hadleigh from Leigh-on-Sea station · 8 → 15 kg
+Hadleigh from Leigh-on-Sea station · 10 kg
 
 Take every climb the park offers and keep heart rate under your aerobic threshold on the way up. Slow down before you let it climb. Carry the load down too, with short controlled steps. Use poles from Week 6 so they are familiar before winter. This is a hard day because of its length and the descending, even though the effort is easy.
 
@@ -318,7 +318,7 @@ Kit
 | Step box · build | The loaded step-up is the priority lift. The box is also needed for Thursday steps and the garage hill session. | Second stair, or a sturdy bench. |
 | Doorway pull-up bar · buy | Pull-ups and hanging leg raises are in the general strength circuit. | One-arm rows and lying leg raises. |
 | Tyre sled · build | Heavy drags on Tuesday from Week 6, and a bad-weather Saturday option. | Suitcase carries. |
-| Two 5 litre water containers · buy | Adjustable pack weight you can tip out at the top of a climb. | Your current 15 kg ruck load. |
+| Two 5 litre water containers · buy | Adjustable pack weight you can tip out at the top of a climb. | Your current 10 kg ruck load. |
 | Resistance band · buy | Assisted pull-ups while you build to bodyweight. | Rows. |
 
 Build 1

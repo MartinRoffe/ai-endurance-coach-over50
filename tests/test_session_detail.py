@@ -175,7 +175,7 @@ def test_pullup_addon_keeps_the_progression_and_names_the_bar():
 
 def test_ruck_detail_carries_the_pack_and_the_flat_rehearsal():
     ruck = day_detail(date(2027, 1, 9))
-    assert ruck["ruck_pack"] == "15 kg"
+    assert ruck["ruck_pack"] == "10 kg"
     assert "hadleigh" in ruck["ruck_route"].lower()
     assert ruck["ruck_elevation"]
     assert ruck["garmin"] is True

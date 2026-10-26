@@ -13,6 +13,7 @@ from typing import Any, Optional
 from .fitness_plan import (
     ATHLETE_FTP_W,
     ATHLETE_MAX_HR,
+    WEEKLY_RUCK_PACK_KG,
     garmin_allowed,
     pullup_for_date,
     session_for_date,
@@ -1149,7 +1150,7 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["ruck_elevation"] = "As flat as you can find. The easy pace is the session."
         detail["purpose"] = (
             f"Easy flat ruck at {pack}, 35–40 min. "
-            "A gentle loaded walk. Not the 15 kg hill progression."
+            "A gentle loaded walk. Same pack as the later Saturdays. This one stays flat."
         )
     else:
         main = max(dur - 20, 0)
@@ -1165,7 +1166,11 @@ def _fill_ruck(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["ruck_elevation"] = (
             "Whatever that route already gives you. The pack stays put; time is the progression."
         )
-        pack_line = "The pack stays 15 kg." if kg == 15 else f"The pack is {pack}."
+        pack_line = (
+            f"The pack stays {WEEKLY_RUCK_PACK_KG:g} kg."
+            if kg == WEEKLY_RUCK_PACK_KG
+            else f"The pack is {pack}."
+        )
         detail["purpose"] = (
             f"Saturday ruck at {pack}, about {_fmt_dur(dur) or 'the planned time'}. "
             f"{pack_line} This is the weekly loaded walk toward the "

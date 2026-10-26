@@ -36,6 +36,18 @@ ATHLETE_FTP_W = 220
 ATHLETE_WEIGHT_KG_LOW = 89
 ATHLETE_WEIGHT_KG_HIGH = 92
 
+# Weekly Saturday ruck. Time is the progression; this pack is not.
+# The 13 Feb pack-test rehearsal (20.4 kg) and BUSAR do not use it.
+WEEKLY_RUCK_PACK_KG = 10
+
+
+def weekly_ruck_label(note: str = "") -> str:
+    """Label for the weekly Saturday ruck. The pack weight does not progress."""
+    label = f"Ruck {WEEKLY_RUCK_PACK_KG:g} kg"
+    if note:
+        return f"{label} — {note}"
+    return label
+
 # Home Sundays reach 3 h on 29 Nov 2026. Camp quality days are 3–4 h, and
 # the optional Teide day is longer. Those camp days are not held to this cap.
 HOME_SUNDAY_CAP_MIN = 180
@@ -404,7 +416,8 @@ def _wk(*days: tuple[str, str, int]) -> tuple[tuple[str, str, int], ...]:
 # the MaxiClimber, and Thursday is easy zone 2, not VO2. Two hard days,
 # Tuesday and Thursday, start the week of 2 Nov and are never adjacent.
 # Strength is Wednesday only in this block. Saturday 24 Oct is a flat easy
-# 10 kg ruck; later Saturdays are the 15 kg ruck (Hadleigh or Mersea).
+# Saturday is the weekly ruck (Hadleigh or Mersea) at WEEKLY_RUCK_PACK_KG.
+# 24 Oct is the same pack, flat and easy.
 # A gym load session on the same day as the ruck, the day before the long
 # ride, is too much on the way back from the break. Ruck minutes stay flat
 # while Sunday is still growing, then step up once the long ride is at 3 h.
@@ -423,7 +436,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         # here keep the next week inside the +10% load cap.
         ("hike", "Easy steps", 32),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 10 kg — flat easy", 40),
+        ("ruck", weekly_ruck_label("flat easy"), 40),
         ("long", "Long Ride (Easy)", 60),
     ),
     # One hard day (Tue MaxiClimber). Thursday is easy zone 2, not VO2.
@@ -437,7 +450,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 46),
         ("maxiclimber", "Z2 — MaxiClimber", 30),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 35),
+        ("ruck", weekly_ruck_label(), 35),
         ("long", "Long Ride (Easy)", 85),
     ),
     date(2026, 11, 2): _wk(
@@ -446,17 +459,22 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 50),
         ("rower", "Threshold — rower", 35),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 35),
+        ("ruck", weekly_ruck_label(), 35),
         ("long", "Long Ride (Easy)", 100),
     ),
     # Fourth week: lighter bells on Wednesday, shorter ruck.
+    # Strength is 51 min, not 50. At WEEKLY_RUCK_PACK_KG the week of 9 Nov
+    # is light enough that the week of 16 Nov (first 3 h Sunday) would sit
+    # just over the +10% load cap and the cap would shorten that Sunday.
+    # One extra strength minute keeps the written durations. The Saturday
+    # ruck stays 30 min.
     date(2026, 11, 9): _wk(
         ("rest", "Rest", 0),
         ("threshold", "Threshold — bike", 45),
-        ("strength", "Strength — endurance", 50),
+        ("strength", "Strength — endurance", 51),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 30),
+        ("ruck", weekly_ruck_label(), 30),
         ("long", "Long Ride (Easy)", 115),
     ),
     # First 3-hour Sunday (22 Nov). Saturday stays short so the long ride is easy.
@@ -466,7 +484,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 30),
         ("rower", "Threshold — rower", 35),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 25),
+        ("ruck", weekly_ruck_label(), 25),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 11, 23): _wk(
@@ -475,7 +493,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 30),
         ("maxiclimber", "VO2 — MaxiClimber", 35),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 45),
+        ("ruck", weekly_ruck_label(), 45),
         ("long", "Long Ride (Easy)", 180),
     ),
     # Deload ruck. Sunday stays at 3 h.
@@ -485,7 +503,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 45),
         ("rower", "Threshold — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 35),
+        ("ruck", weekly_ruck_label(), 35),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 12, 7): _wk(
@@ -494,7 +512,7 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 40),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 55),
+        ("ruck", weekly_ruck_label(), 55),
         ("long", "Long Ride (Easy)", 180),
     ),
     date(2026, 12, 14): _wk(
@@ -503,13 +521,13 @@ _RETURN_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 40),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 65),
+        ("ruck", weekly_ruck_label(), 65),
         ("long", "Long Ride (Easy)", 180),
     ),
 }
 
 
-# Saturday stays 15 kg. Time is the progression, with a shorter week on
+# Saturday stays at WEEKLY_RUCK_PACK_KG. Time is the progression, with a shorter week on
 # 30 Jan (the existing load deload) and an easier first Saturday back from
 # camp. The pack-test weight (20.4 kg) is only the 13 Feb rehearsal.
 # Tuesday is a hard ride with the sandbag sets after it (one hard session,
@@ -522,7 +540,7 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 60),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 50),
+        ("ruck", weekly_ruck_label(), 50),
         ("long", "Long Ride (Easy)", 90),
     ),
     date(2027, 1, 11): _wk(
@@ -531,7 +549,7 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 40),
         ("maxiclimber", "VO2 — MaxiClimber", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 60),
+        ("ruck", weekly_ruck_label(), 60),
         ("long", "Long Ride (Easy)", 90),
     ),
     date(2027, 1, 18): _wk(
@@ -540,7 +558,7 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 55),
         ("threshold", "Threshold — bike", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 70),
+        ("ruck", weekly_ruck_label(), 70),
         ("long", "Long Ride (Easy)", 90),
     ),
     # Fourth week of this block: same shape, fewer sandbag and kettlebell sets.
@@ -550,7 +568,7 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 60),
         ("rower", "Threshold — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 50),
+        ("ruck", weekly_ruck_label(), 50),
         ("long", "Long Ride (Easy)", 90),
     ),
     date(2027, 2, 1): _wk(
@@ -559,7 +577,7 @@ _KESWICK_WEEKS: dict[date, tuple[tuple[str, str, int], ...]] = {
         ("strength", "Strength — endurance", 60),
         ("rower", "VO2 — rower", 40),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 70),
+        ("ruck", weekly_ruck_label(), 70),
         ("long", "Long Ride (Easy)", 90),
     ),
     date(2027, 2, 8): _wk(
@@ -676,20 +694,20 @@ def _scotland_placeholder(wd: int) -> tuple[str, str, int]:
 def _maintenance_day(d: date) -> tuple[str, str, int]:
     wd = d.weekday()
     if wd == 5:
-        # Hold 90 min at 15 kg. Every 4th Saturday is shorter so the week
+        # Hold 90 min at WEEKLY_RUCK_PACK_KG. Every 4th Saturday is shorter so the week
         # after a deload still fits the +10% cap (60 → 90 is about +8% of
         # the whole week, with Sunday already at 3 h).
         anchor = date(2027, 3, 29)
         week_index = max(0, (d - anchor).days // 7)
         dur = 60 if week_index % 4 == 3 else 90
-        return ("ruck", "Ruck 15 kg", dur)
+        return ("ruck", weekly_ruck_label(), dur)
     days = (
         ("rest", "Rest", 0),
         ("strength", "Strength — maintenance", 45),
         ("bike", "Z2 Easy", 75),
         ("hike", "Easy steps", 30),
         ("rest", "Rest", 0),
-        ("ruck", "Ruck 15 kg", 90),
+        ("ruck", weekly_ruck_label(), 90),
         ("long", "Long Ride (Easy)", 180),
     )
     return days[wd]
@@ -730,7 +748,7 @@ _PHASE_NOTES = {
         "First hard session Tue 20 Oct, then two from the week of 26 Oct "
         "(threshold or VO2, on the rower or the MaxiClimber through the week; "
         "Sunday is the outdoor ride). "
-        "Strength is Wednesday from 21 Oct. Saturday is a 15 kg ruck "
+        f"Strength is Wednesday from 21 Oct. Saturday is a {WEEKLY_RUCK_PACK_KG:g} kg ruck "
         "(Hadleigh Country Park or Mersea), short while Sunday is still "
         "building, then longer once the ride is at 3 hours. Every 4th week "
         "the bells and the ruck get lighter, not the long ride. "
@@ -742,7 +760,7 @@ _PHASE_NOTES = {
         "Shorten a session when fitness is not there."
     ),
     "Keswick build": (
-        "Saturday is a 15 kg ruck. Time goes up; the pack does not, until the "
+        f"Saturday is a {WEEKLY_RUCK_PACK_KG:g} kg ruck. Time goes up; the pack does not, until the "
         "20.4 kg pack-test rehearsal on 13 Feb. "
         "Tuesday is the hard rower session, then sandbag deadlift sets. "
         "Wednesday is the lighter strength session, before Thursday. "
@@ -758,7 +776,7 @@ _PHASE_NOTES = {
         "Overnight pack about 22 kg when you night out."
     ),
     "Maintenance": (
-        "Saturday stays a 15 kg ruck (90 min, 60 min every 4th week) through "
+        f"Saturday stays a {WEEKLY_RUCK_PACK_KG:g} kg ruck (90 min, 60 min every 4th week) through "
         "the 3 Oct 2027 checkpoint. "
         "The Haute Route week-by-week block is written after that."
     ),
@@ -783,7 +801,7 @@ _PHASE_NOTES_TURBO = {
         "Teide day. Shorten a ride when fitness is not there."
     ),
     "Keswick build": (
-        "Saturday is a 15 kg ruck. The 20.4 kg pack is only the 13 Feb rehearsal. "
+        f"Saturday is a {WEEKLY_RUCK_PACK_KG:g} kg ruck. The 20.4 kg pack is only the 13 Feb rehearsal. "
         "Tuesday is the hard ride, then sandbag deadlift sets. "
         "The week of 15 Feb is the taper."
     ),
