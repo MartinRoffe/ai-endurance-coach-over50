@@ -74,7 +74,8 @@ One card per phase. A phase that repeats shows the week; a phase that changes
 (the camp, the ruck build, Scotland) lists each week. Garmin receives weekend
 outdoor rides (`Z2 Easy`, `Long Ride (Easy)`) and weekday rower sessions
 (`Threshold — rower`, `VO2 — rower`, `Z2 — rower`) as cardio workouts.
-MaxiClimber, strength, hikes, Teide, and BUSAR stay calendar-only.
+Saturday rucks push as hiking workouts at 10 kg (the 13 Feb rehearsal is
+20.4 kg). MaxiClimber, strength, hikes, Teide, and BUSAR stay calendar-only.
 Bike rides are outdoors and only at the weekend.
 
 The cancelled Ghent→Amsterdam 12-week bible is an archive at `/training/charity`.

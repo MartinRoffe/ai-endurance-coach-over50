@@ -5,6 +5,7 @@ import os
 import sqlite3
 from typing import Optional
 
+from ..fitness_plan import WEEKLY_RUCK_PACK_KG
 from ..history import _conn
 from ..llm import MODEL_FAST
 
@@ -122,7 +123,10 @@ _SESSION_TYPE_DESC: dict[str, str] = {
     "bike":     "Zone 2 steady cycling",
     "tempo":    "tempo intervals cycling (high intensity)",
     "ftp":      "FTP test — maximal 20-minute cycling effort",
-    "ruck":     "weighted rucking carrying 8–15 kg pack",
+    "ruck": (
+        f"weighted rucking carrying a {WEEKLY_RUCK_PACK_KG:g} kg pack "
+        "(the 13 Feb pack-test rehearsal is 20.4 kg, not this weekly pack)"
+    ),
     "long":     "long Zone 2 cycling endurance ride",
 }
 

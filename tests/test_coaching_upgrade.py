@@ -67,8 +67,8 @@ def test_pullups_three_days_a_week_change_phase():
 
 
 def test_ruck_reaches_pack_test_load_without_a_kettlebell_deadlift():
-    assert "15 kg" in session_for_date(date(2027, 1, 9))[1]
-    assert "15 kg" in session_for_date(date(2027, 2, 6))[1]
+    assert "10 kg" in session_for_date(date(2027, 1, 9))[1]
+    assert "10 kg" in session_for_date(date(2027, 2, 6))[1]
     assert "20.4" not in session_for_date(date(2027, 2, 6))[1]
     rehearsal = session_for_date(date(2027, 2, 13))
     assert rehearsal[0] == "ruck"

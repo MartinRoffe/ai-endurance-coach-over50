@@ -26,6 +26,7 @@ from garminconnect.workout import (
     SportType,
 )
 
+from .load import pack_kg_from_label
 from .plan import (
     TRAINING_WEEKS, PLAN_START,
     MAXI_INTERVALS, KB_FULL_SPECS, KB_SPECS, COMPOUND_SESSIONS, RUCK_SPECS,
@@ -220,12 +221,13 @@ def _make_cardio(name: str, steps: list, dur_min: int) -> BaseWorkout:
     )
 
 
-def _make_hike(name: str, steps: list, dur_min: int) -> HikingWorkout:
+def _make_hike(name: str, steps: list, dur_min: int, pack_sentence: str | None = None) -> HikingWorkout:
+    pack = pack_sentence or "Pack weight is the one on the plan for this date."
     return HikingWorkout(
         workoutName=name,
         description=(
             "Easy loaded walk, heart rate zone 2. "
-            "Pack weight is the one on the plan for this date. "
+            f"{pack} "
             "Hadleigh Country Park or Mersea, unless this date is the flat pack-test rehearsal."
         ),
         estimatedDurationInSecs=dur_min * 60,
@@ -1012,14 +1014,32 @@ def _maxiclimber_workout(week_num: int, dur_min: int) -> CyclingWorkout:
     return _make_cardio(f"MaxiClimber Wk{week_num} {dur_min}m", steps, calculated_dur)
 
 
-def _ruck_workout(dur_min: int) -> HikingWorkout:
+def _ruck_template_kind(label: str) -> str:
+    """Garmin template key. Pack weight is part of the name so 10 kg and 20.4 kg
+    of the same duration do not share one workout."""
+    kg = pack_kg_from_label(label)
+    if kg:
+        return f"Ruck {kg:g} kg"
+    return "Ruck"
+
+
+def _ruck_workout(dur_min: int, kind: str = "Ruck") -> HikingWorkout:
     """Timed ruck. Hiking is the Connect sport; there is no ruck type."""
+    kg = pack_kg_from_label(kind)
     main_secs = max(60.0, (dur_min - 20) * 60)
-    return _make_hike(f"Ruck {dur_min}m", [
+    if kg:
+        name = f"Ruck {kg:g} kg {dur_min}m"
+        pack = f"Pack is {kg:g} kg."
+        main_note = f"{kg:g} kg pack. Heart rate zone 2."
+    else:
+        name = f"Ruck {dur_min}m"
+        pack = None
+        main_note = None
+    return _make_hike(name, [
         create_warmup_step(600.0, step_order=1),
-        _interval(2, main_secs, _hr_zone_target(), 2, 2),
+        _interval(2, main_secs, _hr_zone_target(), 2, 2, description=main_note),
         create_cooldown_step(600.0, step_order=3),
-    ], dur_min)
+    ], dur_min, pack_sentence=pack)
 
 
 def _build_strength_ruck_workout(kind: str, week_num: int, dur_min: int) -> Any | None:
@@ -1033,8 +1053,8 @@ def _build_strength_ruck_workout(kind: str, week_num: int, dur_min: int) -> Any 
         return _kb_position_workout("B", dur_min)
     if kind == "MaxiClimber":
         return _maxiclimber_workout(week_num, dur_min)
-    if kind == "Ruck":
-        return _ruck_workout(dur_min)
+    if kind == "Ruck" or kind.startswith("Ruck "):
+        return _ruck_workout(dur_min, kind)
     return None
 
 
@@ -1209,7 +1229,7 @@ def _specs_for(stype: str, label: str, dur: int, week_num: int) -> list[tuple]:
     if label in ("Easy MaxiClimber", "MaxiClimber"):
         return [("sr", "MaxiClimber", week_num, dur)]
     if stype == "ruck":
-        return [("sr", "Ruck", 0, dur)]
+        return [("sr", _ruck_template_kind(label), 0, dur)]
     print(f"  [skip] no handler for strength/ruck label '{label}'")
     return []
 
@@ -1295,7 +1315,7 @@ def _workout_schedule_strength_ruck() -> dict[tuple[str, int, int], list[str]]:
         if should_push_garmin_date(d):
             sess = fitness_session(d)
             if sess and garmin_ruck_allowed(sess[0], sess[1]):
-                schedule[("Ruck", 0, sess[2])].append(d.isoformat())
+                schedule[(_ruck_template_kind(sess[1]), 0, sess[2])].append(d.isoformat())
         d += timedelta(days=1)
     return schedule
 
