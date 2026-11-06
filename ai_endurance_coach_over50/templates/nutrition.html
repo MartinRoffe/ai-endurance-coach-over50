@@ -122,7 +122,7 @@
     <div class="num-card">
       <div class="lbl">Calories · {{ card.kind_label }}</div>
       <div class="val">{{ "{:,}".format(card.kcal) }}</div>
-      <div class="note">kcal</div>
+      <div class="note">{% if card.carbs_g_per_hr %}kcal · on-bike fuel is extra{% else %}kcal{% endif %}</div>
     </div>
     <div class="num-card">
       <div class="lbl">Protein</div>
@@ -190,7 +190,7 @@
   </details>
   {% endfor %}
   {% if meals_kcal_total %}
-  <p style="margin-top:8px;font-size:13px;color:var(--muted)">Planned {{ "{:,}".format(meals_kcal_total) }} kcal · protein {{ meals_protein_total }} g{% if dairy_calcium_mg %} · dairy calcium {{ "{:,}".format(dairy_calcium_mg) }} mg{% endif %}.</p>
+  <p style="margin-top:8px;font-size:13px;color:var(--muted)">Planned {{ "{:,}".format(meals_kcal_total) }} kcal{% if on_bike_kcal %} · plus {{ "{:,}".format(on_bike_kcal) }} kcal on the bike, on top of that{% endif %} · protein {{ meals_protein_total }} g{% if dairy_calcium_mg %} · dairy calcium {{ "{:,}".format(dairy_calcium_mg) }} mg{% endif %}.</p>
   {% endif %}
 </section>
 {% endif %}

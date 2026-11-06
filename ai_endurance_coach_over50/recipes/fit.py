@@ -194,16 +194,17 @@ def solve(
     milk_pack = {grams: _pack(macros_for("milk_semi", grams)) for grams in _MILK_STEPS}
     snack_opts = _SNACKS if training["allow_snack"] else _SNACKS[:1]
 
-    # Ride foods are separate meals, so round each one, not the sum.
+    # Pre and post snacks are part of the day's food budget. On-bike fuel
+    # is extra: it is still listed as a meal, and it is not scored against
+    # the calorie target.
     fixed_k = 0
     fixed_p = 0
     fixed_ca = 0.0
-    for key in ("pre", "on_bike", "post"):
+    for key in ("pre", "post"):
         foods = training[key]
-        cakes = int(training["cakes"]) if key == "on_bike" else 0
-        if not foods and not cakes:
+        if not foods:
             continue
-        packed = _pack(_foods_macros(foods, cakes))
+        packed = _pack(_foods_macros(foods, 0))
         ki, pi = _meal_ints(packed[0], packed[1], packed[2])
         fixed_k += ki
         fixed_p += pi
@@ -527,11 +528,20 @@ def _snack_detail(foods: dict[str, float]) -> str:
     )
 
 
+# On-bike fuel is eaten during the ride. It is not part of the day's
+# calorie budget (the 1,900 kcal target, or whatever that day resolves to).
+_ON_BIKE_SLOTS = frozenset({"On-bike", "During"})
+
+
 def published_totals(meals: list[dict]) -> dict[str, float]:
+    budget = [m for m in meals if m.get("slot") not in _ON_BIKE_SLOTS]
+    on_bike = [m for m in meals if m.get("slot") in _ON_BIKE_SLOTS]
     return {
-        "kcal": sum(m["kcal"] for m in meals),
-        "protein": sum(m["protein"] for m in meals),
-        "carbs": sum(m["carbs"] for m in meals),
-        "calcium": sum(m["calcium"] for m in meals),
-        "dairy_calcium": sum(m["dairy_calcium"] for m in meals),
+        "kcal": sum(m["kcal"] for m in budget),
+        "protein": sum(m["protein"] for m in budget),
+        "carbs": sum(m["carbs"] for m in budget),
+        "calcium": sum(m["calcium"] for m in budget),
+        "dairy_calcium": sum(m["dairy_calcium"] for m in budget),
+        "on_bike_kcal": sum(m["kcal"] for m in on_bike),
+        "on_bike_carbs": sum(m["carbs"] for m in on_bike),
     }

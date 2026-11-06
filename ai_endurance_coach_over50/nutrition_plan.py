@@ -51,7 +51,6 @@ FALLBACK_INTAKE_KCAL = 2200
 from .coach_voice import STONE_SAFE_LINE
 from .energy import (
     CUT_TARGET_KG,
-    LONG_RIDE_EXTRA_KCAL_PER_HOUR,
     MIN_INTAKE_KCAL,
     active_cut_phase,
     day_kind,
@@ -187,15 +186,11 @@ def resolve_calorie_target(
 
     maintenance = in_maintenance_window(ref_date)
     tier_deficit = deficit_for_tier(tier_key, ref_date)
-    long_extra = 0
+    # Ride length sizes the on-bike meal. It does not change this kcal figure.
+    _ = session_dur_min
     long_fuel_topup = 0
-    if tier_key == "long" and session_dur_min and session_dur_min > 120:
-        long_extra = session_dur_min - 120
-        long_fuel_topup = round(
-            LONG_RIDE_EXTRA_KCAL_PER_HOUR * (long_extra / 60.0)
-        )
     computed = intake_target_kcal(
-        tdee, tier_key, long_ride_extra_min=long_extra, ref_date=ref_date
+        tdee, tier_key, long_ride_extra_min=0, ref_date=ref_date
     )
     if computed is None:
         return {
@@ -227,11 +222,12 @@ def resolve_calorie_target(
 # ── Simple rules (the whole cheat sheet) ──────────────────────────────────────
 SIMPLE_RULES = [
     "Calories — three day types only. Easy or rest: stable TDEE minus 600. "
-    "Hard: minus 250. Long: maintenance plus ride fuel. Floor 1,600 kcal. No cut before 3 Jan 2027.",
+    "Hard: minus 250. Long: the same daily target as an easy maintenance day. "
+    "On-bike fuel is extra, on top of that figure, not inside it. Floor 1,600 kcal. No cut before 3 Jan 2027.",
     "Protein — one lean-mass target, spread across breakfast, lunch, dinner, and an evening "
     "yoghurt only when the day still needs protein or calcium. Not a fixed 350 g bowl.",
     "Carbs — one figure that fits the day's calories, after protein and about a quarter of the day "
-    "for fat. On-bike grams per hour are part of that figure, not a second pile.",
+    "for fat. On-bike grams per hour are extra, on top of that figure.",
     "Fluids — 2.5–3 L plus 0.5 L per training hour. Urine pale. Lemon or lime in the water.",
     "Habit — veg or fruit at every meal, and creatine 3–5 g every day. Sunday: two one-pots and "
         "one soup for the weekday lunches and for Monday to Thursday dinners. Friday dinner is a "
@@ -1028,7 +1024,8 @@ def calorie_tier_for_session(
     """Map a planned session onto easy, hard, or long.
 
     Easy covers rest, recovery and ordinary training. Threshold and VO2 days
-    are hard so the deficit is smaller. Long rides are maintenance plus ride fuel.
+    are hard so the deficit is smaller. A long ride uses the maintenance
+    target. On-bike fuel is extra and is not part of that figure.
     """
     if not stype and not label:
         return day_kind(weekday_tier)
@@ -1273,7 +1270,7 @@ def today_targets(ref_date: date | None = None) -> dict:
 _CARB_LINE = {
     "easy": "fits today's calories, after protein and some fat",
     "hard": "fits today's calories, with more of them around the session",
-    "long": "fits today's calories. On-bike grams per hour are part of this, not extra",
+    "long": "fits today's calories. On-bike fuel is extra, on top of this figure",
 }
 
 
@@ -1716,6 +1713,7 @@ def build_today_food(plan_start: date, today: date) -> dict:
         "carbs_g_per_hr": tt.get("carbs_g_per_hr"),
         "meals": meal_dicts,
         "meals_kcal_total": int(ctx["totals"]["kcal"]),
+        "on_bike_kcal": int(ctx["totals"].get("on_bike_kcal") or 0),
         "meals_protein_total": int(ctx["totals"]["protein"]),
         "dairy_calcium_mg": int(round(ctx["totals"]["dairy_calcium"])),
         "scale_meta": scale_meta,

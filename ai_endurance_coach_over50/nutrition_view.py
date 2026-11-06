@@ -159,6 +159,7 @@ def nutrition_page(
         "plates": [meal for meal in meals if not meal["ride"]],
         "ride": [meal for meal in meals if meal["ride"]],
         "meals_kcal_total": food.get("meals_kcal_total"),
+        "on_bike_kcal": food.get("on_bike_kcal") or 0,
         "meals_protein_total": food.get("meals_protein_total"),
         "dairy_calcium_mg": food.get("dairy_calcium_mg"),
         "logged_kcal": logged_kcal,

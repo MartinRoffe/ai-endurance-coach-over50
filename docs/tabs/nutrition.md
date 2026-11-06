@@ -20,9 +20,9 @@ Week 4 is the recovery cycle week.
 
 Four numbers and one habit, from `today_card()`:
 
-- **Calories** — one figure. Easy or rest is stable TDEE minus 600. Hard is minus 250. Long is maintenance plus ride fuel.
+- **Calories** — one figure. Easy or rest is stable TDEE minus 600. Hard is minus 250. Long uses that same daily target. On-bike fuel is extra, on top of the figure, not inside it.
 - **Protein** — one midpoint from the lean-mass target, eaten as four doses (breakfast, lunch, dinner, evening dairy).
-- **Carbs** — one gram figure that fits the day's calories, after protein and about a quarter of the day for fat. On-bike grams per hour are part of that figure, not a second pile on top.
+- **Carbs** — one gram figure that fits the day's calories, after protein and about a quarter of the day for fat. On-bike grams per hour are extra, on top of that figure.
 - **Fluids** — 2.5–3 L plus 0.5 L per training hour. Urine pale.
 - **Habit** — veg or fruit at every meal, plus creatine 3–5 g.
 
@@ -45,14 +45,14 @@ Three distinct numbers appear across Nutrition and Body:
   Mid-day “vs burn” is informational only — do not eat to this number.
 - **Intake target** — what you should eat in the morning, from `today_targets()`:
   **stable TDEE** (7-day average burn) **minus a session-type deficit**
-  (`stable_tdee − deficit`), plus long-ride fuel top-up beyond 2 h when needed.
+  (`stable_tdee − deficit`). On-bike fuel is extra, on top of that figure.
   This is periodized cut fueling: larger deficit on rest/easy days, near
   maintenance on long/quality days.
   - **Maintenance** (9 Oct 2026–3 Jan 2027): deficit 0 through the kidney-stone
     return and Christmas. The earlier July–September 2026 window has expired.
   - **Ease** (4 Jan–31 Mar 2027, `CUT_PHASES` in `energy.py`): toward 84–85 kg by
-    31 Mar (`CUT_TARGET_KG` 84.5). About 0.5 kg/week. Easy −600, hard −250, long 0
-    plus ride fuel. Protein stays on the lean-mass lock.
+    31 Mar (`CUT_TARGET_KG` 84.5). About 0.5 kg/week. Easy −600, hard −250, long 0.
+    On-bike fuel is extra, on top of the daily figure. Protein stays on the lean-mass lock.
   - Floor 1,600 kcal. There is no live camp-nutrition window.
   - Optional `session_work_kcal` (FTP × % targets) is context only — it does
     **not** change the crowned intake when stable TDEE exists.
