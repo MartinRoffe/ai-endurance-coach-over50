@@ -94,7 +94,8 @@ def test_sunday_25_oct_outdoor_guidance():
     assert "outdoor" in purpose
     assert "assioma" in purpose
     assert "lights" in purpose
-    assert "rower or maxiclimber" in purpose
+    assert "the maxiclimber" in purpose
+    assert "rower" not in purpose
     assert not _BANNED.search(purpose)
 
 

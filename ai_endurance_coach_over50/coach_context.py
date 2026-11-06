@@ -743,10 +743,10 @@ def _section_key_dates(today: date) -> list[str]:
         )
         lines.append(
             "  Garmin push (fitness year): weekend outdoor rides — Z2 Easy, Long Ride (Easy) — "
-            "as cycling workouts. Weekday rower (Threshold — rower, VO2 — rower, Z2 — rower) "
-            "as cardio workouts. Saturday rucks push as hiking workouts. "
+            "as cycling workouts. Saturday rucks push as hiking workouts. "
             "Not pushed: MaxiClimber, strength, hikes, Teide, BUSAR. "
-            "Bike rides are outdoors and weekends only."
+            "From 25 Oct 2026 there is no rower. Weekday hard sessions are MaxiClimber, "
+            "calendar-only. Bike rides are outdoors and weekends only."
         )
         lines.append(
             "  Scotland week: ready from Mon 22 Mar 2027. Exact hills chosen that week "

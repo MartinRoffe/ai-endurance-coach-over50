@@ -308,7 +308,7 @@ def _nutrition() -> list[SearchHit]:
     for key, title, note in (
         ("easy", "Easy day", "Stable TDEE minus 600 kcal"),
         ("hard", "Hard day", "Stable TDEE minus 250 kcal"),
-        ("long", "Long day", "Maintenance plus ride fuel"),
+        ("long", "Long day", "Daily target, with on-bike fuel on top"),
     ):
         out.append(
             _entry(

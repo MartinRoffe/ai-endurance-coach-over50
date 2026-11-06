@@ -216,11 +216,11 @@ def test_easy_rides_are_the_ones_pushed_to_garmin():
     assert hard["garmin"] is True
     assert "Threshold" in hard["title"] or hard["type"] == "threshold"
     assert hard["garmin_text"] == "Pushed to Garmin"
-    # Weekday rower sessions are pushed as cardio, and the line says so.
-    rower = day_detail(date(2026, 11, 5))
-    assert "rower" in (rower["title"] or "").lower()
-    assert rower["garmin"] is True
-    _assert_push_text_matches_flag(rower)
+    # From 25 Oct, weekday hard sessions are MaxiClimber and stay off the watch.
+    climber = day_detail(date(2026, 11, 5))
+    assert "maxiclimber" in (climber["title"] or "").lower()
+    assert climber["garmin"] is False
+    _assert_push_text_matches_flag(climber)
 
 
 def test_week_of_19_oct_has_one_hard_day_and_push_text_agrees():
@@ -255,13 +255,13 @@ def test_week_from_26_oct_has_one_hard_day_and_thursday_is_easy_z2():
     assert is_hard(("maxiclimber", easy["title"], 30)) is False
     assert easy["garmin"] is False
     _assert_push_text_matches_flag(easy)
-    # VO2 in a later two-hard week is also a rower session, same count.
+    # VO2 in a later two-hard week is a MaxiClimber session, same count.
     vo2 = day_detail(date(2026, 11, 3))
-    assert vo2["type"] == "rower"
+    assert vo2["type"] == "maxiclimber"
     assert "VO2" in vo2["title"]
     assert len(_hard_dates(date(2026, 11, 2))) == 2
     assert "one of the two hard days this week" in vo2["purpose"].lower()
-    assert vo2["garmin"] is True
+    assert vo2["garmin"] is False
     _assert_push_text_matches_flag(vo2)
 
 

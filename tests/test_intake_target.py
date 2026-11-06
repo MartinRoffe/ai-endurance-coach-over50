@@ -40,9 +40,10 @@ def test_intake_target_long_near_maintenance():
     assert intake_target_kcal(2500, "long") == 2500
 
 
-def test_intake_target_long_scales_with_duration():
-    # 3 h ride = 60 min beyond 2 h baseline → +175 kcal
-    assert intake_target_kcal(2500, "long", long_ride_extra_min=60) == 2675
+def test_intake_target_keeps_on_bike_fuel_out_of_the_day():
+    # A longer ride does not raise the daily kcal figure. Fuel is extra.
+    assert intake_target_kcal(2500, "long", long_ride_extra_min=60) == 2500
+    assert intake_target_kcal(1900, "long", long_ride_extra_min=90) == 1900
 
 
 def test_intake_target_respects_floor():
@@ -379,7 +380,9 @@ def test_hard_cut_rest_kcal_below_long(monkeypatch):
     assert rest["tier_deficit"] == 600
     assert training["tier_deficit"] == 600
     assert long["tier_deficit"] == 0
-    assert long["long_fuel_topup"] == 175
+    # On-bike fuel is a separate meal. It is not added into the day's kcal.
+    assert long["kcal"] == 2400
+    assert long["long_fuel_topup"] == 0
 
 
 def test_today_targets_exposes_why(monkeypatch):
@@ -400,7 +403,7 @@ def test_today_targets_exposes_why(monkeypatch):
 
 
 def test_build_today_food_scales_on_bike_row(monkeypatch):
-    """A long ride adds ride fuel to the calorie target. Meals stay four doses."""
+    """On-bike fuel is listed, and it is not inside the day's calorie target."""
     from ai_endurance_coach_over50 import plan as plan_mod
 
     monkeypatch.setattr(np_mod, "_stable_tdee", lambda days=7: 2000)
@@ -414,11 +417,15 @@ def test_build_today_food_scales_on_bike_row(monkeypatch):
     assert "Pre-ride" in slots and "On-bike" in slots and "Post-ride" in slots
     assert "Breakfast" in slots and "Dinner" in slots
     assert out["kcal_target"] == np_mod.today_targets(sunday)["kcal"]
-    assert out["kcal_target"] == 2000 + round(175 * 1.5)
+    assert out["kcal_target"] == 2000
     on_bike = next(meal for meal in out["meals"] if meal["type"] == "On-bike")
     # Eight homemade cakes, not eight 25 g shop cakes.
-    assert int(on_bike["macros"]["kcal"]) > 1000
+    on_bike_kcal = int(on_bike["macros"]["kcal"])
+    assert on_bike_kcal > 1000
     assert "Savoury rice cakes" in on_bike["name"]
+    assert abs(out["meals_kcal_total"] - 2000) <= 2000 * 0.05
+    assert out["on_bike_kcal"] == on_bike_kcal
+    assert out["meals_kcal_total"] + on_bike_kcal > 2000 * 1.05
     card = np_mod.today_card(sunday)
     assert card["kind"] == "long"
     assert set(card) >= {"kcal", "protein_g", "carbs_g", "fluids", "habit", "stone_line"}

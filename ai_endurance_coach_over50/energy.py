@@ -183,7 +183,8 @@ INTAKE_DEFICIT_BY_TIER: dict[str, int] = {
     "long": 0,
 }
 
-# Extra intake per hour of long ride beyond a 2 h baseline (kcal/h).
+# Kept so older imports still resolve. On-bike fuel is a separate meal.
+# It is not added into the daily kcal target.
 LONG_RIDE_EXTRA_KCAL_PER_HOUR = 175
 
 # No cut before 3 Jan 2027 (procedure, return, Christmas camp).
@@ -207,8 +208,8 @@ CUT_PHASES: list[tuple[date, date, str]] = [
 ]
 
 # Three day types once a deficit applies. Easy covers rest, recovery and
-# ordinary training. Hard keeps carbohydrate up. Long is maintenance
-# (the ride-fuel top-up is added separately).
+# ordinary training. Hard keeps carbohydrate up. Long is the same daily
+# target as maintenance. On-bike fuel is extra, not part of this number.
 DAY_DEFICIT_KCAL: dict[str, int] = {
     "easy": 600,
     "hard": 250,
@@ -392,10 +393,11 @@ def intake_target_kcal(
     long_ride_extra_min: int = 0,
     ref_date: Optional[date] = None,
 ) -> Optional[int]:
-    """Prescribed intake (kcal) from calibrated TDEE and day type.
+    """Prescribed off-bike intake (kcal) from calibrated TDEE and day type.
 
     Returns None when ``tdee`` is unknown (caller should fall back to static tiers).
     ``ref_date`` enables maintenance windows and cut-phase deficit maps.
+    ``long_ride_extra_min`` is ignored. On-bike fuel is not part of this figure.
     """
     if tdee is None:
         return None
@@ -407,6 +409,5 @@ def intake_target_kcal(
         return None
     deficit = deficit_for_tier(tier_key, ref_date)
     target = round(burn) - deficit
-    if tier_key == "long" and long_ride_extra_min > 0:
-        target += round(LONG_RIDE_EXTRA_KCAL_PER_HOUR * (long_ride_extra_min / 60.0))
+    _ = long_ride_extra_min
     return max(MIN_INTAKE_KCAL, target)
