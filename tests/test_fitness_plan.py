@@ -52,9 +52,9 @@ def test_camp_day_is_time_based_and_teide_is_optional():
     assert not garmin_allowed(date(2026, 12, 26), camp[0], camp[1])
     assert _workouts_for_date(date(2026, 12, 26)) == []
     quality = session_for_date_extended(date(2026, 12, 23))
-    assert quality == ("rower", "Threshold — rower", 180)
-    assert garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
-    assert _workouts_for_date(date(2026, 12, 23)) == [("row", "Threshold — rower", 180)]
+    assert quality == ("maxiclimber", "Threshold — MaxiClimber", 180)
+    assert not garmin_allowed(date(2026, 12, 23), quality[0], quality[1])
+    assert _workouts_for_date(date(2026, 12, 23)) == []
 
 
 def test_busar_weekend_replaces_the_last_keswick_ruck():

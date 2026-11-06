@@ -12,7 +12,6 @@ from typing import Any, Optional
 
 from .fitness_plan import (
     ATHLETE_FTP_W,
-    ATHLETE_MAX_HR,
     WEEKLY_RUCK_PACK_KG,
     garmin_allowed,
     pullup_for_date,
@@ -64,7 +63,7 @@ _DELOAD_DATES = {
 
 _KIT = (
     "Kit: kettlebells 8, 12, 14, 16, 20 and 24 kg, one of each, plus a sandbag "
-    "or a weighted vest, a rower, and a MaxiClimber. No trap bar. "
+    "or a weighted vest, and a MaxiClimber. No rower from 25 Oct 2026. No trap bar. "
     "The pull-up bar is in use from 27 Oct."
 )
 
@@ -110,10 +109,23 @@ def _fmt_dur(dur: int) -> str:
     return f"{hours} h"
 
 
+# Measured Karvonen bands (max HR 191, resting HR about 60). These are the
+# numbers to use when the watch has not supplied its own zone table. Do not
+# replace them with a percent-of-max estimate.
+_MEASURED_HR = {
+    1: (None, 129),
+    2: (130, 158),
+    3: (158, 180),
+    4: (180, 191),
+    5: (180, 191),
+}
+_MEASURED_HR_SOURCE = "measured Karvonen, max HR 191, resting HR about 60"
+
+
 def _zone_book() -> dict[str, Any]:
-    """HR and power targets. Garmin zones and a tested FTP win when they exist."""
-    hr: dict[int, tuple[Optional[int], Optional[int]]] = {}
-    hr_source = f"percent of max HR {ATHLETE_MAX_HR}"
+    """HR and power targets. A stored Karvonen table wins; otherwise the measured bands."""
+    hr: dict[int, tuple[Optional[int], Optional[int]]] = dict(_MEASURED_HR)
+    hr_source = _MEASURED_HR_SOURCE
     try:
         from .hr_profile import load_hr_profile
         profile = load_hr_profile()
@@ -121,24 +133,14 @@ def _zone_book() -> dict[str, Any]:
         profile = None
     garmin = (profile or {}).get("garmin") or {}
     zones = garmin.get("zones") or []
-    if zones:
+    method = (garmin.get("method") or "")
+    # Percent-of-max is a formula estimate. Keep the measured Karvonen bands.
+    if zones and method != "HR_MAX":
+        hr = {}
         for zone in zones:
             hr[int(zone["zone"])] = (zone.get("lo"), zone.get("hi"))
-        method = garmin.get("method_label") or "zones"
-        hr_source = f"Garmin {method}"
-    else:
-        max_hr = ATHLETE_MAX_HR
-        z2_lo = round(max_hr * 0.60)
-        z2_hi = round(max_hr * 0.70)
-        z3_hi = round(max_hr * 0.80)
-        z4_hi = round(max_hr * 0.90)
-        hr = {
-            1: (None, z2_lo - 1),
-            2: (z2_lo, z2_hi),
-            3: (z2_hi + 1, z3_hi),
-            4: (z3_hi + 1, z4_hi),
-            5: (z4_hi + 1, max_hr),
-        }
+        method_label = garmin.get("method_label") or "zones"
+        hr_source = f"Garmin {method_label}"
 
     ftp = ATHLETE_FTP_W
     ftp_source = f"working FTP {ATHLETE_FTP_W} W"
@@ -372,12 +374,24 @@ def _rower_split_note(hard: bool) -> str:
     )
 
 
+def _bad_weather_machine(day: date | None) -> str:
+    """Indoor fallback when the road is a bad idea. No rower from 25 Oct 2026."""
+    from .fitness_plan import ROWER_LAST
+    if day is not None and day <= ROWER_LAST:
+        return "rower or MaxiClimber"
+    return "the MaxiClimber"
+
+
 def _outdoor_ride_note(detail: dict[str, Any]) -> str:
     """Weekend ride cues: quiet loop, HR on climbs, Assioma, winter lights, weather fallback."""
     try:
         month = int(str(detail.get("date") or "")[5:7])
     except ValueError:
         month = 0
+    try:
+        day = date.fromisoformat(str(detail.get("date") or ""))
+    except ValueError:
+        day = None
     lights = ""
     if month in (10, 11, 12, 1, 2, 3):
         lights = " Lights and something bright — be seen in the dark months."
@@ -385,7 +399,7 @@ def _outdoor_ride_note(detail: dict[str, Any]) -> str:
         " Outdoor ride: a flat quiet loop. On a climb, heart rate leads — drop a gear "
         "before you leave the zone. The Assioma pedals still record power."
         + lights
-        + " Wind or weather that makes the road a bad idea: rower or MaxiClimber "
+        + f" Wind or weather that makes the road a bad idea: {_bad_weather_machine(day)} "
         "for the same duration, zone 2."
     )
 
@@ -394,16 +408,44 @@ def _fill_bike_then_sandbag(detail: dict[str, Any], d: date, dur: int, book: dic
     detail["role"] = "sandbag"
     detail["type_label"] = "Threshold, then strength"
     detail["deload"] = d in _DELOAD_DATES
-    on_rower = "rower" in (detail.get("title") or "").lower() or detail.get("type") == "rower"
+    title = (detail.get("title") or "").lower()
+    on_rower = "rower" in title or detail.get("type") == "rower"
+    on_maxi = "maxiclimber" in title or detail.get("type") == "maxiclimber"
     detail["hr_target"] = _rower_zone(book, 4) if on_rower else _hr(book, 4)
-    detail["power_target"] = "" if on_rower else _pwr(book, 4)
-    if on_rower:
+    detail["power_target"] = "" if on_rower or on_maxi else _pwr(book, 4)
+    if on_maxi:
+        detail["rpe_target"] = "7 on the MaxiClimber, 6–7 on the sandbag" if not detail["deload"] else "7 on the MaxiClimber, 5 on the sandbag"
+        detail["intensity"] = f"RPE {detail['rpe_target']}. Heart rate {detail['hr_target']}."
+    elif on_rower:
         detail["rpe_target"] = "7–8 on the rower, 6–7 on the sandbag" if not detail["deload"] else "7 on the rower, 5 on the sandbag"
         detail["intensity"] = f"RPE {detail['rpe_target']}. Heart rate {detail['hr_target']}."
     else:
         detail["rpe_target"] = "8 on the bike, 6–7 on the sandbag" if not detail["deload"] else "7 on the bike, 5 on the sandbag"
         detail["intensity"] = f"{detail['power_target']}. Heart rate {detail['hr_target']}."
-    if on_rower:
+    if on_maxi:
+        detail["purpose"] = (
+            f"{hard_day_phrase(d)}. Hard MaxiClimber first, sandbag second, so the heavier lift is not the day before Thursday. "
+            "The hard reps are short: 5 × 4 min at RPE 7, with 2 min easy between, paced by RPE and heart rate. "
+            "Do not lengthen those reps. "
+            "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
+            "There is no trap bar. A kettlebell is not this lift: the heaviest bell is 24 kg and the "
+            "test is 102 kg for 15 reps in one minute. That standard is the target, not today's load. "
+            + _KIT
+        )
+        detail["blocks"] = [
+            _block("Warm-up", "8 min easy climbing. Hands light on the bars. Short steps."),
+            _block(
+                "Main set",
+                "5 × 4 min at RPE 7, with 2 min easy between. Pace it by RPE and heart rate. "
+                "Short steps. Do not yank the handles. Do not lengthen the reps.",
+            ),
+            _block("Cool-down", "Easy climbing for the time that is left, then a few minutes on your feet before the sandbag."),
+            _block(
+                "Sandbag",
+                "After the MaxiClimber. Stop each set with 2 reps left. If the back rounds, the bag is too heavy.",
+            ),
+        ]
+    elif on_rower:
         detail["purpose"] = (
             f"{hard_day_phrase(d)}. Hard row first, sandbag second, so the heavier lift is not the day before Thursday. "
             "The sandbag is the deadlift you can actually load. A barbell is fine if you have one. "
@@ -442,7 +484,12 @@ def _fill_bike_then_sandbag(detail: dict[str, Any], d: date, dur: int, book: dic
         detail["exercises"] = [
             _ex("Sandbag deadlift", "2×5", "Same load as the last build week, not more", "2 sec down, stand up", "2–3 min"),
         ]
-        opener = "Deload week. The row stays, " if on_rower else "Deload week. The ride stays, "
+        if on_maxi:
+            opener = "Deload week. The MaxiClimber stays, "
+        elif on_rower:
+            opener = "Deload week. The row stays, "
+        else:
+            opener = "Deload week. The ride stays, "
         detail["purpose"] = (
             opener + "the sandbag sets are cut in half, and the load does not go up. "
             + detail["purpose"]
@@ -969,7 +1016,7 @@ def _fill_teide(detail: dict[str, Any], dur: int, book: dict[str, Any]) -> None:
         f"Optional outdoor Teide day, about {_fmt_dur(dur)}. There is no distance target. "
         "Heart rate leads on the steep pitches; the Assioma pedals still record power. "
         "Lights if you will be out in the dark. "
-        "Wind or weather that shuts the road: rower or MaxiClimber for the same duration, zone 2. "
+        "Wind or weather that shuts the road: the MaxiClimber for the same duration, zone 2. "
         "Shorten it when fitness is not there."
     )
 
@@ -1078,18 +1125,25 @@ def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
         detail["power_target"] = ""
         detail["rpe_target"] = "7"
         detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
-        if dur <= 45:
-            detail["blocks"] = [
-                _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
-                _block("Main set", "5 × 4 min at RPE 7, with 2 min easy between. Short steps. Do not yank the handles."),
-                _block("Cool-down", "5 min easy climbing."),
-            ]
-        else:
-            detail["blocks"] = [
-                _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
-                _block("Main set", "Threshold efforts at RPE 7, with easy climbing between. Short steps. Do not yank the handles."),
-                _block("Cool-down", "5 min easy climbing."),
-            ]
+        main = (
+            "5 × 4 min at RPE 7, with 2 min easy between. "
+            "Pace it by RPE and heart rate. Short steps. Do not yank the handles."
+        )
+        if dur > 45:
+            main += (
+                " Do not lengthen those reps. Anything left after the set is easy zone 2, "
+                "not a longer interval."
+            )
+        cooldown = (
+            "Easy climbing for the time that is left."
+            if dur > 45
+            else "5 min easy climbing."
+        )
+        detail["blocks"] = [
+            _block("Warm-up", "10 min easy climbing. Hands light on the bars."),
+            _block("Main set", main),
+            _block("Cool-down", cooldown),
+        ]
         try:
             day = date.fromisoformat(detail["date"])
         except ValueError:
@@ -1105,13 +1159,28 @@ def _fill_maxi(detail: dict[str, Any], label: str, dur: int, book: dict[str, Any
     detail["power_target"] = ""
     detail["rpe_target"] = "8"
     detail["intensity"] = f"Heart rate {detail['hr_target']}. RPE {detail['rpe_target']}."
+    vo2_main = (
+        "6 × 2 min at RPE 8, 90 s easy between. "
+        "Pace it by RPE and heart rate. Short steps. Do not yank the handles."
+    )
+    if dur > 45:
+        vo2_main += (
+            " Do not lengthen those reps. Anything left after the set is easy zone 2, "
+            "not a longer interval."
+        )
     detail["blocks"] = [
         _block("Warm-up", "5–8 min easy climbing. Hands light on the bars."),
-        _block("Main set", "6 × 2 min hard, 90 s easy between. Short steps. Do not yank the handles."),
+        _block("Main set", vo2_main),
         _block("Cool-down", "Easy climbing for the time that is left."),
     ]
+    try:
+        day = date.fromisoformat(detail["date"])
+    except ValueError:
+        day = None
+    lead = f"{hard_day_phrase(day)}. " if day else ""
     detail["purpose"] = (
-        f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
+        lead
+        + f"Hard day on the MaxiClimber, about {_fmt_dur(dur) or 'the planned time'}."
     )
 
 

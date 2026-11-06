@@ -79,9 +79,13 @@ def equipment_note(has_turbo: bool) -> str:
     return (
         "Equipment: he has NO turbo trainer and no indoor bike. "
         "Never tell him to ride a turbo, a trainer, Rouvy, or an erg. "
-        "Every bike ride is outdoors. Weekday hard sessions are on the indoor rower. "
-        "Weekend rides keep the ' · outdoor' label. That suffix is the same session, "
-        "not a change of plan."
+        "Every bike ride is outdoors. Weekend rides keep the ' · outdoor' label. "
+        "That suffix is the same session, not a change of plan. "
+        "As of 25 Oct 2026 he has no indoor rower. Do not prescribe a rower, "
+        "a Concept2, or rowing. Weekday hard sessions are on the MaxiClimber: "
+        "short reps, for example 5×4 min at RPE 7 with 2 min easy, paced by "
+        "RPE and heart rate. Do not copy a long rower interval onto the MaxiClimber. "
+        "Easy weekday aerobic work is zone 2 on the MaxiClimber."
     )
 
 
